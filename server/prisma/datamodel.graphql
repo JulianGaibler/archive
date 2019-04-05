@@ -1,0 +1,20 @@
+type Meme {
+    id: ID! @unique
+    title: String!
+    created: DateTime!
+    keywords: [Keyword!]!
+    uploader: User!
+    path: String!
+    caption: String
+}
+
+type Keyword {
+    id: ID! @unique
+    name: String!
+}
+
+type User {
+    username: String! @unique
+    name: String!
+    password: String!
+}

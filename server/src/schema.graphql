@@ -1,0 +1,40 @@
+type Query {
+  feed: [Meme!]!
+  drafts: [Meme!]!
+  post(id: ID!): Meme
+  me: User
+}
+
+type Mutation {
+  signup(username: String!, name: String!, password: String!): AuthPayload!
+  login(username: String!, password: String!): AuthPayload!
+  # createDraft(title: String!, content: String!): Meme!
+  publish(id: ID!): Meme!
+  deletePost(id: ID!): Meme!
+}
+
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
+type Meme {
+    id: ID!
+    title: String!
+    keywords: [Keyword!]!
+    uploader: User!
+    path: String!
+    caption: String
+}
+
+type Keyword {
+    id: ID!
+    name: String!
+}
+
+type User {
+    username: String!
+    name: String!
+    password: String!
+    salt: String!
+}
