@@ -7,6 +7,6 @@ import './assets/main.styl'
 Vue.config.productionTip = false
 
 new Vue({
-    apolloProvider: createProvider(),
-    render: h => h(App)
+  apolloProvider: createProvider(),
+  render: h => h(App)
 }).$mount('#app')

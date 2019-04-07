@@ -1,7 +1,7 @@
-import { getUsername, Context } from '../../utils'
+import { getUsername } from '../../utils'
 
 export const post = {
-  //async createDraft(parent, { title, content }, ctx: Context, info) {
+  //async createDraft(parent, { title, content }, ctx, info) {
   //  const username = getUsername(ctx)
   //  return ctx.prisma.createMeme({
   //    title,
@@ -12,7 +12,7 @@ export const post = {
   //  })
   //},
 
-  async publish(parent, { id }, ctx: Context, info) {
+  async publish(parent, { id }, ctx, info) {
     const username = getUsername(ctx)
     const postExists = await ctx.prisma.$exists.meme({
       id,
@@ -28,7 +28,7 @@ export const post = {
     })
   },
 
-  async deletePost(parent, { id }, ctx: Context, info) {
+  async deletePost(parent, { id }, ctx, info) {
     const username = getUsername(ctx)
     const postExists = await ctx.prisma.$exists.meme({
       id,

@@ -44,18 +44,22 @@
     </div>
 </template>
 
-<script lang="ts">
-import { Component, Vue } from 'vue-property-decorator';
-
-@Component
-export default class Login extends Vue {
-
-    username: String = ''
-    password: String = ''
-    nickname: String = ''
-
-    async onDone (result) {
-        console.log(result)
+<script>
+export default {
+    name: 'Login',
+    props: {
+        msg: String
+    },
+    data() {
+        return {
+            username: '',
+            password: '',
+        }
+    },
+    methods: {
+        onDone(data) {
+            console.log(data)
+        }
     }
 }
 </script>

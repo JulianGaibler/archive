@@ -1,4 +1,4 @@
-# 4x-archive-client
+# client
 
 ## Project setup
 ```

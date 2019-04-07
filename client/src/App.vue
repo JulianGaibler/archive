@@ -1,20 +1,27 @@
 <template>
-    <div>
+    <div id="app">
+        <img alt="Vue logo" src="./assets/logo.png">
+        {{me}}
         <Login />
-    </div>
+  </div>
 </template>
 
-<script lang="ts">
-import { Component, Vue } from 'vue-property-decorator';
-import Login from './components/Login'
+<script>
+import Login from './components/Login.vue'
+import ME from './graphql/user.gql'
 
-
-@Component({
+export default {
+    name: 'app',
     components: {
         Login
-    }
-})
-export default class App extends Vue {
+    },
+    apollo: {
+        me: ME
+    },
+    methods: {
+        fetchUser() {
 
+        }
+    }
 }
 </script>
