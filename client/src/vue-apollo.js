@@ -13,7 +13,7 @@ export const filesRoot = process.env.VUE_APP_FILES_ROOT || httpEndpoint.substr(0
 
 const link = createHttpLink({
     uri: 'http://localhost:4000',
-    credentials: 'include'
+    credentials: 'include' // same-origin include
 });
 
 Vue.prototype.$filesRoot = filesRoot
@@ -44,7 +44,9 @@ const defaultOptions = {
     // getAuth: (tokenName) => ...
 
     // Additional ApolloClient options
-    apollo: { link }
+    apollo: {
+        link,
+    },
 
     // Client local data (see apollo-link-state)
     // clientState: { resolvers: { ... }, defaults: { ... } }

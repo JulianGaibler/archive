@@ -1,8 +1,6 @@
 <template>
     <div id="app">
-        <img alt="Vue logo" src="./assets/logo.png">
-        {{user}}
-        <Login />
+        <Login v-if="!user" />
   </div>
 </template>
 
@@ -12,20 +10,24 @@ import ME from './graphql/user.gql'
 
 export default {
     name: 'app',
+    data() {
+        return {
+            user: null,
+        }
+    },
     components: {
         Login
     },
-    apollo: {
-        user: {
+    created() {
+        this.$apollo.query({
             query: ME,
-            update(r) {
-                if (r) return r.me
-                else return null;
-            },
-            error(e) {
-                console.log('errors', e.message)
-            }
-        }
+       })
+        .then((a)=>{
+            this.user = a;
+        })
+        .catch((a)=>{
+            this.user = null;
+        })
     },
     methods: {
         fetchUser() {
