@@ -1,5 +1,5 @@
 import * as bcrypt from 'bcryptjs'
-import { performLogin } from '../../utils'
+import { performLogin, performLogout, getUsername } from '../../utils'
 
 export const auth = {
     async signup(parent, args, ctx) {
@@ -8,9 +8,7 @@ export const auth = {
 
         performLogin(ctx, user.username);
 
-        return {
-            user
-        }
+        return true
     },
 
     async login(parent, { username, password }, ctx) {
@@ -26,8 +24,14 @@ export const auth = {
 
         performLogin(ctx, user.username);
 
-        return {
-            user
-        }
+        return true
+    },
+
+    async logout(parent, { }, ctx) {
+        const username = getUsername(ctx);
+
+        performLogout(ctx);
+
+        return true;
     },
 }

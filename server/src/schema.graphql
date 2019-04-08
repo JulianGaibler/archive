@@ -6,15 +6,12 @@ type Query {
 }
 
 type Mutation {
-  signup(username: String!, name: String!, password: String!): AuthPayload!
-  login(username: String!, password: String!): AuthPayload!
+  signup(username: String!, name: String!, password: String!): Boolean!
+  login(username: String!, password: String!): Boolean!
+  logout: Boolean!
   # createDraft(title: String!, content: String!): Meme!
   publish(id: ID!): Meme!
   deletePost(id: ID!): Meme!
-}
-
-type AuthPayload {
-  user: User!
 }
 
 type Meme {

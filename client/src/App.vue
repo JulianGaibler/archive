@@ -1,7 +1,7 @@
 <template>
     <div id="app">
         <img alt="Vue logo" src="./assets/logo.png">
-        {{me}}
+        {{user}}
         <Login />
   </div>
 </template>
@@ -16,7 +16,16 @@ export default {
         Login
     },
     apollo: {
-        me: ME
+        user: {
+            query: ME,
+            update(r) {
+                if (r) return r.me
+                else return null;
+            },
+            error(e) {
+                console.log('errors', e.message)
+            }
+        }
     },
     methods: {
         fetchUser() {
