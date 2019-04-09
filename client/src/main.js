@@ -2,7 +2,7 @@ import Vue from 'vue'
 import App from './App.vue'
 import { createProvider } from './vue-apollo'
 
-import './assets/main.styl'
+import './assets/styles/main.styl'
 
 Vue.config.productionTip = false
 

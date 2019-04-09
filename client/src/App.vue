@@ -1,33 +1,35 @@
 <template>
     <div id="app">
-        <Login v-if="!user" />
+        <div v-if="$apollo.loading">Loading...</div>
+        <Login v-else-if="!user" />
+        <template v-else>
+            <UserFooter :user="user" />
+        </template>
   </div>
 </template>
 
 <script>
 import Login from './components/Login.vue'
+import UserFooter from './components/UserFooter.vue'
+
 import ME from './graphql/user.gql'
 
 export default {
     name: 'app',
-    data() {
-        return {
-            user: null,
-        }
-    },
     components: {
-        Login
+        Login, UserFooter
     },
-    created() {
-        this.$apollo.query({
+    apollo: {
+        user: {
             query: ME,
-       })
-        .then((a)=>{
-            this.user = a;
-        })
-        .catch((a)=>{
-            this.user = null;
-        })
+            update(r) {
+                if (r) return r.me
+                else return null;
+            },
+            error(e) {
+                console.log('errors', e.message)
+            }
+        }
     },
     methods: {
         fetchUser() {

@@ -1,0 +1,39 @@
+@import "./mixins"
+@import "./palette"
+
+html, body, #app
+    height 100%
+
+body
+    margin 0
+
+#app
+    position relative
+
+
+
+
+.footer
+    position absolute
+    color $archive-white
+    background $archive-black
+    padding 1rem
+    left 0
+    right 0
+    bottom 0
+
+.login
+    position absolute
+    display flex
+    flex-direction column
+    left 0
+    right 0
+    top 0
+    bottom 0
+    .card
+        background $archive-black
+        flex 1
+        card-radius true true
+    &::before
+        content ''
+        height 5rem
