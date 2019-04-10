@@ -15,28 +15,22 @@
                     class="form"
                     @submit.prevent="mutate()"
                 >
-                    <input
+                    <InputField
                         v-model="username"
-                        class="form-input"
-                        type="username"
-                        name="username"
-                        placeholder="Username"
-                        required
-                    >
-                    <input
+                        :type="'username'"
+                        :label="'Username'"
+                    />
+                    <InputField
                         v-model="password"
-                        class="form-input"
-                        type="password"
-                        name="password"
-                        placeholder="Password"
-                        required
-                    >
+                        :type="'password'"
+                        :label="'Password'"
+                    />
                     <div v-if="error" class="error">{{ error.message }}</div>
                     <template>
                         <button
                             type="submit"
                             :disabled="loading"
-                            class="button"
+                            class="inputButton"
                             data-id="login"
                         >Login</button>
                     </template>
@@ -48,12 +42,14 @@
 
 <script>
 import { onLogin } from '../vue-apollo.js'
+import InputField from '../components/InputField.vue'
 
 export default {
     name: 'Login',
     props: {
         msg: String
     },
+    components: { InputField },
     data() {
         return {
             username: '',

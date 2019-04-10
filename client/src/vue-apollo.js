@@ -1,7 +1,8 @@
 import Vue from 'vue'
 import VueApollo from 'vue-apollo'
 import { createApolloClient, restartWebsockets } from 'vue-cli-plugin-apollo/graphql-client'
-import { createHttpLink } from 'apollo-link-http'
+//import { createHttpLink } from 'apollo-link-http'
+import { createUploadLink } from 'apollo-upload-client'
 
 // Install the vue plugin
 Vue.use(VueApollo)
@@ -11,7 +12,7 @@ const httpEndpoint = process.env.VUE_APP_GRAPHQL_HTTP || 'http://localhost:4000'
 // Files URL root
 export const filesRoot = process.env.VUE_APP_FILES_ROOT || httpEndpoint.substr(0, httpEndpoint.indexOf(''))
 
-const link = createHttpLink({
+const link = createUploadLink({
     uri: 'http://localhost:4000',
     credentials: 'include' // same-origin include
 });

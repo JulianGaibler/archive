@@ -10,6 +10,7 @@
   "dependencies": {
     "apollo-link": "^1.2.11",
     "apollo-link-http": "^1.5.14",
+    "apollo-upload-client": "^10.0.0",
     "core-js": "^2.6.5",
     "vue": "^2.6.6",
     "vue-apollo": "^3.0.0-beta.11"

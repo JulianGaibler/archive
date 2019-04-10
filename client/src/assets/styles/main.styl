@@ -1,20 +1,117 @@
+@import "./reset"
 @import "./mixins"
 @import "./palette"
+
+@import url('https://fonts.googleapis.com/css?family=Heebo:400,500,600');
 
 html, body, #app
     height 100%
 
 body
-    margin 0
+    font-family 'Heebo', sans-serif
+
+input, button, textarea
+    background unset
+    border none
+    color inherit
+    font-family inherit
+    font-size inherit
 
 #app
     position relative
 
+h1
+    font-size 3rem
+    font-weight 500
+
+header
+    margin $archive-margin
+
+.inputButton
+    background $archive-prim = #d4213a
+    border-radius $archive-radius
+    padding 1.25rem 2.75rem
+
+.inputField
+    display flex
+    flex-direction column
+    
+    input, textarea
+        background unset
+        border none
+        padding .4em .4em
+        font-weight 500
+        font-size 1.1em
+    textarea
+        resize none
+    hr
+        width 100%
+        margin 0
+        border none
+        border-bottom 2px solid $archive-darkgrey
+    label
+        color $archive-darkgrey
+        text-transform uppercase
+        font-weight 500
+        padding .25em 0
+        font-size .8em
+        opacity 0
+        transition opacity .1s
+        &.visible
+            opacity 1
 
 
+.upload
+    min-height 100%
+    display flex
+    flex-direction column
+    position relative
+    .items
+        flex-grow 1
+    input.uploadclick
+        width 0.1px
+        height 0.1px
+        opacity 0
+        overflow hidden
+        position absolute
+        z-index -1
+    label.uploadclick
+        card-radius true true
+        display block
+        padding 2rem
+        text-align center
+        background $archive-grey
+    .dropzone
+        position absolute
+        visibility hidden
+        left 0
+        right 0
+        top 0
+        bottom 0
+        background grey
+        &.showDropzone {
+            visibility initial
+        }
+    .items
+        margin 0 $archive-margin
+    .item
+        display flex
+        margin-bottom 3rem
+        .preview
+            border-radius $archive-radius
+            overflow hidden
+            line-height 0
+            margin-right 2rem
+            box-shadow 1rem 1rem 4rem -1rem rgba(0, 0, 0, 0.4)
+            width 24rem
+            img, video
+                width 100%
+                object-fit cover
+        .data
+            flex 1
 
 .footer
-    position absolute
+    position fixed
     color $archive-white
     background $archive-black
     padding 1rem
@@ -31,8 +128,10 @@ body
     top 0
     bottom 0
     .card
+        color $archive-white
         background $archive-black
         flex 1
+        padding $archive-margin
         card-radius true true
     &::before
         content ''

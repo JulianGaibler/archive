@@ -3,21 +3,23 @@
         <div v-if="$apollo.loading">Loading...</div>
         <Login v-else-if="!user" />
         <template v-else>
-            <UserFooter :user="user" />
+            <Upload />
+            <!-- <UserFooter :user="user" /> -->
         </template>
   </div>
 </template>
 
 <script>
-import Login from './components/Login.vue'
 import UserFooter from './components/UserFooter.vue'
+import Login from './views/Login.vue'
+import Upload from './views/Upload.vue'
 
 import ME from './graphql/user.gql'
 
 export default {
     name: 'app',
     components: {
-        Login, UserFooter
+        Login, UserFooter, Upload
     },
     apollo: {
         user: {

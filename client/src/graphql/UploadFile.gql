@@ -1,7 +1,7 @@
-#import "./FileFragment.gql"
+# import "./FileFragment.gql"
 
-mutation uploadFile ($file: Upload!) {
-  singleUpload (file: $file) {
-    ...file
+mutation uploadPosts($posts: [NewPost!]) {
+  uploadPosts(items: $posts) {
+    title
   }
 }
