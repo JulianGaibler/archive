@@ -1,22 +1,17 @@
-import { GraphQLServer } from 'graphql-yoga'
-import * as cookieParser from "cookie-parser";
-import { prisma } from './generated/prisma-client'
-import resolvers from './resolvers'
+import { ApolloServer } from 'apollo-server'
 
-const server = new GraphQLServer({
-	typeDefs: './src/schema.graphql',
-	resolvers,
-	context: request => ({
-		...request,
-		prisma,
-	}),
+import schema from './schema'
+
+const server = new ApolloServer({
+    schema,
+    context: ({ req }) => ({
+        ...req,
+    }),
+    playground: process.env.NODE_ENV === 'development',
+    debug: process.env.NODE_ENV === 'development'
 })
 
-server.express.use(cookieParser())
-
-const cors = {
-    credentials: true,
-    origin: 'http://localhost:8080'
-};
-
-server.start(({ cors }) => console.log(`Server is running on http://localhost:4000`))
+server.listen()
+    .then(({ url, server }) => {
+        console.log(`Server is running on ${url}`)
+    })
