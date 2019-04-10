@@ -1,24 +1,41 @@
 {
   "name": "4x-archive",
+  "version": "0.0.1",
   "scripts": {
     "start": "dotenv -- nodemon -e ts,graphql -x ts-node src/index.ts",
     "debug": "dotenv -- nodemon -e ts,graphql -x ts-node --inspect src/index.ts",
-    "build": "rimraf dist && tsc"
+    "build": "rimraf dist && tsc",
+    "knex": "ts-node ./node_modules/.bin/knex"
   },
   "dependencies": {
+    "apollo-server": "^2.1.0",
+    "apollo-server-express": "^2.1.0",
     "bcryptjs": "2.4.3",
     "cookie-parser": "^1.4.4",
-    "graphql-yoga": "1.17.4",
-    "jsonwebtoken": "8.5.0"
+    "express": "^4.16.4",
+    "graphql": "^14.0.2",
+    "graphql-import": "^0.7.1",
+    "graphql-middleware": "^3.0.2",
+    "jsonwebtoken": "8.5.0",
+    "knex": "^0.15.2",
+    "morgan": "^1.9.1",
+    "pg": "^7.5.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "2.4.2",
+    "@types/knex": "^0.14.26",
+    "@types/body-parser": "^1.17.0",
+    "@types/express": "^4.16.0",
+    "@types/morgan": "^1.7.35",
     "@types/node": "10.14.1",
     "dotenv-cli": "1.4.0",
     "nodemon": "1.18.10",
-    "prisma": "1.28.3",
     "rimraf": "2.6.3",
     "ts-node": "7.0.1",
-    "typescript": "3.2.2"
+    "typescript": "3.2.2",
+    "tslint": "^5.11.0",
+    "prettier": "^1.14.3",
+    "tslint-config-prettier": "^1.15.0",
+    "tslint-plugin-prettier": "^2.0.0"
   }
 }
