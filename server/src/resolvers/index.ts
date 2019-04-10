@@ -1,15 +1,17 @@
 import { Query } from './Query'
 import { auth } from './Mutation/auth'
-import { post } from './Mutation/post'
+import { posts } from './Mutation/posts'
+import { keywords } from './Mutation/keywords'
 import { User } from './User'
-import { Meme } from './Meme'
+import { Post } from './Post'
 
 export default {
   Query,
   Mutation: {
     ...auth,
-    ...post,
+    ...posts,
+    ...keywords,
   },
   User,
-  Meme,
+  Post,
 }

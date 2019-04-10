@@ -15,7 +15,7 @@ export type AtLeastOne<T, U = { [K in keyof T]: Pick<T, K> }> = Partial<T> &
 
 export interface Exists {
   keyword: (where?: KeywordWhereInput) => Promise<boolean>;
-  meme: (where?: MemeWhereInput) => Promise<boolean>;
+  post: (where?: PostWhereInput) => Promise<boolean>;
   user: (where?: UserWhereInput) => Promise<boolean>;
 }
 
@@ -61,29 +61,29 @@ export interface Prisma {
       last?: Int;
     }
   ) => KeywordConnectionPromise;
-  meme: (where: MemeWhereUniqueInput) => MemePromise;
-  memes: (
+  post: (where: PostWhereUniqueInput) => PostPromise;
+  posts: (
     args?: {
-      where?: MemeWhereInput;
-      orderBy?: MemeOrderByInput;
+      where?: PostWhereInput;
+      orderBy?: PostOrderByInput;
       skip?: Int;
       after?: String;
       before?: String;
       first?: Int;
       last?: Int;
     }
-  ) => FragmentableArray<Meme>;
-  memesConnection: (
+  ) => FragmentableArray<Post>;
+  postsConnection: (
     args?: {
-      where?: MemeWhereInput;
-      orderBy?: MemeOrderByInput;
+      where?: PostWhereInput;
+      orderBy?: PostOrderByInput;
       skip?: Int;
       after?: String;
       before?: String;
       first?: Int;
       last?: Int;
     }
-  ) => MemeConnectionPromise;
+  ) => PostConnectionPromise;
   user: (where: UserWhereUniqueInput) => UserPromise;
   users: (
     args?: {
@@ -129,22 +129,22 @@ export interface Prisma {
   ) => KeywordPromise;
   deleteKeyword: (where: KeywordWhereUniqueInput) => KeywordPromise;
   deleteManyKeywords: (where?: KeywordWhereInput) => BatchPayloadPromise;
-  createMeme: (data: MemeCreateInput) => MemePromise;
-  updateMeme: (
-    args: { data: MemeUpdateInput; where: MemeWhereUniqueInput }
-  ) => MemePromise;
-  updateManyMemes: (
-    args: { data: MemeUpdateManyMutationInput; where?: MemeWhereInput }
+  createPost: (data: PostCreateInput) => PostPromise;
+  updatePost: (
+    args: { data: PostUpdateInput; where: PostWhereUniqueInput }
+  ) => PostPromise;
+  updateManyPosts: (
+    args: { data: PostUpdateManyMutationInput; where?: PostWhereInput }
   ) => BatchPayloadPromise;
-  upsertMeme: (
+  upsertPost: (
     args: {
-      where: MemeWhereUniqueInput;
-      create: MemeCreateInput;
-      update: MemeUpdateInput;
+      where: PostWhereUniqueInput;
+      create: PostCreateInput;
+      update: PostUpdateInput;
     }
-  ) => MemePromise;
-  deleteMeme: (where: MemeWhereUniqueInput) => MemePromise;
-  deleteManyMemes: (where?: MemeWhereInput) => BatchPayloadPromise;
+  ) => PostPromise;
+  deletePost: (where: PostWhereUniqueInput) => PostPromise;
+  deleteManyPosts: (where?: PostWhereInput) => BatchPayloadPromise;
   createUser: (data: UserCreateInput) => UserPromise;
   updateUser: (
     args: { data: UserUpdateInput; where: UserWhereUniqueInput }
@@ -173,9 +173,9 @@ export interface Subscription {
   keyword: (
     where?: KeywordSubscriptionWhereInput
   ) => KeywordSubscriptionPayloadSubscription;
-  meme: (
-    where?: MemeSubscriptionWhereInput
-  ) => MemeSubscriptionPayloadSubscription;
+  post: (
+    where?: PostSubscriptionWhereInput
+  ) => PostSubscriptionPayloadSubscription;
   user: (
     where?: UserSubscriptionWhereInput
   ) => UserSubscriptionPayloadSubscription;
@@ -189,27 +189,33 @@ export interface ClientConstructor<T> {
  * Types
  */
 
-export type KeywordOrderByInput =
-  | "id_ASC"
-  | "id_DESC"
-  | "name_ASC"
-  | "name_DESC"
-  | "createdAt_ASC"
-  | "createdAt_DESC"
-  | "updatedAt_ASC"
-  | "updatedAt_DESC";
+export type Format = "VIDEO" | "IMAGE" | "GIF";
 
-export type MemeOrderByInput =
+export type PostOrderByInput =
   | "id_ASC"
   | "id_DESC"
   | "title_ASC"
   | "title_DESC"
   | "created_ASC"
   | "created_DESC"
-  | "path_ASC"
-  | "path_DESC"
+  | "type_ASC"
+  | "type_DESC"
+  | "originalPath_ASC"
+  | "originalPath_DESC"
+  | "thumbnailPath_ASC"
+  | "thumbnailPath_DESC"
   | "caption_ASC"
   | "caption_DESC"
+  | "createdAt_ASC"
+  | "createdAt_DESC"
+  | "updatedAt_ASC"
+  | "updatedAt_DESC";
+
+export type KeywordOrderByInput =
+  | "id_ASC"
+  | "id_DESC"
+  | "name_ASC"
+  | "name_DESC"
   | "createdAt_ASC"
   | "createdAt_DESC"
   | "updatedAt_ASC"
@@ -235,45 +241,7 @@ export type KeywordWhereUniqueInput = AtLeastOne<{
   id: ID_Input;
 }>;
 
-export interface KeywordWhereInput {
-  id?: ID_Input;
-  id_not?: ID_Input;
-  id_in?: ID_Input[] | ID_Input;
-  id_not_in?: ID_Input[] | ID_Input;
-  id_lt?: ID_Input;
-  id_lte?: ID_Input;
-  id_gt?: ID_Input;
-  id_gte?: ID_Input;
-  id_contains?: ID_Input;
-  id_not_contains?: ID_Input;
-  id_starts_with?: ID_Input;
-  id_not_starts_with?: ID_Input;
-  id_ends_with?: ID_Input;
-  id_not_ends_with?: ID_Input;
-  name?: String;
-  name_not?: String;
-  name_in?: String[] | String;
-  name_not_in?: String[] | String;
-  name_lt?: String;
-  name_lte?: String;
-  name_gt?: String;
-  name_gte?: String;
-  name_contains?: String;
-  name_not_contains?: String;
-  name_starts_with?: String;
-  name_not_starts_with?: String;
-  name_ends_with?: String;
-  name_not_ends_with?: String;
-  AND?: KeywordWhereInput[] | KeywordWhereInput;
-  OR?: KeywordWhereInput[] | KeywordWhereInput;
-  NOT?: KeywordWhereInput[] | KeywordWhereInput;
-}
-
-export type MemeWhereUniqueInput = AtLeastOne<{
-  id: ID_Input;
-}>;
-
-export interface MemeWhereInput {
+export interface PostWhereInput {
   id?: ID_Input;
   id_not?: ID_Input;
   id_in?: ID_Input[] | ID_Input;
@@ -313,21 +281,39 @@ export interface MemeWhereInput {
   keywords_every?: KeywordWhereInput;
   keywords_some?: KeywordWhereInput;
   keywords_none?: KeywordWhereInput;
+  type?: Format;
+  type_not?: Format;
+  type_in?: Format[] | Format;
+  type_not_in?: Format[] | Format;
+  originalPath?: String;
+  originalPath_not?: String;
+  originalPath_in?: String[] | String;
+  originalPath_not_in?: String[] | String;
+  originalPath_lt?: String;
+  originalPath_lte?: String;
+  originalPath_gt?: String;
+  originalPath_gte?: String;
+  originalPath_contains?: String;
+  originalPath_not_contains?: String;
+  originalPath_starts_with?: String;
+  originalPath_not_starts_with?: String;
+  originalPath_ends_with?: String;
+  originalPath_not_ends_with?: String;
+  thumbnailPath?: String;
+  thumbnailPath_not?: String;
+  thumbnailPath_in?: String[] | String;
+  thumbnailPath_not_in?: String[] | String;
+  thumbnailPath_lt?: String;
+  thumbnailPath_lte?: String;
+  thumbnailPath_gt?: String;
+  thumbnailPath_gte?: String;
+  thumbnailPath_contains?: String;
+  thumbnailPath_not_contains?: String;
+  thumbnailPath_starts_with?: String;
+  thumbnailPath_not_starts_with?: String;
+  thumbnailPath_ends_with?: String;
+  thumbnailPath_not_ends_with?: String;
   uploader?: UserWhereInput;
-  path?: String;
-  path_not?: String;
-  path_in?: String[] | String;
-  path_not_in?: String[] | String;
-  path_lt?: String;
-  path_lte?: String;
-  path_gt?: String;
-  path_gte?: String;
-  path_contains?: String;
-  path_not_contains?: String;
-  path_starts_with?: String;
-  path_not_starts_with?: String;
-  path_ends_with?: String;
-  path_not_ends_with?: String;
   caption?: String;
   caption_not?: String;
   caption_in?: String[] | String;
@@ -342,9 +328,46 @@ export interface MemeWhereInput {
   caption_not_starts_with?: String;
   caption_ends_with?: String;
   caption_not_ends_with?: String;
-  AND?: MemeWhereInput[] | MemeWhereInput;
-  OR?: MemeWhereInput[] | MemeWhereInput;
-  NOT?: MemeWhereInput[] | MemeWhereInput;
+  AND?: PostWhereInput[] | PostWhereInput;
+  OR?: PostWhereInput[] | PostWhereInput;
+  NOT?: PostWhereInput[] | PostWhereInput;
+}
+
+export interface KeywordWhereInput {
+  id?: ID_Input;
+  id_not?: ID_Input;
+  id_in?: ID_Input[] | ID_Input;
+  id_not_in?: ID_Input[] | ID_Input;
+  id_lt?: ID_Input;
+  id_lte?: ID_Input;
+  id_gt?: ID_Input;
+  id_gte?: ID_Input;
+  id_contains?: ID_Input;
+  id_not_contains?: ID_Input;
+  id_starts_with?: ID_Input;
+  id_not_starts_with?: ID_Input;
+  id_ends_with?: ID_Input;
+  id_not_ends_with?: ID_Input;
+  name?: String;
+  name_not?: String;
+  name_in?: String[] | String;
+  name_not_in?: String[] | String;
+  name_lt?: String;
+  name_lte?: String;
+  name_gt?: String;
+  name_gte?: String;
+  name_contains?: String;
+  name_not_contains?: String;
+  name_starts_with?: String;
+  name_not_starts_with?: String;
+  name_ends_with?: String;
+  name_not_ends_with?: String;
+  posts_every?: PostWhereInput;
+  posts_some?: PostWhereInput;
+  posts_none?: PostWhereInput;
+  AND?: KeywordWhereInput[] | KeywordWhereInput;
+  OR?: KeywordWhereInput[] | KeywordWhereInput;
+  NOT?: KeywordWhereInput[] | KeywordWhereInput;
 }
 
 export interface UserWhereInput {
@@ -395,34 +418,32 @@ export interface UserWhereInput {
   NOT?: UserWhereInput[] | UserWhereInput;
 }
 
+export type PostWhereUniqueInput = AtLeastOne<{
+  id: ID_Input;
+}>;
+
 export type UserWhereUniqueInput = AtLeastOne<{
   username: String;
 }>;
 
 export interface KeywordCreateInput {
   name: String;
+  posts?: PostCreateManyWithoutKeywordsInput;
 }
 
-export interface KeywordUpdateInput {
-  name?: String;
+export interface PostCreateManyWithoutKeywordsInput {
+  create?: PostCreateWithoutKeywordsInput[] | PostCreateWithoutKeywordsInput;
+  connect?: PostWhereUniqueInput[] | PostWhereUniqueInput;
 }
 
-export interface KeywordUpdateManyMutationInput {
-  name?: String;
-}
-
-export interface MemeCreateInput {
+export interface PostCreateWithoutKeywordsInput {
   title: String;
   created: DateTimeInput;
-  keywords?: KeywordCreateManyInput;
-  uploader: UserCreateOneInput;
-  path: String;
+  type: Format;
+  originalPath: String;
+  thumbnailPath: String;
+  uploader?: UserCreateOneInput;
   caption?: String;
-}
-
-export interface KeywordCreateManyInput {
-  create?: KeywordCreateInput[] | KeywordCreateInput;
-  connect?: KeywordWhereUniqueInput[] | KeywordWhereUniqueInput;
 }
 
 export interface UserCreateOneInput {
@@ -436,46 +457,238 @@ export interface UserCreateInput {
   password: String;
 }
 
-export interface MemeUpdateInput {
+export interface KeywordUpdateInput {
+  name?: String;
+  posts?: PostUpdateManyWithoutKeywordsInput;
+}
+
+export interface PostUpdateManyWithoutKeywordsInput {
+  create?: PostCreateWithoutKeywordsInput[] | PostCreateWithoutKeywordsInput;
+  delete?: PostWhereUniqueInput[] | PostWhereUniqueInput;
+  connect?: PostWhereUniqueInput[] | PostWhereUniqueInput;
+  set?: PostWhereUniqueInput[] | PostWhereUniqueInput;
+  disconnect?: PostWhereUniqueInput[] | PostWhereUniqueInput;
+  update?:
+    | PostUpdateWithWhereUniqueWithoutKeywordsInput[]
+    | PostUpdateWithWhereUniqueWithoutKeywordsInput;
+  upsert?:
+    | PostUpsertWithWhereUniqueWithoutKeywordsInput[]
+    | PostUpsertWithWhereUniqueWithoutKeywordsInput;
+  deleteMany?: PostScalarWhereInput[] | PostScalarWhereInput;
+  updateMany?:
+    | PostUpdateManyWithWhereNestedInput[]
+    | PostUpdateManyWithWhereNestedInput;
+}
+
+export interface PostUpdateWithWhereUniqueWithoutKeywordsInput {
+  where: PostWhereUniqueInput;
+  data: PostUpdateWithoutKeywordsDataInput;
+}
+
+export interface PostUpdateWithoutKeywordsDataInput {
   title?: String;
   created?: DateTimeInput;
-  keywords?: KeywordUpdateManyInput;
-  uploader?: UserUpdateOneRequiredInput;
-  path?: String;
+  type?: Format;
+  originalPath?: String;
+  thumbnailPath?: String;
+  uploader?: UserUpdateOneInput;
   caption?: String;
 }
 
-export interface KeywordUpdateManyInput {
-  create?: KeywordCreateInput[] | KeywordCreateInput;
-  update?:
-    | KeywordUpdateWithWhereUniqueNestedInput[]
-    | KeywordUpdateWithWhereUniqueNestedInput;
-  upsert?:
-    | KeywordUpsertWithWhereUniqueNestedInput[]
-    | KeywordUpsertWithWhereUniqueNestedInput;
+export interface UserUpdateOneInput {
+  create?: UserCreateInput;
+  update?: UserUpdateDataInput;
+  upsert?: UserUpsertNestedInput;
+  delete?: Boolean;
+  disconnect?: Boolean;
+  connect?: UserWhereUniqueInput;
+}
+
+export interface UserUpdateDataInput {
+  username?: String;
+  name?: String;
+  password?: String;
+}
+
+export interface UserUpsertNestedInput {
+  update: UserUpdateDataInput;
+  create: UserCreateInput;
+}
+
+export interface PostUpsertWithWhereUniqueWithoutKeywordsInput {
+  where: PostWhereUniqueInput;
+  update: PostUpdateWithoutKeywordsDataInput;
+  create: PostCreateWithoutKeywordsInput;
+}
+
+export interface PostScalarWhereInput {
+  id?: ID_Input;
+  id_not?: ID_Input;
+  id_in?: ID_Input[] | ID_Input;
+  id_not_in?: ID_Input[] | ID_Input;
+  id_lt?: ID_Input;
+  id_lte?: ID_Input;
+  id_gt?: ID_Input;
+  id_gte?: ID_Input;
+  id_contains?: ID_Input;
+  id_not_contains?: ID_Input;
+  id_starts_with?: ID_Input;
+  id_not_starts_with?: ID_Input;
+  id_ends_with?: ID_Input;
+  id_not_ends_with?: ID_Input;
+  title?: String;
+  title_not?: String;
+  title_in?: String[] | String;
+  title_not_in?: String[] | String;
+  title_lt?: String;
+  title_lte?: String;
+  title_gt?: String;
+  title_gte?: String;
+  title_contains?: String;
+  title_not_contains?: String;
+  title_starts_with?: String;
+  title_not_starts_with?: String;
+  title_ends_with?: String;
+  title_not_ends_with?: String;
+  created?: DateTimeInput;
+  created_not?: DateTimeInput;
+  created_in?: DateTimeInput[] | DateTimeInput;
+  created_not_in?: DateTimeInput[] | DateTimeInput;
+  created_lt?: DateTimeInput;
+  created_lte?: DateTimeInput;
+  created_gt?: DateTimeInput;
+  created_gte?: DateTimeInput;
+  type?: Format;
+  type_not?: Format;
+  type_in?: Format[] | Format;
+  type_not_in?: Format[] | Format;
+  originalPath?: String;
+  originalPath_not?: String;
+  originalPath_in?: String[] | String;
+  originalPath_not_in?: String[] | String;
+  originalPath_lt?: String;
+  originalPath_lte?: String;
+  originalPath_gt?: String;
+  originalPath_gte?: String;
+  originalPath_contains?: String;
+  originalPath_not_contains?: String;
+  originalPath_starts_with?: String;
+  originalPath_not_starts_with?: String;
+  originalPath_ends_with?: String;
+  originalPath_not_ends_with?: String;
+  thumbnailPath?: String;
+  thumbnailPath_not?: String;
+  thumbnailPath_in?: String[] | String;
+  thumbnailPath_not_in?: String[] | String;
+  thumbnailPath_lt?: String;
+  thumbnailPath_lte?: String;
+  thumbnailPath_gt?: String;
+  thumbnailPath_gte?: String;
+  thumbnailPath_contains?: String;
+  thumbnailPath_not_contains?: String;
+  thumbnailPath_starts_with?: String;
+  thumbnailPath_not_starts_with?: String;
+  thumbnailPath_ends_with?: String;
+  thumbnailPath_not_ends_with?: String;
+  caption?: String;
+  caption_not?: String;
+  caption_in?: String[] | String;
+  caption_not_in?: String[] | String;
+  caption_lt?: String;
+  caption_lte?: String;
+  caption_gt?: String;
+  caption_gte?: String;
+  caption_contains?: String;
+  caption_not_contains?: String;
+  caption_starts_with?: String;
+  caption_not_starts_with?: String;
+  caption_ends_with?: String;
+  caption_not_ends_with?: String;
+  AND?: PostScalarWhereInput[] | PostScalarWhereInput;
+  OR?: PostScalarWhereInput[] | PostScalarWhereInput;
+  NOT?: PostScalarWhereInput[] | PostScalarWhereInput;
+}
+
+export interface PostUpdateManyWithWhereNestedInput {
+  where: PostScalarWhereInput;
+  data: PostUpdateManyDataInput;
+}
+
+export interface PostUpdateManyDataInput {
+  title?: String;
+  created?: DateTimeInput;
+  type?: Format;
+  originalPath?: String;
+  thumbnailPath?: String;
+  caption?: String;
+}
+
+export interface KeywordUpdateManyMutationInput {
+  name?: String;
+}
+
+export interface PostCreateInput {
+  title: String;
+  created: DateTimeInput;
+  keywords?: KeywordCreateManyWithoutPostsInput;
+  type: Format;
+  originalPath: String;
+  thumbnailPath: String;
+  uploader?: UserCreateOneInput;
+  caption?: String;
+}
+
+export interface KeywordCreateManyWithoutPostsInput {
+  create?: KeywordCreateWithoutPostsInput[] | KeywordCreateWithoutPostsInput;
+  connect?: KeywordWhereUniqueInput[] | KeywordWhereUniqueInput;
+}
+
+export interface KeywordCreateWithoutPostsInput {
+  name: String;
+}
+
+export interface PostUpdateInput {
+  title?: String;
+  created?: DateTimeInput;
+  keywords?: KeywordUpdateManyWithoutPostsInput;
+  type?: Format;
+  originalPath?: String;
+  thumbnailPath?: String;
+  uploader?: UserUpdateOneInput;
+  caption?: String;
+}
+
+export interface KeywordUpdateManyWithoutPostsInput {
+  create?: KeywordCreateWithoutPostsInput[] | KeywordCreateWithoutPostsInput;
   delete?: KeywordWhereUniqueInput[] | KeywordWhereUniqueInput;
   connect?: KeywordWhereUniqueInput[] | KeywordWhereUniqueInput;
   set?: KeywordWhereUniqueInput[] | KeywordWhereUniqueInput;
   disconnect?: KeywordWhereUniqueInput[] | KeywordWhereUniqueInput;
+  update?:
+    | KeywordUpdateWithWhereUniqueWithoutPostsInput[]
+    | KeywordUpdateWithWhereUniqueWithoutPostsInput;
+  upsert?:
+    | KeywordUpsertWithWhereUniqueWithoutPostsInput[]
+    | KeywordUpsertWithWhereUniqueWithoutPostsInput;
   deleteMany?: KeywordScalarWhereInput[] | KeywordScalarWhereInput;
   updateMany?:
     | KeywordUpdateManyWithWhereNestedInput[]
     | KeywordUpdateManyWithWhereNestedInput;
 }
 
-export interface KeywordUpdateWithWhereUniqueNestedInput {
+export interface KeywordUpdateWithWhereUniqueWithoutPostsInput {
   where: KeywordWhereUniqueInput;
-  data: KeywordUpdateDataInput;
+  data: KeywordUpdateWithoutPostsDataInput;
 }
 
-export interface KeywordUpdateDataInput {
+export interface KeywordUpdateWithoutPostsDataInput {
   name?: String;
 }
 
-export interface KeywordUpsertWithWhereUniqueNestedInput {
+export interface KeywordUpsertWithWhereUniqueWithoutPostsInput {
   where: KeywordWhereUniqueInput;
-  update: KeywordUpdateDataInput;
-  create: KeywordCreateInput;
+  update: KeywordUpdateWithoutPostsDataInput;
+  create: KeywordCreateWithoutPostsInput;
 }
 
 export interface KeywordScalarWhereInput {
@@ -521,28 +734,12 @@ export interface KeywordUpdateManyDataInput {
   name?: String;
 }
 
-export interface UserUpdateOneRequiredInput {
-  create?: UserCreateInput;
-  update?: UserUpdateDataInput;
-  upsert?: UserUpsertNestedInput;
-  connect?: UserWhereUniqueInput;
-}
-
-export interface UserUpdateDataInput {
-  username?: String;
-  name?: String;
-  password?: String;
-}
-
-export interface UserUpsertNestedInput {
-  update: UserUpdateDataInput;
-  create: UserCreateInput;
-}
-
-export interface MemeUpdateManyMutationInput {
+export interface PostUpdateManyMutationInput {
   title?: String;
   created?: DateTimeInput;
-  path?: String;
+  type?: Format;
+  originalPath?: String;
+  thumbnailPath?: String;
   caption?: String;
 }
 
@@ -569,15 +766,15 @@ export interface KeywordSubscriptionWhereInput {
   NOT?: KeywordSubscriptionWhereInput[] | KeywordSubscriptionWhereInput;
 }
 
-export interface MemeSubscriptionWhereInput {
+export interface PostSubscriptionWhereInput {
   mutation_in?: MutationType[] | MutationType;
   updatedFields_contains?: String;
   updatedFields_contains_every?: String[] | String;
   updatedFields_contains_some?: String[] | String;
-  node?: MemeWhereInput;
-  AND?: MemeSubscriptionWhereInput[] | MemeSubscriptionWhereInput;
-  OR?: MemeSubscriptionWhereInput[] | MemeSubscriptionWhereInput;
-  NOT?: MemeSubscriptionWhereInput[] | MemeSubscriptionWhereInput;
+  node?: PostWhereInput;
+  AND?: PostSubscriptionWhereInput[] | PostSubscriptionWhereInput;
+  OR?: PostSubscriptionWhereInput[] | PostSubscriptionWhereInput;
+  NOT?: PostSubscriptionWhereInput[] | PostSubscriptionWhereInput;
 }
 
 export interface UserSubscriptionWhereInput {
@@ -603,6 +800,17 @@ export interface Keyword {
 export interface KeywordPromise extends Promise<Keyword>, Fragmentable {
   id: () => Promise<ID_Output>;
   name: () => Promise<String>;
+  posts: <T = FragmentableArray<Post>>(
+    args?: {
+      where?: PostWhereInput;
+      orderBy?: PostOrderByInput;
+      skip?: Int;
+      after?: String;
+      before?: String;
+      first?: Int;
+      last?: Int;
+    }
+  ) => T;
 }
 
 export interface KeywordSubscription
@@ -610,6 +818,93 @@ export interface KeywordSubscription
     Fragmentable {
   id: () => Promise<AsyncIterator<ID_Output>>;
   name: () => Promise<AsyncIterator<String>>;
+  posts: <T = Promise<AsyncIterator<PostSubscription>>>(
+    args?: {
+      where?: PostWhereInput;
+      orderBy?: PostOrderByInput;
+      skip?: Int;
+      after?: String;
+      before?: String;
+      first?: Int;
+      last?: Int;
+    }
+  ) => T;
+}
+
+export interface Post {
+  id: ID_Output;
+  title: String;
+  created: DateTimeOutput;
+  type: Format;
+  originalPath: String;
+  thumbnailPath: String;
+  caption?: String;
+}
+
+export interface PostPromise extends Promise<Post>, Fragmentable {
+  id: () => Promise<ID_Output>;
+  title: () => Promise<String>;
+  created: () => Promise<DateTimeOutput>;
+  keywords: <T = FragmentableArray<Keyword>>(
+    args?: {
+      where?: KeywordWhereInput;
+      orderBy?: KeywordOrderByInput;
+      skip?: Int;
+      after?: String;
+      before?: String;
+      first?: Int;
+      last?: Int;
+    }
+  ) => T;
+  type: () => Promise<Format>;
+  originalPath: () => Promise<String>;
+  thumbnailPath: () => Promise<String>;
+  uploader: <T = UserPromise>() => T;
+  caption: () => Promise<String>;
+}
+
+export interface PostSubscription
+  extends Promise<AsyncIterator<Post>>,
+    Fragmentable {
+  id: () => Promise<AsyncIterator<ID_Output>>;
+  title: () => Promise<AsyncIterator<String>>;
+  created: () => Promise<AsyncIterator<DateTimeOutput>>;
+  keywords: <T = Promise<AsyncIterator<KeywordSubscription>>>(
+    args?: {
+      where?: KeywordWhereInput;
+      orderBy?: KeywordOrderByInput;
+      skip?: Int;
+      after?: String;
+      before?: String;
+      first?: Int;
+      last?: Int;
+    }
+  ) => T;
+  type: () => Promise<AsyncIterator<Format>>;
+  originalPath: () => Promise<AsyncIterator<String>>;
+  thumbnailPath: () => Promise<AsyncIterator<String>>;
+  uploader: <T = UserSubscription>() => T;
+  caption: () => Promise<AsyncIterator<String>>;
+}
+
+export interface User {
+  username: String;
+  name: String;
+  password: String;
+}
+
+export interface UserPromise extends Promise<User>, Fragmentable {
+  username: () => Promise<String>;
+  name: () => Promise<String>;
+  password: () => Promise<String>;
+}
+
+export interface UserSubscription
+  extends Promise<AsyncIterator<User>>,
+    Fragmentable {
+  username: () => Promise<AsyncIterator<String>>;
+  name: () => Promise<AsyncIterator<String>>;
+  password: () => Promise<AsyncIterator<String>>;
 }
 
 export interface KeywordConnection {
@@ -689,126 +984,56 @@ export interface AggregateKeywordSubscription
   count: () => Promise<AsyncIterator<Int>>;
 }
 
-export interface Meme {
-  id: ID_Output;
-  title: String;
-  created: DateTimeOutput;
-  path: String;
-  caption?: String;
-}
-
-export interface MemePromise extends Promise<Meme>, Fragmentable {
-  id: () => Promise<ID_Output>;
-  title: () => Promise<String>;
-  created: () => Promise<DateTimeOutput>;
-  keywords: <T = FragmentableArray<Keyword>>(
-    args?: {
-      where?: KeywordWhereInput;
-      orderBy?: KeywordOrderByInput;
-      skip?: Int;
-      after?: String;
-      before?: String;
-      first?: Int;
-      last?: Int;
-    }
-  ) => T;
-  uploader: <T = UserPromise>() => T;
-  path: () => Promise<String>;
-  caption: () => Promise<String>;
-}
-
-export interface MemeSubscription
-  extends Promise<AsyncIterator<Meme>>,
-    Fragmentable {
-  id: () => Promise<AsyncIterator<ID_Output>>;
-  title: () => Promise<AsyncIterator<String>>;
-  created: () => Promise<AsyncIterator<DateTimeOutput>>;
-  keywords: <T = Promise<AsyncIterator<KeywordSubscription>>>(
-    args?: {
-      where?: KeywordWhereInput;
-      orderBy?: KeywordOrderByInput;
-      skip?: Int;
-      after?: String;
-      before?: String;
-      first?: Int;
-      last?: Int;
-    }
-  ) => T;
-  uploader: <T = UserSubscription>() => T;
-  path: () => Promise<AsyncIterator<String>>;
-  caption: () => Promise<AsyncIterator<String>>;
-}
-
-export interface User {
-  username: String;
-  name: String;
-  password: String;
-}
-
-export interface UserPromise extends Promise<User>, Fragmentable {
-  username: () => Promise<String>;
-  name: () => Promise<String>;
-  password: () => Promise<String>;
-}
-
-export interface UserSubscription
-  extends Promise<AsyncIterator<User>>,
-    Fragmentable {
-  username: () => Promise<AsyncIterator<String>>;
-  name: () => Promise<AsyncIterator<String>>;
-  password: () => Promise<AsyncIterator<String>>;
-}
-
-export interface MemeConnection {
+export interface PostConnection {
   pageInfo: PageInfo;
-  edges: MemeEdge[];
+  edges: PostEdge[];
 }
 
-export interface MemeConnectionPromise
-  extends Promise<MemeConnection>,
+export interface PostConnectionPromise
+  extends Promise<PostConnection>,
     Fragmentable {
   pageInfo: <T = PageInfoPromise>() => T;
-  edges: <T = FragmentableArray<MemeEdge>>() => T;
-  aggregate: <T = AggregateMemePromise>() => T;
+  edges: <T = FragmentableArray<PostEdge>>() => T;
+  aggregate: <T = AggregatePostPromise>() => T;
 }
 
-export interface MemeConnectionSubscription
-  extends Promise<AsyncIterator<MemeConnection>>,
+export interface PostConnectionSubscription
+  extends Promise<AsyncIterator<PostConnection>>,
     Fragmentable {
   pageInfo: <T = PageInfoSubscription>() => T;
-  edges: <T = Promise<AsyncIterator<MemeEdgeSubscription>>>() => T;
-  aggregate: <T = AggregateMemeSubscription>() => T;
+  edges: <T = Promise<AsyncIterator<PostEdgeSubscription>>>() => T;
+  aggregate: <T = AggregatePostSubscription>() => T;
 }
 
-export interface MemeEdge {
-  node: Meme;
+export interface PostEdge {
+  node: Post;
   cursor: String;
 }
 
-export interface MemeEdgePromise extends Promise<MemeEdge>, Fragmentable {
-  node: <T = MemePromise>() => T;
+export interface PostEdgePromise extends Promise<PostEdge>, Fragmentable {
+  node: <T = PostPromise>() => T;
   cursor: () => Promise<String>;
 }
 
-export interface MemeEdgeSubscription
-  extends Promise<AsyncIterator<MemeEdge>>,
+export interface PostEdgeSubscription
+  extends Promise<AsyncIterator<PostEdge>>,
     Fragmentable {
-  node: <T = MemeSubscription>() => T;
+  node: <T = PostSubscription>() => T;
   cursor: () => Promise<AsyncIterator<String>>;
 }
 
-export interface AggregateMeme {
+export interface AggregatePost {
   count: Int;
 }
 
-export interface AggregateMemePromise
-  extends Promise<AggregateMeme>,
+export interface AggregatePostPromise
+  extends Promise<AggregatePost>,
     Fragmentable {
   count: () => Promise<Int>;
 }
 
-export interface AggregateMemeSubscription
-  extends Promise<AsyncIterator<AggregateMeme>>,
+export interface AggregatePostSubscription
+  extends Promise<AsyncIterator<AggregatePost>>,
     Fragmentable {
   count: () => Promise<AsyncIterator<Int>>;
 }
@@ -927,56 +1152,62 @@ export interface KeywordPreviousValuesSubscription
   name: () => Promise<AsyncIterator<String>>;
 }
 
-export interface MemeSubscriptionPayload {
+export interface PostSubscriptionPayload {
   mutation: MutationType;
-  node: Meme;
+  node: Post;
   updatedFields: String[];
-  previousValues: MemePreviousValues;
+  previousValues: PostPreviousValues;
 }
 
-export interface MemeSubscriptionPayloadPromise
-  extends Promise<MemeSubscriptionPayload>,
+export interface PostSubscriptionPayloadPromise
+  extends Promise<PostSubscriptionPayload>,
     Fragmentable {
   mutation: () => Promise<MutationType>;
-  node: <T = MemePromise>() => T;
+  node: <T = PostPromise>() => T;
   updatedFields: () => Promise<String[]>;
-  previousValues: <T = MemePreviousValuesPromise>() => T;
+  previousValues: <T = PostPreviousValuesPromise>() => T;
 }
 
-export interface MemeSubscriptionPayloadSubscription
-  extends Promise<AsyncIterator<MemeSubscriptionPayload>>,
+export interface PostSubscriptionPayloadSubscription
+  extends Promise<AsyncIterator<PostSubscriptionPayload>>,
     Fragmentable {
   mutation: () => Promise<AsyncIterator<MutationType>>;
-  node: <T = MemeSubscription>() => T;
+  node: <T = PostSubscription>() => T;
   updatedFields: () => Promise<AsyncIterator<String[]>>;
-  previousValues: <T = MemePreviousValuesSubscription>() => T;
+  previousValues: <T = PostPreviousValuesSubscription>() => T;
 }
 
-export interface MemePreviousValues {
+export interface PostPreviousValues {
   id: ID_Output;
   title: String;
   created: DateTimeOutput;
-  path: String;
+  type: Format;
+  originalPath: String;
+  thumbnailPath: String;
   caption?: String;
 }
 
-export interface MemePreviousValuesPromise
-  extends Promise<MemePreviousValues>,
+export interface PostPreviousValuesPromise
+  extends Promise<PostPreviousValues>,
     Fragmentable {
   id: () => Promise<ID_Output>;
   title: () => Promise<String>;
   created: () => Promise<DateTimeOutput>;
-  path: () => Promise<String>;
+  type: () => Promise<Format>;
+  originalPath: () => Promise<String>;
+  thumbnailPath: () => Promise<String>;
   caption: () => Promise<String>;
 }
 
-export interface MemePreviousValuesSubscription
-  extends Promise<AsyncIterator<MemePreviousValues>>,
+export interface PostPreviousValuesSubscription
+  extends Promise<AsyncIterator<PostPreviousValues>>,
     Fragmentable {
   id: () => Promise<AsyncIterator<ID_Output>>;
   title: () => Promise<AsyncIterator<String>>;
   created: () => Promise<AsyncIterator<DateTimeOutput>>;
-  path: () => Promise<AsyncIterator<String>>;
+  type: () => Promise<AsyncIterator<Format>>;
+  originalPath: () => Promise<AsyncIterator<String>>;
+  thumbnailPath: () => Promise<AsyncIterator<String>>;
   caption: () => Promise<AsyncIterator<String>>;
 }
 
@@ -1039,16 +1270,6 @@ The `String` scalar type represents textual data, represented as UTF-8 character
 export type String = string;
 
 /*
-The `Int` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. 
-*/
-export type Int = number;
-
-/*
-The `Boolean` scalar type represents `true` or `false`.
-*/
-export type Boolean = boolean;
-
-/*
 DateTime scalar input type, allowing Date
 */
 export type DateTimeInput = Date | string;
@@ -1058,6 +1279,16 @@ DateTime scalar output type, which is always a string
 */
 export type DateTimeOutput = string;
 
+/*
+The `Int` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1. 
+*/
+export type Int = number;
+
+/*
+The `Boolean` scalar type represents `true` or `false`.
+*/
+export type Boolean = boolean;
+
 export type Long = string;
 
 /**
@@ -1066,7 +1297,7 @@ export type Long = string;
 
 export const models: Model[] = [
   {
-    name: "Meme",
+    name: "Post",
     embedded: false
   },
   {
@@ -1075,6 +1306,10 @@ export const models: Model[] = [
   },
   {
     name: "User",
+    embedded: false
+  },
+  {
+    name: "Format",
     embedded: false
   }
 ];

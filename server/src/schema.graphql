@@ -1,7 +1,24 @@
+scalar Upload
+scalar DateTime
+
+input NewPost {
+  title: String!
+  caption: String
+  keywords: [String!]
+  file: Upload
+}
+
+enum Format {
+  VIDEO
+  IMAGE
+  GIF
+}
+
+
 type Query {
-  feed: [Meme!]!
-  drafts: [Meme!]!
-  post(id: ID!): Meme
+  feed: [Post!]!
+  keyword(search: String): [Keyword!]!
+  post(id: ID!): Post
   me: User
 }
 
@@ -9,23 +26,30 @@ type Mutation {
   signup(username: String!, name: String!, password: String!): Boolean!
   login(username: String!, password: String!): Boolean!
   logout: Boolean!
-  # createDraft(title: String!, content: String!): Meme!
-  publish(id: ID!): Meme!
-  deletePost(id: ID!): Meme!
+
+  uploadPosts(items: [NewPost!]): [Post!]!
+
+  createKeyword(name: String!): Keyword!
+
+  deletePost(id: ID!): Post!
 }
 
-type Meme {
+type Post {
     id: ID!
     title: String!
+    created: DateTime!
     keywords: [Keyword!]!
-    uploader: User!
-    path: String!
+    type: Format!
+    originalPath: String!
+    thumbnailPath: String!
+    uploader: User
     caption: String
 }
 
 type Keyword {
     id: ID!
     name: String!
+    posts: [Post!]!
 }
 
 type User {

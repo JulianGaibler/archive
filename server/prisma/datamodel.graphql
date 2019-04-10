@@ -1,20 +1,29 @@
-type Meme {
+type Post {
     id: ID! @unique
     title: String!
     created: DateTime!
     keywords: [Keyword!]!
-    uploader: User!
-    path: String!
+    type: Format!
+    originalPath: String!
+    thumbnailPath: String!
+    uploader: User
     caption: String
 }
 
 type Keyword {
     id: ID! @unique
     name: String!
+    posts: [Post!]!
 }
 
 type User {
     username: String! @unique
     name: String!
     password: String!
+}
+
+enum Format {
+  VIDEO
+  IMAGE
+  GIF
 }
