@@ -6,7 +6,7 @@ export const typeDefs = /* GraphQL */ `type AggregateKeyword {
   count: Int!
 }
 
-type AggregateMeme {
+type AggregatePost {
   count: Int!
 }
 
@@ -20,9 +20,16 @@ type BatchPayload {
 
 scalar DateTime
 
+enum Format {
+  VIDEO
+  IMAGE
+  GIF
+}
+
 type Keyword {
   id: ID!
   name: String!
+  posts(where: PostWhereInput, orderBy: PostOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [Post!]
 }
 
 type KeywordConnection {
@@ -33,11 +40,16 @@ type KeywordConnection {
 
 input KeywordCreateInput {
   name: String!
+  posts: PostCreateManyWithoutKeywordsInput
 }
 
-input KeywordCreateManyInput {
-  create: [KeywordCreateInput!]
+input KeywordCreateManyWithoutPostsInput {
+  create: [KeywordCreateWithoutPostsInput!]
   connect: [KeywordWhereUniqueInput!]
+}
+
+input KeywordCreateWithoutPostsInput {
+  name: String!
 }
 
 type KeywordEdge {
@@ -113,32 +125,29 @@ input KeywordSubscriptionWhereInput {
   NOT: [KeywordSubscriptionWhereInput!]
 }
 
-input KeywordUpdateDataInput {
-  name: String
-}
-
 input KeywordUpdateInput {
   name: String
+  posts: PostUpdateManyWithoutKeywordsInput
 }
 
 input KeywordUpdateManyDataInput {
   name: String
 }
 
-input KeywordUpdateManyInput {
-  create: [KeywordCreateInput!]
-  update: [KeywordUpdateWithWhereUniqueNestedInput!]
-  upsert: [KeywordUpsertWithWhereUniqueNestedInput!]
+input KeywordUpdateManyMutationInput {
+  name: String
+}
+
+input KeywordUpdateManyWithoutPostsInput {
+  create: [KeywordCreateWithoutPostsInput!]
   delete: [KeywordWhereUniqueInput!]
   connect: [KeywordWhereUniqueInput!]
   set: [KeywordWhereUniqueInput!]
   disconnect: [KeywordWhereUniqueInput!]
+  update: [KeywordUpdateWithWhereUniqueWithoutPostsInput!]
+  upsert: [KeywordUpsertWithWhereUniqueWithoutPostsInput!]
   deleteMany: [KeywordScalarWhereInput!]
   updateMany: [KeywordUpdateManyWithWhereNestedInput!]
-}
-
-input KeywordUpdateManyMutationInput {
-  name: String
 }
 
 input KeywordUpdateManyWithWhereNestedInput {
@@ -146,15 +155,19 @@ input KeywordUpdateManyWithWhereNestedInput {
   data: KeywordUpdateManyDataInput!
 }
 
-input KeywordUpdateWithWhereUniqueNestedInput {
-  where: KeywordWhereUniqueInput!
-  data: KeywordUpdateDataInput!
+input KeywordUpdateWithoutPostsDataInput {
+  name: String
 }
 
-input KeywordUpsertWithWhereUniqueNestedInput {
+input KeywordUpdateWithWhereUniqueWithoutPostsInput {
   where: KeywordWhereUniqueInput!
-  update: KeywordUpdateDataInput!
-  create: KeywordCreateInput!
+  data: KeywordUpdateWithoutPostsDataInput!
+}
+
+input KeywordUpsertWithWhereUniqueWithoutPostsInput {
+  where: KeywordWhereUniqueInput!
+  update: KeywordUpdateWithoutPostsDataInput!
+  create: KeywordCreateWithoutPostsInput!
 }
 
 input KeywordWhereInput {
@@ -186,6 +199,9 @@ input KeywordWhereInput {
   name_not_starts_with: String
   name_ends_with: String
   name_not_ends_with: String
+  posts_every: PostWhereInput
+  posts_some: PostWhereInput
+  posts_none: PostWhereInput
   AND: [KeywordWhereInput!]
   OR: [KeywordWhereInput!]
   NOT: [KeywordWhereInput!]
@@ -197,45 +213,106 @@ input KeywordWhereUniqueInput {
 
 scalar Long
 
-type Meme {
+type Mutation {
+  createKeyword(data: KeywordCreateInput!): Keyword!
+  updateKeyword(data: KeywordUpdateInput!, where: KeywordWhereUniqueInput!): Keyword
+  updateManyKeywords(data: KeywordUpdateManyMutationInput!, where: KeywordWhereInput): BatchPayload!
+  upsertKeyword(where: KeywordWhereUniqueInput!, create: KeywordCreateInput!, update: KeywordUpdateInput!): Keyword!
+  deleteKeyword(where: KeywordWhereUniqueInput!): Keyword
+  deleteManyKeywords(where: KeywordWhereInput): BatchPayload!
+  createPost(data: PostCreateInput!): Post!
+  updatePost(data: PostUpdateInput!, where: PostWhereUniqueInput!): Post
+  updateManyPosts(data: PostUpdateManyMutationInput!, where: PostWhereInput): BatchPayload!
+  upsertPost(where: PostWhereUniqueInput!, create: PostCreateInput!, update: PostUpdateInput!): Post!
+  deletePost(where: PostWhereUniqueInput!): Post
+  deleteManyPosts(where: PostWhereInput): BatchPayload!
+  createUser(data: UserCreateInput!): User!
+  updateUser(data: UserUpdateInput!, where: UserWhereUniqueInput!): User
+  updateManyUsers(data: UserUpdateManyMutationInput!, where: UserWhereInput): BatchPayload!
+  upsertUser(where: UserWhereUniqueInput!, create: UserCreateInput!, update: UserUpdateInput!): User!
+  deleteUser(where: UserWhereUniqueInput!): User
+  deleteManyUsers(where: UserWhereInput): BatchPayload!
+}
+
+enum MutationType {
+  CREATED
+  UPDATED
+  DELETED
+}
+
+interface Node {
+  id: ID!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type Post {
   id: ID!
   title: String!
   created: DateTime!
   keywords(where: KeywordWhereInput, orderBy: KeywordOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [Keyword!]
-  uploader: User!
-  path: String!
+  type: Format!
+  originalPath: String!
+  thumbnailPath: String!
+  uploader: User
   caption: String
 }
 
-type MemeConnection {
+type PostConnection {
   pageInfo: PageInfo!
-  edges: [MemeEdge]!
-  aggregate: AggregateMeme!
+  edges: [PostEdge]!
+  aggregate: AggregatePost!
 }
 
-input MemeCreateInput {
+input PostCreateInput {
   title: String!
   created: DateTime!
-  keywords: KeywordCreateManyInput
-  uploader: UserCreateOneInput!
-  path: String!
+  keywords: KeywordCreateManyWithoutPostsInput
+  type: Format!
+  originalPath: String!
+  thumbnailPath: String!
+  uploader: UserCreateOneInput
   caption: String
 }
 
-type MemeEdge {
-  node: Meme!
+input PostCreateManyWithoutKeywordsInput {
+  create: [PostCreateWithoutKeywordsInput!]
+  connect: [PostWhereUniqueInput!]
+}
+
+input PostCreateWithoutKeywordsInput {
+  title: String!
+  created: DateTime!
+  type: Format!
+  originalPath: String!
+  thumbnailPath: String!
+  uploader: UserCreateOneInput
+  caption: String
+}
+
+type PostEdge {
+  node: Post!
   cursor: String!
 }
 
-enum MemeOrderByInput {
+enum PostOrderByInput {
   id_ASC
   id_DESC
   title_ASC
   title_DESC
   created_ASC
   created_DESC
-  path_ASC
-  path_DESC
+  type_ASC
+  type_DESC
+  originalPath_ASC
+  originalPath_DESC
+  thumbnailPath_ASC
+  thumbnailPath_DESC
   caption_ASC
   caption_DESC
   createdAt_ASC
@@ -244,49 +321,190 @@ enum MemeOrderByInput {
   updatedAt_DESC
 }
 
-type MemePreviousValues {
+type PostPreviousValues {
   id: ID!
   title: String!
   created: DateTime!
-  path: String!
+  type: Format!
+  originalPath: String!
+  thumbnailPath: String!
   caption: String
 }
 
-type MemeSubscriptionPayload {
-  mutation: MutationType!
-  node: Meme
-  updatedFields: [String!]
-  previousValues: MemePreviousValues
+input PostScalarWhereInput {
+  id: ID
+  id_not: ID
+  id_in: [ID!]
+  id_not_in: [ID!]
+  id_lt: ID
+  id_lte: ID
+  id_gt: ID
+  id_gte: ID
+  id_contains: ID
+  id_not_contains: ID
+  id_starts_with: ID
+  id_not_starts_with: ID
+  id_ends_with: ID
+  id_not_ends_with: ID
+  title: String
+  title_not: String
+  title_in: [String!]
+  title_not_in: [String!]
+  title_lt: String
+  title_lte: String
+  title_gt: String
+  title_gte: String
+  title_contains: String
+  title_not_contains: String
+  title_starts_with: String
+  title_not_starts_with: String
+  title_ends_with: String
+  title_not_ends_with: String
+  created: DateTime
+  created_not: DateTime
+  created_in: [DateTime!]
+  created_not_in: [DateTime!]
+  created_lt: DateTime
+  created_lte: DateTime
+  created_gt: DateTime
+  created_gte: DateTime
+  type: Format
+  type_not: Format
+  type_in: [Format!]
+  type_not_in: [Format!]
+  originalPath: String
+  originalPath_not: String
+  originalPath_in: [String!]
+  originalPath_not_in: [String!]
+  originalPath_lt: String
+  originalPath_lte: String
+  originalPath_gt: String
+  originalPath_gte: String
+  originalPath_contains: String
+  originalPath_not_contains: String
+  originalPath_starts_with: String
+  originalPath_not_starts_with: String
+  originalPath_ends_with: String
+  originalPath_not_ends_with: String
+  thumbnailPath: String
+  thumbnailPath_not: String
+  thumbnailPath_in: [String!]
+  thumbnailPath_not_in: [String!]
+  thumbnailPath_lt: String
+  thumbnailPath_lte: String
+  thumbnailPath_gt: String
+  thumbnailPath_gte: String
+  thumbnailPath_contains: String
+  thumbnailPath_not_contains: String
+  thumbnailPath_starts_with: String
+  thumbnailPath_not_starts_with: String
+  thumbnailPath_ends_with: String
+  thumbnailPath_not_ends_with: String
+  caption: String
+  caption_not: String
+  caption_in: [String!]
+  caption_not_in: [String!]
+  caption_lt: String
+  caption_lte: String
+  caption_gt: String
+  caption_gte: String
+  caption_contains: String
+  caption_not_contains: String
+  caption_starts_with: String
+  caption_not_starts_with: String
+  caption_ends_with: String
+  caption_not_ends_with: String
+  AND: [PostScalarWhereInput!]
+  OR: [PostScalarWhereInput!]
+  NOT: [PostScalarWhereInput!]
 }
 
-input MemeSubscriptionWhereInput {
+type PostSubscriptionPayload {
+  mutation: MutationType!
+  node: Post
+  updatedFields: [String!]
+  previousValues: PostPreviousValues
+}
+
+input PostSubscriptionWhereInput {
   mutation_in: [MutationType!]
   updatedFields_contains: String
   updatedFields_contains_every: [String!]
   updatedFields_contains_some: [String!]
-  node: MemeWhereInput
-  AND: [MemeSubscriptionWhereInput!]
-  OR: [MemeSubscriptionWhereInput!]
-  NOT: [MemeSubscriptionWhereInput!]
+  node: PostWhereInput
+  AND: [PostSubscriptionWhereInput!]
+  OR: [PostSubscriptionWhereInput!]
+  NOT: [PostSubscriptionWhereInput!]
 }
 
-input MemeUpdateInput {
+input PostUpdateInput {
   title: String
   created: DateTime
-  keywords: KeywordUpdateManyInput
-  uploader: UserUpdateOneRequiredInput
-  path: String
+  keywords: KeywordUpdateManyWithoutPostsInput
+  type: Format
+  originalPath: String
+  thumbnailPath: String
+  uploader: UserUpdateOneInput
   caption: String
 }
 
-input MemeUpdateManyMutationInput {
+input PostUpdateManyDataInput {
   title: String
   created: DateTime
-  path: String
+  type: Format
+  originalPath: String
+  thumbnailPath: String
   caption: String
 }
 
-input MemeWhereInput {
+input PostUpdateManyMutationInput {
+  title: String
+  created: DateTime
+  type: Format
+  originalPath: String
+  thumbnailPath: String
+  caption: String
+}
+
+input PostUpdateManyWithoutKeywordsInput {
+  create: [PostCreateWithoutKeywordsInput!]
+  delete: [PostWhereUniqueInput!]
+  connect: [PostWhereUniqueInput!]
+  set: [PostWhereUniqueInput!]
+  disconnect: [PostWhereUniqueInput!]
+  update: [PostUpdateWithWhereUniqueWithoutKeywordsInput!]
+  upsert: [PostUpsertWithWhereUniqueWithoutKeywordsInput!]
+  deleteMany: [PostScalarWhereInput!]
+  updateMany: [PostUpdateManyWithWhereNestedInput!]
+}
+
+input PostUpdateManyWithWhereNestedInput {
+  where: PostScalarWhereInput!
+  data: PostUpdateManyDataInput!
+}
+
+input PostUpdateWithoutKeywordsDataInput {
+  title: String
+  created: DateTime
+  type: Format
+  originalPath: String
+  thumbnailPath: String
+  uploader: UserUpdateOneInput
+  caption: String
+}
+
+input PostUpdateWithWhereUniqueWithoutKeywordsInput {
+  where: PostWhereUniqueInput!
+  data: PostUpdateWithoutKeywordsDataInput!
+}
+
+input PostUpsertWithWhereUniqueWithoutKeywordsInput {
+  where: PostWhereUniqueInput!
+  update: PostUpdateWithoutKeywordsDataInput!
+  create: PostCreateWithoutKeywordsInput!
+}
+
+input PostWhereInput {
   id: ID
   id_not: ID
   id_in: [ID!]
@@ -326,21 +544,39 @@ input MemeWhereInput {
   keywords_every: KeywordWhereInput
   keywords_some: KeywordWhereInput
   keywords_none: KeywordWhereInput
+  type: Format
+  type_not: Format
+  type_in: [Format!]
+  type_not_in: [Format!]
+  originalPath: String
+  originalPath_not: String
+  originalPath_in: [String!]
+  originalPath_not_in: [String!]
+  originalPath_lt: String
+  originalPath_lte: String
+  originalPath_gt: String
+  originalPath_gte: String
+  originalPath_contains: String
+  originalPath_not_contains: String
+  originalPath_starts_with: String
+  originalPath_not_starts_with: String
+  originalPath_ends_with: String
+  originalPath_not_ends_with: String
+  thumbnailPath: String
+  thumbnailPath_not: String
+  thumbnailPath_in: [String!]
+  thumbnailPath_not_in: [String!]
+  thumbnailPath_lt: String
+  thumbnailPath_lte: String
+  thumbnailPath_gt: String
+  thumbnailPath_gte: String
+  thumbnailPath_contains: String
+  thumbnailPath_not_contains: String
+  thumbnailPath_starts_with: String
+  thumbnailPath_not_starts_with: String
+  thumbnailPath_ends_with: String
+  thumbnailPath_not_ends_with: String
   uploader: UserWhereInput
-  path: String
-  path_not: String
-  path_in: [String!]
-  path_not_in: [String!]
-  path_lt: String
-  path_lte: String
-  path_gt: String
-  path_gte: String
-  path_contains: String
-  path_not_contains: String
-  path_starts_with: String
-  path_not_starts_with: String
-  path_ends_with: String
-  path_not_ends_with: String
   caption: String
   caption_not: String
   caption_in: [String!]
@@ -355,60 +591,22 @@ input MemeWhereInput {
   caption_not_starts_with: String
   caption_ends_with: String
   caption_not_ends_with: String
-  AND: [MemeWhereInput!]
-  OR: [MemeWhereInput!]
-  NOT: [MemeWhereInput!]
+  AND: [PostWhereInput!]
+  OR: [PostWhereInput!]
+  NOT: [PostWhereInput!]
 }
 
-input MemeWhereUniqueInput {
+input PostWhereUniqueInput {
   id: ID
-}
-
-type Mutation {
-  createKeyword(data: KeywordCreateInput!): Keyword!
-  updateKeyword(data: KeywordUpdateInput!, where: KeywordWhereUniqueInput!): Keyword
-  updateManyKeywords(data: KeywordUpdateManyMutationInput!, where: KeywordWhereInput): BatchPayload!
-  upsertKeyword(where: KeywordWhereUniqueInput!, create: KeywordCreateInput!, update: KeywordUpdateInput!): Keyword!
-  deleteKeyword(where: KeywordWhereUniqueInput!): Keyword
-  deleteManyKeywords(where: KeywordWhereInput): BatchPayload!
-  createMeme(data: MemeCreateInput!): Meme!
-  updateMeme(data: MemeUpdateInput!, where: MemeWhereUniqueInput!): Meme
-  updateManyMemes(data: MemeUpdateManyMutationInput!, where: MemeWhereInput): BatchPayload!
-  upsertMeme(where: MemeWhereUniqueInput!, create: MemeCreateInput!, update: MemeUpdateInput!): Meme!
-  deleteMeme(where: MemeWhereUniqueInput!): Meme
-  deleteManyMemes(where: MemeWhereInput): BatchPayload!
-  createUser(data: UserCreateInput!): User!
-  updateUser(data: UserUpdateInput!, where: UserWhereUniqueInput!): User
-  updateManyUsers(data: UserUpdateManyMutationInput!, where: UserWhereInput): BatchPayload!
-  upsertUser(where: UserWhereUniqueInput!, create: UserCreateInput!, update: UserUpdateInput!): User!
-  deleteUser(where: UserWhereUniqueInput!): User
-  deleteManyUsers(where: UserWhereInput): BatchPayload!
-}
-
-enum MutationType {
-  CREATED
-  UPDATED
-  DELETED
-}
-
-interface Node {
-  id: ID!
-}
-
-type PageInfo {
-  hasNextPage: Boolean!
-  hasPreviousPage: Boolean!
-  startCursor: String
-  endCursor: String
 }
 
 type Query {
   keyword(where: KeywordWhereUniqueInput!): Keyword
   keywords(where: KeywordWhereInput, orderBy: KeywordOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [Keyword]!
   keywordsConnection(where: KeywordWhereInput, orderBy: KeywordOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): KeywordConnection!
-  meme(where: MemeWhereUniqueInput!): Meme
-  memes(where: MemeWhereInput, orderBy: MemeOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [Meme]!
-  memesConnection(where: MemeWhereInput, orderBy: MemeOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): MemeConnection!
+  post(where: PostWhereUniqueInput!): Post
+  posts(where: PostWhereInput, orderBy: PostOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [Post]!
+  postsConnection(where: PostWhereInput, orderBy: PostOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): PostConnection!
   user(where: UserWhereUniqueInput!): User
   users(where: UserWhereInput, orderBy: UserOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [User]!
   usersConnection(where: UserWhereInput, orderBy: UserOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): UserConnection!
@@ -417,7 +615,7 @@ type Query {
 
 type Subscription {
   keyword(where: KeywordSubscriptionWhereInput): KeywordSubscriptionPayload
-  meme(where: MemeSubscriptionWhereInput): MemeSubscriptionPayload
+  post(where: PostSubscriptionWhereInput): PostSubscriptionPayload
   user(where: UserSubscriptionWhereInput): UserSubscriptionPayload
 }
 
@@ -506,10 +704,12 @@ input UserUpdateManyMutationInput {
   password: String
 }
 
-input UserUpdateOneRequiredInput {
+input UserUpdateOneInput {
   create: UserCreateInput
   update: UserUpdateDataInput
   upsert: UserUpsertNestedInput
+  delete: Boolean
+  disconnect: Boolean
   connect: UserWhereUniqueInput
 }
 

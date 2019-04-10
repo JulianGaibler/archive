@@ -1,7 +1,7 @@
 import { Context } from '../utils'
 
-export const Meme = {
+export const Post = {
   uploader: ({ id }, args, ctx: Context) => {
-    return ctx.prisma.meme({ id }).uploader()
+    return ctx.prisma.post({ id }).uploader()
   },
 }
