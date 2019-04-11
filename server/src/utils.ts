@@ -3,6 +3,7 @@ import * as jwt from 'jsonwebtoken'
 export interface Context {
     response: any
     request: any
+    db: any
 }
 
 export function getUsername(ctx: Context) {

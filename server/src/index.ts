@@ -1,17 +1,16 @@
-import { ApolloServer } from 'apollo-server'
+import Database from './database';
+import Server from './server';
 
-import schema from './schema'
+Database.connect();
+Server.start();
 
-const server = new ApolloServer({
-    schema,
-    context: ({ req }) => ({
-        ...req,
-    }),
-    playground: process.env.NODE_ENV === 'development',
-    debug: process.env.NODE_ENV === 'development'
-})
+const shutdown = done => {
+  Database.close(() => {
+    Server.stop();
+  });
+};
 
-server.listen()
-    .then(({ url, server }) => {
-        console.log(`Server is running on ${url}`)
-    })
+// Nodemon
+process.on('exit', shutdown.bind(null, process.exit));
+process.on('SIGINT', shutdown.bind(null, process.exit));
+process.on('uncaughtException', shutdown.bind(null, process.exit));

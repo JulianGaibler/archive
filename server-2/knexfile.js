@@ -1,15 +1,12 @@
 const parse = require('connection-string');
-const _ = require('lodash');
-
-require('dotenv').config();
 
 const connection = parse(process.env.DATABASE_URL);
 
 const defaults = {
   client: 'pg',
   connection: {
-    user: connection.user || 'root',
-    password: connection.password || '',
+    user: connection.user || '4x-archive',
+    password: connection.password || '4x-archive',
     host: connection.hosts && connection.hosts[0].name,
     port: (connection.hosts && connection.hosts[0].port) || 5432,
     database: connection.path[0],
@@ -32,6 +29,4 @@ const environments = {
   },
 };
 
-const config = _.merge(defaults, environments[process.env.NODE_ENV]);
-
-module.exports = config;
+module.exports = Object.assign(defaults, environments[process.env.NODE_ENV])

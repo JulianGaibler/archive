@@ -9,7 +9,7 @@ class Database {
         if (this.knexInstance) {
             return;
         }
-        this.config = Object.assign({}, knexfile, options);
+        this.config = knexfile;
         this.knexInstance = Knex(this.config);
     }
 
