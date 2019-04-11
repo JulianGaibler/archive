@@ -19,6 +19,7 @@
     "jsonwebtoken": "8.5.0",
     "knex": "^0.15.2",
     "morgan": "^1.9.1",
+    "objection": "^1.6.7",
     "pg": "^7.5.0"
   },
   "devDependencies": {
