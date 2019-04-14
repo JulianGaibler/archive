@@ -6,11 +6,11 @@ const connection = {path: []};
 const defaults = {
     client: 'pg',
     connection: {
-        user: connection.user || 'root',
-        password: connection.password || '',
+        user: connection.user || 'archive',
+        password: connection.password || 'archive',
         host: connection.hosts && connection.hosts[0].name,
         port: (connection.hosts && connection.hosts[0].port) || 5432,
-        database: connection.path[0],
+        database: 'postgres',
     },
     migrations: {
         directory: `${__dirname}/db/migrations`,
