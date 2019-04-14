@@ -1,5 +1,6 @@
 import Knex from 'knex';
 import knexfile from '../knexfile';
+import { Model } from 'objection';
 
 class Database {
     private knexInstance: Knex;
@@ -11,6 +12,7 @@ class Database {
         }
         this.config = knexfile;
         this.knexInstance = Knex(this.config);
+        Model.knex(this.knexInstance);
     }
 
     get query(): Knex {

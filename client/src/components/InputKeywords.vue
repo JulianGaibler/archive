@@ -19,18 +19,18 @@ export default {
             content: this.value
         }
     },
-    apollo: {
-        keywords: {
-            query: ME,
-            update(r) {
-                if (r) return r.me
-                else return null;
-            },
-            error(e) {
-                console.log('errors', e.message)
-            }
-        }
-    },
+    //apollo: {
+    //    keywords: {
+    //        query: ME,
+    //        update(r) {
+    //            if (r) return r.me
+    //            else return null;
+    //        },
+    //        error(e) {
+    //            console.log('errors', e.message)
+    //        }
+    //    }
+    //},
     methods: {
         handleInput() {
             this.$emit('input', this.content)

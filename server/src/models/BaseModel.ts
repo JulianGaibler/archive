@@ -1,16 +1,27 @@
 import { Model, RelationMappings } from 'objection';
+import uuid from 'uuid/v4'
 
 export default class BaseModel extends Model {
 
     updatedAt!: Date;
     createdAt!: Date;
 
-    $beforeInsert() {
-        this.createdAt = new Date();
-        this.updatedAt = new Date();
+    $beforeInsert(context) {
+        const parent = super.$beforeInsert(context);
+
+        return Promise.resolve(parent)
+        .then(
+            () =>
+                this['id'] || uuid()
+        )
+        .then(guid => {
+            this.createdAt = new Date();
+            this.updatedAt = new Date();
+            this['id'] = guid;
+        });
     }
 
-    $beforeUpdate() {
+    $beforeUpdate(queryOptions, context) {
         this.updatedAt = new Date();
     }
 
