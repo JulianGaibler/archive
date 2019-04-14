@@ -1,21 +1,25 @@
 import { getUsername, Context } from '../utils'
 
+import User from '../models/User'
+
 export const Query = {
   feed(parent, args, ctx: Context) {
-    return ctx.prisma.posts({ })
+    //return ctx.prisma.posts({ })
   },
 
   post(parent, { id }, ctx: Context) {
-    return ctx.prisma.post({ id })
+    //return ctx.prisma.post({ id })
   },
 
   keyword(parent, { search }, ctx: Context) {
-    if (search) return ctx.prisma.keywords({ where: { name_contains: search } })
-    else return ctx.prisma.keywords()
+    //if (search) return ctx.prisma.keywords({ where: { name_contains: search } })
+    //else return ctx.prisma.keywords()
   },
 
-  me(parent, args, ctx: Context) {
+  async me(parent, args, ctx: Context) {
     const username = getUsername(ctx)
-    return ctx.prisma.user({ username })
+    const user = await User.query().findOne({ username })
+    delete user.password;
+    return user
   },
 }

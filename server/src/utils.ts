@@ -1,13 +1,15 @@
 import * as jwt from 'jsonwebtoken'
 
+import { Response, Request } from 'express';
+
+
 export interface Context {
-    response: any
-    request: any
-    db: any
+    res: Response
+    req: Request
 }
 
 export function getUsername(ctx: Context) {
-    const Authorization = ctx.request.cookies.token
+    const Authorization = ctx.req.cookies.token
     if (Authorization) {
         const { username } = jwt.verify(Authorization, process.env.APP_SECRET) as { username: string }
         return username
@@ -18,7 +20,7 @@ export function getUsername(ctx: Context) {
 
 export function performLogin(ctx: Context, username: String) {
     const token = jwt.sign({ username }, process.env.APP_SECRET)
-    ctx.response.cookie('token', token, {
+    ctx.res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
@@ -28,7 +30,7 @@ export function performLogin(ctx: Context, username: String) {
 export function performLogout(ctx: Context) {
     getUsername(ctx);
 
-    ctx.response.clearCookie('token', {
+    ctx.res.clearCookie('token', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
     });

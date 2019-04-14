@@ -8,7 +8,7 @@ exports.up = async knex =>
       table.bigInteger('updatedAt').notNullable();
       table.bigInteger('createdAt').notNullable();
 
-      table.unique(['id', 'username'])
+      table.unique(['username'])
     })
     .createTable('Post', table => {
       table.uuid('id').primary();
@@ -21,13 +21,13 @@ exports.up = async knex =>
       table.bigInteger('updatedAt').notNullable();
       table.bigInteger('createdAt').notNullable();
 
-      table.unique(['id', 'title'])
+      table.unique(['title'])
     })
     .createTable('Keyword', table => {
       table.uuid('id').primary();
       table.string('name', 64).notNullable();
 
-      table.unique(['id', 'name'])
+      table.unique(['name'])
     })
     .createTable('PostToUser', table => {
     	table.uuid('id').primary();
