@@ -50,6 +50,13 @@ header
         .tag
             display flex
             align-items center
+            .icon
+                height 1rem
+                svg
+                    stroke $archive-black
+                    height 100%
+                    display block
+                    width auto
             
         .results
             position: absolute
@@ -64,7 +71,10 @@ header
             right 0
             border-bottom-left-radius .5rem
             border-bottom-right-radius .5rem
-            padding .4rem 0 .4rem 0
+            padding .2rem 0 .4rem 0
+            hr
+                border-color $archive-grey
+                margin .2rem 0
             .result
                 padding .6rem .6rem
                 &:hover
@@ -129,6 +139,7 @@ header
         right 0
         top 0
         bottom 0
+        z-index 999
         background grey
         &.showDropzone {
             visibility initial
