@@ -13,7 +13,7 @@ export const posts = {
             console.log(title, file)
         }
 
-        throw new Error(`Nooo`)
+        throw new Error(`YOU THINK YOU CAN TRICK ME? NEVER! Oh wait it's my fault [500]`)
 
         return []
 
@@ -26,16 +26,16 @@ export const posts = {
         //})
     },
 
-    async deletePost(parent, { id }, ctx, info) {
-        const username = getUsername(ctx)
-        const postExists = await ctx.prisma.$exists.meme({
-            id,
-            uploader: { username },
-        })
-        if (!postExists) {
-            throw new Error(`Post not found or you're not the author`)
-        }
+    //async deletePost(parent, { id }, ctx, info) {
+    //    const username = getUsername(ctx)
+    //    const postExists = await ctx.prisma.$exists.meme({
+    //        id,
+    //        uploader: { username },
+    //    })
+    //    if (!postExists) {
+    //        throw new Error(`Post not found or you're not the author`)
+    //    }
 
-        return ctx.prisma.deleteMeme({ id })
-    },
+    //    return ctx.prisma.deleteMeme({ id })
+    //},
 }
