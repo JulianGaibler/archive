@@ -17,7 +17,7 @@ enum Format {
 
 type Query {
   feed: [Post!]!
-  keyword(search: String): [Keyword!]!
+  keywords(search: String): [Keyword!]!
   post(id: ID!): Post
   me: User
 }

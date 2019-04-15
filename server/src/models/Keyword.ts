@@ -1,11 +1,16 @@
 import { Model, RelationMappings } from 'objection';
-import BaseModel from './BaseModel'
+import UniqueModel from './UniqueModel'
 
 import Post from './Post'
 
 
-export default class Keyword extends BaseModel {
+export default class Keyword extends UniqueModel {
     static tableName = 'Keyword';
+
+    $unique = {
+        fields: ['name'],
+        identifiers: ['id'],
+    }
 
     readonly id!: string;
     name!: string;

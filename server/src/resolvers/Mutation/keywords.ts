@@ -1,21 +1,13 @@
 import { getUsername } from '../../utils'
 
+import Keyword from '../../models/Keyword'
+
 export const keywords = {
 
     async createKeyword(parent, { name }, ctx, info) {
         const username = getUsername(ctx)
 
-        const keywordExists = await ctx.prisma.$exists.keyword({
-            name,
-        })
-        if (keywordExists) {
-            throw new Error(`This Keyword already exists`)
-        }
-
-        return ctx.prisma.createKeyword({
-          name,
-          
-        })
+        return Keyword.query().insert({ name })
     },
 
     //async deleteKeyword(parent, { id }, ctx, info) {

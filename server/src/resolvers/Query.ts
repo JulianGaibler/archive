@@ -1,6 +1,7 @@
 import { getUsername, Context } from '../utils'
 
 import User from '../models/User'
+import Keyword from '../models/Keyword'
 
 export const Query = {
   feed(parent, args, ctx: Context) {
@@ -11,9 +12,9 @@ export const Query = {
     //return ctx.prisma.post({ id })
   },
 
-  keyword(parent, { search }, ctx: Context) {
-    //if (search) return ctx.prisma.keywords({ where: { name_contains: search } })
-    //else return ctx.prisma.keywords()
+  async keywords(parent, { search }, ctx: Context) {
+    if (search) return Keyword.query().whereRaw(`LOWER(name) LIKE ?`, [`%${search}%`])
+    else return Keyword.query()
   },
 
   async me(parent, args, ctx: Context) {
