@@ -2,36 +2,36 @@ scalar Upload
 scalar DateTime
 
 input NewPost {
-  title: String!
-  caption: String
-  keywords: [String!]
-  file: Upload
+    title: String!
+    caption: String
+    keywords: [String!]
+    file: Upload
 }
 
 enum Format {
-  VIDEO
-  IMAGE
-  GIF
+    VIDEO
+    IMAGE
+    GIF
 }
 
 
 type Query {
-  feed: [Post!]!
-  keywords(search: String): [Keyword!]!
-  post(id: ID!): Post
-  me: User
+    feed: [Post!]!
+    keywords(search: String): [Keyword!]!
+    post(id: ID!): Post
+    me: User
 }
 
 type Mutation {
-  signup(username: String!, name: String!, password: String!): Boolean!
-  login(username: String!, password: String!): Boolean!
-  logout: Boolean!
+    signup(username: String!, name: String!, password: String!): Boolean!
+    login(username: String!, password: String!): Boolean!
+    logout: Boolean!
 
-  uploadPosts(items: [NewPost!]): [Post!]!
+    uploadPosts(items: [NewPost!]): [Post!]!
 
-  createKeyword(name: String!): Keyword!
+    createKeyword(name: String!): Keyword!
 
-  deletePost(id: ID!): Post!
+    deletePost(id: ID!): Post!
 }
 
 type Post {

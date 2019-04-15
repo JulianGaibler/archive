@@ -13,7 +13,7 @@ export const Query = {
   },
 
   async keywords(parent, { search }, ctx: Context) {
-    if (search) return Keyword.query().whereRaw(`LOWER(name) LIKE ?`, [`%${search}%`])
+    if (search) return Keyword.query().whereRaw(`LOWER(name) LIKE ?`, [`%${search.toLowerCase()}%`])
     else return Keyword.query()
   },
 
