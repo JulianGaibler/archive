@@ -2,7 +2,7 @@
     <div class="login">
         <div class="card">
             <ApolloMutation
-                :mutation="require('../graphql/userLogin.gql')"
+                :mutation="require('../graphql/mutation/login.gql')"
                 :variables="{
                         username,
                         password,
