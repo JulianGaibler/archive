@@ -36,7 +36,42 @@ header
     display flex
     flex-direction column
     
-    input, textarea
+    .autocomplete
+        position relative
+        padding .2rem
+        display flex
+        flex-wrap wrap
+        input, textarea, .tag
+            padding .2em .2em
+            line-height initial
+        input
+            flex-grow 100
+            min-width 6rem
+        .tag
+            display flex
+            align-items center
+            
+        .results
+            position: absolute
+            display block
+            background $archive-white
+            // box-shadow 0 .25rem 1.5rem rgba(0,0,0,0.1)
+            border 2px solid $archive-grey
+            border-top none
+            z-index 99
+            top calc(100% + 2px)
+            left 0
+            right 0
+            border-bottom-left-radius .5rem
+            border-bottom-right-radius .5rem
+            padding .4rem 0 .4rem 0
+            .result
+                padding .6rem .6rem
+                &:hover
+                    background $archive-grey
+                    cursor pointer
+    
+    input, textarea, .tag
         background unset
         border none
         padding .4em .4em
@@ -78,9 +113,15 @@ header
     label.uploadclick
         card-radius true true
         display block
-        padding 2rem
+        padding 1.25rem 1.5rem 1.5rem 1.5rem
         text-align center
         background $archive-grey
+        color $archive-prim
+        font-weight 500
+        svg
+            height 2rem
+            width auto
+            stroke $archive-prim
     .dropzone
         position absolute
         visibility hidden
