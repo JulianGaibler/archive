@@ -5,11 +5,13 @@
                 <span>{{valueStore[id]}}</span>
                 <div class="icon" @click="removeItem(id)"><IconClose /></div>
             </div>
-            <input :placeholder="label" ref="tagInput" v-model="searchWord" />
+            <input :placeholder="label" ref="tagInput" @input="handleInput" v-model="searchWord" />
             <ul v-if="resultsBox.showBox" class="results">
                 <li v-for="keyword in keywords" :key="keyword.id" @click="addItem(keyword)" class="result">{{keyword.name}}</li>
                 <hr v-if="resultsBox.showLower && resultsBox.showUpper">
                 <li v-if="resultsBox.showLower" @click="createItem()" class="result">Create Keyword "{{searchWord}}"</li>
+                <div v-if="createStatus.loading" class="info">Creating...</div>
+                <div v-if="createStatus.error" class="info error">{{createStatus.error}}</div>
             </ul>
         </div>
         <hr>
@@ -37,6 +39,11 @@ export default {
             content: this.value,
             valueStore: {},
             searchWord: '',
+
+            createStatus: {
+                loading: false,
+                error: null,
+            }
         }
     },
     apollo: {
@@ -48,6 +55,7 @@ export default {
                 }
             },
             debounce: 500,
+            fetchPolicy: 'network-only',
             error(e) {
                 console.log('errors', e.message)
             }
@@ -71,16 +79,24 @@ export default {
             }
         },
         createItem() {
+            if (this.createStatus.loading) return
+            this.createStatus.loading = true
             this.$apollo.mutate({
                 mutation: createKeyword,
                 variables: {
                     input: this.searchWord
                 },
-            }).then(result => {
-                console.log(result)
+            }).then(({data}) => {
+                this.addItem(data.createKeyword)
+                this.createStatus.loading = false
+                this.createStatus.error = null
             }).catch(error => {
-                console.log(error, error.message)
+                this.createStatus.loading = false
+                this.createStatus.error = error
             })
+        },
+        handleInput() {
+            this.createStatus.error = null
         },
     },
     computed: {
@@ -91,7 +107,7 @@ export default {
             let keywordsLength = this.keywords ? this.keywords.length : 0
             let searchWordLength = this.searchWord.length
             return {
-                showBox: keywordsLength > 0 || searchWordLength > 0,
+                showBox: searchWordLength > 0 || searchWordLength > 1,
                 showUpper: keywordsLength > 0,
                 showLower: searchWordLength > 1,
             }
