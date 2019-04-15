@@ -36,7 +36,6 @@ export default class UniqueModel extends BaseModel {
         return Promise.resolve(parent)
             .then(() => Promise.all(this.getQuery(update, queryOptions)))
             .then(rows => {
-
                 const errors = this.parseErrors(rows);
 
                 if (Object.keys(errors).length > 0) {
@@ -59,7 +58,7 @@ export default class UniqueModel extends BaseModel {
             const knex = Model.knex();
             const query = knex((this.constructor as any).tableName)
                 .select()
-                .where(field, this[field])
+                .whereRaw(`LOWER(${field}) = ?`, [this[field].toLowerCase()])
                 .limit(1);
 
             if (update) {
