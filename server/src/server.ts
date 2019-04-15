@@ -6,7 +6,6 @@ import cookieParser from "cookie-parser";
 import { ApolloServer } from 'apollo-server-express'
 import { createServer, Server as HttpServer } from 'http'
 import { SubscriptionServer } from 'subscriptions-transport-ws'
-import { apolloUploadExpress } from 'apollo-upload-server'
 import { execute, GraphQLSchema, subscribe, DocumentNode, print, GraphQLFieldResolver, ExecutionResult } from 'graphql'
 
 import schema from './schema'
@@ -65,8 +64,6 @@ class Server {
         this.app.use(logger('dev'))
         this.app.use(cookieParser())
         this.app.use(cors(corsOptions))
-
-        this.app.post(this.options.endpoint, apolloUploadExpress())
 
         this.apollo.applyMiddleware({
             app: this.app,
