@@ -26,6 +26,8 @@ exports.up = async knex =>
     .createTable('Keyword', table => {
       table.uuid('id').primary();
       table.string('name', 64).notNullable();
+      table.bigInteger('updatedAt').notNullable();
+      table.bigInteger('createdAt').notNullable();
 
       table.unique(['name'])
     })

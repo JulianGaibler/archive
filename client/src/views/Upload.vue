@@ -10,7 +10,7 @@
         </div>
 
         <input class="uploadclick" name="selectfile" id="selectfile" @change="handleX" type="file" multiple>
-        <label class="uploadclick" for="selectfile">Choose a file</label>
+        <label class="uploadclick" for="selectfile"><IconUp /><div>Upload even more</div></label>
 
         <div class="dropzone" :class="{showDropzone: showDropzone}" ref="dropzone"></div>
     </div>
@@ -19,6 +19,8 @@
 <script>
 import Item from './Upload/Item.vue'
 import UPLOAD_FILE from '../graphql/UploadFile.gql'
+
+import IconUp from "@/assets/icon_up.svg?inline";
 
 export default {
     name: 'Upload',
@@ -30,7 +32,8 @@ export default {
         }
     },
     components: {
-        Item
+        Item,
+        IconUp
     },
     methods: {
         handleX(e) {
