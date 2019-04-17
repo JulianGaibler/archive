@@ -1,17 +1,23 @@
 import { getUsername } from '../../utils'
+import { storeFile, storeFS } from '../../FileStorage'
+import fs from 'fs'
 
 export const posts = {
 
     async uploadPosts(parent, { items }, ctx, info) {
-        const username = getUsername(ctx)
+        //const username = getUsername(ctx)
 
         for (var i = items.length - 1; i >= 0; i--) {
 
             const { title, caption, keywords, file } = items[i];
 
-            const { createReadStream, filename, mimetype, encoding } = await file
-            console.log(title, file)
+            const readyFile = await file
+
+            await storeFile(readyFile);
+
         }
+
+
 
         throw new Error(`YOU THINK YOU CAN TRICK ME? NEVER! Oh wait it's my fault [500]`)
 
