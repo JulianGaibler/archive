@@ -5,6 +5,8 @@
     "tslint-plugin-prettier"
   ],
   "rules": {
+    "indent": [true, "spaces", 4],
+    "semicolon": [true, "never"],
     "no-submodule-imports": false,
     "object-literal-sort-keys": false,
     "member-ordering": false,
