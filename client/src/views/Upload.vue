@@ -6,7 +6,7 @@
         </header>
 
         <div class="items">
-            <Item v-for="upload in uploads" :upload="upload" />
+            <Item v-for="(upload, index) in uploads" :key="upload.id" :upload="upload.payload" @delete="deleteItem(index)" />
         </div>
 
         <input class="uploadclick" name="selectfile" id="selectfile" @change="handleX" type="file" multiple>
@@ -41,11 +41,13 @@ export default {
         },
         addFiles(file) {
             this.uploads.push({
-                file,
-                // uid: ++this.counter,
-                keywords: [],
-                title: '',
-                caption: '',
+                id: ++this.counter,
+                payload: {
+                    file,
+                    keywords: [],
+                    title: '',
+                    caption: '',
+                }
             })
         },
         allowDrag(e) {
@@ -54,11 +56,17 @@ export default {
             //}
             e.preventDefault();
         },
+        deleteItem(index) {
+            this.uploads.splice(index, 1);
+        },
         async startUpload() {
+
+            const data = this.uploads.map(item => item.payload)
+
             await this.$apollo.mutate({
                 mutation: UPLOAD_FILE,
                 variables: {
-                    posts: this.uploads,
+                    posts: data,
                 },
             }).then((a)=>{
                 console.log(a)
@@ -70,7 +78,7 @@ export default {
     mounted() {
         const frame = this.$refs.frame
         const dropzone = this.$refs.dropzone
-        frame.addEventListener('dragenter', (e) => {
+        frame.addEventListener('dragenter', () => {
             this.showDropzone = true;
         });
         
@@ -79,7 +87,7 @@ export default {
         dropzone.addEventListener('dragover', this.allowDrag);
         
         // 3
-        dropzone.addEventListener('dragleave', (e) => {
+        dropzone.addEventListener('dragleave', () => {
             this.showDropzone = false;
         });
         
