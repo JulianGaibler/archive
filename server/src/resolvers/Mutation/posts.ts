@@ -5,7 +5,7 @@ import fs from 'fs'
 export const posts = {
 
     async uploadPosts(parent, { items }, ctx, info) {
-        //const username = getUsername(ctx)
+        const username = getUsername(ctx)
 
         for (var i = items.length - 1; i >= 0; i--) {
 
