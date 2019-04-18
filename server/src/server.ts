@@ -85,8 +85,8 @@ class Server {
     }
 
     stop() {
-        if (this.server) {
-            this.server.close();
+        if (this.combinedServer) {
+            this.combinedServer.close();
         }
     }
 
