@@ -1,6 +1,7 @@
 import uuid from 'uuid/v4'
 import jet from 'fs-jetpack'
 import sharp from 'sharp'
+import fileType from 'file-type'
 
 const options = {
     dist: 'public',
@@ -23,35 +24,26 @@ export interface StorageInfo {
 }
 
 
-export function checkFile({mimetype, createReadStream}: Upload) {
-
+export async function checkFile(createReadStream) {
+    return fileType.stream(createReadStream());
 }
 
-export const storeFS = ({ stream, filename }) => {
-    const path = `${filename}`
-    return new Promise((resolve, reject) =>
+export const storeFS2 = (stream, filename, transform?) => {
+    return new Promise((resolve, reject) => 
         stream()
-            .pipe(sharp().resize(90, 900))
-            .pipe(jet.createWriteStream(path))
+            .pipe(transform)
+            .pipe(jet.createWriteStream(filename))
             .on('error', error => reject(error))
-            .on('finish', () => resolve({ path }))
-    )
-}
-
-export const storeFS2 = ({ stream, filename, pipe }) => {
-    const path = `${filename}`
-    return new Promise((resolve, reject) =>
-        stream()
-            .pipe(pipe)
-            .pipe(jet.createWriteStream(path))
-            .on('error', error => reject(error))
-            .on('finish', () => resolve({ path }))
+            .on('finish', () => resolve({ filename }))
     )
 }
 
 
-export async function storeFile({mimetype, createReadStream}: Upload) {
+export async function storeFile({createReadStream}: Upload) {
     return new Promise( async (resolve, reject) => {
+
+        //const type = await checkFile(createReadStream)
+        //if (type.fileType == null) throw Error('File Format not recognized')
 
         const filename = uuid()
 
@@ -65,6 +57,8 @@ export async function storeFile({mimetype, createReadStream}: Upload) {
         let res2 = await createThumbnailImage(createReadStream, filename)
         console.log("done", res2)
 
+        //storeOriginalFile(createReadStream, filename, type.fileType)
+
         resolve({
             relHeight: 0,
             originalPath: 'x',
@@ -74,8 +68,13 @@ export async function storeFile({mimetype, createReadStream}: Upload) {
     })
 }
 
+function storeOriginalFile(createReadStream, filename, {ext}) {
+    const path = jet.path(options.dist, options.original, `${filename}.${ext}`)
+    storeFS2(createReadStream, path)
+}
+
 function createCompressedImage(createReadStream, filename: string) {
-    const basePipeline = sharp().removeAlpha().resize(900, 900, {
+    const basePipeline = () => sharp().removeAlpha().resize(900, 900, {
         fit: sharp.fit.inside,
         withoutEnlargement: true,
     })
@@ -95,7 +94,7 @@ function createCompressedImage(createReadStream, filename: string) {
     let exportConfs = exportAs.map((conf) => {
         return {
             type: conf.format,
-            sharp: basePipeline.clone().toFormat(conf.format, conf.options)
+            sharp: basePipeline().toFormat(conf.format, conf.options)
         }
     })
 
@@ -104,7 +103,7 @@ function createCompressedImage(createReadStream, filename: string) {
 }
 
 function createThumbnailImage(createReadStream, filename: string) {
-    const basePipeline = sharp().removeAlpha().resize(400, 400, {
+    const basePipeline = () => sharp().removeAlpha().resize(400, 400, {
         fit: sharp.fit.inside,
         withoutEnlargement: true,
     })
@@ -124,7 +123,7 @@ function createThumbnailImage(createReadStream, filename: string) {
     let exportConfs = exportAs.map((conf) => {
         return {
             type: conf.format,
-            sharp: basePipeline.clone().toFormat(conf.format, conf.options)
+            sharp: basePipeline().toFormat(conf.format, conf.options)
         }
     })
 
@@ -138,11 +137,11 @@ async function saveImage(createReadStream, dir, exportConfs) {
     return new Promise(async resolve => {
         for (var i = exportConfs.length - 1; i >= 0; i--) {
             const filepath = `${dir}.${exportConfs[i].type}`
-            await storeFS2({
-                stream: createReadStream,
-                filename: jet.path(options.dist, filepath),
-                pipe: exportConfs[i].sharp
-            })
+            await storeFS2(
+                createReadStream,
+                jet.path(options.dist, filepath),
+                exportConfs[i].sharp
+            )
         }
         resolve(dir)
     })
