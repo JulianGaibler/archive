@@ -1,5 +1,5 @@
 import { getUsername } from '../../utils'
-import { storeFile, storeFS } from '../../FileStorage'
+import { storeFile } from '../../FileStorage'
 import fs from 'fs'
 
 export const posts = {
@@ -13,11 +13,11 @@ export const posts = {
 
             const readyFile = await file
 
-            await storeFile(readyFile);
+            let res = await storeFile(readyFile);
+
+            console.log(res)
 
         }
-
-
 
         throw new Error(`YOU THINK YOU CAN TRICK ME? NEVER! Oh wait it's my fault [500]`)
 
