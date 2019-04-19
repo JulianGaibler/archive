@@ -2,6 +2,7 @@ import uuid from 'uuid/v4'
 import jet from 'fs-jetpack'
 import sharp from 'sharp'
 import fileType from 'file-type'
+import ffmpeg from 'fluent-ffmpeg'
 
 const options = {
     dist: 'public',
@@ -23,54 +24,67 @@ export interface StorageInfo {
     thumbnailPath: string,
 }
 
-
 export async function checkFile(createReadStream) {
     return fileType.stream(createReadStream());
 }
 
 export const storeFS2 = (stream, filename, transform?) => {
-    return new Promise((resolve, reject) => 
-        stream()
+    return new Promise((resolve, reject) => {
+        if (transform) return stream()
             .pipe(transform)
             .pipe(jet.createWriteStream(filename))
             .on('error', error => reject(error))
             .on('finish', () => resolve({ filename }))
-    )
+        else return stream()
+            .pipe(jet.createWriteStream(filename))
+            .on('error', error => reject(error))
+            .on('finish', () => resolve({ filename }))
+    })
 }
-
 
 export async function storeFile({createReadStream}: Upload) {
     return new Promise( async (resolve, reject) => {
 
-        //const type = await checkFile(createReadStream)
-        //if (type.fileType == null) throw Error('File Format not recognized')
+        const type = await checkFile(createReadStream)
+        if (type.fileType == null) throw Error('File Format not recognized')
 
         const filename = uuid()
 
-        //let video = isVideo(mimetype)
+        let video = isVideo(mimetype)
 
-        console.log("Store compressed")
-        let res1 = await createCompressedImage(createReadStream, filename)
-        console.log("done", res1)
+        let compressedPath
+        let thumbnailPath
 
-        console.log("Store thumbnail")
-        let res2 = await createThumbnailImage(createReadStream, filename)
-        console.log("done", res2)
+        if (video) {
+            compressedPath = await createCompressedVideo(createReadStream, filename)
+        } else {
+            compressedPath = await createCompressedImage(createReadStream, filename)
+        }
+        if (video) {
+            thumbnailPath = await createThumbnailVideo(createReadStream, filename)
+        } else {
+            thumbnailPath = await createThumbnailImage(createReadStream, filename)
+        }
 
-        //storeOriginalFile(createReadStream, filename, type.fileType)
+        let originalPath = await storeOriginalFile(createReadStream, filename, type.fileType)
 
         resolve({
             relHeight: 0,
-            originalPath: 'x',
-            compressedPath: 'x',
-            thumbnailPath: 'x',
+            compressedPath,
+            thumbnailPath,
+            originalPath,
         })
     })
 }
 
-function storeOriginalFile(createReadStream, filename, {ext}) {
+function createCompressedImage(createReadStream, filename: string) {
+    //ffmpeg
+}
+
+async function storeOriginalFile(createReadStream, filename, {ext}) {
     const path = jet.path(options.dist, options.original, `${filename}.${ext}`)
-    storeFS2(createReadStream, path)
+    await storeFS2(createReadStream, path)
+    return path
 }
 
 function createCompressedImage(createReadStream, filename: string) {
@@ -146,7 +160,6 @@ async function saveImage(createReadStream, dir, exportConfs) {
         resolve(dir)
     })
 }
-
 
 function isVideo(mimetype: String): boolean {
     let video;
