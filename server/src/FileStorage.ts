@@ -5,6 +5,19 @@ import fileType from 'file-type'
 import ffmpeg from 'fluent-ffmpeg'
 import tmp from 'tmp'
 
+import Task from './models/Task'
+import Post from './models/Post'
+
+interface StoreData {
+    postObject: Post,
+    typedStream: fileType.ReadableStreamWithFileType,
+    type: {
+        ext: string,
+        mime: string,
+        kind: string,
+    }
+}
+
 const options = {
     dist: 'public',
     compressed: 'compressed',
@@ -12,21 +25,61 @@ const options = {
     original: 'original',
 }
 
+function errorHandler(e) {
+    throw e
+}
 
-export function storeFile(createReadStream) {
-    return new Promise( async (resolve, reject) => {
+class FileStorage {
 
-        const s = await fileType.stream(createReadStream());
-        const {ext, mime} = await s.fileType;
+    queue: Array<any>
+
+    constructor() {
+        this.queue = []
+    }
+
+    async checkFile(data, readStream): Promise<StoreData> {
+        const postObject = Post.fromJson(data)
+        const typedStream = await fileType.stream(readStream);
+        const {ext, mime} = await typedStream.fileType;
         const kind = getKind(mime)
-        const filename = uuid()
+
+        return {
+            postObject,
+            typedStream,
+            type: {
+                ext,
+                mime,
+                kind,
+            }
+        }
+    }
+
+    async storeFile(StoreData) {
+
+        // If any of that didn't throw an error, we can 
+
+    }
+
+}
+
+export default new FileStorage();
+
+
+export async function storeFile(createReadStream) {
+
+    const stream = await fileType.stream(createReadStream());
+    const {ext, mime} = await stream.fileType;
+    const kind = getKind(mime)
+    const filename = uuid()
+
+    return new Promise( async (resolve, reject) => {
 
         let createdFiles = []
 
-        if (kind === 'video') await processVideo(s, filename)
-        if (kind === 'image') await processImage(s, filename)
+        if (kind === 'video') await processVideo(stream, filename)
+        if (kind === 'image') await processImage(stream, filename)
 
-        storeOriginal(s, filename, ext)
+        storeOriginal(stream, filename, ext)
 
         resolve({
             compressedPath: `${options.compressed}/${filename}`,

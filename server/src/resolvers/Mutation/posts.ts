@@ -1,4 +1,4 @@
-import { getUsername } from '../../utils'
+import { getUsername, to } from '../../utils'
 import { storeFile } from '../../FileStorage'
 import fs from 'fs'
 
@@ -7,29 +7,26 @@ export const posts = {
     async uploadPosts(parent, { items }, ctx, info) {
         const username = getUsername(ctx)
 
+        console.log(items)
+
+        if (!items || items.length < 1) throw new Error(`You have to at least upload one file.`)
+
         for (var i = items.length - 1; i >= 0; i--) {
+            let fields = items[i];
 
-            const { title, caption, keywords, file } = items[i];
+            let [fileErr, file] = await to(fields.file)
+            if (!file) throw fileErr
+            
+            delete fields.file
 
-            const readyFile = await file
-
-            let res = await storeFile(readyFile.createReadStream);
-
-            console.log(res)
-
+            let [storeDataErr, storeData] = await to(ctx.fileStorage.checkFile(fields, file.createReadStream()))
+            if (!storeData) throw storeDataErr
         }
 
         throw new Error(`YOU THINK YOU CAN TRICK ME? NEVER! Oh wait it's my fault [500]`)
 
         return []
 
-        //return ctx.prisma.createMeme({
-        //  title,
-        //  caption,
-        //  author: {
-        //    connect: { username },
-        //  },
-        //})
     },
 
     //async deletePost(parent, { id }, ctx, info) {

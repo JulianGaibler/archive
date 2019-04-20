@@ -9,6 +9,7 @@ import { SubscriptionServer } from 'subscriptions-transport-ws'
 import { execute, GraphQLSchema, subscribe, DocumentNode, print, GraphQLFieldResolver, ExecutionResult } from 'graphql'
 
 import schema from './schema'
+import FileStorage from './FileStorage'
 import db from './database';
 
 // TODO remove once `@types/graphql` is fixed for `execute`
@@ -47,6 +48,7 @@ class Server {
     constructor() {
         this.context = (request) => ({
             ...request,
+            fileStorage: FileStorage,
         })
 
         this.app = express();
