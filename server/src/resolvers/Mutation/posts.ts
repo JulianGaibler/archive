@@ -13,7 +13,7 @@ export const posts = {
 
             const readyFile = await file
 
-            let res = await storeFile(readyFile);
+            let res = await storeFile(readyFile.createReadStream);
 
             console.log(res)
 
