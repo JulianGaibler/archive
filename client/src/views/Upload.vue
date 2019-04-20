@@ -61,7 +61,16 @@ export default {
         },
         async startUpload() {
 
-            const data = this.uploads.map(item => item.payload)
+            const data = this.uploads.map(({payload}) => {
+                return {
+                    file: payload.file,
+                    keywords: payload.keywords,
+                    title: payload.title,
+                    caption: payload.caption.length > 0 ? payload.caption : undefined,
+                }
+            })
+
+            console.log(data)
 
             await this.$apollo.mutate({
                 mutation: UPLOAD_FILE,
@@ -69,9 +78,9 @@ export default {
                     posts: data,
                 },
             }).then((a)=>{
-                console.log(a)
+                console.log('Upload Good: ', a)
             }).catch((e)=>{
-                console.log('hmm')
+                console.log('Upload Bad: ', e)
             })
         },
     },
