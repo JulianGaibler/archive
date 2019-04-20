@@ -1,19 +1,9 @@
 scalar Upload
 scalar DateTime
 
-input NewPost {
-    title: String!
-    caption: String
-    keywords: [String!]
-    file: Upload
-}
-
-enum Format {
-    VIDEO
-    IMAGE
-    GIF
-}
-
+# 
+# Queries & Mutations
+# 
 
 type Query {
     feed: [Post!]!
@@ -26,24 +16,50 @@ type Mutation {
     signup(username: String!, name: String!, password: String!): Boolean!
     login(username: String!, password: String!): Boolean!
     logout: Boolean!
-
     uploadPosts(items: [NewPost!]): [Post!]!
-
     createKeyword(name: String!): Keyword!
-
     deletePost(id: ID!): Post!
 }
+
+# 
+
+# Inputs
+# 
+
+input NewPost {
+    title: String!
+    caption: String
+    keywords: [String!]
+    file: Upload!
+}
+
+
+# 
+# Types
+# 
 
 type Post {
     id: ID!
     title: String!
-    created: DateTime!
-    keywords: [Keyword!]!
     type: Format!
-    originalPath: String!
-    thumbnailPath: String!
+    keywords: [Keyword!]!
+    originalPath: String
+    compressedPath: String
+    thumbnailPath: String
+    relHeight: String
     uploader: User
     caption: String
+    updatedAt: DateTime!
+}
+
+type Tasks {
+    id: ID!
+    title: String!
+    notes: String!
+    status: TaskStatus!
+    uploader: User
+    createdPost: Post
+    createdAt: DateTime!
 }
 
 type Keyword {
@@ -55,4 +71,16 @@ type Keyword {
 type User {
     username: String!
     name: String!
+}
+
+enum Format {
+    VIDEO
+    IMAGE
+    GIF
+}
+enum TaskStatus {
+    DONE
+    QUEUED
+    PROCESSING
+    FAILED
 }
