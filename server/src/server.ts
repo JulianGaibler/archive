@@ -66,6 +66,7 @@ class Server {
         this.app.use(logger('dev'))
         this.app.use(cookieParser())
         this.app.use(cors(corsOptions))
+        this.app.use('/content', express.static('public'))
 
         this.apollo.applyMiddleware({
             app: this.app,
