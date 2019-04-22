@@ -14,6 +14,8 @@ export default class Post extends BaseModel {
     compressedPath?: string;
     thumbnailPath?: string;
     originalPath?: string;
+    uploaderId?: string;
+
     uploader?: User;
     keywords: Keyword[];
     caption?: string;
@@ -30,7 +32,7 @@ export default class Post extends BaseModel {
             compressedPath: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
             thumbnailPath: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
             originalPath: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
-            uploader: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
+            uploaderId: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
             caption: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
         }
     };
@@ -42,7 +44,7 @@ export default class Post extends BaseModel {
             relation: Model.BelongsToOneRelation,
             modelClass: 'User',
             join: {
-                from: 'Post.uploader',
+                from: 'Post.uploaderId',
                 to: 'User.id',
             },
         },

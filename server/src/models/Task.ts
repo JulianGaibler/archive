@@ -12,21 +12,24 @@ export default class Task extends BaseModel {
     title!: string;
     notes!: string;
     status!: string;
-    uploader?: User;
-    createdPost?: Post;
+
+    uploaderId?: string;
+    createdPostId?: string;
+
+    uploader?: User | null;
+    createdPost?: Post | null;
 
 
     static jsonSchema = {
         type: 'object',
-        required: ['name'],
 
         properties: {
             id: { type: 'string' },
             title: { type: 'string' },
             notes: { type: 'string', default: '' },
             status: { type: 'string', enum: ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'], default: 'QUEUED' },
-            uploader: { type: ['string', 'null'] },
-            createdPost: { type: ['string', 'null'], default: null },
+            uploaderId: { type: ['string', 'null'] },
+            createdPostId: { type: ['string', 'null'] },
         }
     };
 
@@ -37,7 +40,7 @@ export default class Task extends BaseModel {
             relation: Model.BelongsToOneRelation,
             modelClass: 'User',
             join: {
-                from: 'Tasks.uploader',
+                from: 'Task.uploaderId',
                 to: 'User.id',
             },
         },
@@ -45,7 +48,7 @@ export default class Task extends BaseModel {
             relation: Model.BelongsToOneRelation,
             modelClass: 'Post',
             join: {
-                from: 'Tasks.createdPost',
+                from: 'Task.createdPostId',
                 to: 'Post.id',
             },
         },
