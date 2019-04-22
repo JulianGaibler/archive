@@ -1,5 +1,5 @@
 import * as bcrypt from 'bcryptjs'
-import { performLogin, performLogout, getUsername, Context } from '../../utils'
+import { performLogin, performLogout, getUserId, Context } from '../../utils'
 
 import User from '../../models/User'
 
@@ -26,13 +26,13 @@ export const auth = {
             throw new Error('Invalid password')
         }
 
-        performLogin(ctx, user.username);
+        performLogin(ctx, user.id);
 
         return true
     },
 
     async logout(parent, { }, ctx: Context) {
-        const username = getUsername(ctx);
+        getUserId(ctx);
 
         performLogout(ctx);
 

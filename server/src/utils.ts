@@ -8,18 +8,18 @@ export interface Context {
     req: Request
 }
 
-export function getUsername(ctx: Context) {
+export function getUserId(ctx: Context) {
     const Authorization = ctx.req.cookies.token
     if (Authorization) {
-        const { username } = jwt.verify(Authorization, process.env.APP_SECRET) as { username: string }
-        return username
+        const { userId } = jwt.verify(Authorization, process.env.APP_SECRET) as { userId: string }
+        return userId
     }
 
     throw new AuthError()
 }
 
-export function performLogin(ctx: Context, username: String) {
-    const token = jwt.sign({ username }, process.env.APP_SECRET)
+export function performLogin(ctx: Context, userId: String) {
+    const token = jwt.sign({ userId }, process.env.APP_SECRET)
     ctx.res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -28,7 +28,7 @@ export function performLogin(ctx: Context, username: String) {
 }
 
 export function performLogout(ctx: Context) {
-    getUsername(ctx);
+    getUserId(ctx);
 
     ctx.res.clearCookie('token', {
         httpOnly: true,
