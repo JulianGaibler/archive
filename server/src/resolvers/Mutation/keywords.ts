@@ -1,20 +1,20 @@
-import { getUsername } from '../../utils'
+import { getUserId } from '../../utils'
 
 import Keyword from '../../models/Keyword'
 
 export const keywords = {
 
     async createKeyword(parent, { name }, ctx, info) {
-        const username = getUsername(ctx)
+        const userId = getUserId(ctx)
 
         return Keyword.query().insert({ name })
     },
 
     //async deleteKeyword(parent, { id }, ctx, info) {
-    //    const username = getUsername(ctx)
+    //    const userId = getUserId(ctx)
     //    const postExists = await ctx.prisma.$exists.meme({
     //        id,
-    //        uploader: { username },
+    //        uploader: { userId },
     //    })
     //    if (!postExists) {
     //        throw new Error(`Post not found or you're not the author`)

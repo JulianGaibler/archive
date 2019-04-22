@@ -1,13 +1,13 @@
-import { getUsername, to } from '../../utils'
 import { storeFile } from '../../FileStorage'
 import fs from 'fs'
+import { getUserId, to } from '../../utils'
 
 export const posts = {
 
     async uploadPosts(parent, { items }, ctx, info) {
-        const username = getUsername(ctx)
 
         console.log(items)
+        const userId = getUserId(ctx)
 
         if (!items || items.length < 1) throw new Error(`You have to at least upload one file.`)
 

@@ -1,4 +1,4 @@
-import { getUsername, Context } from '../utils'
+import { getUserId, Context } from '../utils'
 
 import User from '../models/User'
 import Keyword from '../models/Keyword'
@@ -18,8 +18,8 @@ export const Query = {
   },
 
   async me(parent, args, ctx: Context) {
-    const username = getUsername(ctx)
-    const user = await User.query().findOne({ username })
+    const id = getUserId(ctx)
+    const user = await User.query().findOne({ id })
     delete user.password;
     return user
   },
