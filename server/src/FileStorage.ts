@@ -18,6 +18,11 @@ interface StoreData {
     }
 }
 
+interface QueueItem {
+    taskObject: Task,
+    data: StoreData
+}
+
 const options = {
     dist: 'public',
     compressed: 'compressed',
@@ -31,7 +36,7 @@ function errorHandler(e) {
 
 class FileStorage {
 
-    queue: Array<any>
+    queue: Array<QueueItem>
 
     constructor() {
         this.queue = []
@@ -47,47 +52,58 @@ class FileStorage {
             postObject,
             typedStream,
             type: {
-                ext,
-                mime,
-                kind,
+                ext, mime, kind,
             }
         }
     }
 
-    async storeFile(StoreData) {
+    async storeFile(data: StoreData) {
+        const newTask = await Task.query().insert({ title: data.postObject.title, uploaderId: data.postObject.uploaderId })
 
-        // If any of that didn't throw an error, we can 
+        this.queue.push({ taskObject: newTask, data })
+        this.checkQueue()
 
+        return newTask.id
+    }
+
+    private async checkQueue() {
+        if (this.queue.length < 1) return;
+
+        const activeTasks = await Task.query().where({ status: 'PROCESSING' }).count() as any
+        if (parseInt(activeTasks[0].count) > 0) return;
+
+        const item = this.queue.shift()
+        await item.taskObject.$query().update({ status: 'PROCESSING' })
+        this.processItem(item)
+    }
+
+    private async processItem({taskObject, data}: QueueItem) {
+
+        const {postObject, typedStream, type} = data
+        const filename = taskObject.id;
+    
+        if (type.kind === 'video') await processVideo(typedStream, filename)
+        if (type.kind === 'image') await processImage(typedStream, filename)
+    
+        await storeOriginal(typedStream, filename, type.ext)
+
+        postObject.compressedPath = `${options.compressed}/${filename}`
+        postObject.thumbnailPath = `${options.thumbnail}/${filename}`
+        postObject.originalPath = `${options.original}/${filename}.${type.ext}`
+        
+        if (data.type.mime === 'image/gif') postObject.type = 'GIF'
+        else if (data.type.kind === 'video') postObject.type = 'VIDEO'
+        else postObject.type = 'IMAGE'
+
+        await Post.query().insert(postObject)
+        await taskObject.$query().update({ status: 'DONE' })
+
+        this.checkQueue()
     }
 
 }
 
 export default new FileStorage();
-
-
-export async function storeFile(createReadStream) {
-
-    const stream = await fileType.stream(createReadStream());
-    const {ext, mime} = await stream.fileType;
-    const kind = getKind(mime)
-    const filename = uuid()
-
-    return new Promise( async (resolve, reject) => {
-
-        let createdFiles = []
-
-        if (kind === 'video') await processVideo(stream, filename)
-        if (kind === 'image') await processImage(stream, filename)
-
-        storeOriginal(stream, filename, ext)
-
-        resolve({
-            compressedPath: `${options.compressed}/${filename}`,
-            thumbnailPath: `${options.thumbnail}/${filename}`,
-            originalPath: `${options.original}/${filename}.${ext}`,
-        })
-    })
-}
 
 async function createThumbnail(readStream, filename: string) {
 
@@ -128,7 +144,6 @@ async function processImage(readStream, filename: string) {
 
 function storeFS(stream, filename) {
   return new Promise((resolve, reject) => {
-        console.log('started')
         stream
             .on('error', error => {
               if (stream.truncated)
@@ -136,11 +151,9 @@ function storeFS(stream, filename) {
             })
             .pipe(jet.createWriteStream(filename))
             .on('error', error => {
-                console.log('error here', error)
                 reject(error)
             })
             .on('finish', () => {
-                console.log('done here')
                 resolve(filename)
             })
   })
@@ -157,8 +170,6 @@ async function processVideo(readStream, filename: string) {
     let tmpDir = tmp.dirSync();
     let tmpFilename = `${filename}.png`;
 
-    console.log('start');
-
     await (() => new Promise((resolve, reject) => {
        ffmpeg(tmpFile.name)
            .screenshots({
@@ -167,7 +178,6 @@ async function processVideo(readStream, filename: string) {
                folder: tmpDir.name,
            })
            .on('error', e => {
-               console.log('ffmpeg ss:', e)
                reject(e)
            })
            .on('end', ()=>{
@@ -176,9 +186,6 @@ async function processVideo(readStream, filename: string) {
     }))()
 
     const tmpPath = jet.path(tmpDir.name, tmpFilename)
-
-    console.log(tmpPath)
-
 
     const { height } = await sharp(tmpPath).metadata()
 
@@ -189,20 +196,27 @@ async function processVideo(readStream, filename: string) {
 
     const outputHeight = height > 720 ? 720 : height
 
-    // Video generator
+    await (() => new Promise((resolve, reject) => {
     ffmpeg(tmpFile.name)
         .output(`${compressed}.mp4`)
         .size(`?x${outputHeight}`)
         .outputOptions(['-pix_fmt yuv420p', '-deinterlace', '-vsync 1', '-vcodec libx264', '-b:v: 2500k', '-bufsize 2M', '-maxrate 4500k', '-profile:v main', '-tune film', '-g 60', '-x264opts no-scenecut', '-acodec aac', '-b:a 192k', '-ac 2', '-ar 44100', '-f mp4'])
+        .on('error', reject)
+        .on('end', resolve)
         .run()
+    }))()
 
+    await (() => new Promise((resolve, reject) => {
     ffmpeg(tmpFile.name)
         .output(`${compressed}.webm`)
         .size(`?x${outputHeight}`)
         .outputOptions(['-pix_fmt yuv420p', '-deinterlace', '-vsync 1', '-c:v libvpx-vp9', '-cpu-used 2', '-b:v: 2000k', '-bufsize 1000k', '-maxrate 3000k', '-c:a libopus', '-b:a 192k', '-f webm',])
+        .on('error', reject)
+        .on('end', resolve)
         .run()
+    }))()
 
-    // ToDo: Delete temp-files
+    tmpFile.removeCallback()
 }
 
 async function storeOriginal(readStream, filename, ext) {
