@@ -8,6 +8,7 @@ scalar DateTime
 type Query {
     feed: [Post!]!
     keywords(search: String): [Keyword!]!
+    tasks: [Task!]!
     post(id: ID!): Post
     me: User
 }
@@ -16,7 +17,7 @@ type Mutation {
     signup(username: String!, name: String!, password: String!): Boolean!
     login(username: String!, password: String!): Boolean!
     logout: Boolean!
-    uploadPosts(items: [NewPost!]): [Post!]!
+    uploadPosts(items: [NewPost!]): [Task!]!
     createKeyword(name: String!): Keyword!
     deletePost(id: ID!): Post!
 }
@@ -52,7 +53,7 @@ type Post {
     updatedAt: DateTime!
 }
 
-type Tasks {
+type Task {
     id: ID!
     title: String!
     notes: String!

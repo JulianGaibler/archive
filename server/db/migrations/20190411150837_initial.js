@@ -18,8 +18,9 @@ exports.up = async knex =>
       table.string('compressedPath');
       table.string('thumbnailPath');
       table.string('relHeight');
-      table.uuid('uploader').references('User.id');
+      table.uuid('uploaderId').references('User.id');
       table.text('caption');
+      table.boolean('private');
       table.bigInteger('updatedAt').notNullable();
       table.bigInteger('createdAt').notNullable();
 
@@ -38,8 +39,8 @@ exports.up = async knex =>
       table.string('title').notNullable();
       table.text('notes').notNullable();
       table.enu('status', ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'], { useNative: true, enumName: 'TaskStatus' }).notNullable();
-      table.uuid('uploader').references('User.id');
-      table.uuid('createdPost').references('Post.id');
+      table.uuid('uploaderId').references('User.id');
+      table.uuid('createdPostId').references('Post.id');
       table.bigInteger('updatedAt').notNullable();
       table.bigInteger('createdAt').notNullable();
     })
