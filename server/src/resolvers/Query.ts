@@ -1,7 +1,9 @@
 import { getUserId, Context } from '../utils'
+import graphqlFields from 'graphql-fields'
 
 import User from '../models/User'
 import Keyword from '../models/Keyword'
+import Task from '../models/Task'
 
 export const Query = {
   feed(parent, args, ctx: Context) {
@@ -10,6 +12,14 @@ export const Query = {
 
   post(parent, { id }, ctx: Context) {
     //return ctx.prisma.post({ id })
+  },
+
+  async tasks(parent, args, ctx: Context, info) {
+    const topLevelFields = Object.keys(graphqlFields(info));
+    let query = Task.query()
+    if (topLevelFields.includes('uploader')) query = query.eager('uploader')
+    if (topLevelFields.includes('createdPost')) query = query.eager('createdPost')
+    return await query
   },
 
   async keywords(parent, { search }, ctx: Context) {
