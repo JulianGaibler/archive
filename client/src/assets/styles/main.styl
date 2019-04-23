@@ -109,6 +109,23 @@ header
         transition opacity .1s
         &.visible
             opacity 1
+    
+    &.error
+        hr
+            border-color $archive-prim
+        label, input, textarea
+            color $archive-prim
+
+    .error
+        font-weight 500
+        color $archive-darkgrey
+        text-transform uppercase
+        font-size .8em
+        padding-left 1rem
+        margin-bottom .5rem
+        li
+            display list-item
+            list-style-type disc
 
 
 .upload
@@ -166,6 +183,10 @@ header
                 object-fit cover
         .data
             flex 1
+            > .error
+                font-weight 500
+                color $archive-prim
+                text-transform uppercase
 
 .footer
     position fixed
