@@ -14,7 +14,7 @@ export const posts = {
         let error = false
         let results = []
 
-        for (var i = items.length - 1; i >= 0; i--) {
+        for (let i = 0; i < items.length; i++) {
             let fields = items[i];
 
             let [fileErr, file] = await to(fields.file)
@@ -33,13 +33,15 @@ export const posts = {
                 return { index: idx, error: item[0] }
             })
             .filter(item => item.error)
+            
             console.log(errors)
+
             throw new UserInputError('Upload Items invalid', errors);
         }
 
         let taskIds = []
 
-        for (var i = items.length - 1; i >= 0; i--) {
+        for (let i = 0; i < items.length; i++) {
             const taskId = await ctx.fileStorage.storeFile(results[i][1])
             taskIds.push(taskId)
         }

@@ -1,12 +1,10 @@
-import uuid from 'uuid/v4'
-import jet from 'fs-jetpack'
-import sharp from 'sharp'
 import fileType from 'file-type'
-import ffmpeg from 'fluent-ffmpeg'
-import tmp from 'tmp'
+import jet from 'fs-jetpack'
 
 import Task from './models/Task'
 import Post from './models/Post'
+import FileProcessor from './FileStorage/FileProcessor'
+import { to } from './utils'
 
 interface StoreData {
     postObject: Post,
@@ -37,9 +35,18 @@ function errorHandler(e) {
 class FileStorage {
 
     queue: Array<QueueItem>
+    private static instance: FileStorage;
 
-    constructor() {
+    static getInstance(): FileStorage {
+        if (!FileStorage.instance) {
+          FileStorage.instance = new FileStorage();
+        }
+        return FileStorage.instance;
+    }
+
+    private constructor() {
         this.queue = []
+        performCleanup()
     }
 
     async checkFile(data, readStream): Promise<StoreData> {
@@ -58,7 +65,7 @@ class FileStorage {
     }
 
     async storeFile(data: StoreData) {
-        const newTask = await Task.query().insert({ title: data.postObject.title, uploaderId: data.postObject.uploaderId })
+        const newTask = await Task.query().insert({ title: data.postObject.title, uploaderId: data.postObject.uploaderId, ext: data.type.ext })
 
         this.queue.push({ taskObject: newTask, data })
         this.checkQueue()
@@ -81,149 +88,58 @@ class FileStorage {
 
         const {postObject, typedStream, type} = data
         const filename = taskObject.id;
+
+        let processor = new FileProcessor()
     
-        if (type.kind === 'video') await processVideo(typedStream, filename)
-        if (type.kind === 'image') await processImage(typedStream, filename)
+        let processError, storeError
+
+        if (type.kind === 'video') [processError] = await to(processor.processVideo(typedStream, filename))
+        if (type.kind === 'image') [processError] = await to(processor.processImage(typedStream, filename))
     
-        await storeOriginal(typedStream, filename, type.ext)
+        if (!processError) [storeError] = await to(processor.storeOriginal(typedStream, filename, type.ext))
 
         postObject.compressedPath = `${options.compressed}/${filename}`
         postObject.thumbnailPath = `${options.thumbnail}/${filename}`
         postObject.originalPath = `${options.original}/${filename}.${type.ext}`
         
+        if (processError || storeError) {
+
+            if (processError) console.log(processError)
+            else if (storeError) console.log(storeError)
+
+            deleteFiles(filename, type.ext)
+            await taskObject.$query().update({ status: 'FAILED', notes: processor.notes })
+
+            this.checkQueue()
+            return;
+        }
+
         if (data.type.mime === 'image/gif') postObject.type = 'GIF'
         else if (data.type.kind === 'video') postObject.type = 'VIDEO'
         else postObject.type = 'IMAGE'
 
-        await Post.query().insert(postObject)
-        await taskObject.$query().update({ status: 'DONE' })
+        const newPost = await Post.query().insert(postObject)
+        await taskObject.$query().update({ status: 'DONE', createdPostId: newPost.id, notes: processor.notes })
 
         this.checkQueue()
     }
 
 }
 
-export default new FileStorage();
+export default FileStorage.getInstance();
 
-async function createThumbnail(readStream, filename: string) {
-
-    const compressed = jet.path(options.dist, options.thumbnail, filename)
-
-    const wsJpeg = jet.createWriteStream(`${compressed}.jpeg`)
-    const wsWebp = jet.createWriteStream(`${compressed}.webp`)
-
-    const transform = sharp().removeAlpha().resize(400, 400, {
-        fit: sharp.fit.inside,
+function deleteFiles(filename: string, ext: string) {
+    [
+        `${options.compressed}/${filename}.mp4`,
+        `${options.compressed}/${filename}.webm`,
+        `${options.compressed}/${filename}.png`,
+        `${options.compressed}/${filename}.webp`,
+        `${options.thumbnail}/${filename}.jpeg`,
+        `${options.thumbnail}/${filename}.webp`,
+        `${options.original}/${filename}.${ext}`,
+    ].forEach(item => {
+        jet.removeAsync(jet.path(options.dist, item));
     })
-
-    transform.clone().toFormat('jpeg', { quality: 50, progressive: true }).pipe(wsJpeg)
-    transform.clone().toFormat('webp', { quality: 50 }).pipe(wsWebp)
-
-    readStream.pipe(transform)
-}
-
-async function processImage(readStream, filename: string) {
-
-    const compressed = jet.path(options.dist, options.compressed, filename)
-
-    const wsPng = jet.createWriteStream(`${compressed}.png`)
-    const wsWebp = jet.createWriteStream(`${compressed}.webp`)
-
-    const transform = sharp().removeAlpha().resize(900, 900, {
-        fit: sharp.fit.inside,
-        withoutEnlargement: true,
-    })
-
-    transform.clone().toFormat('png', { progressive: true }).pipe(wsPng)
-    transform.clone().toFormat('webp', { quality: 90, nearLossless: true }).pipe(wsWebp)
-
-    readStream.pipe(transform)
-
-    await createThumbnail(readStream, filename)
-}
-
-function storeFS(stream, filename) {
-  return new Promise((resolve, reject) => {
-        stream
-            .on('error', error => {
-              if (stream.truncated)
-              reject(error)
-            })
-            .pipe(jet.createWriteStream(filename))
-            .on('error', error => {
-                reject(error)
-            })
-            .on('finish', () => {
-                resolve(filename)
-            })
-  })
-}
-
-async function processVideo(readStream, filename: string) {
-    const compressed = jet.path(options.dist, options.compressed, filename)
-
-    // Store video in our own temp-file
-    const tmpFile = tmp.fileSync()
-    await storeFS(readStream, tmpFile.name)
-
-    // Create temp dir for screenshot -_-
-    let tmpDir = tmp.dirSync();
-    let tmpFilename = `${filename}.png`;
-
-    await (() => new Promise((resolve, reject) => {
-       ffmpeg(tmpFile.name)
-           .screenshots({
-               timestamps: [1],
-               filename: tmpFilename,
-               folder: tmpDir.name,
-           })
-           .on('error', e => {
-               reject(e)
-           })
-           .on('end', ()=>{
-               resolve()
-           })
-    }))()
-
-    const tmpPath = jet.path(tmpDir.name, tmpFilename)
-
-    const { height } = await sharp(tmpPath).metadata()
-
-    await createThumbnail(jet.createReadStream(tmpPath), filename)
-
-    jet.remove(tmpPath)
-    tmpDir.removeCallback()
-
-    const outputHeight = height > 720 ? 720 : height
-
-    await (() => new Promise((resolve, reject) => {
-    ffmpeg(tmpFile.name)
-        .output(`${compressed}.mp4`)
-        .size(`?x${outputHeight}`)
-        .outputOptions(['-pix_fmt yuv420p', '-deinterlace', '-vsync 1', '-vcodec libx264', '-b:v: 2500k', '-bufsize 2M', '-maxrate 4500k', '-profile:v main', '-tune film', '-g 60', '-x264opts no-scenecut', '-acodec aac', '-b:a 192k', '-ac 2', '-ar 44100', '-f mp4'])
-        .on('error', reject)
-        .on('end', resolve)
-        .run()
-    }))()
-
-    await (() => new Promise((resolve, reject) => {
-    ffmpeg(tmpFile.name)
-        .output(`${compressed}.webm`)
-        .size(`?x${outputHeight}`)
-        .outputOptions(['-pix_fmt yuv420p', '-deinterlace', '-vsync 1', '-c:v libvpx-vp9', '-cpu-used 2', '-b:v: 2000k', '-bufsize 1000k', '-maxrate 3000k', '-c:a libopus', '-b:a 192k', '-f webm',])
-        .on('error', reject)
-        .on('end', resolve)
-        .run()
-    }))()
-
-    tmpFile.removeCallback()
-}
-
-async function storeOriginal(readStream, filename, ext) {
-    const path = jet.path(options.dist, options.original, `${filename}.${ext}`)
-    const ws = jet.createWriteStream(path)
-    readStream.pipe(ws)
-    return path
 }
 
 function getKind(mimetype: String): string {
@@ -236,6 +152,27 @@ function getKind(mimetype: String): string {
         case 'video':
             return 'video'
         default:
-            throw Error('Unsupported File-Type')
+            throw new FileStorageError('File-Type is not supported')
+    }
+}
+
+async function performCleanup() {
+    const result = (await Task.query().select('id', 'ext').where({ status: 'QUEUED' }).orWhere({ status: 'PROCESSING' }))
+    if (result.length < 1) return;
+    result.forEach(({id, ext}) => {
+        deleteFiles(id, ext)
+    })
+    await Task.query().update({ status: 'FAILED', notes: 'Marked as failed and cleaned up after server restart' }).findByIds(result.map(({id})=>id))
+}
+
+class FileStorageError extends Error {
+    name = 'FileStorageError'
+    data
+
+    constructor(msg) {
+        super(msg)
+        this.data = {
+            general: msg
+        }
     }
 }
