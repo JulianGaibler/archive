@@ -7,9 +7,10 @@
             </div>
         </div>
         <div class="data">
-            <InputField :type="'text'" v-model="upload.title" :label="'Title'" />
-            <InputField :type="'textarea'" v-model="upload.caption" :label="'Caption'" />
-            <InputKeywords v-model="upload.keywords" :label="'Keywords'" />
+            <div v-if="upload.errors.general" class="error">{{upload.errors.general}}</div>
+            <InputField :type="'text'" v-model="upload.payload.title" :label="'Title'" :errors="upload.errors.title" />
+            <InputField :type="'textarea'" v-model="upload.payload.caption" :label="'Caption'" :errors="upload.errors.caption" />
+            <InputKeywords v-model="upload.payload.keywords" :label="'Keywords'" />
         </div>
     </div>
 </template>
@@ -34,9 +35,9 @@ export default {
         let reader  = new FileReader();
         reader.addEventListener("load", function () {
             this.imagePreview = reader.result;
-            this.fileType = this.upload.file.type.split('/')[0]
+            this.fileType = this.upload.payload.file.type.split('/')[0]
         }.bind(this), false);
-        reader.readAsDataURL( this.upload.file );
+        reader.readAsDataURL( this.upload.payload.file );
     },
 }
 </script>

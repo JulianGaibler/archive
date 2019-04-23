@@ -6,7 +6,7 @@
         </header>
 
         <div class="items">
-            <Item v-for="(upload, index) in uploads" :key="upload.id" :upload="upload.payload" @delete="deleteItem(index)" />
+            <Item v-for="(upload, index) in uploads" :key="upload.id" :upload="upload" @delete="deleteItem(index)" />
         </div>
 
         <input class="uploadclick" name="selectfile" id="selectfile" @change="handleX" type="file" multiple>
@@ -42,6 +42,7 @@ export default {
         addFiles(file) {
             this.uploads.push({
                 id: ++this.counter,
+                errors: [],
                 payload: {
                     file,
                     keywords: [],
@@ -61,6 +62,10 @@ export default {
         },
         async startUpload() {
 
+            this.uploads.forEach(item => {
+                item.errors = []
+            })
+
             const data = this.uploads.map(({payload}) => {
                 return {
                     file: payload.file,
@@ -70,8 +75,7 @@ export default {
                 }
             })
 
-            console.log(data)
-
+            
             await this.$apollo.mutate({
                 mutation: UPLOAD_FILE,
                 variables: {
@@ -80,7 +84,20 @@ export default {
             }).then((a)=>{
                 console.log('Upload Good: ', a)
             }).catch((e)=>{
-                console.log('Upload Bad: ', e)
+                if (e.graphQLErrors) {
+                    for (var i = e.graphQLErrors.length - 1; i >= 0; i--) {
+                        if (e.graphQLErrors[i].extensions.code !== 'BAD_USER_INPUT') continue
+                        this.handleInputErrors(e.graphQLErrors[i].extensions.exception)
+                        break
+                    }
+                }
+            })
+        },
+        handleInputErrors(errors) {
+            Object.keys(errors).forEach(key => {
+                if (key === 'stacktrace') return;
+                console.log(errors)
+                this.uploads[errors[key].index].errors = errors[key].error.data
             })
         },
     },

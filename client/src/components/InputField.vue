@@ -1,5 +1,5 @@
 <template>
-    <div class="inputField light">
+    <div class="inputField light" :class="{error: errors}">
         <textarea
             v-if="type==='textarea'"
             ref="textarea"
@@ -12,6 +12,10 @@
         <input v-else v-model="content" :type="type" :placeholder="label" @input="handleInput" />
         <hr>
         <label :class="{ visible: showLabel }">{{label}}</label>
+
+        <ul v-if="errors" class="error">
+            <li v-for="error in errors" :key="error.message">{{error.message}}</li>
+        </ul>
     </div>
 </template>
 
@@ -23,6 +27,7 @@ export default {
         value: String,
         label: String,
         type: String,
+        errors: Array,
     },
     data() {
         return {
