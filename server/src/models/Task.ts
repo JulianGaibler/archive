@@ -12,6 +12,7 @@ export default class Task extends BaseModel {
     title!: string;
     notes!: string;
     status!: string;
+    ext!: string;
 
     uploaderId?: string;
     createdPostId?: string;
@@ -26,6 +27,7 @@ export default class Task extends BaseModel {
         properties: {
             id: { type: 'string' },
             title: { type: 'string' },
+            ext: { type: 'string' },
             notes: { type: 'string', default: '' },
             status: { type: 'string', enum: ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'], default: 'QUEUED' },
             uploaderId: { type: ['string', 'null'] },

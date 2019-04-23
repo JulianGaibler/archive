@@ -20,7 +20,6 @@ exports.up = async knex =>
       table.string('relHeight');
       table.uuid('uploaderId').references('User.id');
       table.text('caption');
-      table.boolean('private');
       table.bigInteger('updatedAt').notNullable();
       table.bigInteger('createdAt').notNullable();
 
@@ -37,6 +36,7 @@ exports.up = async knex =>
     .createTable('Task', table => {
       table.uuid('id').primary();
       table.string('title').notNullable();
+      table.string('ext', 10).notNullable();
       table.text('notes').notNullable();
       table.enu('status', ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'], { useNative: true, enumName: 'TaskStatus' }).notNullable();
       table.uuid('uploaderId').references('User.id');
