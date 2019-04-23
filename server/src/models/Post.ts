@@ -33,7 +33,7 @@ export default class Post extends BaseModel {
             thumbnailPath: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
             originalPath: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
             uploaderId: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
-            caption: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
+            caption: { type: ['string', 'null'], minLength: 4, maxLength: 64 },
         }
     };
 
