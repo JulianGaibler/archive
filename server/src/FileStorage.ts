@@ -4,11 +4,13 @@ import jet from 'fs-jetpack'
 import Task from './models/Task'
 import Post from './models/Post'
 import FileProcessor from './FileStorage/FileProcessor'
+import {Mutex, MutexInterface} from 'async-mutex';
 import { to } from './utils'
 
 interface StoreData {
     postObject: Post,
     typedStream: fileType.ReadableStreamWithFileType,
+
     type: {
         ext: string,
         mime: string,
@@ -34,7 +36,8 @@ function errorHandler(e) {
 
 class FileStorage {
 
-    queue: Array<QueueItem>
+    private queue: Array<QueueItem>
+    private taskMutex: Mutex
     private static instance: FileStorage;
 
     static getInstance(): FileStorage {
@@ -46,7 +49,8 @@ class FileStorage {
 
     private constructor() {
         this.queue = []
-        performCleanup()
+        this.taskMutex = new Mutex()
+        this.performCleanup()
     }
 
     async checkFile(data, readStream): Promise<StoreData> {
@@ -76,12 +80,17 @@ class FileStorage {
     private async checkQueue() {
         if (this.queue.length < 1) return;
 
-        const activeTasks = await Task.query().where({ status: 'PROCESSING' }).count() as any
-        if (parseInt(activeTasks[0].count) > 0) return;
+        const release = await this.taskMutex.acquire()
+        try {
+            const activeTasks = await Task.query().where({ status: 'PROCESSING' }).count() as any
+            if (parseInt(activeTasks[0].count) > 0) return;
 
-        const item = this.queue.shift()
-        await item.taskObject.$query().update({ status: 'PROCESSING' })
-        this.processItem(item)
+            const item = this.queue.shift()
+            await item.taskObject.$query().update({ status: 'PROCESSING' })
+            this.processItem(item)
+        } finally {
+            release()
+        }
     }
 
     private async processItem({taskObject, data}: QueueItem) {
@@ -124,6 +133,20 @@ class FileStorage {
         this.checkQueue()
     }
 
+    private async performCleanup() {
+        const release = await this.taskMutex.acquire()
+        try {
+            const result = (await Task.query().select('id', 'ext').where({ status: 'QUEUED' }).orWhere({ status: 'PROCESSING' }))
+            if (result.length < 1) return;
+            result.forEach(({id, ext}) => {
+                deleteFiles(id, ext)
+            })
+            await Task.query().update({ status: 'FAILED', notes: 'Marked as failed and cleaned up after server restart' }).findByIds(result.map(({id})=>id))
+        } finally {
+            release()
+        }
+    }
+
 }
 
 export default FileStorage.getInstance();
@@ -154,15 +177,6 @@ function getKind(mimetype: String): string {
         default:
             throw new FileStorageError('File-Type is not supported')
     }
-}
-
-async function performCleanup() {
-    const result = (await Task.query().select('id', 'ext').where({ status: 'QUEUED' }).orWhere({ status: 'PROCESSING' }))
-    if (result.length < 1) return;
-    result.forEach(({id, ext}) => {
-        deleteFiles(id, ext)
-    })
-    await Task.query().update({ status: 'FAILED', notes: 'Marked as failed and cleaned up after server restart' }).findByIds(result.map(({id})=>id))
 }
 
 class FileStorageError extends Error {
