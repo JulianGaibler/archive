@@ -26,6 +26,21 @@ h1
 
 header
     margin $archive-margin
+    display flex
+    align-items: center
+    .spacer
+        flex 1
+
+
+button
+    background $archive-black
+    color $archive-white
+    padding .5rem 1.5rem
+    border-radius $archive-radius
+    &:focus
+        background $archive-darkgrey
+    &:active
+        background $archive-prim
 
 .inputButton
     background $archive-prim = #d4213a
@@ -143,17 +158,36 @@ header
         position absolute
         z-index -1
     label.uploadclick
-        card-radius true true
-        display block
-        padding 1.25rem 1.5rem 1.5rem 1.5rem
-        text-align center
-        background $archive-grey
-        color $archive-prim
-        font-weight 500
-        svg
-            height 2rem
-            width auto
-            stroke $archive-prim
+        overflow hidden
+        padding-top 1rem
+        &:hover, &:focus
+            .wrapper
+                transform: translate(0, -1rem)
+        &:active
+            .wrapper
+                background darken($archive-grey, 5)
+        .wrapper
+            card-radius true true
+            display block
+            padding 1.25rem 1.5rem 2.5rem 1.5rem
+            margin-bottom -1rem
+            text-align center
+            background $archive-grey
+            color $archive-prim
+            font-weight 500
+            transition transform .2s
+            box-sizing border-box
+            width 24rem
+            margin-left $archive-margin
+            svg
+                height 2rem
+                width auto
+                stroke $archive-prim
+            @media screen and (max-width: $archive-screen-mid)
+                box-sizing content-box
+                width auto
+                margin-left initial
+            
     .dropzone
         position absolute
         visibility hidden
@@ -187,6 +221,10 @@ header
                 font-weight 500
                 color $archive-prim
                 text-transform uppercase
+        @media screen and (max-width: $archive-screen-mid)
+            flex-direction column
+            .preview
+                margin 0 auto 2rem auto
 
 .footer
     position fixed

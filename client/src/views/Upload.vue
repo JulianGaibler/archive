@@ -2,7 +2,8 @@
     <div class="frame upload" ref="frame">
         <header>
             <h1>Upload</h1>
-            <button @click="startUpload">Upload</button>
+            <span class="spacer"></span>
+            <button @click="startUpload">Send</button>
         </header>
 
         <div class="items">
@@ -10,7 +11,7 @@
         </div>
 
         <input class="uploadclick" name="selectfile" id="selectfile" @change="handleX" type="file" multiple>
-        <label class="uploadclick" for="selectfile"><IconUp /><div>Upload even more</div></label>
+        <label class="uploadclick" for="selectfile"><div class="wrapper"><IconUp /><div>Upload even more</div></div></label>
 
         <div class="dropzone" :class="{showDropzone: showDropzone}" ref="dropzone"></div>
     </div>
