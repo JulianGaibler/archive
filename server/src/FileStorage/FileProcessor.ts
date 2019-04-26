@@ -56,7 +56,7 @@ export default class FileProcessor {
         let tmpDir = tmp.dirSync();
         let tmpFilename = `${filename}.png`;
 
-        await (() => new Promise((resolve, reject) => {
+        await new Promise((resolve, reject) => {
            ffmpeg(tmpFile.name)
                .screenshots({
                    timestamps: [1],
@@ -69,7 +69,7 @@ export default class FileProcessor {
                .on('end', ()=>{
                    resolve()
                })
-        }))()
+        })
 
         const tmpPath = jet.path(tmpDir.name, tmpFilename)
 
@@ -82,7 +82,7 @@ export default class FileProcessor {
 
         const outputHeight = height > 720 ? 720 : height
 
-        await (() => new Promise((resolve, reject) => {
+        await new Promise((resolve, reject) => {
         ffmpeg(tmpFile.name)
             .output(`${compressed}.mp4`)
             .size(`?x${outputHeight}`)
@@ -90,9 +90,9 @@ export default class FileProcessor {
             .on('error', reject)
             .on('end', resolve)
             .run()
-        }))()
+        })
 
-        await (() => new Promise((resolve, reject) => {
+        await new Promise((resolve, reject) => {
         ffmpeg(tmpFile.name)
             .output(`${compressed}.webm`)
             .size(`?x${outputHeight}`)
@@ -100,7 +100,7 @@ export default class FileProcessor {
             .on('error', reject)
             .on('end', resolve)
             .run()
-        }))()
+        })
 
         tmpFile.removeCallback()
     }
