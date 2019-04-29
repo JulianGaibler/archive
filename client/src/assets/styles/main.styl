@@ -150,43 +150,6 @@ button
     position relative
     .items
         flex-grow 1
-    input.uploadclick
-        width 0.1px
-        height 0.1px
-        opacity 0
-        overflow hidden
-        position absolute
-        z-index -1
-    label.uploadclick
-        overflow hidden
-        padding-top 1rem
-        &:hover, &:focus
-            .wrapper
-                transform: translate(0, -1rem)
-        &:active
-            .wrapper
-                background darken($archive-grey, 5)
-        .wrapper
-            card-radius true true
-            display block
-            padding 1.25rem 1.5rem 2.5rem 1.5rem
-            margin-bottom -1rem
-            text-align center
-            background $archive-grey
-            color $archive-prim
-            font-weight 500
-            transition transform .2s
-            box-sizing border-box
-            width 24rem
-            margin-left $archive-margin
-            svg
-                height 2rem
-                width auto
-                stroke $archive-prim
-            @media screen and (max-width: $archive-screen-mid)
-                box-sizing content-box
-                width auto
-                margin-left initial
             
     .dropzone
         position absolute
@@ -202,6 +165,13 @@ button
         }
     .items
         margin 0 $archive-margin
+        input.uploadclick
+            width 0.1px
+            height 0.1px
+            opacity 0
+            overflow hidden
+            position absolute
+            z-index -1
     .item
         display flex
         margin-bottom 3rem
@@ -225,6 +195,21 @@ button
             flex-direction column
             .preview
                 margin 0 auto 2rem auto
+        &.uploadclick
+            .preview
+                box-shadow none
+                line-height 1rem
+                display block
+                padding 4.25rem 1.5rem 5rem 1.5rem
+                text-align center
+                background $archive-grey
+                color $archive-prim
+                font-weight 500
+                box-sizing border-box
+                svg
+                    height 2rem
+                    width auto
+                    stroke $archive-prim
 
 .footer
     position fixed

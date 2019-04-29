@@ -8,10 +8,19 @@
 
         <div class="items">
             <Item v-for="(upload, index) in uploads" :key="upload.id" :upload="upload" @delete="deleteItem(index)" />
+
+            <input class="uploadclick" name="selectfile" id="selectfile" @change="handleX" type="file" multiple>
+            <div class="uploadclick item">
+                <div>
+                    <label class="preview" for="selectfile">
+                        <IconUp />
+                        <div v-if="uploads.length === 0 ">Select files or drop them here</div>
+                        <div v-else >Upload even more</div>
+                    </label>
+                </div>
+            </div>
         </div>
 
-        <input class="uploadclick" name="selectfile" id="selectfile" @change="handleX" type="file" multiple>
-        <label class="uploadclick" for="selectfile"><div class="wrapper"><IconUp /><div>Upload even more</div></div></label>
 
         <div class="dropzone" :class="{showDropzone: showDropzone}" ref="dropzone"></div>
     </div>
