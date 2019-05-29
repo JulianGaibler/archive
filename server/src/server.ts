@@ -78,10 +78,7 @@ class Server {
         this.combinedServer = createServer(this.app)
         this.createSubscriptionServer(this.combinedServer)
 
-        this.combinedServer.listen(this.options.port, err => {
-            if (err) {
-                throw err;
-            }
+        this.combinedServer.listen(this.options.port, () => {
             // tslint:disable-next-line
             console.log(`🔥 Server running on port ${this.options.port}...`); // eslint-disable-line
         })
