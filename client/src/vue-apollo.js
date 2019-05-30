@@ -8,6 +8,8 @@ import { InMemoryCache } from 'apollo-cache-inmemory';
 // Install the vue plugin
 Vue.use(VueApollo)
 
+const cache = new InMemoryCache();
+
 // Http endpoint
 const httpEndpoint = process.env.VUE_APP_GRAPHQL_HTTP || 'http://localhost:4000'
 // Files URL root
@@ -41,7 +43,7 @@ const defaultOptions = {
 
     // Override default cache
     // TODO: workaround for https://github.com/Akryum/vue-apollo/issues/631 or https://github.com/Akryum/vue-apollo/issues/630
-    cache: new InMemoryCache(),
+    cache: cache,
 
     // Override the way the Authorization header is set
     // getAuth: (tokenName) => ...
@@ -71,10 +73,6 @@ export function createProvider (options = {}) {
             $query: {
                 // fetchPolicy: 'cache-and-network',
             },
-        },
-        errorHandler () {
-            // eslint-disable-next-line no-console
-            // console.log('%cError', 'background: red; color: white; padding: 2px 4px; border-radius: 3px; font-weight: bold;', error.message)
         },
     })
 

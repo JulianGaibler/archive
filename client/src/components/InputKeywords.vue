@@ -1,5 +1,6 @@
 <template>
     <div class="inputField light">
+        <label :class="{ visible: showLabel }">{{label}}</label>
         <div class="autocomplete">
             <div v-for="id in content" :key="id" class="tag">
                 <span>{{valueStore[id]}}</span>
@@ -14,8 +15,6 @@
                 <div v-if="createStatus.error" class="info error">{{createStatus.error}}</div>
             </ul>
         </div>
-        <hr>
-        <label :class="{ visible: showLabel }">{{label}}</label>
     </div>
 </template>
 

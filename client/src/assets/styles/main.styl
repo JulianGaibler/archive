@@ -4,6 +4,11 @@
 
 @import url('https://fonts.googleapis.com/css?family=Heebo:400,500,600');
 
+* {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
 html, body, #app
     height 100%
 
@@ -17,123 +22,135 @@ input, button, textarea
     font-family inherit
     font-size inherit
 
-#app
-    position relative
 
 h1
-    font-size 3rem
+    font-size 3.3rem
+    font-weight 600
+h2
+    font-size 1.6rem
     font-weight 500
 
-header
-    margin $archive-margin
+#app
+    height 100%
     display flex
-    align-items: center
-    .spacer
+    main
         flex 1
+        .content
+            margin 0 4.5rem 0 4.5rem
+
+header
+    margin 5.6rem 4.5rem 2.9rem 4.5rem
+    .col1, .col2
+        display flex
+    .col1
+        margin .5rem 0
+        align-items center
+        h1
+            flex 1
+    .col2
+        justify-content space-between
+        .left, .right
+            line-height 0
+        .left
+            text-align left
+        .right
+            text-align right
+
+.sidebar
+    background $archive-prim2-dark
+    border-bottom-left-radius $archive-radius1
+    min-width 19rem
+    .sidebar-button
+        background $archive-prim1
+        border-radius 40%
+        fill: #ffffff
+        padding 0.58rem
+        line-height 0
+        svg
+            height 2rem
+            width 2rem
+    .sidebar-header
+        display flex
+        align-items center
+        margin 1.75rem 1.5rem
+        .name-combo
+            flex 1
+    nav
+        color $archive-prim1
+        margin 0 1.5rem
+        font-weight 500
+        ul
+            margin 1.5rem 0
+            li
+                margin .75rem 0
 
 
-button
-    background $archive-black
-    color $archive-white
+// Components
+
+.name-combo
+    .name, .username
+        display inline-block
+    .name
+        font-weight 600
+        font-size 1.33rem
+        color: $archive-inv
+        margin-right .25rem
+    .username
+        font-weight 400
+        font-size 1rem
+        color: transparentify($archive-inv, 0.75)
+
+.button-big
+    background $archive-inv
+    color $archive-std
+    border-radius 10rem
     padding .5rem 1.5rem
-    border-radius $archive-radius
-    &:focus
-        background $archive-darkgrey
-    &:active
-        background $archive-prim
+    font-size 0.85rem
+    font-weight 500
 
-.inputButton
-    background $archive-prim = #d4213a
-    border-radius $archive-radius
-    padding 1.25rem 2.75rem
+.button-icon
+    margin 0
+    padding 0
+    line-height 0
+    svg
+        height 1.8rem
+        width 1.8rem
+
+// Old stuff, try to remove it
 
 .inputField
+    border-left 2px solid lightgrey
     display flex
     flex-direction column
-    
-    .autocomplete
-        position relative
-        padding .2rem
-        display flex
-        flex-wrap wrap
-        input, textarea, .tag
-            padding .2em .2em
-            line-height initial
-        input
-            flex-grow 100
-            min-width 6rem
-        .tag
-            display flex
-            align-items center
-            .icon
-                height 1rem
-                svg
-                    stroke $archive-black
-                    height 100%
-                    display block
-                    width auto
-            
-        .results
-            position: absolute
-            display block
-            background $archive-white
-            // box-shadow 0 .25rem 1.5rem rgba(0,0,0,0.1)
-            border 2px solid $archive-grey
-            border-top none
-            z-index 99
-            top calc(100% + 2px)
-            left 0
-            right 0
-            border-bottom-left-radius .5rem
-            border-bottom-right-radius .5rem
-            padding .2rem 0 .4rem 0
-            hr
-                border-color $archive-grey
-                margin .2rem 0
-            .result
-                padding .6rem .6rem
-                &:hover
-                    background $archive-grey
-                    cursor pointer
-            .info
-                padding 0 0.6rem 0.3rem 0.6rem
-                font-size .8rem
-                &.error
-                    color $archive-prim
-    
+    padding-left .5rem
+    &:not(:last-child)
+        margin-bottom .5rem
     input, textarea, .tag
         background unset
         border none
-        padding .4em .4em
+        margin .4em .4em .4em 0
         font-weight 500
         font-size 1.1em
     textarea
         resize none
-    hr
-        width 100%
-        margin 0
-        border none
-        border-bottom 2px solid $archive-darkgrey
     label
         color $archive-darkgrey
         text-transform uppercase
         font-weight 500
-        padding .25em 0
+        margin .4em .4em 0 0
         font-size .8em
+        overflow hidden
+        max-height 0
         opacity 0
-        transition opacity .1s
+        transition max-height .25s, opacity .25s
         &.visible
+            max-height 1rem
             opacity 1
-    
     &.error
-        hr
-            border-color $archive-prim
-        label, input, textarea
-            color $archive-prim
-
+        border-color $archive-prim1
     .error
         font-weight 500
-        color $archive-darkgrey
+        color $archive-prim1
         text-transform uppercase
         font-size .8em
         padding-left 1rem
@@ -141,6 +158,56 @@ button
         li
             display list-item
             list-style-type disc
+
+.inputField .autocomplete
+    position relative
+    padding .2rem
+    display flex
+    flex-wrap wrap
+    input, textarea, .tag
+        padding .2em .2em
+        line-height initial
+    input
+        flex-grow 100
+        min-width 6rem
+    .tag
+        display flex
+        align-items center
+        .icon
+            height 1rem
+            svg
+                stroke $archive-black
+                height 100%
+                display block
+                width auto
+        
+    .results
+        position: absolute
+        display block
+        background $archive-white
+        // box-shadow 0 .25rem 1.5rem rgba(0,0,0,0.1)
+        border 2px solid $archive-grey
+        border-top none
+        z-index 99
+        top calc(100% + 2px)
+        left 0
+        right 0
+        border-bottom-left-radius .5rem
+        border-bottom-right-radius .5rem
+        padding .2rem 0 .4rem 0
+        hr
+            border-color $archive-grey
+            margin .2rem 0
+        .result
+            padding .6rem .6rem
+            &:hover
+                background $archive-grey
+                cursor pointer
+        .info
+            padding 0 0.6rem 0.3rem 0.6rem
+            font-size .8rem
+            &.error
+                color $archive-prim
 
 
 .upload
@@ -180,7 +247,6 @@ button
             overflow hidden
             line-height 0
             margin-right 2rem
-            box-shadow 1rem 1rem 4rem -1rem rgba(0, 0, 0, 0.4)
             width 24rem
             img, video
                 width 100%
