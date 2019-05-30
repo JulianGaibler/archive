@@ -8,9 +8,11 @@
         </div>
         <div class="data">
             <div v-if="upload.errors.general" class="error">{{upload.errors.general}}</div>
-            <InputField :type="'text'" v-model="upload.payload.title" :label="'Title'" :errors="upload.errors.title" />
-            <InputField :type="'textarea'" v-model="upload.payload.caption" :label="'Caption'" :errors="upload.errors.caption" />
-            <InputKeywords v-model="upload.payload.keywords" :label="'Keywords'" />
+            <div class="inputs">
+                <InputField :type="'text'" v-model="upload.payload.title" :label="'Title'" :errors="upload.errors.title" />
+                <InputField :type="'textarea'" v-model="upload.payload.caption" :label="'Caption'" :errors="upload.errors.caption" />
+                <InputKeywords v-model="upload.payload.keywords" :label="'Keywords'" />
+            </div>
         </div>
     </div>
 </template>

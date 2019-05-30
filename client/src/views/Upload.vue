@@ -1,12 +1,13 @@
 <template>
     <div class="frame upload" ref="frame">
         <header>
-            <h1>Upload</h1>
-            <span class="spacer"></span>
-            <button @click="startUpload">Send</button>
+            <div class="col1">
+                <h1>Upload</h1>
+                <button class="button-big" @click="startUpload">Send</button>
+            </div>
         </header>
 
-        <div class="items">
+        <div class="content items">
             <Item v-for="(upload, index) in uploads" :key="upload.id" :upload="upload" @delete="deleteItem(index)" />
 
             <input class="uploadclick" name="selectfile" id="selectfile" @change="handleX" type="file" multiple>
@@ -20,7 +21,6 @@
                 </div>
             </div>
         </div>
-
 
         <div class="dropzone" :class="{showDropzone: showDropzone}" ref="dropzone"></div>
     </div>

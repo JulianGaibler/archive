@@ -1,42 +1,28 @@
 <template>
-    <div id="app">
-        <div v-if="$apollo.loading">Loading...</div>
-        <Login v-else-if="!user" />
-        <template v-else>
-            <Upload />
-            <!-- <UserFooter :user="user" /> -->
-        </template>
-  </div>
+    <div id="app" v-if="this.$router.currentRoute === 'Login'">
+        <main><router-view /></main>
+    </div>
+    <SideBar v-else>
+         <router-view />
+    </SideBar>
 </template>
 
 <script>
-import UserFooter from './components/UserFooter.vue'
-import Login from './views/Login.vue'
-import Upload from './views/Upload.vue'
 
-import ME from './graphql/user.gql'
+import SideBar from './components/SideBar'
 
 export default {
     name: 'app',
     components: {
-        Login, UserFooter, Upload
+        SideBar
     },
-    apollo: {
-        user: {
-            query: ME,
-            update(r) {
-                if (r) return r.me
-                else return null;
-            },
-            error(e) {
-                console.log('errors', e.message)
+    created() {
+        // Taking control of global error handler
+        this.$apolloProvider.errorHandler = error => {
+            if (error.message === 'GraphQL error: Not authorized') {
+                this.$router.replace('/login')
             }
         }
     },
-    methods: {
-        fetchUser() {
-
-        }
-    }
 }
 </script>
