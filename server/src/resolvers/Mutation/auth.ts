@@ -26,7 +26,7 @@ export const auth = {
             throw new Error('Invalid password')
         }
 
-        performLogin(ctx, user.id);
+        performLogin(ctx, user.username);
 
         return true
     },

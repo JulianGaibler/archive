@@ -1,7 +1,7 @@
 exports.up = async knex =>
   await knex.schema
     .createTable('User', table => {
-      table.uuid('id').primary();
+      table.increments('id');
       table.string('username', 64).notNullable();
       table.string('name', 64).notNullable();
       table.string('password', 96).notNullable();
@@ -11,14 +11,14 @@ exports.up = async knex =>
       table.unique(['username'])
     })
     .createTable('Post', table => {
-      table.uuid('id').primary();
+      table.increments('id');
       table.string('title').notNullable();
       table.enu('type', ['VIDEO', 'IMAGE', 'GIF'], { useNative: true, enumName: 'Format' }).notNullable();
       table.string('originalPath');
       table.string('compressedPath');
       table.string('thumbnailPath');
       table.string('relHeight');
-      table.uuid('uploaderId').references('User.id');
+      table.integer('uploaderId').references('User.id');
       table.text('caption');
       table.bigInteger('updatedAt').notNullable();
       table.bigInteger('createdAt').notNullable();
@@ -26,7 +26,7 @@ exports.up = async knex =>
       table.unique(['title'])
     })
     .createTable('Keyword', table => {
-      table.uuid('id').primary();
+      table.increments('id');
       table.string('name', 64).notNullable();
       table.bigInteger('updatedAt').notNullable();
       table.bigInteger('createdAt').notNullable();
@@ -34,25 +34,25 @@ exports.up = async knex =>
       table.unique(['name'])
     })
     .createTable('Task', table => {
-      table.uuid('id').primary();
+      table.increments('id');
       table.string('title').notNullable();
       table.string('ext', 10).notNullable();
       table.text('notes').notNullable();
       table.enu('status', ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'], { useNative: true, enumName: 'TaskStatus' }).notNullable();
-      table.uuid('uploaderId').references('User.id');
-      table.uuid('createdPostId').references('Post.id');
+      table.integer('uploaderId').references('User.id');
+      table.integer('createdPostId').references('Post.id');
       table.bigInteger('updatedAt').notNullable();
       table.bigInteger('createdAt').notNullable();
     })
     .createTable('PostToUser', table => {
-    	table.uuid('id').primary();
-    	table.uuid('post_id').references('Post.id').notNullable();
-    	table.uuid('user_id').references('User.id').notNullable();
+    	table.increments('id');
+    	table.integer('post_id').references('Post.id').notNullable();
+    	table.integer('user_id').references('User.id').notNullable();
     })
     .createTable('KeywordToPost', table => {
-    	table.uuid('id').primary();
-      table.uuid('keyword_id').references('Keyword.id').notNullable();
-    	table.uuid('post_id').references('Post.id').notNullable();
+    	table.increments('id');
+      table.integer('keyword_id').references('Keyword.id').notNullable();
+    	table.integer('post_id').references('Post.id').notNullable();
     });
 
 

@@ -1,7 +1,9 @@
 import * as jwt from 'jsonwebtoken'
 
 import { Response, Request } from 'express';
+import Hashids from 'hashids';
 
+const hashids = new Hashids('archive', 5);
 
 export interface Context {
     res: Response
@@ -47,4 +49,14 @@ export class AuthError extends Error {
     constructor() {
         super('Not authorized')
     }
+}
+
+export function encodeHashId(model: any, id: number) {
+    return hashids.encode(model.hashid, id);
+}
+
+export function decodeHashId(model: any, id: string) {
+    const res = hashids.decode(id);
+    if (res.length < 2 || res[0] !== model.hashid) throw new Error('HashID is not valid for this type');
+    return res[1]
 }

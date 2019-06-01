@@ -24,6 +24,7 @@
     "graphql-import": "^0.7.1",
     "graphql-middleware": "^3.0.2",
     "graphql-upload": "^8.0.6",
+    "hashids": "^1.2.2",
     "jsonwebtoken": "8.5.1",
     "knex": "^0.17.0",
     "morgan": "^1.9.1",
@@ -32,8 +33,7 @@
     "pg": "^7.11.0",
     "sharp": "^0.22.1",
     "subscriptions-transport-ws": "^0.9.16",
-    "tmp": "^0.1.0",
-    "uuid": "^3.3.2"
+    "tmp": "^0.1.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "2.4.2",

@@ -12,7 +12,7 @@ export default class Keyword extends UniqueModel {
         identifiers: ['id'],
     }
 
-    readonly id!: string;
+    readonly id!: number;
     name!: string;
     posts!: Post[];
 
@@ -21,7 +21,7 @@ export default class Keyword extends UniqueModel {
         required: ['name'],
 
         properties: {
-            id: { type: 'string' },
+            id: { type: 'number' },
             name: { type: 'string', minLength: 2, maxLength: 64 },
         }
     };
