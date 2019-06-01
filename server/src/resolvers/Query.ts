@@ -6,7 +6,7 @@ import Keyword from '../models/Keyword'
 import Task from '../models/Task'
 
 export const Query = {
-  feed(parent, args, ctx: Context) {
+  posts(parent, args, ctx: Context) {
     //return ctx.prisma.posts({ })
   },
 
