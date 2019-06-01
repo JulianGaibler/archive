@@ -1,11 +1,12 @@
 import fileType from 'file-type'
 import jet from 'fs-jetpack'
+import tmp from 'tmp'
 
 import Task from './models/Task'
 import Post from './models/Post'
 import FileProcessor from './FileStorage/FileProcessor'
 import {Mutex, MutexInterface} from 'async-mutex';
-import { to } from './utils'
+import { to, encodeHashId } from './utils'
 
 interface StoreData {
     postObject: Post,
@@ -94,53 +95,64 @@ class FileStorage {
     }
 
     private async processItem({taskObject, data}: QueueItem) {
-
         const {postObject, typedStream, type} = data
-        const filename = taskObject.id;
+        let processError, createdFiles
 
+        let tmpDir = tmp.dirSync();
+        console.log(tmpDir)
         let processor = new FileProcessor()
-    
-        let processError, storeError
 
-        if (type.kind === 'video') [processError] = await to(processor.processVideo(typedStream, filename))
-        if (type.kind === 'image') [processError] = await to(processor.processImage(typedStream, filename))
-    
-        if (!processError) [storeError] = await to(processor.storeOriginal(typedStream, filename, type.ext))
+        try {
+            if (type.kind === 'video') [processError, createdFiles] = await to(processor.processVideo(typedStream, tmpDir.name))
+            if (type.kind === 'image') [processError, createdFiles] = await to(processor.processImage(typedStream, tmpDir.name))
 
-        postObject.compressedPath = `${options.compressed}/${filename}`
-        postObject.thumbnailPath = `${options.thumbnail}/${filename}`
-        postObject.originalPath = `${options.original}/${filename}.${type.ext}`
-        
-        if (processError || storeError) {
+            if (processError) throw processError
 
-            if (processError) console.log(processError)
-            else if (storeError) console.log(storeError)
+            // Create post object
+            if (data.type.mime === 'image/gif') postObject.type = 'GIF'
+            else if (data.type.kind === 'video') postObject.type = 'VIDEO'
+            else postObject.type = 'IMAGE'
 
-            deleteFiles(filename, type.ext)
+            const newPost = await Post.query().insert(postObject)
+            const hashId = encodeHashId(Post, newPost.id)
+
+            // Save files where they belong
+            let movePromises = []
+            Object.keys(createdFiles).forEach(category => {
+                if (category === 'original')
+                    movePromises.push(jet.moveAsync(createdFiles[category], jet.path(options.dist, options[category], `${hashId}.${type.ext}`)))
+                else
+                    Object.keys(createdFiles[category]).forEach(ext => {
+                        movePromises.push(jet.moveAsync(createdFiles[category][ext], jet.path(options.dist, options[category], `${hashId}.${ext}`)))
+                    })
+            })
+            // When all are done, delete tmp-dir
+            await Promise.all(movePromises)
+
+            postObject.compressedPath = `${options.compressed}/${hashId}`
+            postObject.thumbnailPath = `${options.thumbnail}/${hashId}`
+            postObject.originalPath = `${options.original}/${hashId}.${type.ext}`
+
+            await postObject.$query().update(postObject)
+
+            await taskObject.$query().update({ status: 'DONE', createdPostId: newPost.id, notes: processor.notes })
+
+        } catch (e) {
+            console.log(e)
+            tmpDir.removeCallback()
             await taskObject.$query().update({ status: 'FAILED', notes: processor.notes })
 
+        } finally {
+            tmpDir.removeCallback()
             this.checkQueue()
-            return;
+
         }
-
-        if (data.type.mime === 'image/gif') postObject.type = 'GIF'
-        else if (data.type.kind === 'video') postObject.type = 'VIDEO'
-        else postObject.type = 'IMAGE'
-
-        const newPost = await Post.query().insert(postObject)
-        await taskObject.$query().update({ status: 'DONE', createdPostId: newPost.id, notes: processor.notes })
-
-        this.checkQueue()
     }
 
     private async performCleanup() {
         const release = await this.taskMutex.acquire()
         try {
             const result = (await Task.query().select('id', 'ext').where({ status: 'QUEUED' }).orWhere({ status: 'PROCESSING' }))
-            if (result.length < 1) return;
-            result.forEach(({id, ext}) => {
-                deleteFiles(id, ext)
-            })
             await Task.query().update({ status: 'FAILED', notes: 'Marked as failed and cleaned up after server restart' }).findByIds(result.map(({id})=>id))
         } finally {
             release()
@@ -150,20 +162,6 @@ class FileStorage {
 }
 
 export default FileStorage.getInstance();
-
-function deleteFiles(filename: string, ext: string) {
-    [
-        `${options.compressed}/${filename}.mp4`,
-        `${options.compressed}/${filename}.webm`,
-        `${options.compressed}/${filename}.png`,
-        `${options.compressed}/${filename}.webp`,
-        `${options.thumbnail}/${filename}.jpeg`,
-        `${options.thumbnail}/${filename}.webp`,
-        `${options.original}/${filename}.${ext}`,
-    ].forEach(item => {
-        jet.removeAsync(jet.path(options.dist, item));
-    })
-}
 
 function getKind(mimetype: String): string {
     let video;
