@@ -6,7 +6,7 @@ scalar DateTime
 # 
 
 type Query {
-    feed: [Post!]!
+    posts: [Post!]!
     keywords(search: String): [Keyword!]!
     tasks: [Task!]!
     post(id: ID!): Post
