@@ -3,16 +3,11 @@ import sharp from 'sharp'
 import ffmpeg from 'fluent-ffmpeg'
 import tmp from 'tmp'
 import { raw } from 'objection'
+import { to } from '../utils'
 
 import Task from '../models/Task'
 import Post from '../models/Post'
 
-const options = {
-    dist: 'public',
-    compressed: 'compressed',
-    thumbnail: 'thumbnail',
-    original: 'original',
-}
 
 export default class FileProcessor {
     notes: string
@@ -21,14 +16,16 @@ export default class FileProcessor {
         this.notes = ''
     }
 
-    async processImage(readStream, filename: string) {
+    async processImage(readStream, directory: string) {
+        const compressed = jet.path(directory, 'image')
+        const filePaths = {
+            png: `${compressed}.png`,
+            webp: `${compressed}.webp`,
+        }
+        const originalPath = await this.storeOriginal(readStream, directory)
 
-        await this.takeNote('Processing Image...')
-
-        const compressed = jet.path(options.dist, options.compressed, filename)
-
-        const wsPng = jet.createWriteStream(`${compressed}.png`)
-        const wsWebp = jet.createWriteStream(`${compressed}.webp`)
+        const wsPng = jet.createWriteStream(filePaths.png)
+        const wsWebp = jet.createWriteStream(filePaths.webp)
 
         const transform = sharp().removeAlpha().resize(900, 900, {
             fit: sharp.fit.inside,
@@ -38,26 +35,32 @@ export default class FileProcessor {
         transform.clone().toFormat('png', { progressive: true }).pipe(wsPng)
         transform.clone().toFormat('webp', { quality: 90, nearLossless: true }).pipe(wsWebp)
 
-        readStream.pipe(transform)
+        jet.createReadStream(originalPath).pipe(transform)
 
-        await this.createThumbnail(readStream, filename)
+        const thumbnailPaths = await this.createThumbnail(jet.createReadStream(originalPath), directory)
 
-        await this.takeNote('Done.')
+        return {
+            compressed: filePaths,
+            thumbnail: thumbnailPaths,
+            original: originalPath,
+        }
     }
 
-    async processVideo(readStream, filename: string) {
-        const compressed = jet.path(options.dist, options.compressed, filename)
-
-        // Store video in our own temp-file
-        const tmpFile = tmp.fileSync()
-        await this.storeFS(readStream, tmpFile.name)
+    async processVideo(readStream, directory: string) {
+        // TODO: Are the files really being removed from the temp file?
+        const compressed = jet.path(directory, 'video')
+        const filePaths = {
+            mp4: `${compressed}.mp4`,
+            webm: `${compressed}.webm`,
+        }
+        const originalPath = await this.storeOriginal(readStream, directory)
 
         // Create temp dir for screenshot -_-
         let tmpDir = tmp.dirSync();
-        let tmpFilename = `${filename}.png`;
+        const tmpFilename = `thumb.png`;
 
         await new Promise((resolve, reject) => {
-           ffmpeg(tmpFile.name)
+           ffmpeg(originalPath)
                .screenshots({
                    timestamps: [1],
                    filename: tmpFilename,
@@ -75,7 +78,7 @@ export default class FileProcessor {
 
         const { height } = await sharp(tmpPath).metadata()
 
-        await this.createThumbnail(jet.createReadStream(tmpPath), filename)
+        const thumbnailPaths = await this.createThumbnail(jet.createReadStream(tmpPath), directory)
 
         jet.remove(tmpPath)
         tmpDir.removeCallback()
@@ -83,18 +86,17 @@ export default class FileProcessor {
         const outputHeight = height > 720 ? 720 : height
 
         await new Promise((resolve, reject) => {
-        ffmpeg(tmpFile.name)
-            .output(`${compressed}.mp4`)
+        ffmpeg(originalPath)
+            .output(filePaths.mp4)
             .size(`?x${outputHeight}`)
             .outputOptions(['-pix_fmt yuv420p', '-deinterlace', '-vsync 1', '-vcodec libx264', '-b:v: 2500k', '-bufsize 2M', '-maxrate 4500k', '-profile:v main', '-tune film', '-g 60', '-x264opts no-scenecut', '-acodec aac', '-b:a 192k', '-ac 2', '-ar 44100', '-f mp4'])
             .on('error', reject)
             .on('end', resolve)
             .run()
         })
-
         await new Promise((resolve, reject) => {
-        ffmpeg(tmpFile.name)
-            .output(`${compressed}.webm`)
+        ffmpeg(originalPath)
+            .output(filePaths.webm)
             .size(`?x${outputHeight}`)
             .outputOptions(['-pix_fmt yuv420p', '-deinterlace', '-vsync 1', '-c:v libvpx-vp9', '-cpu-used 2', '-b:v: 2000k', '-bufsize 1000k', '-maxrate 3000k', '-c:a libopus', '-b:a 192k', '-f webm',])
             .on('error', reject)
@@ -102,14 +104,24 @@ export default class FileProcessor {
             .run()
         })
 
-        tmpFile.removeCallback()
+        return {
+            compressed: filePaths,
+            thumbnail: thumbnailPaths,
+            original: originalPath
+        }
     }
 
-    async storeOriginal(readStream, filename, ext) {
-        await this.takeNote('Storing original File...')
-        const path = jet.path(options.dist, options.original, `${filename}.${ext}`)
+    async storeOriginal(readStream, directory: string) {
+        const path = jet.path(directory, 'original')
         const ws = jet.createWriteStream(path)
-        readStream.pipe(ws)
+
+        let [err] = await to(new Promise((resolve, reject) => {
+            readStream.pipe(ws)
+                .on('error', reject )
+                .on('finish', resolve )
+        }))
+        if (err) throw err;
+
         return path
     }
 
@@ -134,11 +146,16 @@ export default class FileProcessor {
         this.notes += `${note}\n`
     }
 
-    private async createThumbnail(readStream, filename: string) {
-        const compressed = jet.path(options.dist, options.thumbnail, filename)
+    private async createThumbnail(readStream, directory: string) {
+        // TODO: why I am not waiting here for pipe to finish? use storeFS!
+        const compressed = jet.path(directory, 'thumbnail')
+        const filePaths = {
+            jpeg: `${compressed}.jpeg`,
+            webp: `${compressed}.webp`,
+        }
 
-        const wsJpeg = jet.createWriteStream(`${compressed}.jpeg`)
-        const wsWebp = jet.createWriteStream(`${compressed}.webp`)
+        const wsJpeg = jet.createWriteStream(filePaths.jpeg)
+        const wsWebp = jet.createWriteStream(filePaths.webp)
 
         const transform = sharp().removeAlpha().resize(400, 400, {
             fit: sharp.fit.inside,
@@ -147,7 +164,14 @@ export default class FileProcessor {
         transform.clone().toFormat('jpeg', { quality: 50, progressive: true }).pipe(wsJpeg)
         transform.clone().toFormat('webp', { quality: 50 }).pipe(wsWebp)
 
-        readStream.pipe(transform)
+        let [err] = await to(new Promise((resolve, reject) => {
+            readStream.pipe(transform)
+                .on('error', reject )
+                .on('finish', resolve )
+        }))
+        if (err) throw err;
+
+        return filePaths
     }
 
 }
