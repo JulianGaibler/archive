@@ -8,13 +8,16 @@ import Keyword from './Keyword'
 export default class Post extends BaseModel {
     static tableName = 'Post';
 
-    readonly id!: string;
+    static readonly hashid = 51
+
+    readonly id!: number;
+
     title!: string;
     type!: string;
     compressedPath?: string;
     thumbnailPath?: string;
     originalPath?: string;
-    uploaderId?: string;
+    uploaderId?: number;
 
     uploader?: User;
     keywords: Keyword[];
@@ -26,14 +29,14 @@ export default class Post extends BaseModel {
         required: ['title'],
 
         properties: {
-            id: { type: 'string' },
+            id: { type: 'number' },
             title: { type: 'string', minLength: 4, maxLength: 255 },
             type: { type: 'string', enum: ['VIDEO', 'IMAGE', 'GIF'] },
             compressedPath: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
             thumbnailPath: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
             originalPath: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
-            uploaderId: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
-            caption: { type: ['string', 'null'], minLength: 4, maxLength: 64 },
+            uploaderId: { type: ['number', 'null'], minLength: 2, maxLength: 64 },
+            caption: { type: ['string', 'null'], minLength: 4 },
         }
     };
 

@@ -13,7 +13,7 @@ export default class User extends UniqueModel {
         identifiers: ['id'],
     }
 
-    readonly id!: string;
+    readonly id!: number;
     username!: string;
     name!: string;
     password!: string;
@@ -24,7 +24,7 @@ export default class User extends UniqueModel {
         required: ['username', 'name', 'password'],
 
         properties: {
-            id: { type: 'string' },
+            id: { type: 'number' },
             username: { type: 'string', minLength: 2, maxLength: 64 },
             name: { type: 'string', minLength: 2, maxLength: 64 },
             password: { type: 'string', minLength: 5, maxLength: 255 }
