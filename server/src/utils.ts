@@ -1,7 +1,7 @@
 import * as jwt from 'jsonwebtoken'
-
 import { Response, Request } from 'express';
 import Hashids from 'hashids';
+import User from './models/User'
 
 const hashids = new Hashids('archive', 5);
 
@@ -10,18 +10,29 @@ export interface Context {
     req: Request
 }
 
-export function getUserId(ctx: Context) {
+export async function getUsername(ctx: Context) {
     const Authorization = ctx.req.cookies.token
     if (Authorization) {
-        const { userId } = jwt.verify(Authorization, process.env.APP_SECRET) as { userId: string }
-        return userId
+        const { username } = jwt.verify(Authorization, process.env.APP_SECRET) as { username: string }
+        // This will be replaced with another system soon
+        return username
     }
 
     throw new AuthError()
 }
 
-export function performLogin(ctx: Context, userId: String) {
-    const token = jwt.sign({ userId }, process.env.APP_SECRET)
+export async function getUserData(ctx: Context) {
+    const Authorization = ctx.req.cookies.token
+    if (Authorization) {
+        const { username } = jwt.verify(Authorization, process.env.APP_SECRET) as { username: string }
+        return await User.query().findOne({ username })
+    }
+
+    throw new AuthError()
+}
+
+export function performLogin(ctx: Context, username: String) {
+    const token = jwt.sign({ username }, process.env.APP_SECRET)
     ctx.res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -30,7 +41,7 @@ export function performLogin(ctx: Context, userId: String) {
 }
 
 export function performLogout(ctx: Context) {
-    getUserId(ctx);
+    getUsername(ctx);
 
     ctx.res.clearCookie('token', {
         httpOnly: true,

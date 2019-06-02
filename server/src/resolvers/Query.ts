@@ -1,4 +1,4 @@
-import { getUserId, Context } from '../utils'
+import { getUserData, getUsername, Context } from '../utils'
 import graphqlFields from 'graphql-fields'
 
 import User from '../models/User'
@@ -15,6 +15,7 @@ export const Query = {
   },
 
   async tasks(parent, args, ctx: Context, info) {
+    await getUsername(ctx)
     const topLevelFields = Object.keys(graphqlFields(info));
     let query = Task.query()
     if (topLevelFields.includes('uploader')) query = query.eager('uploader')
@@ -23,12 +24,13 @@ export const Query = {
   },
 
   async keywords(parent, { search }, ctx: Context) {
+    await getUsername(ctx)
     if (search) return Keyword.query().whereRaw(`LOWER(name) LIKE ?`, [`%${search.toLowerCase()}%`])
     else return Keyword.query()
   },
 
   async me(parent, args, ctx: Context) {
-    const id = getUserId(ctx)
+    const { id } = await getUserData(ctx)
     const user = await User.query().findOne({ id })
     delete user.password;
     return user
