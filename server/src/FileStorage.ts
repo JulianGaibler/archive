@@ -8,6 +8,7 @@ import FileProcessor from './FileStorage/FileProcessor'
 import {Mutex, MutexInterface} from 'async-mutex';
 import { to, encodeHashId } from './utils'
 
+// Interfaces
 interface StoreData {
     postObject: Post,
     typedStream: fileType.ReadableStreamWithFileType,
@@ -24,6 +25,7 @@ interface QueueItem {
     data: StoreData
 }
 
+// Options
 const options = {
     dist: 'public',
     compressed: 'compressed',
@@ -31,10 +33,9 @@ const options = {
     original: 'original',
 }
 
-function errorHandler(e) {
-    throw e
-}
-
+/**
+ * Keeps track of queue and saves files in directories
+ */
 class FileStorage {
 
     private queue: Array<QueueItem>
@@ -54,6 +55,9 @@ class FileStorage {
         this.performCleanup()
     }
 
+    /**
+     * Quick validity check of given file and data
+     */
     async checkFile(data, readStream): Promise<StoreData> {
         const postObject = Post.fromJson(data)
         const typedStream = await fileType.stream(readStream);
@@ -69,6 +73,9 @@ class FileStorage {
         }
     }
 
+    /**
+     * Adds File in form of StoreData to the queue
+     */
     async storeFile(data: StoreData) {
         const newTask = await Task.query().insert({ title: data.postObject.title, uploaderId: data.postObject.uploaderId, ext: data.type.ext })
 
@@ -78,6 +85,9 @@ class FileStorage {
         return newTask.id
     }
 
+    /**
+     * Checks if there queue has items and if there are other aktive tasks
+     */
     private async checkQueue() {
         if (this.queue.length < 1) return;
 
@@ -94,13 +104,17 @@ class FileStorage {
         }
     }
 
+    /**
+     * Processes an Item from the Queue
+     */
     private async processItem({taskObject, data}: QueueItem) {
         const {postObject, typedStream, type} = data
         let processError, createdFiles
+        let postCreated = false
 
         let tmpDir = tmp.dirSync();
         console.log(tmpDir)
-        let processor = new FileProcessor()
+        let processor = new FileProcessor(taskObject)
 
         try {
             if (type.kind === 'video') [processError, createdFiles] = await to(processor.processVideo(typedStream, tmpDir.name))
@@ -114,7 +128,8 @@ class FileStorage {
             else postObject.type = 'IMAGE'
 
             const newPost = await Post.query().insert(postObject)
-            const hashId = encodeHashId(Post, newPost.id)
+            postCreated = true
+            const hashId = encodeHashId(Post, newPost.id)            
 
             // Save files where they belong
             let movePromises = []
@@ -138,7 +153,9 @@ class FileStorage {
             await taskObject.$query().update({ status: 'DONE', createdPostId: newPost.id, notes: processor.notes })
 
         } catch (e) {
-            console.log(e)
+            console.warn(e)
+            processor.takeNote(e)
+            if (postCreated) await Post.query().deleteById(postObject.id)
             tmpDir.removeCallback()
             await taskObject.$query().update({ status: 'FAILED', notes: processor.notes })
 
@@ -149,6 +166,9 @@ class FileStorage {
         }
     }
 
+    /**
+     * Runs at startup to check if there are orphaned tasks from a server crash
+     */
     private async performCleanup() {
         const release = await this.taskMutex.acquire()
         try {
@@ -162,6 +182,7 @@ class FileStorage {
 }
 
 export default FileStorage.getInstance();
+
 
 function getKind(mimetype: String): string {
     let video;
