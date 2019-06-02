@@ -1,11 +1,11 @@
-import { getUserId } from '../../utils'
+import { getUsername } from '../../utils'
 
 import Keyword from '../../models/Keyword'
 
 export const keywords = {
 
     async createKeyword(parent, { name }, ctx, info) {
-        const userId = getUserId(ctx)
+        const userId = await getUsername(ctx)
 
         return Keyword.query().insert({ name })
     },

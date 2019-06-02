@@ -1,4 +1,4 @@
-import { getUserId, to } from '../../utils'
+import { getUserData, to } from '../../utils'
 import { UserInputError } from 'apollo-server'
 import graphqlFields from 'graphql-fields'
 
@@ -7,7 +7,7 @@ import Task from '../../models/Task'
 export const posts = {
 
     async uploadPosts(parent, { items }, ctx, info) {
-        const userId = getUserId(ctx)
+        const userData = await getUserData(ctx)
 
         if (!items || items.length < 1) throw new Error(`You have to at least upload one file.`)
 
@@ -21,7 +21,7 @@ export const posts = {
             if (!file) throw fileErr
             
             delete fields.file
-            fields.uploaderId = userId
+            fields.uploaderId = userData.id
 
             let resItem = await to(ctx.fileStorage.checkFile(fields, file.createReadStream()))
             results.push(resItem)
