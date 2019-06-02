@@ -53,6 +53,11 @@ export default class FileProcessor {
             mp4: `${compressed}.mp4`,
             webm: `${compressed}.webm`,
         }
+        const videoThumbnail = jet.path(directory, 'video_thumbnail')
+        const videoThumbnailPaths = {
+            mp4: `${videoThumbnail}.mp4`,
+            webm: `${videoThumbnail}.webm`,
+        }
         const originalPath = await this.storeOriginal(readStream, directory)
 
         // Create temp dir for screenshot -_-
@@ -76,37 +81,47 @@ export default class FileProcessor {
 
         const tmpPath = jet.path(tmpDir.name, tmpFilename)
 
-        const { height } = await sharp(tmpPath).metadata()
+        const { height, width } = await sharp(tmpPath).metadata()
 
         const thumbnailPaths = await this.createThumbnail(jet.createReadStream(tmpPath), directory)
 
         jet.remove(tmpPath)
         tmpDir.removeCallback()
 
-        const outputHeight = height > 720 ? 720 : height
+        const renderVideo = (inputPath: string, outputPath: string, size: string, outputOptions: Array<string>, optionsCallback?) => {
+            return new Promise((resolve, reject) => {
+                let f = ffmpeg(inputPath)
+                if (optionsCallback) optionsCallback(f)
+                f.output(outputPath)
+                    .size(size)
+                    .outputOptions(outputOptions)
+                    .on('error', reject)
+                    .on('end', resolve)
+                    .run()
+            })
+        }
 
-        await new Promise((resolve, reject) => {
-        ffmpeg(originalPath)
-            .output(filePaths.mp4)
-            .size(`?x${outputHeight}`)
-            .outputOptions(['-pix_fmt yuv420p', '-deinterlace', '-vsync 1', '-vcodec libx264', '-b:v: 2500k', '-bufsize 2M', '-maxrate 4500k', '-profile:v main', '-tune film', '-g 60', '-x264opts no-scenecut', '-acodec aac', '-b:a 192k', '-ac 2', '-ar 44100', '-f mp4'])
-            .on('error', reject)
-            .on('end', resolve)
-            .run()
-        })
-        await new Promise((resolve, reject) => {
-        ffmpeg(originalPath)
-            .output(filePaths.webm)
-            .size(`?x${outputHeight}`)
-            .outputOptions(['-pix_fmt yuv420p', '-deinterlace', '-vsync 1', '-c:v libvpx-vp9', '-cpu-used 2', '-b:v: 2000k', '-bufsize 1000k', '-maxrate 3000k', '-c:a libopus', '-b:a 192k', '-f webm',])
-            .on('error', reject)
-            .on('end', resolve)
-            .run()
-        })
+        const mp4Options = ['-pix_fmt yuv420p', '-deinterlace', '-vsync 1', '-vcodec libx264', '-profile:v main', '-tune film', '-g 60', '-x264opts no-scenecut', '-acodec aac', '-ac 2', '-ar 44100', '-f mp4']
+        const webmOptions = ['-pix_fmt yuv420p', '-deinterlace', '-vsync 1', '-c:v libvpx-vp9', '-cpu-used 2', '-c:a libopus', '-f webm']
+
+        let renderA, renderB
+
+        // Render main video
+        const outputHeight = height > 720 ? 720 : height
+        renderA = renderVideo(originalPath, filePaths.mp4, `?x${outputHeight}`, [...mp4Options, ...['-b:v: 2500k', '-bufsize 2000k', '-maxrate 4500k', '-b:a 192k']])
+        renderB = renderVideo(originalPath, filePaths.webm, `?x${outputHeight}`, [...webmOptions, ...['-b:v: 2000k', '-bufsize 1000k', '-maxrate 3000k', '-b:a 192k']])
+        await Promise.all([renderA, renderB])
+
+        // Render thumbnail
+        const outputThumbnailWidth = width > 400 ? 400 : width
+        const thumbnailOptions = f => {f.duration(7.5)}
+        renderA = renderVideo(originalPath, videoThumbnailPaths.mp4, `${outputThumbnailWidth}x?`, [...mp4Options, ...['-b:v: 625k', '-bufsize 500k', '-maxrate 1000k', '-b:a 96k']], thumbnailOptions)
+        renderB = renderVideo(originalPath, videoThumbnailPaths.webm, `${outputThumbnailWidth}x?`, [...webmOptions, ...['-b:v: 500k', '-bufsize 250k', '-maxrate 750k', '-b:a 96k']], thumbnailOptions)
+        await Promise.all([renderA, renderB])
 
         return {
             compressed: filePaths,
-            thumbnail: thumbnailPaths,
+            thumbnail: {...thumbnailPaths, ...videoThumbnailPaths},
             original: originalPath
         }
     }
