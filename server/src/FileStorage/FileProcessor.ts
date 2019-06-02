@@ -11,8 +11,10 @@ import Post from '../models/Post'
 
 export default class FileProcessor {
     notes: string
+    taskObject: Task
 
-    constructor() {
+    constructor(taskObject: Task) {
+        this.taskObject = taskObject
         this.notes = ''
     }
 
