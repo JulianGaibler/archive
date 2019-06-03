@@ -3,7 +3,7 @@ import knexfile from '../knexfile';
 import { Model } from 'objection';
 
 class Database {
-    private knexInstance: Knex;
+    knexInstance: Knex;
     private config: object;
 
     connect(options = {}): void {
