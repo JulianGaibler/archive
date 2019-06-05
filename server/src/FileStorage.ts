@@ -36,17 +36,17 @@ const options = {
 /**
  * Keeps track of queue and saves files in directories
  */
-class FileStorage {
+export class FileStorageClass {
 
     private queue: Array<QueueItem>
     private taskMutex: Mutex
-    private static instance: FileStorage;
+    private static instance: FileStorageClass;
 
-    static getInstance(): FileStorage {
-        if (!FileStorage.instance) {
-          FileStorage.instance = new FileStorage();
+    static getInstance(): FileStorageClass {
+        if (!FileStorageClass.instance) {
+          FileStorageClass.instance = new FileStorageClass();
         }
-        return FileStorage.instance;
+        return FileStorageClass.instance;
     }
 
     private constructor() {
@@ -129,7 +129,7 @@ class FileStorage {
 
             const newPost = await Post.query().insert(postObject)
             postCreated = true
-            const hashId = encodeHashId(Post, newPost.id)            
+            const hashId = encodeHashId(Post, newPost.id)
 
             // Save files where they belong
             let movePromises = []
@@ -181,7 +181,7 @@ class FileStorage {
 
 }
 
-export default FileStorage.getInstance();
+export default FileStorageClass.getInstance();
 
 
 function getKind(mimetype: String): string {
