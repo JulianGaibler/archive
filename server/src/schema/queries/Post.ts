@@ -1,5 +1,6 @@
 import joinMonster from 'join-monster'
 import db from '../../database'
+import { decodeHashId } from '../../utils'
 import {
     GraphQLFieldConfig,
     GraphQLString,
@@ -8,6 +9,7 @@ import {
 } from 'graphql'
 
 import { Post } from '../types'
+import PostModel from '../../models/Post'
 
 export const post: GraphQLFieldConfig<any, any, any> = {
     type: Post,
@@ -15,22 +17,20 @@ export const post: GraphQLFieldConfig<any, any, any> = {
         id: { type: new GraphQLNonNull(GraphQLString) }
     },
     where: (table, args, context) => {
-        if (args.id) return `${table}.id = ${args.id}`
+        if (args.id) return `${table}.id = ${context.id}`
     },
-    resolve: (parent, args, context, resolveInfo) => {
-        return joinMonster(resolveInfo, {}, sql => {
+    resolve: async (parent, { id }, context, resolveInfo) => {
+        const decodedId = decodeHashId(PostModel, id)
+        return joinMonster(resolveInfo, { id: decodedId }, sql => {
             return db.knexInstance.raw(sql)
-        })
+        }, { dialect: 'pg' })
     }
 }
 
 export const posts: GraphQLFieldConfig<any, any, any> = {
     type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Post))),
-    resolve: (parent, args, context, resolveInfo) => {
+    resolve: async (parent, args, context, resolveInfo) => {
         return joinMonster(resolveInfo, {}, sql => {
-            console.log('--QUERY START--')
-            console.log(sql)
-            console.log('--QUERY END--')
             return db.knexInstance.raw(sql)
         }, { dialect: 'pg' })
     }

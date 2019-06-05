@@ -20,6 +20,7 @@
     "fs-jetpack": "^2.2.2",
     "graphql": "^14.3.1",
     "graphql-fields": "^2.0.3",
+    "graphql-middleware": "^3.0.2",
     "graphql-upload": "^8.0.6",
     "hashids": "^1.2.2",
     "join-monster": "^2.1.0",
@@ -29,6 +30,7 @@
     "objection": "^1.6.9",
     "objection-unique": "^1.0.1",
     "pg": "^7.11.0",
+    "pg-escape": "^0.2.0",
     "sharp": "^0.22.1",
     "subscriptions-transport-ws": "^0.9.16",
     "tmp": "^0.1.0"

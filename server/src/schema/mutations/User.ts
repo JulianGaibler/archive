@@ -14,11 +14,11 @@ export const signup: GraphQLFieldConfig<any, any, any> = {
         name: { type: new GraphQLNonNull(GraphQLString) },
         password: { type: new GraphQLNonNull(GraphQLString) },
     },
-    resolve: async (parent, args, ctx: Context, resolveInfo) => {
+    resolve: async (parent, args, context: Context, resolveInfo) => {
         const password = await bcrypt.hash(args.password, 10)
         const user = await User.query().insert({ ...args, password }) as any as User
 
-        performLogin(ctx, user.username);
+        performLogin(context, user.username);
 
         return true
     }
@@ -30,7 +30,7 @@ export const login: GraphQLFieldConfig<any, any, any> = {
         username: { type: new GraphQLNonNull(GraphQLString) },
         password: { type: new GraphQLNonNull(GraphQLString) },
     },
-    resolve: async (parent, { username, password }, ctx: Context, resolveInfo) => {
+    resolve: async (parent, { username, password }, context, resolveInfo) => {
         const user = await User.query().findOne({ username })
         if (!user) {
             throw new Error(`No such user found for username: ${username}`)
@@ -39,16 +39,16 @@ export const login: GraphQLFieldConfig<any, any, any> = {
         if (!valid) {
             throw new Error('Invalid password')
         }
-        performLogin(ctx, user.username);
+        performLogin(context, user.username);
         return true
     }
 }
 
 export const logout: GraphQLFieldConfig<any, any, any> = {
     type: new GraphQLNonNull(GraphQLBoolean),
-    resolve: async (parent, args, ctx: Context, resolveInfo) => {
-        await getUsername(ctx);
-        performLogout(ctx);
+    resolve: async (parent, args, context: Context, resolveInfo) => {
+        await getUsername(context);
+        performLogout(context);
         return true;
     }
 }
