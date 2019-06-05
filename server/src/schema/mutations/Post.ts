@@ -1,5 +1,5 @@
 import { GraphQLFieldConfig, GraphQLString, GraphQLBoolean, GraphQLNonNull, GraphQLList, } from 'graphql'
-import { performLogin, performLogout, getUsername, decodeHashId, getUserData, to } from '../../utils'
+import { decodeHashId, to, isAuthenticated, Context } from '../../utils'
 import joinMonster from 'join-monster'
 import * as bcrypt from 'bcryptjs'
 import db from '../../database'
@@ -18,8 +18,8 @@ export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
     where: (table, args, context) => {
         // TODO
     },
-    resolve: async (parent, { items }, context, resolveInfo) => {
-        const userData = await getUserData(context)
+    resolve: async (parent, { items }, context: Context, resolveInfo) => {
+        isAuthenticated(context)
 
         if (!items || items.length < 1) throw new Error(`You have to at least upload one file.`)
 
@@ -33,7 +33,7 @@ export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
             if (!file) throw fileErr
 
             delete fields.file
-            fields.uploaderId = userData.id
+            fields.uploaderId = context.auth.userId
 
             let resItem = await to(context.fileStorage.checkFile(fields, file.createReadStream()))
             results.push(resItem)
@@ -73,8 +73,8 @@ export const deletePost: GraphQLFieldConfig<any, any, any> = {
     args: {
         id: { type: new GraphQLNonNull(GraphQLString) },
     },
-    resolve: async (parent, { id }, context, resolveInfo) => {
-        await getUsername(context)
+    resolve: async (parent, { id }, context: Context, resolveInfo) => {
+        isAuthenticated(context)
         const decodedId = decodeHashId(PostModel, id)
         const deletedRows = await PostModel.query().deleteById(decodedId)
         return deletedRows > 0

@@ -11,6 +11,7 @@ import graphqlHTTP from 'express-graphql'
 import { graphqlUploadExpress } from 'graphql-upload'
 import expressPlayground from 'graphql-playground-middleware-express'
 
+import { getAuthData } from './utils'
 import schema from './schema'
 import FileStorage from './FileStorage'
 import db from './database';
@@ -60,9 +61,9 @@ class Server {
         this.app.use(
             this.options.endpoint,
             graphqlUploadExpress({ maxFileSize: 1e+8, maxFiles: 10 }), // 1e+8 = 100 MB
-            graphqlHTTP((req, res, graphQLParams) => ({
+            graphqlHTTP(async (req, res, graphQLParams) => ({
                     schema: schema,
-                    context: { req, res, fileStorage: FileStorage },
+                    context: { req, res, fileStorage: FileStorage, auth: await getAuthData(req) },
                     customFormatErrorFn: process.env.NODE_ENV === 'development' ? this.debugErrorHandler : undefined,
                     graphiql: false,
                 }))
