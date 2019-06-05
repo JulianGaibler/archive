@@ -10,8 +10,8 @@ export interface Context {
     req: Request
 }
 
-export async function getUsername(ctx: Context) {
-    const Authorization = ctx.req.cookies.token
+export async function getUsername(context: Context) {
+    const Authorization = context.req.cookies.token
     if (Authorization) {
         const { username } = jwt.verify(Authorization, process.env.APP_SECRET) as { username: string }
         // This will be replaced with another system soon
@@ -21,8 +21,11 @@ export async function getUsername(ctx: Context) {
     throw new AuthError()
 }
 
-export async function getUserData(ctx: Context) {
-    const Authorization = ctx.req.cookies.token
+export async function getUserData(context: Context) {
+
+    let cookies = context.req ? context.req.cookies : (context as any).cookies
+
+    const Authorization = cookies.token
     if (Authorization) {
         const { username } = jwt.verify(Authorization, process.env.APP_SECRET) as { username: string }
         return await User.query().findOne({ username })
@@ -31,19 +34,19 @@ export async function getUserData(ctx: Context) {
     throw new AuthError()
 }
 
-export function performLogin(ctx: Context, username: String) {
+export function performLogin(context: Context, username: String) {
     const token = jwt.sign({ username }, process.env.APP_SECRET)
-    ctx.res.cookie('token', token, {
+    context.res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
     });
 }
 
-export function performLogout(ctx: Context) {
-    getUsername(ctx);
+export function performLogout(context) {
+    getUsername(context);
 
-    ctx.res.clearCookie('token', {
+    context.res.clearCookie('token', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
     });
@@ -68,6 +71,6 @@ export function encodeHashId(model: any, id: number) {
 
 export function decodeHashId(model: any, id: string) {
     const res = hashids.decode(id);
-    if (res.length < 2 || res[0] !== model.hashid) throw new Error('HashID is not valid for this type');
+    if (res.length < 2 || res[0] !== model.hashid) return -1; //TODO: Better error handling..
     return res[1]
 }

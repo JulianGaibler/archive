@@ -18,7 +18,8 @@ type Mutation {
     logout: Boolean!
     uploadPosts(items: [NewPost!]): [Task!]!
     createKeyword(name: String!): Keyword!
-    deletePost(id: ID!): Post!
+    deleteKeyword(id: String!): Boolean!
+    deletePost(id: ID!): Boolean!
 }
 
 # # #

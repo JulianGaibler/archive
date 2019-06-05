@@ -47,14 +47,8 @@ class Server {
     }
 
     constructor() {
-        this.context = (request) => ({
-            ...request,
-            fileStorage: FileStorage,
-        })
-
         this.app = express();
         this.middleware();
-
     }
 
     middleware() {
@@ -66,18 +60,18 @@ class Server {
         this.app.use(
             this.options.endpoint,
             graphqlUploadExpress({ maxFileSize: 1e+8, maxFiles: 10 }), // 1e+8 = 100 MB
-            graphqlHTTP({
-                schema: schema,
-                context: this.context,
-                customFormatErrorFn: process.env.NODE_ENV === 'development' ? this.debugErrorHandler : undefined,
-                graphiql: false,
-            })
+            graphqlHTTP((req, res, graphQLParams) => ({
+                    schema: schema,
+                    context: { req, res, fileStorage: FileStorage },
+                    customFormatErrorFn: process.env.NODE_ENV === 'development' ? this.debugErrorHandler : undefined,
+                    graphiql: false,
+                }))
         );
     }
 
     start() {
         this.combinedServer = createServer(this.app)
-        //this.createSubscriptionServer(this.combinedServer)
+        this.createSubscriptionServer(this.combinedServer)
 
         this.combinedServer.listen(this.options.port, () => {
             // tslint:disable-next-line
@@ -100,49 +94,51 @@ class Server {
         }
     }
 
-    // Websocket not working anymore?
-    // private createSubscriptionServer(combinedServer) {
-    //     this.subscriptionServer = SubscriptionServer.create(
-    //         {
-    //             schema,
-    //             // TODO remove once `@types/graphql` is fixed for `execute`
-    //             execute: execute as ExecuteFunction,
-    //             subscribe,
-    //             onConnect: async (connectionParams, webSocket) => ({ ...connectionParams }), // this.subscriptionServerOptions.onConnect
-    //             //onDisconnect: this.subscriptionServerOptions.onDisconnect,
-    //             onOperation: async (message, connection, webSocket) => {
-    //                 // The following should be replaced when SubscriptionServer accepts a formatError
-    //                 // parameter for custom error formatting.
-    //                 // See https://github.com/apollographql/subscriptions-transport-ws/issues/182
-    //                 connection.formatResponse = value => ({
-    //                     ...value,
-    //                     errors:
-    //                         value.errors // &&
-    //                         // value.errors.map(
-    //                         //    this.options.formatError || defaultErrorFormatter,
-    //                         //),
-    //                 })
+    //Websocket not working anymore?
+    private createSubscriptionServer(combinedServer) {
+        this.subscriptionServer = SubscriptionServer.create(
+            {
+                schema,
+                execute: execute as ExecuteFunction,
+                subscribe,
+                onConnect: async (connectionParams, webSocket) => {
+                    console.log('connect!!')
+                    return { ...connectionParams }
+                }, // this.subscriptionServerOptions.onConnect
+                //onDisconnect: this.subscriptionServerOptions.onDisconnect,
+                onOperation: async (message, connection, webSocket) => {
+                    // The following should be replaced when SubscriptionServer accepts a formatError
+                    // parameter for custom error formatting.
+                    // See https://github.com/apollographql/subscriptions-transport-ws/issues/182
+                    connection.formatResponse = value => ({
+                        ...value,
+                        errors:
+                            value.errors // &&
+                            // value.errors.map(
+                            //    this.options.formatError || defaultErrorFormatter,
+                            //),
+                    })
 
-    //                 let context
-    //                 try {
-    //                     context =
-    //                         typeof this.context === 'function'
-    //                             ? await this.context({ connection })
-    //                             : this.context
-    //                 } catch (e) {
-    //                     console.error(e)
-    //                     throw e
-    //                 }
-    //                 return { ...connection, context }
-    //             },
-    //             //keepAlive: this.subscriptionServerOptions.keepAlive,
-    //         },
-    //         {
-    //             server: combinedServer,
-    //             //path: this.subscriptionServerOptions.path,
-    //         },
-    //     )
-    // }
+                    let context
+                    try {
+                        context =
+                            typeof this.context === 'function'
+                                ? await this.context({ connection })
+                                : this.context
+                    } catch (e) {
+                        console.error(e)
+                        throw e
+                    }
+                    return { ...connection, context }
+                },
+                //keepAlive: this.subscriptionServerOptions.keepAlive,
+            },
+            {
+                server: combinedServer,
+                //path: this.subscriptionServerOptions.path,
+            },
+        )
+    }
 }
 
 export default new Server();

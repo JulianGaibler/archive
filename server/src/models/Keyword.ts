@@ -6,6 +6,7 @@ import Post from './Post'
 
 export default class Keyword extends UniqueModel {
     static tableName = 'Keyword';
+    static readonly hashid = 85
 
     $unique = {
         fields: ['name'],
