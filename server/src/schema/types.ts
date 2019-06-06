@@ -3,6 +3,7 @@ import { GraphQLUpload } from 'graphql-upload'
 import { encodeHashId } from '../utils'
 import PostModel from '../models/Post'
 import TaskModel from '../models/Task'
+import SessionModel from '../models/Session'
 import KeywordModel from '../models/Keyword'
 import {
     GraphQLObjectType,
@@ -130,6 +131,31 @@ export const Task = new GraphQLObjectType({
 // Workaround util https://github.com/acarl005/join-monster/issues/352 is fixed
 (Task as any)._typeConfig = {...(Task as any)._typeConfig, ...{
     sqlTable: '"Task"',
+    uniqueKey: 'id',
+}}
+
+export const Session = new GraphQLObjectType({
+    name: 'Session',
+    fields: () => ({
+        id: {
+            type: new GraphQLNonNull(GraphQLString),
+            sqlColumn: 'id',
+            resolve: session => encodeHashId(SessionModel, session.id)
+        },
+        user: {
+            type: User,
+            sqlJoin: (sessionTable, userTable) => `${sessionTable}."userId" = ${userTable}.id`,
+        },
+        userAgent: { type: new GraphQLNonNull(GraphQLString) },
+        firstIP: { type: new GraphQLNonNull(GraphQLString) },
+        latestIP: { type: new GraphQLNonNull(GraphQLString) },
+        createdAt: { type: new GraphQLNonNull(DateTime) },
+        updatedAt: { type: new GraphQLNonNull(DateTime) },
+    })
+});
+// Workaround util https://github.com/acarl005/join-monster/issues/352 is fixed
+(Session as any)._typeConfig = {...(Session as any)._typeConfig, ...{
+    sqlTable: '"Session"',
     uniqueKey: 'id',
 }}
 
