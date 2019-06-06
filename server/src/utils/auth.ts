@@ -23,7 +23,7 @@ export interface AuthData {
 
 export async function getAuthData(req: Request): Promise<AuthData> {
     const token = req.cookies.token
-    if (token == undefined) return null
+    if (token === undefined) return null
     try {
         const userId = await verifySession(token, req)
         return { userId, token }

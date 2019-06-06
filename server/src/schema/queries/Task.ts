@@ -1,6 +1,6 @@
 import joinMonster from 'join-monster'
 import db from '../../database'
-import { isAuthenticated, Context } from '../../utils'
+import { decodeHashId, isAuthenticated, Context } from '../../utils'
 import {
     GraphQLFieldConfig,
     GraphQLString,
@@ -9,6 +9,7 @@ import {
 } from 'graphql'
 
 import { Task } from '../types'
+import TaskModel from '../../models/Task'
 
 export const task: GraphQLFieldConfig<any, any, any> = {
     type: Task,
@@ -16,11 +17,11 @@ export const task: GraphQLFieldConfig<any, any, any> = {
         id: { type: new GraphQLNonNull(GraphQLString) }
     },
     where: (table, args, context) => {
-        if (args.id) return `${table}.id = ${args.id}`
+        if (args.id) return `${table}.id = ${context.id}`
     },
-    resolve: (parent, args, context: Context, resolveInfo) => {
+    resolve: (parent, { id }, context: Context, resolveInfo) => {
         isAuthenticated(context)
-        // TODO: Decode ID
+        const decodedId = decodeHashId(TaskModel, id)
         return joinMonster(resolveInfo, {}, sql => {
             return db.knexInstance.raw(sql)
         }, { dialect: 'pg' })
