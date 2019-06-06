@@ -64,7 +64,7 @@ class Server {
             graphqlHTTP(async (req, res, graphQLParams) => ({
                     schema: schema,
                     context: { req, res, fileStorage: FileStorage, auth: await getAuthData(req) },
-                    customFormatErrorFn: process.env.NODE_ENV === 'development' ? this.debugErrorHandler : undefined,
+                    customFormatErrorFn: process.env.NODE_ENV === 'development' ? this.debugErrorHandler : this.productionErrorHandler,
                     graphiql: false,
                 }))
         );
@@ -88,9 +88,21 @@ class Server {
 
     private debugErrorHandler(error) {
         return {
+            name: error.name,
+            code: error.originalError && error.originalError.code,
             message: error.message,
             locations: error.locations,
             stack: error.stack ? error.stack.split('\n') : [],
+            path: error.path
+        }
+    }
+
+    private productionErrorHandler(error) {
+        return {
+            name: error.name,
+            code: error.originalError && error.originalError.code,
+            message: error.message,
+            locations: error.locations,
             path: error.path
         }
     }

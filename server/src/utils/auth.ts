@@ -4,6 +4,7 @@ import * as bcrypt from 'bcryptjs'
 import Session from '../models/Session'
 import sodium from 'sodium'
 import { FileStorageClass } from '../FileStorage'
+import { AuthenticationError, RequestError } from '../utils'
 
 // Interfaces
 
@@ -33,28 +34,35 @@ export async function getAuthData(req: Request): Promise<AuthData> {
 }
 
 export function isAuthenticated(context: Context) {
-    if (context.auth == null) throw new Error('You are not authorized to do this.');
+    if (context.auth == null) throw new AuthenticationError();
 }
 
 // login, logout, signup
 
 export async function checkAndSignup(context: Context, args): Promise<number> {
-        const password = await bcrypt.hash(args.password, 10)
-        const user = await User.query().insert({ ...args, password }) as any as User
+    if (context.auth) {
+        throw new RequestError(`You are already logged in.`)
+    }
+    const password = await bcrypt.hash(args.password, 10)
+    const user = await User.query().insert({ ...args, password }) as any as User
 
-        await performLogin(context, user.id);
+    await performLogin(context, user.id);
 
-        return user.id;
+    return user.id;
 }
 
 export async function checkAndLogin(context: Context, username: string, password: string): Promise<number> {
+    if (context.auth) {
+        throw new RequestError(`You are already logged in.`)
+    }
+
     const user = await User.query().findOne({ username })
     if (!user) {
-        throw new Error(`No such user found for username: ${username}`)
+        throw new AuthenticationError(`No such user found for username: ${username}`)
     }
     const valid = await bcrypt.compare(password, user.password)
     if (!valid) {
-        throw new Error('Invalid password')
+        throw new AuthenticationError('Invalid password')
     }
 
     await performLogin(context, user.id);
@@ -103,7 +111,7 @@ async function createSession(userId: number, req: Request): Promise<string> {
 
 async function verifySession(token: string, req: Request): Promise<number> {
     const oldSession = await Session.query().findOne({ token })
-    if (!oldSession) throw new Error('You are not authorized to do this.')
+    if (!oldSession) throw new AuthenticationError()
 
     let userAgent = req.headers['user-agent'] ? req.headers['user-agent'] : ''
     const updatedSession = await oldSession.$query().updateAndFetch({
@@ -114,7 +122,7 @@ async function verifySession(token: string, req: Request): Promise<number> {
     // Diff between last update and now is more than 5 days
     if (Math.abs(updatedSession.updatedAt.getTime() - Date.now()) > 4.32e+8) {
         await Session.query().deleteById(updatedSession.id)
-        throw new Error('You are not authorized to do this.')
+        throw new AuthenticationError('Your Session timed out.')
     }
 
     return updatedSession.userId;
