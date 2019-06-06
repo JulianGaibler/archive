@@ -11,9 +11,13 @@ import PostModel from '../../models/Post'
 import TaskModel from '../../models/Task'
 
 export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
+    description: `Creates one or more posts.`,
     type: new GraphQLNonNull(Task),
     args: {
-        items: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(NewPost))) }
+        items: {
+            description: `Items to be uploaded.`,
+            type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(NewPost)))
+        }
     },
     where: (table, args, context) => {
         // TODO
@@ -69,9 +73,13 @@ export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
 }
 
 export const deletePost: GraphQLFieldConfig<any, any, any> = {
+    description: `Deletes a post.`,
     type: new GraphQLNonNull(GraphQLBoolean),
     args: {
-        id: { type: new GraphQLNonNull(GraphQLString) },
+        id: {
+            description: `The ID of the post to delete.`,
+            type: new GraphQLNonNull(GraphQLString)
+        },
     },
     resolve: async (parent, { id }, context: Context, resolveInfo) => {
         isAuthenticated(context)

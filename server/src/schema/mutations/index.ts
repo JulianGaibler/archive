@@ -7,6 +7,7 @@ import { signup, login, logout } from './User'
 
 export default new GraphQLObjectType({
     name: 'Mutation',
+    description: 'The root query for implementing GraphQL mutations.',
     fields: () => ({
         createKeyword,
         deleteKeyword,

@@ -12,9 +12,13 @@ import { Post } from '../types'
 import PostModel from '../../models/Post'
 
 export const post: GraphQLFieldConfig<any, any, any> = {
+    description: `Returns one post.`,
     type: Post,
     args: {
-        id: { type: new GraphQLNonNull(GraphQLString) }
+        id: {
+            description: `The ID of the post.`,
+            type: new GraphQLNonNull(GraphQLString)
+        }
     },
     where: (table, args, context) => {
         if (args.id) return `${table}.id = ${context.id}`
@@ -29,6 +33,7 @@ export const post: GraphQLFieldConfig<any, any, any> = {
 }
 
 export const posts: GraphQLFieldConfig<any, any, any> = {
+    description: `Returns a list of posts.`,
     type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Post))),
     resolve: async (parent, args, context: Context, resolveInfo) => {
         isAuthenticated(context)

@@ -8,6 +8,7 @@ import { me } from './User'
 
 export default new GraphQLObjectType({
     name: 'Query',
+    description: `The query root of the GraphQL interface.`,
     fields: () => ({
         keywords,
         keyword,

@@ -10,9 +10,13 @@ import { Post, Task, NewPost } from '../types'
 import SessionModel from '../../models/Session'
 
 export const revokeSession: GraphQLFieldConfig<any, any, any> = {
+    description: `Revokes the session of a user.`,
     type: new GraphQLNonNull(GraphQLBoolean),
     args: {
-        id: { type: new GraphQLNonNull(GraphQLString) },
+        id: {
+            description: `The ID of the session to revoke.`,
+            type: new GraphQLNonNull(GraphQLString)
+        },
     },
     resolve: async (parent, { id }, context: Context, resolveInfo) => {
         isAuthenticated(context)

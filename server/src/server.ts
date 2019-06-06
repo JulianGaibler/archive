@@ -115,7 +115,6 @@ class Server {
                 execute: execute as ExecuteFunction,
                 subscribe,
                 onConnect: async (connectionParams, webSocket) => {
-                    console.log('connect!!')
                     return { ...connectionParams }
                 }, // this.subscriptionServerOptions.onConnect
                 //onDisconnect: this.subscriptionServerOptions.onDisconnect,
