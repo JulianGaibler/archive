@@ -13,9 +13,14 @@ export const signup: GraphQLFieldConfig<any, any, any> = {
         name: { type: new GraphQLNonNull(GraphQLString) },
         password: { type: new GraphQLNonNull(GraphQLString) },
     },
+    where: (usersTable, args, context) => {
+        return `${usersTable}.id = ${context.id}`
+    },
     resolve: async (parent, args, context: Context, resolveInfo) => {
-        await checkAndSignup(context, args)
-        return true
+        const id = await checkAndSignup(context, args)
+        return joinMonster(resolveInfo, { id }, sql => {
+            return db.knexInstance.raw(sql)
+        })
     }
 }
 
@@ -25,9 +30,14 @@ export const login: GraphQLFieldConfig<any, any, any> = {
         username: { type: new GraphQLNonNull(GraphQLString) },
         password: { type: new GraphQLNonNull(GraphQLString) },
     },
+    where: (usersTable, args, context) => {
+        return `${usersTable}.id = ${context.id}`
+    },
     resolve: async (parent, { username, password }, context: Context, resolveInfo) => {
-        await checkAndLogin(context, username, password)
-        return true
+        const id = await checkAndLogin(context, username, password)
+        return joinMonster(resolveInfo, { id }, sql => {
+            return db.knexInstance.raw(sql)
+        })
     }
 }
 
