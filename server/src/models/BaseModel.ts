@@ -32,7 +32,7 @@ export default class BaseModel extends Model {
 }
 
 function toDate(obj: any, fieldName: string): any {
-    if (obj != null && typeof obj[fieldName] === 'number') {
+    if (obj != null && typeof obj[fieldName] === 'string') {
         obj[fieldName] = new Date(obj[fieldName]);
     }
     return obj;
