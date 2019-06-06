@@ -11,6 +11,7 @@ import {
 import { User } from '../types'
 
 export const me: GraphQLFieldConfig<any, any, any> = {
+    description: `Returns the currently authenticated user.`,
     type: User,
     where: (usersTable, args, context) => {
         return `${usersTable}.id = ${context.id}`

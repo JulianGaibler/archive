@@ -7,11 +7,21 @@ import { Post } from '../types'
 
 
 export const signup: GraphQLFieldConfig<any, any, any> = {
+    description: `Creates a new user and performs a login.`,
     type: new GraphQLNonNull(GraphQLBoolean),
     args: {
-        username: { type: new GraphQLNonNull(GraphQLString) },
-        name: { type: new GraphQLNonNull(GraphQLString) },
-        password: { type: new GraphQLNonNull(GraphQLString) },
+        username: {
+            description: `The username used to login.`,
+            type: new GraphQLNonNull(GraphQLString)
+        },
+        name: {
+            description: `The user's profile name.`,
+            type: new GraphQLNonNull(GraphQLString)
+        },
+        password: {
+            description: `Password of the user.`,
+            type: new GraphQLNonNull(GraphQLString)
+        },
     },
     resolve: async (parent, args, context: Context, resolveInfo) => {
         const id = await checkAndSignup(context, args)
@@ -20,10 +30,17 @@ export const signup: GraphQLFieldConfig<any, any, any> = {
 }
 
 export const login: GraphQLFieldConfig<any, any, any> = {
+    description: `Creates a new session for the user.`,
     type: new GraphQLNonNull(GraphQLBoolean),
     args: {
-        username: { type: new GraphQLNonNull(GraphQLString) },
-        password: { type: new GraphQLNonNull(GraphQLString) },
+        username: {
+            description: `The username used to login.`,
+            type: new GraphQLNonNull(GraphQLString)
+        },
+        password: {
+            description: `Password of the user.`,
+            type: new GraphQLNonNull(GraphQLString)
+        },
     },
     resolve: async (parent, { username, password }, context: Context, resolveInfo) => {
         const id = await checkAndLogin(context, username, password)
@@ -32,6 +49,7 @@ export const login: GraphQLFieldConfig<any, any, any> = {
 }
 
 export const logout: GraphQLFieldConfig<any, any, any> = {
+    description: `Terminates the current users session.`,
     type: new GraphQLNonNull(GraphQLBoolean),
     resolve: async (parent, args, context: Context, resolveInfo) => {
         isAuthenticated(context)

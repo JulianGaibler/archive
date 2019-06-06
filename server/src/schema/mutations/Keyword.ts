@@ -9,9 +9,13 @@ import { Keyword } from '../types'
 import KeywordModel from '../../models/Keyword'
 
 export const createKeyword: GraphQLFieldConfig<any, any, any> = {
+    description: `Creates a new keyword.`,
     type: new GraphQLNonNull(Keyword),
     args: {
-        name: { type: new GraphQLNonNull(GraphQLString) },
+        name: {
+            description: `Name of the keyword.`,
+            type: new GraphQLNonNull(GraphQLString)
+        },
     },
     where: (table, args, context) => {
         return `${table}.id = ${context.id}`
@@ -26,9 +30,13 @@ export const createKeyword: GraphQLFieldConfig<any, any, any> = {
 }
 
 export const deleteKeyword: GraphQLFieldConfig<any, any, any> = {
+    description: `Deleted a keyword.`,
     type: new GraphQLNonNull(GraphQLBoolean),
     args: {
-        id: { type: new GraphQLNonNull(GraphQLString) },
+        id: {
+            description: `The ID of the keyword to delete.`,
+            type: new GraphQLNonNull(GraphQLString)
+        },
     },
     resolve: async (parent, { id }, context: Context, resolveInfo) => {
         isAuthenticated(context)

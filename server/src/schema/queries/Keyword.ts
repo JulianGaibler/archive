@@ -13,9 +13,13 @@ import { Keyword } from '../types'
 import KeywordModel from '../../models/Keyword'
 
 export const keyword: GraphQLFieldConfig<any, any, any> = {
+    description: `Returns one keyword.`,
     type: Keyword,
     args: {
-        id: { type: new GraphQLNonNull(GraphQLString) }
+        id: {
+            description: `The ID of the keyword.`,
+            type: new GraphQLNonNull(GraphQLString)
+        }
     },
     where: (table, args, context) => {
         if (args.id) return `${table}.id = ${context.id}`
@@ -30,9 +34,13 @@ export const keyword: GraphQLFieldConfig<any, any, any> = {
 }
 
 export const keywords: GraphQLFieldConfig<any, any, any> = {
+    description: `Returns a list of keywords.`,
     type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Keyword))),
     args: {
-        search: { type: GraphQLString }
+        search: {
+            description: `Returns all keywords containing this string.`,
+            type: GraphQLString
+        }
     },
     where: (table, args, context) => {
         if (args.search) return escape(`LOWER(${table}.name) LIKE %L`, `%${args.search.toLowerCase()}%`)
