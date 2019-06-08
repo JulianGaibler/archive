@@ -1,6 +1,6 @@
 # import "./FileFragment.gql"
 
-mutation uploadPosts($posts: [NewPost!]) {
+mutation uploadPosts($posts: [NewPost!]!) {
   uploadPosts(items: $posts) {
     title
     uploader {
