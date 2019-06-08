@@ -58,9 +58,10 @@ export default {
     },
     methods: {
         async onDone(data) {
-            console.log(data);
+            if (!data) return;
             const apolloClient = this.$apollo.provider.defaultClient
             await onLogin(apolloClient);
+            this.$router.replace('/')
         }
     }
 }

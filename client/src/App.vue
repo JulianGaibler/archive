@@ -1,10 +1,8 @@
 <template>
-    <div id="app" v-if="this.$router.currentRoute === 'Login'">
+    <div id="app">
         <main><router-view /></main>
+        <SideBar v-if="this.$router.currentRoute !== 'Login'" />
     </div>
-    <SideBar v-else>
-         <router-view />
-    </SideBar>
 </template>
 
 <script>
@@ -19,8 +17,12 @@ export default {
     created() {
         // Taking control of global error handler
         this.$apolloProvider.errorHandler = error => {
-            if (error.message === 'GraphQL error: Not authorized') {
-                this.$router.replace('/login')
+            console.error(error)
+            for (var i = 0; i < error.graphQLErrors.length; i++) {
+                if (error.graphQLErrors[i].code === 'AuthenticationError') {
+                    this.$router.replace('/login')
+                    break
+                }
             }
         }
     },
