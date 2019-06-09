@@ -17,20 +17,6 @@ import {
 } from 'graphql'
 
 ////
-// Inputs
-
-export const NewPost = new GraphQLInputObjectType({
-    name: 'NewPost',
-    description: 'Fields for one uploaded item.',
-    fields: {
-        title: { type: new GraphQLNonNull(GraphQLString) },
-        caption: { type: GraphQLString },
-        keywords: { type: new GraphQLList(new GraphQLNonNull(GraphQLInt)) },
-        file: { type: new GraphQLNonNull(GraphQLUpload) },
-    },
-})
-
-////
 // Scalars
 
 export const DateTime = new GraphQLScalarType({
@@ -64,6 +50,37 @@ export const Format = new GraphQLEnumType({
     }
 })
 
+export const Language = new GraphQLEnumType({
+    name: 'Language',
+    description: `Possible languages that an object can have.`,
+    values: {
+        ENGLISH: {
+            description: `The English language.`,
+        },
+        GERMAN: {
+            description: `The German language.`,
+        },
+        FRENCH: {
+            description: `The French language.`,
+        },
+        ITALIAN: {
+            description: `The Italian language.`,
+        },
+        NORWEGIAN: {
+            description: `The Norwegian language.`,
+        },
+        RUSSIAN: {
+            description: `The Russian language.`,
+        },
+        SPANISH: {
+            description: `The Spanish language.`,
+        },
+        TURKISH: {
+            description: `The Turkish language.`,
+        },
+    }
+})
+
 export const TaskStatus = new GraphQLEnumType({
     name: 'TaskStatus',
     description: `The possible states of a task.`,
@@ -83,6 +100,39 @@ export const TaskStatus = new GraphQLEnumType({
     }
 })
 
+////
+// Inputs
+
+export const NewPost = new GraphQLInputObjectType({
+    name: 'NewPost',
+    description: 'Fields for one uploaded item.',
+    fields: {
+        title: {
+            description: `Title of the post.`,
+            type: new GraphQLNonNull(GraphQLString)
+        },
+        caption: {
+            description: `Optional caption of what is written or said in the post.`,
+            type: GraphQLString
+        },
+        language: {
+            description: `Language in which title and caption are written in.`,
+            type: new GraphQLNonNull(Language)
+        },
+        type: {
+            description: `Optional specification how to treat the uplaoded file. E.g. for turning videos into GIFs and vice versa.`,
+            type: Format,
+        },
+        keywords: {
+            description: `Optional keyword-IDs to be associated with that post.`,
+            type: new GraphQLList(new GraphQLNonNull(GraphQLString))
+        },
+        file: {
+            description: `The file.`,
+            type: new GraphQLNonNull(GraphQLUpload)
+        },
+    },
+})
 
 ////
 // Objects
@@ -107,6 +157,10 @@ export const Post = new GraphQLObjectType({
                     (junction, to, args) => `${junction}.keyword_id = ${to}.id`
                 ]
             }
+        },
+        language: {
+            description : `Language in which caption and title are written.`,
+            type: Language
         },
         originalPath: {
             description : `Path where the original file is located. (with file-extension)`,

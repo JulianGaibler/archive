@@ -14,6 +14,8 @@ export default class Post extends BaseModel {
 
     title!: string;
     type!: string;
+    language?: string;
+
     compressedPath?: string;
     thumbnailPath?: string;
     originalPath?: string;
@@ -32,7 +34,8 @@ export default class Post extends BaseModel {
             id: { type: 'number' },
             title: { type: 'string', minLength: 4, maxLength: 255 },
             type: { type: 'string', enum: ['VIDEO', 'IMAGE', 'GIF'] },
-            compressedPath: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
+            language: { type: ['string'], maxLength: 64 },
+            compressedPath: { type: ['string', 'null'], minLength: 2, maxLength: 32 },
             thumbnailPath: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
             originalPath: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
             uploaderId: { type: ['number', 'null'], minLength: 2, maxLength: 64 },
