@@ -49,11 +49,10 @@ export default class FileProcessor {
         }
     }
 
-    async processVideo(readStream, directory: string) {
     async processVideo(readStream, directory: string, fileType: FileType) {
         // TODO: Are the files really being removed from the temp file?
         const compressed = jet.path(directory, 'video')
-        const filePaths = {
+        let filePaths = {
             mp4: `${compressed}.mp4`,
             webm: `${compressed}.webm`,
         }
@@ -96,8 +95,8 @@ export default class FileProcessor {
             return new Promise((resolve, reject) => {
                 let f = ffmpeg(inputPath)
                 if (optionsCallback) optionsCallback(f)
+                if (size) f.size(size)
                 f.output(outputPath)
-                    .size(size)
                     .outputOptions(outputOptions)
                     .on('error', reject)
                     .on('end', resolve)
@@ -105,22 +104,50 @@ export default class FileProcessor {
             })
         }
 
-        const mp4Options = ['-pix_fmt yuv420p', '-deinterlace', '-vsync 1', '-vcodec libx264', '-profile:v main', '-tune film', '-g 60', '-x264opts no-scenecut', '-acodec aac', '-ac 2', '-ar 44100', '-f mp4']
-        const webmOptions = ['-pix_fmt yuv420p', '-deinterlace', '-vsync 1', '-c:v libvpx-vp9', '-cpu-used 2', '-c:a libopus', '-f webm']
+        const mp4VideoOptions = ['-pix_fmt yuv420p', '-deinterlace', '-vsync 1', '-vcodec libx264', '-profile:v main', '-tune film', '-g 60', '-x264opts no-scenecut', '-f mp4']
+        const mp4AudioOptions = ['-acodec aac', '-ac 2', '-ar 44100']
 
-        let renderA, renderB
+        const webmVideoOptions = ['-pix_fmt yuv420p', '-deinterlace', '-vsync 1', '-c:v libvpx-vp9', '-cpu-used 2', '-f webm']
+        const webmAudioOptions = ['-c:a libopus']
+
+        let renderA, renderB, renderC
 
         // Render main video
         const outputHeight = height > 720 ? 720 : height
-        renderA = renderVideo(originalPath, filePaths.mp4, `?x${outputHeight}`, [...mp4Options, ...['-b:v: 2500k', '-bufsize 2000k', '-maxrate 4500k', '-b:a 192k']])
-        renderB = renderVideo(originalPath, filePaths.webm, `?x${outputHeight}`, [...webmOptions, ...['-b:v: 2000k', '-bufsize 1000k', '-maxrate 3000k', '-b:a 192k']])
+        renderA = renderVideo(originalPath, filePaths.mp4, `?x${outputHeight}`, [
+                ...mp4VideoOptions,
+                ...(fileType === FileType.VIDEO ? [...mp4AudioOptions, ...'-b:a 192k'] : ['-an']),
+                ...['-b:v: 2500k', '-bufsize 2000k', '-maxrate 4500k']
+            ])
+        renderB = renderVideo(originalPath, filePaths.webm, `?x${outputHeight}`, [
+                ...webmVideoOptions,
+                ...(fileType === FileType.VIDEO ? [...webmAudioOptions, ...'-b:a 192k'] : ['-an']),
+                ...['-b:v: 2000k', '-bufsize 1000k', '-maxrate 3000k']
+            ])
+
+        if (fileType === FileType.GIF) {
+            filePaths['gif'] = `${compressed}.gif`
+            renderC = renderVideo(originalPath, (filePaths as any).gif, undefined, [
+                '-f gif',
+            ], f => { f.addOption('-filter_complex', `[0:v] fps=25,scale=${width > 480 ? 480 : width}:-2,split [a][b];[a] palettegen [p];[b][p] paletteuse`) })
+        } else {
+            renderC = Promise.resolve()
+        }
         await Promise.all([renderA, renderB])
 
         // Render thumbnail
         const outputThumbnailWidth = width > 400 ? 400 : width
         const thumbnailOptions = f => {f.duration(7.5)}
-        renderA = renderVideo(originalPath, videoThumbnailPaths.mp4, `${outputThumbnailWidth}x?`, [...mp4Options, ...['-b:v: 625k', '-bufsize 500k', '-maxrate 1000k', '-b:a 96k']], thumbnailOptions)
-        renderB = renderVideo(originalPath, videoThumbnailPaths.webm, `${outputThumbnailWidth}x?`, [...webmOptions, ...['-b:v: 500k', '-bufsize 250k', '-maxrate 750k', '-b:a 96k']], thumbnailOptions)
+        renderA = renderVideo(originalPath, videoThumbnailPaths.mp4, `${outputThumbnailWidth}x?`, [
+                ...mp4VideoOptions,
+                ...(fileType === FileType.VIDEO ? [...mp4AudioOptions, ...'-b:a 96k'] : ['-an']),
+                ...['-b:v: 625k', '-bufsize 500k', '-maxrate 1000k']
+            ], thumbnailOptions)
+        renderB = renderVideo(originalPath, videoThumbnailPaths.webm, `${outputThumbnailWidth}x?`, [
+                ...webmVideoOptions,
+                ...(fileType === FileType.VIDEO ? [...webmAudioOptions, ...'-b:a 96k'] : ['-an']),
+                ...['-b:v: 500k', '-bufsize 250k', '-maxrate 750k']
+            ], thumbnailOptions)
         await Promise.all([renderA, renderB])
 
         return {
