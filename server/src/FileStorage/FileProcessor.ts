@@ -4,6 +4,7 @@ import ffmpeg from 'fluent-ffmpeg'
 import tmp from 'tmp'
 import { raw } from 'objection'
 import { to } from '../utils'
+import { FileType } from '../FileStorage'
 
 import Task from '../models/Task'
 import Post from '../models/Post'
@@ -49,6 +50,7 @@ export default class FileProcessor {
     }
 
     async processVideo(readStream, directory: string) {
+    async processVideo(readStream, directory: string, fileType: FileType) {
         // TODO: Are the files really being removed from the temp file?
         const compressed = jet.path(directory, 'video')
         const filePaths = {
