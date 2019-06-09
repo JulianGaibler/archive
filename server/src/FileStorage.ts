@@ -8,6 +8,14 @@ import FileProcessor from './FileStorage/FileProcessor'
 import {Mutex, MutexInterface} from 'async-mutex';
 import { to, encodeHashId } from './utils'
 
+// Enums
+
+export enum FileType {
+    VIDEO= 'VIDEO',
+    IMAGE= 'IMAGE',
+    GIF= 'GIF',
+}
+
 // Interfaces
 interface StoreData {
     postObject: Post,
@@ -116,16 +124,16 @@ export class FileStorageClass {
         console.log(tmpDir)
         let processor = new FileProcessor(taskObject)
 
+        const fileType: FileType = data.type.mime === 'image/gif' ? FileType.GIF : (data.type.kind === 'video' ? FileType.VIDEO : FileType.IMAGE);
+
         try {
-            if (type.kind === 'video') [processError, createdFiles] = await to(processor.processVideo(typedStream, tmpDir.name))
-            if (type.kind === 'image') [processError, createdFiles] = await to(processor.processImage(typedStream, tmpDir.name))
+            if (fileType === FileType.GIF || fileType === FileType.VIDEO) [processError, createdFiles] = await to(processor.processVideo(typedStream, tmpDir.name, fileType))
+            if (fileType === FileType.IMAGE) [processError, createdFiles] = await to(processor.processImage(typedStream, tmpDir.name))
 
             if (processError) throw processError
 
             // Create post object
-            if (data.type.mime === 'image/gif') postObject.type = 'GIF'
-            else if (data.type.kind === 'video') postObject.type = 'VIDEO'
-            else postObject.type = 'IMAGE'
+            else postObject.type = fileType
 
             const newPost = await Post.query().insert(postObject)
             postCreated = true
