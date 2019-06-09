@@ -58,6 +58,7 @@ export default {
                     keywords: [],
                     title: '',
                     caption: '',
+                    language: 'ENGLISH',
                 }
             })
         },
@@ -81,11 +82,12 @@ export default {
                     file: payload.file,
                     keywords: payload.keywords,
                     title: payload.title,
+                    language: payload.language,
                     caption: payload.caption.length > 0 ? payload.caption : undefined,
                 }
             })
 
-            
+
             await this.$apollo.mutate({
                 mutation: UPLOAD_FILE,
                 variables: {
@@ -117,16 +119,16 @@ export default {
         frame.addEventListener('dragenter', () => {
             this.showDropzone = true;
         });
-        
+
         // 2
         dropzone.addEventListener('dragenter', this.allowDrag);
         dropzone.addEventListener('dragover', this.allowDrag);
-        
+
         // 3
         dropzone.addEventListener('dragleave', () => {
             this.showDropzone = false;
         });
-        
+
         // 4
         dropzone.addEventListener('drop', (e)=>{
             e.preventDefault();

@@ -14,6 +14,7 @@ exports.up = async knex =>
             table.increments('id');
             table.string('title').notNullable();
             table.enu('type', ['VIDEO', 'IMAGE', 'GIF'], { useNative: true, enumName: 'Format' }).notNullable();
+            table.string('language', 32).notNullable();
             table.string('originalPath');
             table.string('compressedPath');
             table.string('thumbnailPath');
