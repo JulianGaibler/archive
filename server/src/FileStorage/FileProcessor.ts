@@ -22,12 +22,12 @@ export default class FileProcessor {
     async processImage(readStream, directory: string) {
         const compressed = jet.path(directory, 'image')
         const filePaths = {
-            png: `${compressed}.png`,
+            jpeg: `${compressed}.jpeg`,
             webp: `${compressed}.webp`,
         }
         const originalPath = await this.storeOriginal(readStream, directory)
 
-        const wsPng = jet.createWriteStream(filePaths.png)
+        const wsJpeg = jet.createWriteStream(filePaths.jpeg)
         const wsWebp = jet.createWriteStream(filePaths.webp)
 
         const transform = sharp().removeAlpha().resize(900, 900, {
@@ -35,8 +35,8 @@ export default class FileProcessor {
             withoutEnlargement: true,
         })
 
-        transform.clone().toFormat('png', { progressive: true }).pipe(wsPng)
-        transform.clone().toFormat('webp', { quality: 90, nearLossless: true }).pipe(wsWebp)
+        transform.clone().toFormat('jpeg', { quality: 91, progressive: true }).pipe(wsJpeg)
+        transform.clone().toFormat('webp', { quality: 80, nearLossless: true }).pipe(wsWebp)
 
         jet.createReadStream(originalPath).pipe(transform)
 
@@ -66,7 +66,7 @@ export default class FileProcessor {
 
         // Create temp dir for screenshot -_-
         let tmpDir = tmp.dirSync();
-        const tmpFilename = `thumb.png`;
+        const tmpFilename = 'thumb.png';
 
         await new Promise((resolve, reject) => {
            ffmpeg(originalPath)
