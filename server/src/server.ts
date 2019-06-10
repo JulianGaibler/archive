@@ -89,6 +89,7 @@ class Server {
     private debugErrorHandler(error) {
         return {
             name: error.name,
+            errors: error.originalError && error.originalError.fields,
             code: error.originalError && error.originalError.code,
             message: error.message,
             locations: error.locations,
@@ -100,6 +101,7 @@ class Server {
     private productionErrorHandler(error) {
         return {
             name: error.name,
+            errors: error.originalError && error.originalError.fields,
             code: error.originalError && error.originalError.code,
             message: error.message,
             locations: error.locations,

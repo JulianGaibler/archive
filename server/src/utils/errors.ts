@@ -31,3 +31,11 @@ export class UploadError extends RequestError {
         super('You are not authorized to do this.', msg)
     }
 }
+
+export class InputError extends RequestError {
+    fields
+    constructor(fieldErrors) {
+        super('There were errors in your request.')
+        this.fields = fieldErrors
+    }
+}

@@ -1,5 +1,5 @@
 import { GraphQLFieldConfig, GraphQLString, GraphQLBoolean, GraphQLNonNull, GraphQLList, } from 'graphql'
-import { decodeHashId, to, isAuthenticated, Context } from '../../utils'
+import { decodeHashId, to, isAuthenticated, Context, InputError } from '../../utils'
 import joinMonster from 'join-monster'
 import * as bcrypt from 'bcryptjs'
 import db from '../../database'
@@ -52,8 +52,7 @@ export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
 
             console.log(errors)
 
-            // TODO
-            //throw new Error('Upload Items invalid', errors);
+            throw new InputError(errors);
         }
 
         let taskIds = []
