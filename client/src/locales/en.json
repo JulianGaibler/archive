@@ -1,3 +1,63 @@
 {
-    "message": "hello i18n !!"
+    "views": {
+        "archive": "Archive",
+        "upload": "Upload",
+        "collections": "Collections",
+        "users": "Users",
+        "queue": "Queue",
+        "sessions": "Sessions",
+        "settings": "Settings"
+    },
+    "action": {
+        "next": "Next",
+        "back": "Back",
+        "add": "Add",
+        "remove": "Remove",
+        "search": "Search",
+        "more": "more",
+        "done": "Done",
+        "import": "import",
+        "export": "export",
+        "tryagain": "try again",
+        "send": "Send"
+    },
+    "state": {
+        "loading": "Loading",
+        "added": "Added",
+        "removed": "Removed",
+        "optional": "optional"
+    },
+    "input": {
+        "keyword": "Enter keyword",
+        "upload": {
+            "title": "Title",
+            "caption": "Caption",
+            "language": "Language",
+            "keywords": "Keywords",
+            "treatas": "Treat file as",
+            "treatas_default_name": "Default",
+            "treatas_default_tip": "processes file according to its type",
+            "treatas_video_name": "Video",
+            "treatas_video_tip": "has sound but no GIF version available",
+            "treatas_gif_name": "GIF",
+            "treatas_gif_tip": "gets stripped of sound but has GIF version available"
+        }
+    },
+    "result": {
+        "noresults_headline": "no results.",
+        "none": "none"
+    },
+    "error": {
+        "required_field": "This is a required field"
+    },
+    "languages": {
+        "english": "English",
+        "german": "German",
+        "french": "French",
+        "italian": "Italian",
+        "norwegian": "Norwegian",
+        "russian": "Russian",
+        "spanish": "Spanish",
+        "turkish": "Turkish"
+    }
 }

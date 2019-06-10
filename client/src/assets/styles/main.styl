@@ -15,13 +15,13 @@ html, body, #app
 body
     font-family 'Heebo', sans-serif
 
-input, button, textarea
+input, button, textarea, select
     background unset
     border none
     color inherit
     font-family inherit
     font-size inherit
-
+    outline none
 
 h1
     font-size 3.3rem
@@ -125,16 +125,74 @@ header
     padding-left .5rem
     &:not(:last-child)
         margin-bottom .5rem
-    input, textarea, .tag
+    input, textarea, select, .tag, .option > label
         background unset
         border none
         margin .2em .2em .2em 0
         font-weight 500
         font-size 1.1em
         padding 0
+    .option
+        display flex
+        flex-direction row
+        &:first-of-type
+            margin-top 0.25rem
+        input
+            appearance none
+            box-sizing border-box
+            height 1rem
+            width 1rem
+            border 0.125rem solid
+            border-radius 50%
+            position relative
+            margin 0.5rem 0.5rem 0.5rem 0.1rem
+            &::after
+                content ''
+                display block
+                top -.5rem
+                left -.5rem
+                right -.5rem
+                bottom -.5rem
+                border-radius 50%
+                opacity 0
+                transition opacity .1s
+                position absolute
+                background $archive-inv
+            &:active::after
+                opacity .1
+            &::before
+                content ''
+                display block
+                background $archive-inv
+                border-radius 50%
+                width 100%
+                height 100%
+                transition transform 0.25s
+                transform scale(0)
+            &:checked::before
+                transform scale(0.6)
+        label
+            .name
+                padding 0.3rem 0
+            .desc
+                font-size 0.875rem
+                opacity 0.40
+    .selectFlex
+        display flex
+        flex-direction row
+        align-items center
+        select
+            appearance none
+            padding-right 1.25rem
+        svg
+            height 1rem
+            margin-left -1.5rem
+            pointer-events none
+        &.noItemSelected
+            opacity 0.55
     textarea
         resize none
-    label
+    > label
         color $archive-darkgrey
         text-transform uppercase
         font-weight 500

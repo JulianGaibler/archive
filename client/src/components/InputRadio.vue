@@ -1,0 +1,50 @@
+<template>
+    <div class="inputField light" :class="{error: errors}">
+        <label class="visible">{{label}}</label>
+
+            <div class="option" v-for="option in options" :key="option.value">
+                <input type="radio" :id="rid+option.value" :value="option.value" v-model="content" @input="updateInput_">
+                <label :for="rid+option.value">
+                    <div class="name">{{option.name}}</div>
+                    <div v-if="option.tip" class="desc">{{option.tip}}</div>
+                </label>
+            </div>
+
+        <ul v-if="errors" class="error">
+            <li v-for="error in errors" :key="error.message">{{error.message}}</li>
+        </ul>
+    </div>
+</template>
+
+<script>
+
+export default {
+    name: 'InputRadio',
+    props: {
+        options: Array,
+        value: String,
+        label: String,
+        errors: Array,
+    },
+    data() {
+        return {
+            content: this.value,
+            rid: this.randomId_()
+        }
+    },
+    methods: {
+        updateInput_(event) {
+            this.$emit('input', event.srcElement.value)
+        },
+        // We need this to have unique label IDs
+        randomId_: function() {
+            return btoa(Math.random()).slice(0,5)
+        },
+    },
+    computed: {
+        showLabel() {
+            return this.content !== ''
+        }
+    },
+}
+</script>
