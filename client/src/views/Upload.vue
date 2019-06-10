@@ -58,7 +58,8 @@ export default {
                     keywords: [],
                     title: '',
                     caption: '',
-                    language: 'ENGLISH',
+                    type: '',
+                    language: '',
                 }
             })
         },
@@ -72,21 +73,37 @@ export default {
             this.uploads.splice(index, 1);
         },
         async startUpload() {
-
+            // 1. Reset all errors
             this.uploads.forEach(item => {
                 item.errors = []
             })
-
+            // 2. Collect data
             const data = this.uploads.map(({payload}) => {
                 return {
                     file: payload.file,
                     keywords: payload.keywords,
                     title: payload.title,
-                    language: payload.language,
+                    language: payload.language.toUpperCase(),
+                    type: payload.type.length > 0 ? payload.type : undefined,
                     caption: payload.caption.length > 0 ? payload.caption : undefined,
                 }
             })
+            // Check for basic mistakes
 
+
+            let hasLocalErrors = false
+            data.forEach((item, index) => {
+                if (item.title.length < 1) {
+                    this.uploads[index].errors.title = [{ message: this.$t('error.required_field') }]
+                    hasLocalErrors = true
+                }
+                if (item.language === '') {
+                    this.uploads[index].errors.language = [{ message: this.$t('error.required_field') }]
+                    hasLocalErrors = true
+                }
+            })
+
+            if (hasLocalErrors) return;
 
             await this.$apollo.mutate({
                 mutation: UPLOAD_FILE,
@@ -96,19 +113,19 @@ export default {
             }).then((a)=>{
                 console.log('Upload Good: ', a)
             }).catch((e)=>{
-                if (e.graphQLErrors) {
-                    for (var i = e.graphQLErrors.length - 1; i >= 0; i--) {
-                        if (e.graphQLErrors[i].extensions.code !== 'BAD_USER_INPUT') continue
-                        this.handleInputErrors(e.graphQLErrors[i].extensions.exception)
-                        break
+                if (!e.networkError.result.errors) return;
+                for (let i = 0; i < e.networkError.result.errors.length; i++) {
+                    const err = e.networkError.result.errors[i]
+                    if (err.code === 'InputError') {
+                        this.handleInputErrors(err.errors)
+                        return
                     }
                 }
             })
         },
         handleInputErrors(errors) {
+            console.log('test', errors)
             Object.keys(errors).forEach(key => {
-                if (key === 'stacktrace') return;
-                console.log(errors)
                 this.uploads[errors[key].index].errors = errors[key].error.data
             })
         },
