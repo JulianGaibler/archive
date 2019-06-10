@@ -9,8 +9,7 @@
             <input :placeholder="label" ref="tagInput" @input="handleInput" v-model="searchWord" />
             <ul v-if="resultsBox.showBox" class="results">
                 <li v-for="keyword in keywords" :key="keyword.id" @click="addItem(keyword)" class="result">{{keyword.name}}</li>
-                <hr v-if="resultsBox.showLower && resultsBox.showUpper">
-                <li v-if="resultsBox.showLower" @click="createItem()" class="result">Create Keyword "{{searchWord}}"</li>
+                <li v-if="resultsBox.showLower" @click="createItem()" class="result create">Create Keyword "{{searchWord}}"</li>
                 <div v-if="createStatus.loading" class="info">Creating...</div>
                 <div v-if="createStatus.error" class="info error">{{createStatus.error}}</div>
             </ul>

@@ -128,9 +128,10 @@ header
     input, textarea, .tag
         background unset
         border none
-        margin .4em .4em .4em 0
+        margin .2em .2em .2em 0
         font-weight 500
         font-size 1.1em
+        padding 0
     textarea
         resize none
     label
@@ -161,11 +162,9 @@ header
 
 .inputField .autocomplete
     position relative
-    padding .2rem
     display flex
     flex-wrap wrap
     input, textarea, .tag
-        padding .2em .2em
         line-height initial
     input
         flex-grow 100
@@ -180,29 +179,39 @@ header
                 height 100%
                 display block
                 width auto
-        
+
     .results
-        position: absolute
+        position absolute
         display block
-        background $archive-white
-        // box-shadow 0 .25rem 1.5rem rgba(0,0,0,0.1)
-        border 2px solid $archive-grey
+        background $archive-prim2-dark
         border-top none
         z-index 99
         top calc(100% + 2px)
         left 0
         right 0
-        border-bottom-left-radius .5rem
-        border-bottom-right-radius .5rem
-        padding .2rem 0 .4rem 0
+        border-radius .75rem
+        padding .4rem
         hr
             border-color $archive-grey
             margin .2rem 0
         .result
+            remove-native()
             padding .6rem .6rem
-            &:hover
-                background $archive-grey
-                cursor pointer
+            line-height 1.1rem
+            background $archive-prim2-light
+            &:not(:last-child)
+                margin-bottom 0.3rem
+            &:first-child
+                border-top-left-radius .5rem
+                border-top-right-radius .5rem
+            &:last-child
+                border-bottom-left-radius .5rem
+                border-bottom-right-radius .5rem
+            &.create
+                background $archive-std
+            &:hover, &:active
+                background $archive-prim1
+                color $archive-std
         .info
             padding 0 0.6rem 0.3rem 0.6rem
             font-size .8rem
@@ -215,9 +224,6 @@ header
     display flex
     flex-direction column
     position relative
-    .items
-        flex-grow 1
-            
     .dropzone
         position absolute
         visibility hidden
@@ -231,6 +237,7 @@ header
             visibility initial
         }
     .items
+        flex-grow 1
         margin 0 $archive-margin
         input.uploadclick
             width 0.1px
@@ -243,7 +250,7 @@ header
         display flex
         margin-bottom 3rem
         .preview
-            border-radius $archive-radius
+            border-radius $archive-radius2
             overflow hidden
             line-height 0
             margin-right 2rem
@@ -277,14 +284,6 @@ header
                     width auto
                     stroke $archive-prim
 
-.footer
-    position fixed
-    color $archive-white
-    background $archive-black
-    padding 1rem
-    left 0
-    right 0
-    bottom 0
 
 .login
     position absolute
