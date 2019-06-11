@@ -246,7 +246,7 @@ header
         z-index 99
         top calc(100% + 2px)
         left 0
-        right 0
+        min-width 15rem
         border-radius .75rem
         padding .4rem
         hr
@@ -267,9 +267,8 @@ header
                 border-bottom-right-radius .5rem
             &.create
                 background $archive-std
-            &:hover, &:active
-                background $archive-prim1
-                color $archive-std
+            &:hover, &.selected
+                background $archive-prim2-darker
         .info
             padding 0 0.6rem 0.3rem 0.6rem
             font-size .8rem

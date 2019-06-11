@@ -6,10 +6,17 @@
                 <span>{{valueStore[id]}}</span>
                 <div class="icon" @click="removeItem(id)"><IconClose /></div>
             </div>
-            <input :placeholder="label" ref="tagInput" @input="handleInput" v-model="searchWord" />
+            <input
+                :placeholder="label"
+                ref="tagInput"
+                @input="handleInput"
+                @keydown.down="onArrowDown"
+                @keydown.up="onArrowUp"
+                @keydown.enter="onEnter"
+                v-model="searchWord" />
             <ul v-if="resultsBox.showBox" class="results">
-                <li v-for="keyword in keywords" :key="keyword.id" @click="addItem(keyword)" class="result">{{keyword.name}}</li>
-                <li v-if="resultsBox.showLower" @click="createItem()" class="result create">Create Keyword "{{searchWord}}"</li>
+                <li v-for="(keyword, idx) in keywords" :key="keyword.id" @click="addItem(keyword)" class="result" :class="{ selected: idx===currentSelect }">{{keyword.name}}</li>
+                <li v-if="resultsBox.showLower" @click="createItem()" class="result create" :class="{ selected: keywords.length===currentSelect }">Create Keyword "{{searchWord}}"</li>
                 <div v-if="createStatus.loading" class="info">Creating...</div>
                 <div v-if="createStatus.error" class="info error">{{createStatus.error}}</div>
             </ul>
@@ -37,6 +44,7 @@ export default {
             content: this.value,
             valueStore: {},
             searchWord: '',
+            currentSelect: -1,
 
             createStatus: {
                 loading: false,
@@ -95,6 +103,22 @@ export default {
         },
         handleInput() {
             this.createStatus.error = null
+            this.currentSelect = -1
+        },
+        onArrowDown() {
+            if (!this.resultsBox) return;
+            if (this.currentSelect < this.keywords.length) this.currentSelect++
+        },
+        onArrowUp() {
+            if (!this.resultsBox) return;
+            if (this.currentSelect > 0) this.currentSelect--
+        },
+        onEnter() {
+            if (!this.resultsBox) return;
+            if (this.currentSelect < this.keywords.length)
+                this.addItem(this.keywords[this.currentSelect])
+            else if (this.currentSelect === this.keywords.length)
+                this.createItem()
         },
     },
     computed: {
