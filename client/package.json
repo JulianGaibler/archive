@@ -49,6 +49,9 @@
       "parser": "babel-eslint"
     }
   },
+  "eslintIgnore": [
+    "*.gql"
+  ],
   "postcss": {
     "plugins": {
       "autoprefixer": {}
