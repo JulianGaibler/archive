@@ -10,13 +10,25 @@
                 :placeholder="label"
                 ref="tagInput"
                 @input="handleInput"
+                @blur="handleBlur"
                 @keydown.down="onArrowDown"
                 @keydown.up="onArrowUp"
                 @keydown.enter="onEnter"
                 v-model="searchWord" />
-            <ul v-if="resultsBox.showBox" class="results">
-                <li v-for="(keyword, idx) in keywords" :key="keyword.id" @click="addItem(keyword)" class="result" :class="{ selected: idx===currentSelect }">{{keyword.name}}</li>
-                <li v-if="resultsBox.showLower" @click="createItem()" class="result create" :class="{ selected: keywords.length===currentSelect }">Create Keyword "{{searchWord}}"</li>
+            <ul v-if="showResults" class="results">
+                <li
+                    v-for="(keyword, idx) in keywords"
+                    :key="keyword.id" @click="addItem(keyword)"
+                    :class="{ selected: idx===currentSelect }"
+                    class="result"
+                >{{keyword.name}}</li>
+                <li
+                    v-if="showResults"
+                    @click="createItem()"
+                    :class="{ selected: keywords.length===currentSelect }"
+                    class="result create"
+                >Create Keyword "{{searchWord}}"</li>
+
                 <div v-if="createStatus.loading" class="info">Creating...</div>
                 <div v-if="createStatus.error" class="info error">{{createStatus.error}}</div>
             </ul>
@@ -25,10 +37,11 @@
 </template>
 
 <script>
+import debounce from 'debounce'
 import keywordSearch from '../graphql/keywordSearch.gql'
 import createKeyword from '../graphql/mutation/createKeyword.gql'
 
-import IconClose from "@/assets/icon_close.svg?inline";
+import IconClose from "@/assets/icon_close.svg?inline"
 
 export default {
     name: 'InputKeywords',
@@ -44,7 +57,10 @@ export default {
             content: this.value,
             valueStore: {},
             searchWord: '',
+
+            showResults: false,
             currentSelect: -1,
+            keywords: [],
 
             createStatus: {
                 loading: false,
@@ -52,24 +68,32 @@ export default {
             }
         }
     },
-    apollo: {
-        keywords: {
-            query: keywordSearch,
-            variables () {
-                return {
-                    input: this.searchWord
-                }
-            },
-            debounce: 500,
-            fetchPolicy: 'network-only',
-            error(e) {
-                console.log('errors', e.message)
-            }
-        }
-    },
     methods: {
+        handleSearch: debounce(function() {
+            this.$apollo.query({
+                query: keywordSearch,
+                variables () {
+                    return {
+                        input: this.searchWord
+                    }
+                },
+                fetchPolicy: 'network-only',
+                error(e) {
+                    console.log('errors', e.message)
+                }
+            }).then(result => {
+                this.keywords = result.data.keywords
+                this.showResults = true
+            }).catch(() => {
+                //TODO
+            })
+        }, 200),
+        handleBlur: debounce(function() {
+            this.showResults = false
+        }),
         addItem(item) {
             if (this.valueStore[item.id]) return;
+            this.showResults = false
             this.valueStore[item.id] = item.name
             this.content.push(item.id)
             this.$emit('input', this.content)
@@ -102,20 +126,24 @@ export default {
             })
         },
         handleInput() {
+            this.showResults = false
             this.createStatus.error = null
             this.currentSelect = -1
+            this.handleSearch()
         },
-        onArrowDown() {
-            if (!this.resultsBox) return;
+        onArrowDown(e) {
+            if (!this.showResults) return;
+            e.preventDefault()
             if (this.currentSelect < this.keywords.length) this.currentSelect++
         },
-        onArrowUp() {
-            if (!this.resultsBox) return;
+        onArrowUp(e) {
+            if (!this.showResults) return;
+            e.preventDefault()
             if (this.currentSelect > 0) this.currentSelect--
         },
         onEnter() {
-            if (!this.resultsBox) return;
-            if (this.currentSelect < this.keywords.length)
+            if (!this.showResults) return;
+            if (this.currentSelect < this.keywords.length && this.currentSelect >= 0)
                 this.addItem(this.keywords[this.currentSelect])
             else if (this.currentSelect === this.keywords.length)
                 this.createItem()
@@ -124,15 +152,6 @@ export default {
     computed: {
         showLabel() {
             return (this.content && this.content.length) > 0 || (this.searchWord && this.searchWord.length > 0)
-        },
-        resultsBox() {
-            let keywordsLength = this.keywords ? this.keywords.length : 0
-            let searchWordLength = this.searchWord.length
-            return {
-                showBox: searchWordLength > 0 || searchWordLength > 1,
-                showUpper: keywordsLength > 0,
-                showLower: searchWordLength > 1,
-            }
         },
     },
 }

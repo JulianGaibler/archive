@@ -241,9 +241,10 @@ header
     .results
         position absolute
         display block
-        background $archive-prim2-dark
+        background $archive-std
         border-top none
         z-index 99
+        box-shadow 0px 0px 50px rgba(0, 0, 0, 0.15)
         top calc(100% + 2px)
         left 0
         min-width 15rem
@@ -256,7 +257,6 @@ header
             remove-native()
             padding .6rem .6rem
             line-height 1.1rem
-            background $archive-prim2-light
             &:not(:last-child)
                 margin-bottom 0.3rem
             &:first-child
@@ -266,9 +266,9 @@ header
                 border-bottom-left-radius .5rem
                 border-bottom-right-radius .5rem
             &.create
-                background $archive-std
+                background $archive-prim2-light
             &:hover, &.selected
-                background $archive-prim2-darker
+                background $archive-prim2-dark
         .info
             padding 0 0.6rem 0.3rem 0.6rem
             font-size .8rem
