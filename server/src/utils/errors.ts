@@ -3,7 +3,7 @@ export class RequestError extends Error {
     code: string
     constructor(defaultMsg: string, specificMsg?: string) {
         const msg = specificMsg ? `${defaultMsg} | ${specificMsg}`: defaultMsg
-        super(defaultMsg)
+        super(msg)
         this.code = this.constructor.name
     }
 }
@@ -15,8 +15,8 @@ export class NotFoundError extends RequestError {
 }
 
 export class AuthenticationError extends RequestError {
-    constructor(msg?: string) {
-        super('You can only do this while logged-in.', msg)
+    constructor(msg: string = 'You can only do this while logged-in.') {
+        super('Authentication Error', msg)
     }
 }
 
