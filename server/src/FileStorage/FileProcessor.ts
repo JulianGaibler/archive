@@ -116,12 +116,12 @@ export default class FileProcessor {
         const outputHeight = height > 720 ? 720 : height
         renderA = renderVideo(originalPath, filePaths.mp4, `?x${outputHeight}`, [
                 ...mp4VideoOptions,
-                ...(fileType === FileType.VIDEO ? [...mp4AudioOptions, ...'-b:a 192k'] : ['-an']),
+                ...(fileType === FileType.VIDEO ? [...mp4AudioOptions, ...['-b:a 192k']] : ['-an']),
                 ...['-b:v: 2500k', '-bufsize 2000k', '-maxrate 4500k']
             ])
         renderB = renderVideo(originalPath, filePaths.webm, `?x${outputHeight}`, [
                 ...webmVideoOptions,
-                ...(fileType === FileType.VIDEO ? [...webmAudioOptions, ...'-b:a 192k'] : ['-an']),
+                ...(fileType === FileType.VIDEO ? [...webmAudioOptions, ...['-b:a 192k']] : ['-an']),
                 ...['-b:v: 2000k', '-bufsize 1000k', '-maxrate 3000k']
             ])
 
@@ -140,12 +140,12 @@ export default class FileProcessor {
         const thumbnailOptions = f => {f.duration(7.5)}
         renderA = renderVideo(originalPath, videoThumbnailPaths.mp4, `${outputThumbnailWidth}x?`, [
                 ...mp4VideoOptions,
-                ...(fileType === FileType.VIDEO ? [...mp4AudioOptions, ...'-b:a 96k'] : ['-an']),
+                ...(fileType === FileType.VIDEO ? [...mp4AudioOptions, ...['-b:a 96k']] : ['-an']),
                 ...['-b:v: 625k', '-bufsize 500k', '-maxrate 1000k']
             ], thumbnailOptions)
         renderB = renderVideo(originalPath, videoThumbnailPaths.webm, `${outputThumbnailWidth}x?`, [
                 ...webmVideoOptions,
-                ...(fileType === FileType.VIDEO ? [...webmAudioOptions, ...'-b:a 96k'] : ['-an']),
+                ...(fileType === FileType.VIDEO ? [...webmAudioOptions, ...['-b:a 96k']] : ['-an']),
                 ...['-b:v: 500k', '-bufsize 250k', '-maxrate 750k']
             ], thumbnailOptions)
         await Promise.all([renderA, renderB])
