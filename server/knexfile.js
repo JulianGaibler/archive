@@ -10,7 +10,7 @@ const defaults = {
         password: connection.password || 'archive',
         host: connection.hosts && connection.hosts[0].name,
         port: (connection.hosts && connection.hosts[0].port) || 5432,
-        database: 'postgres',
+        database: 'archive',
     },
     migrations: {
         directory: `${__dirname}/db/migrations`,
