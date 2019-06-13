@@ -135,7 +135,7 @@ export const NewPost = new GraphQLInputObjectType({
 })
 
 ////
-// Objects
+// Model Objects
 
 export const Post = new GraphQLObjectType({
     name: 'Post',
@@ -337,3 +337,30 @@ export const User = new GraphQLObjectType({
     sqlTable: '"User"',
     uniqueKey: 'id',
 }}
+
+////
+// Other Objects
+
+export const TaskUpdate = new GraphQLObjectType({
+    name: 'TaskUpdate',
+    description: `Update data of a tasks current status.`,
+    fields: () => ({
+        id: {
+            type: new GraphQLNonNull(GraphQLString),
+            sqlColumn: 'id',
+            resolve: task => encodeHashId(TaskModel, task.id)
+        },
+        notes: {
+            description : `Notes created while processing, usually used for debugging.`,
+            type: new GraphQLNonNull(GraphQLString)
+        },
+        status: {
+            description : `Current status of the task.`,
+            type: new GraphQLNonNull(TaskStatus)
+        },
+        progress: {
+            description : `Current progress of the task.`,
+            type: GraphQLInt
+        },
+    })
+});

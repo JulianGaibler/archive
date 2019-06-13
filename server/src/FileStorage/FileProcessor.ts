@@ -11,12 +11,10 @@ import Post from '../models/Post'
 
 
 export default class FileProcessor {
-    notes: string
-    taskObject: Task
+    updateCallback
 
-    constructor(taskObject: Task) {
-        this.taskObject = taskObject
-        this.notes = ''
+    constructor(updateCallback) {
+        this.updateCallback = updateCallback
     }
 
     async processImage(readStream, directory: string) {
@@ -91,13 +89,22 @@ export default class FileProcessor {
         jet.remove(tmpPath)
         tmpDir.removeCallback()
 
-        const renderVideo = (inputPath: string, outputPath: string, size: string, outputOptions: Array<string>, optionsCallback?) => {
+        const renderProgress = fileType === FileType.GIF ? [0,0,0,0,0] : [0,0,0,0]
+        const updateProgress = (idx: number, progress: number) => {
+            if (progress <= renderProgress[idx]) return;
+            renderProgress[idx] = progress
+            const average = renderProgress.reduce((a,b) => a + b, 0) / renderProgress.length
+            this.updateCallback({ progress: Math.floor(average) })
+        }
+
+        const renderVideo = (renderIdx: number, inputPath: string, outputPath: string, size: string, outputOptions: Array<string>, optionsCallback?) => {
             return new Promise((resolve, reject) => {
                 let f = ffmpeg(inputPath)
                 if (optionsCallback) optionsCallback(f)
                 if (size) f.size(size)
                 f.output(outputPath)
                     .outputOptions(outputOptions)
+                    .on('progress', p => updateProgress(renderIdx, p.percent))
                     .on('error', reject)
                     .on('end', resolve)
                     .run()
@@ -114,12 +121,12 @@ export default class FileProcessor {
 
         // Render main video
         const outputHeight = height > 720 ? 720 : height
-        renderA = renderVideo(originalPath, filePaths.mp4, `?x${outputHeight}`, [
+        renderA = renderVideo(0, originalPath, filePaths.mp4, `?x${outputHeight}`, [
                 ...mp4VideoOptions,
                 ...(fileType === FileType.VIDEO ? [...mp4AudioOptions, ...['-b:a 192k']] : ['-an']),
                 ...['-b:v: 2500k', '-bufsize 2000k', '-maxrate 4500k']
             ])
-        renderB = renderVideo(originalPath, filePaths.webm, `?x${outputHeight}`, [
+        renderB = renderVideo(1, originalPath, filePaths.webm, `?x${outputHeight}`, [
                 ...webmVideoOptions,
                 ...(fileType === FileType.VIDEO ? [...webmAudioOptions, ...['-b:a 192k']] : ['-an']),
                 ...['-b:v: 2000k', '-bufsize 1000k', '-maxrate 3000k']
@@ -127,7 +134,7 @@ export default class FileProcessor {
 
         if (fileType === FileType.GIF) {
             filePaths['gif'] = `${compressed}.gif`
-            renderC = renderVideo(originalPath, (filePaths as any).gif, undefined, [
+            renderC = renderVideo(4, originalPath, (filePaths as any).gif, undefined, [
                 '-f gif',
             ], f => { f.addOption('-filter_complex', `[0:v] fps=25,scale=${width > 480 ? 480 : width}:-2,split [a][b];[a] palettegen [p];[b][p] paletteuse`) })
         } else {
@@ -138,17 +145,19 @@ export default class FileProcessor {
         // Render thumbnail
         const outputThumbnailWidth = width > 400 ? 400 : width
         const thumbnailOptions = f => {f.duration(7.5)}
-        renderA = renderVideo(originalPath, videoThumbnailPaths.mp4, `${outputThumbnailWidth}x?`, [
+        renderA = renderVideo(2, originalPath, videoThumbnailPaths.mp4, `${outputThumbnailWidth}x?`, [
                 ...mp4VideoOptions,
                 ...(fileType === FileType.VIDEO ? [...mp4AudioOptions, ...['-b:a 96k']] : ['-an']),
                 ...['-b:v: 625k', '-bufsize 500k', '-maxrate 1000k']
             ], thumbnailOptions)
-        renderB = renderVideo(originalPath, videoThumbnailPaths.webm, `${outputThumbnailWidth}x?`, [
+        renderB = renderVideo(3, originalPath, videoThumbnailPaths.webm, `${outputThumbnailWidth}x?`, [
                 ...webmVideoOptions,
                 ...(fileType === FileType.VIDEO ? [...webmAudioOptions, ...['-b:a 96k']] : ['-an']),
                 ...['-b:v: 500k', '-bufsize 250k', '-maxrate 750k']
             ], thumbnailOptions)
         await Promise.all([renderA, renderB])
+
+        this.updateCallback({ progress: 100 })
 
         return {
             compressed: filePaths,
@@ -186,10 +195,6 @@ export default class FileProcessor {
                     resolve(filename)
                 })
       })
-    }
-
-    async takeNote(note: string) {
-        this.notes += `${note}\n`
     }
 
     private async createThumbnail(readStream, directory: string) {

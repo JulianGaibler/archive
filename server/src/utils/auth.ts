@@ -3,7 +3,8 @@ import User from '../models/User'
 import * as bcrypt from 'bcryptjs'
 import Session from '../models/Session'
 import sodium from 'sodium'
-import { FileStorageClass } from '../FileStorage'
+import FileStorage from '../FileStorage'
+import { PostgresPubSub } from "graphql-postgres-subscriptions";
 import { AuthenticationError, RequestError } from '../utils'
 
 // Interfaces
@@ -11,8 +12,9 @@ import { AuthenticationError, RequestError } from '../utils'
 export interface Context {
     req: Request
     res: Response
-    fileStorage: FileStorageClass
+    fileStorage: FileStorage
     auth: AuthData | null
+    pubSub: PostgresPubSub
 }
 
 export interface AuthData {

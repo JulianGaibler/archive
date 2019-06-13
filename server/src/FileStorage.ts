@@ -1,6 +1,8 @@
+import { PostgresPubSub } from 'graphql-postgres-subscriptions'
 import fileType from 'file-type'
 import jet from 'fs-jetpack'
 import tmp from 'tmp'
+import { raw } from 'objection'
 
 import Task from './models/Task'
 import Post from './models/Post'
@@ -44,20 +46,14 @@ const options = {
 /**
  * Keeps track of queue and saves files in directories
  */
-export class FileStorageClass {
+export default class FileStorage {
 
     private queue: Array<QueueItem>
     private taskMutex: Mutex
-    private static instance: FileStorageClass;
+    pubSub: PostgresPubSub
 
-    static getInstance(): FileStorageClass {
-        if (!FileStorageClass.instance) {
-          FileStorageClass.instance = new FileStorageClass();
-        }
-        return FileStorageClass.instance;
-    }
-
-    private constructor() {
+    constructor(pubSub: PostgresPubSub) {
+        this.pubSub = pubSub
         this.queue = []
         this.taskMutex = new Mutex()
         this.performCleanup()
@@ -112,6 +108,24 @@ export class FileStorageClass {
         }
     }
 
+    private async updateTask(task: Task, changes) {
+        if (changes.notes) {
+            await task.$query().patch({ notes: raw('CONCAT(notes, ?)', changes.notes) })
+            delete changes.notes
+        }
+
+        const updatedTask = await task.$query().patchAndFetch(changes)
+        this.pubSub.publish('taskUpdates', {
+            taskUpdates: {
+                id: updatedTask.id,
+                notes: updatedTask.notes,
+                status: updatedTask.status,
+                progress: updatedTask.progress,
+            }
+        })
+        return updatedTask
+    }
+
     /**
      * Processes an Item from the Queue
      */
@@ -120,9 +134,10 @@ export class FileStorageClass {
         let processError, createdFiles
         let postCreated = false
 
+        const update = (changes) => this.updateTask(taskObject, changes)
+
         let tmpDir = tmp.dirSync();
-        console.log(tmpDir)
-        let processor = new FileProcessor(taskObject)
+        let processor = new FileProcessor(update)
 
         const fileType: FileType = data.type.mime === 'image/gif' ? FileType.GIF : (data.type.kind === 'video' ? FileType.VIDEO : FileType.IMAGE);
 
@@ -158,14 +173,13 @@ export class FileStorageClass {
 
             await postObject.$query().update(postObject)
 
-            await taskObject.$query().update({ status: 'DONE', createdPostId: newPost.id, notes: processor.notes })
+            await update({ status: 'DONE', createdPostId: newPost.id })
 
         } catch (e) {
             console.warn(e)
-            processor.takeNote(e)
             if (postCreated) await Post.query().deleteById(postObject.id)
             tmpDir.removeCallback()
-            await taskObject.$query().update({ status: 'FAILED', notes: processor.notes })
+            await update({ status: 'FAILED', notes: e })
 
         } finally {
             tmpDir.removeCallback()
@@ -188,8 +202,6 @@ export class FileStorageClass {
     }
 
 }
-
-export default FileStorageClass.getInstance();
 
 
 function getKind(mimetype: String): string {
