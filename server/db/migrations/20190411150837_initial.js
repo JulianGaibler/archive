@@ -41,6 +41,7 @@ exports.up = async knex => {
                 table.text('notes').notNullable();
                 table.enu('status', ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'], { useNative: true, enumName: 'TaskStatus' }).notNullable();
                 table.integer('uploaderId').references('User.id');
+                table.specificType('progress', 'smallint');
                 table.integer('createdPostId').references('Post.id');
                 table.bigInteger('updatedAt').notNullable();
                 table.bigInteger('createdAt').notNullable();

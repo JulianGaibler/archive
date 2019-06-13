@@ -8,11 +8,14 @@ import Post from './Post'
 export default class Task extends BaseModel {
     static tableName = 'Task';
 
+    static readonly hashid = 991
+
     readonly id!: number;
     title!: string;
     notes!: string;
     status!: string;
     ext!: string;
+    progress?: number;
 
     uploaderId?: number;
     createdPostId?: number;
@@ -30,6 +33,7 @@ export default class Task extends BaseModel {
             ext: { type: 'string' },
             notes: { type: 'string', default: '' },
             status: { type: 'string', enum: ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'], default: 'QUEUED' },
+            progress: { type: 'number' },
             uploaderId: { type: ['number', 'null'] },
             createdPostId: { type: ['number', 'null'] },
         }

@@ -216,6 +216,10 @@ export const Task = new GraphQLObjectType({
             description : `Current status of the task.`,
             type: new GraphQLNonNull(TaskStatus)
         },
+        progress: {
+            description : `Current progress of the task.`,
+            type: GraphQLInt
+        },
         uploader: {
             type: User,
             sqlJoin: (taskTable, userTable) => `${taskTable}."uploaderId" = ${userTable}.id`,
