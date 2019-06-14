@@ -39,6 +39,7 @@ const corsOptions = {
 class Server {
     app: express.Application
     server: http.Server
+    cookieParserInstance: cookieParser
     pubSub: PostgresPubSub
     fileStorage: FileStorage
     subscriptionServer: SubscriptionServer | null
@@ -47,11 +48,11 @@ class Server {
     options = {
         port: process.env.PORT || 4000,
         endpoint: '/',
-        subscriptions: '/',
     }
 
     constructor() {
         this.app = express();
+        this.cookieParserInstance = cookieParser()
         this.pubSub = new PostgresPubSub({
             user: 'archive',
             password: 'archive',
@@ -64,20 +65,22 @@ class Server {
     }
 
     middleware() {
-        this.app.use(logger('dev'))
-        this.app.use(cookieParser())
+        this.app.use(logger(process.env.NODE_ENV === 'development' ? 'dev' : 'tiny'))
+        this.app.use(this.cookieParserInstance)
         this.app.use(cors(corsOptions))
         this.app.use('/content', express.static('public'))
         if (process.env.NODE_ENV === 'development') this.app.use('/playground', expressPlayground({ endpoint: '/', subscriptionEndpoint: 'ws://localhost:4000/' }))
-        this.app.use(
-            this.options.endpoint,
-            graphqlUploadExpress({ maxFileSize: 1e+8, maxFiles: 10 }), // 1e+8 = 100 MB
+        this.app.use(this.options.endpoint,
+            graphqlUploadExpress({
+                maxFileSize: 1e+8,  // 1e+8 = 100 MB
+                maxFiles: 10,
+            }),
             graphqlHTTP(async (req, res, graphQLParams) => ({
-                    schema: schema,
-                    context: { req, res, fileStorage: this.fileStorage, auth: await getAuthData(req), pubSub: this.pubSub },
-                    customFormatErrorFn: process.env.NODE_ENV === 'development' ? this.debugErrorHandler : this.productionErrorHandler,
-                    graphiql: false,
-                }))
+                schema: schema,
+                context: { req, res, fileStorage: this.fileStorage, auth: await getAuthData(req), pubSub: this.pubSub },
+                customFormatErrorFn: process.env.NODE_ENV === 'development' ? this.debugErrorHandler : this.productionErrorHandler,
+                graphiql: false,
+            }))
         );
     }
 
@@ -120,37 +123,25 @@ class Server {
         }
     }
 
-    //Websocket not working anymore?
     private createSubscriptionServer(combinedServer) {
-        this.subscriptionServer = SubscriptionServer.create(
-            {
-                schema,
-                execute: execute as ExecuteFunction,
-                subscribe,
-                onConnect: async (connectionParams, webSocket) => {
-                    return { ...connectionParams }
-                }, // this.subscriptionServerOptions.onConnect
-                //onDisconnect: this.subscriptionServerOptions.onDisconnect,
-                onOperation: async (message, params, webSocket) => {
-
-                    let cookieParserA = cookieParser()
-
-                    await new Promise((resolve, reject) => {
-                        cookieParserA(webSocket.upgradeReq, null, error => {
-                            if (error) reject(error)
-                                else resolve()
-                        })
+        this.subscriptionServer = SubscriptionServer.create({
+            schema,
+            execute: execute as ExecuteFunction,
+            subscribe,
+            onConnect: async (connectionParams, webSocket) => ({ ...connectionParams }),
+            onOperation: async (message, params, webSocket) => {
+                await new Promise((resolve, reject) => {
+                    this.cookieParserInstance(webSocket.upgradeReq, null, error => {
+                        if (error) reject(error)
+                        else resolve()
                     })
-
-                    return { ...params, context: { webSocket, fileStorage: this.fileStorage, auth: await getAuthData(webSocket.upgradeReq), pubSub: this.pubSub } }
-                },
-                //keepAlive: this.subscriptionServerOptions.keepAlive,
+                })
+                return { ...params, context: { req: webSocket.upgradeReq, webSocket, fileStorage: this.fileStorage, auth: await getAuthData(webSocket.upgradeReq), pubSub: this.pubSub } }
             },
-            {
-                server: combinedServer,
-                //path: '/subscriptions',
-            },
-        )
+        },
+        {
+            server: combinedServer,
+        })
     }
 }
 
