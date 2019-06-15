@@ -7,7 +7,7 @@
             </div>
         </div>
         <div class="data">
-            <div v-if="upload.errors.general" class="error">{{upload.errors.general}}</div>
+            <div v-if="upload.errors.general" class="errorBox">{{upload.errors.general}}</div>
             <div class="inputs">
                 <InputField
                     :label="$t('input.upload.title')"

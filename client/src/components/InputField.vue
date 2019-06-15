@@ -13,7 +13,7 @@
         <input v-else v-model="content" :type="type" :placeholder="label" @input="handleInput" />
 
         <ul v-if="errors" class="error">
-            <li v-for="error in errors" :key="error.message">{{error.message}}</li>
+            <li v-for="error in errors" :key="error.message">{{error.messageT ? $t(error.messageT) : error.message}}</li>
         </ul>
     </div>
 </template>

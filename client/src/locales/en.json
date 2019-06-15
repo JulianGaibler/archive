@@ -48,7 +48,9 @@
         "none": "none"
     },
     "error": {
-        "required_field": "This is a required field"
+        "required_field": "This is a required field",
+        "file_size_limit": "You can only upload 10 files at once, with a maximum file size of 100 MB.",
+        "at_least_one_file": "You have to select at least one file."
     },
     "languages": {
         "english": "English",

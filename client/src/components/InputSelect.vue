@@ -10,7 +10,7 @@
         </div>
 
         <ul v-if="errors" class="error">
-            <li v-for="error in errors" :key="error.message">{{error.message}}</li>
+            <li v-for="error in errors" :key="error.message">{{error.messageT ? $t(error.messageT) : error.message}}</li>
         </ul>
     </div>
 </template>
