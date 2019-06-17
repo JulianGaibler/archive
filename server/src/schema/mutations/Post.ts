@@ -20,12 +20,12 @@ export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
         }
     },
     where: (table, args, context) => {
-        // TODO
+        return `${table}.id = (${context.ids.join()})`
     },
     resolve: async (parent, { items }, context: Context, resolveInfo) => {
         isAuthenticated(context)
 
-        if (!items || items.length < 1) throw new Error(`You have to at least upload one file.`)
+        if (!items || items.length < 1) throw new InputError(`You have to at least upload one file.`)
 
         let error = false
         let results = []
@@ -34,14 +34,17 @@ export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
             let fields = items[i];
 
             let [fileErr, file] = await to(fields.file)
-            if (!file) throw fileErr
+            if (!file) throw new InputError(fileErr)
 
             delete fields.file
             fields.uploaderId = context.auth.userId
 
             let resItem = await to(context.fileStorage.checkFile(fields, file.createReadStream()))
             results.push(resItem)
-            if (!resItem[1]) error = true
+            if (!resItem[1]) {
+                console.log(resItem[0])
+                error = true
+            }
         }
 
         if (error) {
@@ -49,24 +52,18 @@ export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
                 return { index: idx, error: item[0] }
             })
             .filter(item => item.error)
-
-            console.log(errors)
-
             throw new InputError(errors);
         }
 
         let taskIds = []
-
         for (let i = 0; i < items.length; i++) {
             const taskId = await context.fileStorage.storeFile(results[i][1])
             taskIds.push(taskId)
         }
 
-        const topLevelFields = Object.keys(graphqlFields(resolveInfo));
-        let query = TaskModel.query().findByIds(taskIds);
-        if (topLevelFields.includes('uploader')) query = query.eager('uploader')
-        if (topLevelFields.includes('createdPost')) query = query.eager('createdPost')
-        return await query
+        return joinMonster(resolveInfo, { ids: taskIds }, sql => {
+            return db.knexInstance.raw(sql)
+        }, { dialect: 'pg' })
 
     }
 }

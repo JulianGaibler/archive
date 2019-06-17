@@ -72,7 +72,7 @@ class Server {
         if (process.env.NODE_ENV === 'development') this.app.use('/playground', expressPlayground({ endpoint: '/', subscriptionEndpoint: 'ws://localhost:4000/' }))
         this.app.use(this.options.endpoint,
             graphqlUploadExpress({
-                maxFileSize: 1e+8,  // 1e+8 = 100 MB
+                maxFileSize: 100000000,  // 100000000 = 100 MB
                 maxFiles: 10,
             }),
             graphqlHTTP(async (req, res, graphQLParams) => ({
@@ -104,7 +104,7 @@ class Server {
         return {
             name: error.name,
             errors: error.originalError && error.originalError.fields,
-            code: error.originalError && error.originalError.code,
+            code: error.originalError && (error.originalError.code || error.originalError.name),
             message: error.message,
             locations: error.locations,
             stack: error.stack ? error.stack.split('\n') : [],

@@ -23,7 +23,9 @@ export default class FileProcessor {
             jpeg: `${compressed}.jpeg`,
             webp: `${compressed}.webp`,
         }
-        const originalPath = await this.storeOriginal(readStream, directory)
+        const [error, originalPath] = await to(this.storeOriginal(readStream, directory))
+        if (error) throw error;
+
 
         const wsJpeg = jet.createWriteStream(filePaths.jpeg)
         const wsWebp = jet.createWriteStream(filePaths.webp)
@@ -169,14 +171,12 @@ export default class FileProcessor {
     async storeOriginal(readStream, directory: string) {
         const path = jet.path(directory, 'original')
         const ws = jet.createWriteStream(path)
-
         let [err] = await to(new Promise((resolve, reject) => {
             readStream.pipe(ws)
                 .on('error', reject )
                 .on('finish', resolve )
         }))
         if (err) throw err;
-
         return path
     }
 

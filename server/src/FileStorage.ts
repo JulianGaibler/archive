@@ -65,14 +65,15 @@ export default class FileStorage {
     async checkFile(data, readStream): Promise<StoreData> {
         const postObject = Post.fromJson(data)
         const typedStream = await fileType.stream(readStream);
-        const {ext, mime} = await typedStream.fileType;
-        const kind = getKind(mime)
+        const types = await typedStream.fileType;
+        if (!types) throw new FileStorageError('File-Type not recognized')
+        const kind = getKind(types.mime)
 
         return {
             postObject,
             typedStream,
             type: {
-                ext, mime, kind,
+                ext: types.ext, mime: types.mime, kind,
             }
         }
     }
