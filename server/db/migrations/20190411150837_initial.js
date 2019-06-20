@@ -68,7 +68,7 @@ exports.up = async knex => {
 
                 table.unique(['token'])
             });
-
+}
 
 exports.down = async knex => {
     await knex.schema
