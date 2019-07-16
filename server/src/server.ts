@@ -77,7 +77,7 @@ class Server {
             }),
             graphqlHTTP(async (req, res, graphQLParams) => ({
                 schema: schema,
-                context: { req, res, fileStorage: this.fileStorage, auth: await getAuthData(req), pubSub: this.pubSub },
+                context: { req, res, fileStorage: this.fileStorage, auth: await getAuthData(req as any), pubSub: this.pubSub },
                 customFormatErrorFn: process.env.NODE_ENV === 'development' ? this.debugErrorHandler : this.productionErrorHandler,
                 graphiql: false,
             }))
