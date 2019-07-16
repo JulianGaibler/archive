@@ -1,11 +1,16 @@
 <template>
-    <div class="frame upload" ref="frame">
+    <div class="frame framed upload" ref="frame">
         <header>
-            <div class="col1">
                 <h1>Upload</h1>
-                <button class="button-big" @click="startUpload">Send</button>
-            </div>
         </header>
+
+        <nav class="actionBar">
+            <div class="actionBar-component actionBar-component-text actionBar-grower">
+                2 of 30 Files
+            </div>
+            <button class="actionBar-component button button-primary" @click="startUpload">Upload Files</button>
+        </nav>
+
         <div v-if="errors.length > 0" class="content errorBox">
             <div v-for="error in errors" :key="error.code">{{ error.messageT ? $t(error.messageT) : error.message }}</div>
         </div>
