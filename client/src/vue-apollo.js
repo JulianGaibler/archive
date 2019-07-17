@@ -1,9 +1,9 @@
 import Vue from 'vue'
 import VueApollo from 'vue-apollo'
 import { createApolloClient, restartWebsockets } from 'vue-cli-plugin-apollo/graphql-client'
-//import { createHttpLink } from 'apollo-link-http'
 import { createUploadLink } from 'apollo-upload-client'
 import { InMemoryCache } from 'apollo-cache-inmemory';
+import customFetch from './utils/customFetch';
 
 // Install the vue plugin
 Vue.use(VueApollo)
@@ -15,9 +15,11 @@ const httpEndpoint = process.env.VUE_APP_GRAPHQL_HTTP || 'http://localhost:4000'
 // Files URL root
 export const filesRoot = process.env.VUE_APP_FILES_ROOT || httpEndpoint.substr(0, httpEndpoint.indexOf(''))
 
+
 const link = createUploadLink({
     uri: 'http://localhost:4000',
-    credentials: 'include' // same-origin include
+    fetch: customFetch,
+    credentials: 'include', // same-origin include
 });
 
 Vue.prototype.$filesRoot = filesRoot
@@ -39,7 +41,6 @@ const defaultOptions = {
     // Override default apollo link
     // note: don't override httpLink here, specify httpLink options in the
     // httpLinkOptions property of defaultOptions.
-    // link: myLink
 
     // Override default cache
     // TODO: workaround for https://github.com/Akryum/vue-apollo/issues/631 or https://github.com/Akryum/vue-apollo/issues/630
@@ -49,9 +50,7 @@ const defaultOptions = {
     // getAuth: (tokenName) => ...
 
     // Additional ApolloClient options
-    apollo: {
-        link,
-    },
+    link
 
     // Client local data (see apollo-link-state)
     // clientState: { resolvers: { ... }, defaults: { ... } }
