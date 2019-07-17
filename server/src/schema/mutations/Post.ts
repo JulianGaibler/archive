@@ -20,7 +20,7 @@ export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
         }
     },
     where: (table, args, context) => {
-        return `${table}.id = (${context.ids.join()})`
+        return `${table}.id IN (${context.ids.join()})`
     },
     resolve: async (parent, { items }, context: Context, resolveInfo) => {
         isAuthenticated(context)
@@ -61,9 +61,11 @@ export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
             taskIds.push(taskId)
         }
 
+        console.log(taskIds)
+
         return joinMonster(resolveInfo, { ids: taskIds }, sql => {
             return db.knexInstance.raw(sql)
-        }, { dialect: 'pg' })
+        })
 
     }
 }
