@@ -11,7 +11,7 @@
         <nav>
             <ul>
                 <li>
-                    <router-link :to="{ name: 'Archive'}"><IconArchive/>Archive</router-link>
+                    <router-link :to="{ name: 'Archive'}" exact><IconArchive/>Archive</router-link>
                 </li>
                 <li>
                     <a><IconCollection/>Collections</a>
