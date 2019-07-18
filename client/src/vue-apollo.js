@@ -50,21 +50,22 @@ const defaultOptions = {
     // getAuth: (tokenName) => ...
 
     // Additional ApolloClient options
-    link
+    apollo: {
+        link,
+    },
 
     // Client local data (see apollo-link-state)
     // clientState: { resolvers: { ... }, defaults: { ... } }
 }
 
-// Call this in the Vue app file
-export function createProvider (options = {}) {
-    // Create apollo client
-    const { apolloClient, wsClient } = createApolloClient({
-        ...defaultOptions,
-        ...options,
-    })
-    apolloClient.wsClient = wsClient
+// Create apollo client
+const { apolloClient, wsClient } = createApolloClient(defaultOptions)
+apolloClient.wsClient = wsClient
 
+export { apolloClient }
+
+// Call this in the Vue app file
+export function createProvider() {
     // Create vue apollo provider
     const apolloProvider = new VueApollo({
         defaultClient: apolloClient,
@@ -79,7 +80,7 @@ export function createProvider (options = {}) {
 }
 
 // Manually call this when user log in
-export async function onLogin (apolloClient) {
+export async function onLogin(apolloClient) {
     if (apolloClient.wsClient) restartWebsockets(apolloClient.wsClient)
     try {
         await apolloClient.resetStore()
