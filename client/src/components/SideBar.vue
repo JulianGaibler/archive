@@ -37,10 +37,17 @@
                 </li>
             </ul>
         </nav>
+        <transition-group name="notification" tag="div" class="notification">
+            <UploadBox :key="1" v-if="working" />
+        </transition-group>
     </div>
 </template>
 
 <script>
+import { mapState } from 'vuex'
+
+import UploadBox from "./SideBar/UploadBox";
+
 import IconArchive from "@/assets/jw_icons/archive.svg?inline";
 import IconCollection from "@/assets/jw_icons/collection.svg?inline";
 import IconLogout from "@/assets/jw_icons/logout.svg?inline";
@@ -56,6 +63,8 @@ import UserQuery from "../graphql/user.gql";
 export default {
     name: 'SideBar',
     components: {
+        UploadBox,
+
         IconArchive,
         IconCollection,
         IconLogout,
@@ -63,6 +72,11 @@ export default {
         IconSettings,
         IconUpload,
         IconUser
+    },
+    computed: {
+        ...mapState('upload', [
+            'working',
+        ])
     },
     apollo: {
       // Simple query that will update the 'hello' vue property
