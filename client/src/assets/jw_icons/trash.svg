@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <title>trash</title>
+  <path d="M0,0H24V24H0Z" style="fill: none"/>
+  <path d="M5,8H6V18a1,1,0,0,0,1,1H17a1,1,0,0,0,1-1V8h1a1,1,0,0,0,0-2H16a1,1,0,0,0-1-1H9A1,1,0,0,0,8,6H5A1,1,0,0,0,5,8ZM8,8h8v9H8Z"/>
+</svg>

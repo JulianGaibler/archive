@@ -22,7 +22,7 @@
             </ul>
             <ul>
                 <li>
-                    <router-link :to="{ name: 'Upload'}"><IconUp/>Upload</router-link>
+                    <router-link :to="{ name: 'Upload'}"><IconUpload />Upload</router-link>
                 </li>
                 <li>
                     <a><IconQueue/>Queue</a>
@@ -46,7 +46,7 @@ import IconCollection from "@/assets/jw_icons/collection.svg?inline";
 import IconLogout from "@/assets/jw_icons/logout.svg?inline";
 import IconQueue from "@/assets/jw_icons/queue.svg?inline";
 import IconSettings from "@/assets/jw_icons/settings.svg?inline";
-import IconUp from "@/assets/jw_icons/up.svg?inline";
+import IconUpload from "@/assets/jw_icons/upload.svg?inline";
 import IconUser from "@/assets/jw_icons/user.svg?inline";
 
 
@@ -61,7 +61,7 @@ export default {
         IconLogout,
         IconQueue,
         IconSettings,
-        IconUp,
+        IconUpload,
         IconUser
     },
     apollo: {

@@ -19,13 +19,29 @@
         "import": "import",
         "export": "export",
         "tryagain": "try again",
-        "send": "Send"
+        "send": "Send",
+        "upload": {
+            "upload_files": "Upload Files",
+            "cancel_upload": "Cancel Upload",
+            "new_upload": "New Upload",
+            "select_files": "Select files or drop them here",
+            "select_more_files": "Select even more"
+        }
     },
     "state": {
         "loading": "Loading",
         "added": "Added",
         "removed": "Removed",
-        "optional": "optional"
+        "optional": "optional",
+        "queued": "queued",
+        "processing": "processing",
+        "uploading": "uploading",
+        "done": "done",
+        "failed": "failed",
+        "upload": {
+            "files_count": "{count} of {max} files",
+            "x_of_y": "{x} of {y}"
+        }
     },
     "input": {
         "keyword": "Enter keyword",

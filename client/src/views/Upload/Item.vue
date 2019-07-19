@@ -4,66 +4,90 @@
             <div class="preview">
                 <video v-if="fileType==='video'" autoplay muted loop v-bind:src="imagePreview"/>
                 <img v-else-if="fileType==='image'" v-bind:src="imagePreview"/>
+                <div class="indicatorWrapper" v-if="locked">
+                    <div class="indicator">
+                        <IconQueue v-if="status.queued" />
+                        <IconUpload v-else-if="status.uploading" />
+                        <IconDone v-else-if="status.done" />
+                        <IconClose v-else-if="status.failed" />
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="data">
-            <div v-if="upload.errors.general" class="errorBox">{{upload.errors.general}}</div>
-            <div class="inputs">
-                <InputField
-                    :label="$t('input.upload.title')"
-                    :type="'text'"
-                    :errors="upload.errors.title"
-                    v-model="upload.payload.title" />
-                <InputField
-                    :label="$t('input.upload.caption')"
-                    :type="'textarea'"
-                    :errors="upload.errors.caption"
-                    v-model="upload.payload.caption" />
-                <InputSelect
-                    :label="$t('input.upload.language')"
-                    :options="[
-                        { value:'english',name:'English' },
-                        { value:'german',name:'German' },
-                        { value:'french',name:'French' },
-                        { value:'italian',name:'Italian' },
-                        { value:'norwegian',name:'Norwegian' },
-                        { value:'russian',name:'Russian' },
-                        { value:'spanish',name:'Spanish' },
-                        { value:'turkish',name:'Turkish' },
-                    ]"
-                    :errors="upload.errors.language"
-                    v-model="upload.payload.language" />
-                <InputKeywords
-                    :label="$t('input.upload.keywords')"
-                    :errors="upload.errors.keywords"
-                    v-model="upload.payload.keywords" />
-                <InputRadio
-                    v-if="fileType==='video'"
-                    :label="$t('input.upload.treatas')"
-                    :options="[
-                        { value:'', name:$t('input.upload.treatas_default_name'), tip:$t('input.upload.treatas_default_tip') },
-                        { value:'video', name:$t('input.upload.treatas_video_name'), tip:$t('input.upload.treatas_video_tip') },
-                        { value:'gif', name:$t('input.upload.treatas_gif_name'), tip:$t('input.upload.treatas_gif_tip') },
-                    ]"
-                    :errors="upload.errors.type"
-                    v-model="upload.payload.type" />
+        <template v-if="!locked">
+            <Form :uploadIndex="uploadIndex" :fileType="fileType" />
+            <div class="interaction">
+                <button class="button button-icon" @click="deleteItem(uploadIndex)"><IconTrash /></button>
+            </div>
+        </template>
+        <div v-else class="info">
+            <div class="top">
+                <h3>{{ items[uploadIndex].payload.title }}</h3>
+                <p v-if="status.queued">{{ $t('state.queued') }}</p>
+                <p v-else-if="status.uploading && progress.total === 1">{{ $t('state.uploading') }}</p>
+                <p v-else-if="status.uploading">{{ $t('state.upload.x_of_y', {x:progress.current, y: progress.total}) }}</p>
+                <p v-else-if="status.done">{{ $t('state.done') }}</p>
+                <p v-else-if="status.failed">
+                    {{ $t('state.failed') }} <span v-if="items[uploadIndex].errors.general"> - {{items[uploadIndex].errors.general}}</span></p>
+            </div>
+            <div v-if="status.uploading" class="btm">
+                <div class="progress">
+                    <div class="progress-bar" :style="{width: `${progress.percent}%`}" />
+                </div>
             </div>
         </div>
     </div>
 </template>
 
 <script>
-import InputField from '../../components/InputField.vue'
-import InputKeywords from '../../components/InputKeywords.vue'
-import InputSelect from '../../components/InputSelect.vue'
-import InputRadio from '../../components/InputRadio.vue'
+import { mapState, mapMutations } from 'vuex'
+import { formatBytes } from '../../utils'
+
+import Form from './Form.vue'
+
+import IconTrash from "@/assets/jw_icons/trash.svg?inline";
+import IconClose from "@/assets/jw_icons/close.svg?inline";
+import IconDone from "@/assets/jw_icons/done.svg?inline";
+import IconQueue from "@/assets/jw_icons/queue.svg?inline";
+import IconUpload from "@/assets/jw_icons/upload.svg?inline";
 
 export default {
     name: 'Item',
     props: {
-        upload: Object
+        uploadIndex: Number
     },
-    components: { InputField, InputKeywords, InputSelect, InputRadio },
+    components: {
+        Form,
+        IconTrash,
+        IconClose,
+        IconDone,
+        IconQueue,
+        IconUpload,
+    },
+    computed: {
+        status() {
+            const status = this.items[this.uploadIndex].upload.status;
+            return {
+                queued: status === 0,
+                uploading: status === 1,
+                done: status === 2,
+                failed: status === 3,
+            }
+        },
+        progress() {
+            const current = this.items[this.uploadIndex].upload.progress_current
+            const total = this.items[this.uploadIndex].upload.progress_total
+            return {
+                current: formatBytes(current, 0),
+                total: formatBytes(total, 0),
+                percent: (current / total) * 100,
+            }
+        },
+        ...mapState('upload', [
+            'items',
+            'locked',
+        ])
+    },
     data() {
         return {
             imagePreview: '',
@@ -74,9 +98,14 @@ export default {
         let reader  = new FileReader();
         reader.addEventListener("load", function () {
             this.imagePreview = reader.result;
-            this.fileType = this.upload.payload.file.type.split('/')[0]
+            this.fileType = this.items[this.uploadIndex].payload.file.type.split('/')[0]
         }.bind(this), false);
-        reader.readAsDataURL( this.upload.payload.file );
+        reader.readAsDataURL( this.items[this.uploadIndex].payload.file );
     },
+    methods: {
+        ...mapMutations('upload', [
+            'deleteItem'
+        ])
+    }
 }
 </script>

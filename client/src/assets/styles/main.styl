@@ -47,10 +47,13 @@ h2
 .sidebar
     border-bottom-left-radius $archive-radius1
     min-width 15rem
-    padding .75rem 2rem
+    display flex
+    flex-direction column
+    padding .75rem 2rem 1.5rem 2rem
     hr
         border none
         border-top 1px solid rgba(0, 0, 0, 0.03)
+        margin 0
     .sidebar-button
         background url('data:image/png;base64,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')
         border-radius 40%
@@ -68,6 +71,7 @@ h2
             flex 1
     nav
         font-weight 500
+        flex 1
         ul
             margin 1.5rem 0
             a
@@ -80,7 +84,41 @@ h2
                     color $archive-prim
                     fill $archive-prim
                     border-radius $archive-radius3
+    .notification
+        .notification-box
+            margin-top 1rem
+            background $archive-grey
+            transition all .5s
+            border-radius $archive-radius3
+            display flex
+            flex-direction column
+            padding 1.25rem
+            h1
 
+            p
+                margin-top 0.2rem
+                font-size 0.875rem
+            .top
+                display flex
+                align-items center
+                svg
+                    margin-right 1rem
+            .btm
+                margin-top 1rem
+                display flex
+                .progress
+                    transition flex .5s
+                    &:not(:last-child)
+                        margin-right 0.5rem
+
+.notification-enter, .notification-leave-to {
+  opacity 0
+  z-index -1
+}
+.notification-leave-active {
+  position absolute
+  width 12.5rem
+}
 
 // Components
 
@@ -105,6 +143,7 @@ h2
     &.actionBar-component-text
         font-weight 500
         padding $archive-radius2
+        line-height 0
 
 .button
     background #F6F6F6
@@ -151,6 +190,7 @@ h2
 
     > .content
         margin-top 3rem
+
 
 // Old stuff, try to remove it
 
@@ -315,7 +355,7 @@ h2
 .upload
     display flex
     box-sizing border-box
-    height 100%
+    min-height 100%
     flex-direction column
     position relative
     .dropzone
@@ -326,11 +366,19 @@ h2
         top 0
         bottom 0
         z-index 999
-        background grey
+        background rgba($archive-std, .25)
+        padding 1rem
+        &::before
+            content ''
+            box-sizing border-box
+            height 100%
+            width 100%
+            display block
+            border .25rem dashed rgba($archive-inv, .25)
         &.showDropzone {
             visibility initial
         }
-    .items
+    > .items
         flex-grow 1
         input.uploadclick
             width 0.1px
@@ -339,44 +387,116 @@ h2
             overflow hidden
             position absolute
             z-index -1
-    .item
-        display flex
-        margin-bottom 3rem
-        .preview
+        > .item
+            display flex
+            margin-bottom 3rem
+            transition .25s background, .25s margin
             border-radius $archive-radius2
-            overflow hidden
-            line-height 0
-            margin-right 2rem
-            width 24rem
-            img, video
-                width 100%
-                object-fit cover
-        .data
-            flex 1
-            > .error
-                font-weight 500
-                color $archive-prim
-                text-transform uppercase
-        @media screen and (max-width: $archive-screen-mid)
-            flex-direction column
+            > :not(:last-child)
+                margin-right 2rem
             .preview
-                margin 0 auto 2rem auto
-        &.uploadclick
-            .preview
-                box-shadow none
-                line-height 1rem
-                display block
-                padding 4.25rem 1.5rem 5rem 1.5rem
-                text-align center
-                background $archive-grey
-                color $archive-prim
-                font-weight 500
-                box-sizing border-box
-                svg
-                    height 2rem
-                    width auto
-                    stroke $archive-prim
+                border-radius $archive-radius2
+                position relative
+                overflow hidden
+                transition .25s width
+                line-height 0
+                width 24rem
+                img, video
+                    width 100%
+                    object-fit cover
+                .indicatorWrapper
+                    display flex
+                    justify-content center
+                    align-items center
+                    position absolute
+                    left 0
+                    right 0
+                    top 0
+                    bottom 0
+                    .indicator
+                        box-shadow 0 0 2rem rgba($archive-inv, 0.2)
+            .data, .info
+                flex 1
+                > .error
+                    font-weight 500
+                    color $archive-prim
+                    text-transform uppercase
+            .info
+                display flex
+                flex-direction column
+                justify-content center
+                margin-right 1rem
+                padding 1rem 0
+                h3
+                    font-size 1.25rem
+                    font-weight 500
+                    margin-bottom .25rem
+                p
+                    font-size 0.9rem
+                    font-weight 400
+                .btm
+                    margin-top 1rem
 
+            .interaction
+                display flex
+                flex-direction column
+                .button
+                    background unset
+            @media screen and (max-width: $archive-screen-mid)
+                flex-direction column
+                .preview
+                    margin 0 auto 2rem auto
+            &.uploadclick
+                .preview
+                    box-shadow none
+                    line-height 1rem
+                    display block
+                    padding 4.25rem 1.5rem 5rem 1.5rem
+                    text-align center
+                    background $archive-grey
+                    color $archive-prim
+                    font-weight 500
+                    box-sizing border-box
+                    svg
+                        height 2rem
+                        width auto
+                        fill $archive-prim
+        &.noEdit .item
+            background $archive-grey
+            margin-bottom 1rem
+            .preview
+                width 6.5rem
+                height 6.5rem
+                > *
+                    height 100%
+                    width auto
+                    object-fit cover
+            .interaction
+                justify-content flex-end
+                padding 1rem
+                .button
+                    font-size 0.8rem
+                    padding 0 1rem
+                    text-transform uppercase
+                    font-weight 600
+                    height 2rem
+
+
+.indicator
+    padding 0.5rem
+    background $archive-std
+    fill $archive-inv
+    border-radius $archive-radius2
+
+.progress
+    height 0.25rem
+    background rgba($archive-prim1, 0.2)
+    border-radius $archive-radius3
+    overflow hidden
+    .progress-bar
+        background $archive-prim1
+        transition .25s width cubic-bezier(0.45, 0.05, 0.55, 0.95)
+        height 100%
 
 .login
     position absolute

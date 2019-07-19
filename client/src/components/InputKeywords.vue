@@ -54,7 +54,7 @@ export default {
     },
     data() {
         return {
-            content: this.value,
+            content: [...this.value],
             valueStore: {},
             searchWord: '',
 
@@ -96,7 +96,7 @@ export default {
             this.showResults = false
             this.valueStore[item.id] = item.name
             this.content.push(item.id)
-            this.$emit('input', this.content)
+            this.$emit('input', [...this.content])
             this.$refs.tagInput.focus()
             this.searchWord = ''
         },
@@ -105,7 +105,7 @@ export default {
             if (index !== -1) {
                 this.content.splice(index, 1)
                 delete this.valueStore[id]
-                this.$emit('input', this.content)
+                this.$emit('input', [...this.content])
             }
         },
         createItem() {
