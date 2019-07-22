@@ -6,9 +6,10 @@ import { raw } from 'objection'
 
 import Task from './models/Task'
 import Post from './models/Post'
+import Keyword from './models/Keyword'
 import FileProcessor from './FileStorage/FileProcessor'
 import {Mutex, MutexInterface} from 'async-mutex';
-import { to, encodeHashId } from './utils'
+import { to, encodeHashId, decodeHashId } from './utils'
 
 // Enums
 
@@ -20,7 +21,7 @@ export enum FileType {
 
 // Interfaces
 interface StoreData {
-    postObject: Post,
+    postData: any,
     typedStream: fileType.ReadableStreamWithFileType,
 
     type: {
@@ -63,14 +64,17 @@ export default class FileStorage {
      * Quick validity check of given file and data
      */
     async checkFile(data, readStream): Promise<StoreData> {
-        const postObject = Post.fromJson(data)
+
+        // validation
+        Post.fromJson(data)
+
         const typedStream = await fileType.stream(readStream);
         const types = await typedStream.fileType;
         if (!types) throw new FileStorageError('File-Type not recognized')
         const kind = getKind(types.mime)
 
         return {
-            postObject,
+            postData: data,
             typedStream,
             type: {
                 ext: types.ext, mime: types.mime, kind,
@@ -82,7 +86,7 @@ export default class FileStorage {
      * Adds File in form of StoreData to the queue
      */
     async storeFile(data: StoreData) {
-        const newTask = await Task.query().insert({ title: data.postObject.title, uploaderId: data.postObject.uploaderId, ext: data.type.ext })
+        const newTask = await Task.query().insert({ title: data.postData.title, uploaderId: data.postData.uploaderId, ext: data.type.ext })
 
         this.pubSub.publish('taskUpdates', {
             taskUpdates: {
@@ -138,7 +142,7 @@ export default class FileStorage {
      * Processes an Item from the Queue
      */
     private async processItem({taskObject, data}: QueueItem) {
-        const {postObject, typedStream, type} = data
+        const {postData, typedStream, type} = data
         let processError, createdFiles
         let postCreated = false
 
@@ -156,9 +160,11 @@ export default class FileStorage {
             if (processError) throw processError
 
             // Create post object
-            else postObject.type = fileType
+            else postData.type = fileType
 
-            const newPost = await Post.query().insert(postObject)
+            if (postData.keywords) postData.keywords = postData.keywords.map(id => ({id: decodeHashId(Keyword, id)}))
+
+            const [ newPost ] = await Post.query().insertGraph([ postData ], { relate: true })
             postCreated = true
             const hashId = encodeHashId(Post, newPost.id)
 
@@ -175,17 +181,17 @@ export default class FileStorage {
             // When all are done, delete tmp-dir
             await Promise.all(movePromises)
 
-            postObject.compressedPath = `${options.compressed}/${hashId}`
-            postObject.thumbnailPath = `${options.thumbnail}/${hashId}`
-            postObject.originalPath = `${options.original}/${hashId}.${type.ext}`
+            newPost.compressedPath = `${options.compressed}/${hashId}`
+            newPost.thumbnailPath = `${options.thumbnail}/${hashId}`
+            newPost.originalPath = `${options.original}/${hashId}.${type.ext}`
 
-            await postObject.$query().update(postObject)
+            await newPost.$query().update(newPost)
 
             await update({ status: 'DONE', createdPostId: newPost.id })
 
         } catch (e) {
             console.warn(e)
-            if (postCreated) await Post.query().deleteById(postObject.id)
+            if (postCreated) await Post.query().deleteById(postData.id)
             tmpDir.removeCallback()
             await update({ status: 'FAILED', notes: e })
 
