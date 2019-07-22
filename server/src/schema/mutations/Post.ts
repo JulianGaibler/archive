@@ -5,7 +5,7 @@ import {
     GraphQLNonNull,
     GraphQLString,
 } from 'graphql'
-import { Context, decodeHashId, InputError, isAuthenticated, to } from '../../utils'
+import { decodeHashId, IContext, InputError, isAuthenticated, to } from '../../utils'
 import { NewPost, Post, Task } from '../types'
 
 import PostModel from '../../models/Post'
@@ -20,7 +20,7 @@ export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
             type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(NewPost))),
         },
     },
-    resolve: async (parent, { items }, context: Context, resolveInfo) => {
+    resolve: async (parent, { items }, context: IContext, resolveInfo) => {
         isAuthenticated(context)
 
         if (!items || items.length < 1) {
@@ -30,8 +30,7 @@ export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
         let error = false
         const results = []
 
-        for (let i = 0; i < items.length; i++) {
-            const fields = items[i]
+        for (const fields of items) {
 
             const [fileErr, file] = await to(fields.file)
             if (!file) {
@@ -44,7 +43,6 @@ export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
             const resItem = await to(context.fileStorage.checkFile(fields, file.createReadStream()))
             results.push(resItem)
             if (!resItem[1]) {
-                console.log(resItem[0])
                 error = true
             }
         }
@@ -77,7 +75,7 @@ export const deletePost: GraphQLFieldConfig<any, any, any> = {
             type: new GraphQLNonNull(GraphQLString),
         },
     },
-    resolve: async (parent, { id }, context: Context, resolveInfo) => {
+    resolve: async (parent, { id }, context: IContext, resolveInfo) => {
         isAuthenticated(context)
         const decodedId = decodeHashId(PostModel, id)
         const deletedRows = await PostModel.query().deleteById(decodedId)

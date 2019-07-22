@@ -163,7 +163,9 @@ export default class FileProcessor {
         ]
         const webmAudioOptions = ['-c:a libopus']
 
-        let renderA, renderB, renderC
+        let renderA
+        let renderB
+        let renderC
 
         // Render main video
         const outputHeight = height > 720 ? 720 : height

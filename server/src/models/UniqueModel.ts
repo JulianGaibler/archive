@@ -1,13 +1,13 @@
 import { Model } from 'objection'
 import BaseModel from './BaseModel'
 
-export interface UniqueSettings {
+export interface IUniqueSettings {
     fields: string[]
     identifiers: string[]
 }
 
 export default class UniqueModel extends BaseModel {
-    $unique!: UniqueSettings
+    $unique!: IUniqueSettings
 
     $beforeInsert(context) {
         const parent = super.$beforeInsert(context)
@@ -71,7 +71,7 @@ export default class UniqueModel extends BaseModel {
         }, [])
     }
 
-    checkSettings($unique: UniqueSettings) {
+    checkSettings($unique: IUniqueSettings) {
         if (!$unique || $unique.fields.length < 1 || !$unique.identifiers) {
             throw new Error('Fields and identifiers options must be defined.')
         }

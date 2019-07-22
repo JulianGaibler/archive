@@ -11,7 +11,6 @@ import {
     subscribe,
 } from 'graphql'
 import { PostgresPubSub } from 'graphql-postgres-subscriptions'
-import http from 'http'
 import { createServer, Server as HttpServer } from 'http'
 import logger from 'morgan'
 import { SubscriptionServer } from 'subscriptions-transport-ws'
@@ -51,13 +50,14 @@ const corsOptions = {
 
 class Server {
     app: express.Application
-    server: http.Server
+    server: HttpServer
     cookieParserInstance: cookieParser
     pubSub: PostgresPubSub
     fileStorage: FileStorage
     subscriptionServer: SubscriptionServer | null
     combinedServer: HttpServer
     context: any
+    dataLoaders: any
     options = {
         port: process.env.PORT || 4000,
         endpoint: '/',
@@ -73,6 +73,15 @@ class Server {
             port: 5432,
             database: 'archive',
         })
+
+        this.dataLoaders = {
+            user: User.getLoaders(),
+            post: Post.getLoaders(),
+            keyword: Keyword.getLoaders(),
+            session: Session.getLoaders(),
+            task: Task.getLoaders(),
+        }
+
         this.fileStorage = new FileStorage(this.pubSub)
         this.middleware()
     }
@@ -105,13 +114,7 @@ class Server {
                     fileStorage: this.fileStorage,
                     auth: await getAuthData(req as any),
                     pubSub: this.pubSub,
-                    dataLoaders: {
-                        user: User.getLoaders(),
-                        post: Post.getLoaders(),
-                        keyword: Keyword.getLoaders(),
-                        session: Session.getLoaders(),
-                        task: Task.getLoaders(),
-                    },
+                    dataLoaders: this.dataLoaders,
                 },
                 customFormatErrorFn:
                     process.env.NODE_ENV === 'development'
@@ -188,6 +191,7 @@ class Server {
                             fileStorage: this.fileStorage,
                             auth: await getAuthData(webSocket.upgradeReq),
                             pubSub: this.pubSub,
+                            dataLoaders: this.dataLoaders,
                         },
                     }
                 },

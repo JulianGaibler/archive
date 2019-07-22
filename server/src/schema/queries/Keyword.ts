@@ -1,5 +1,5 @@
 import { GraphQLFieldConfig, GraphQLList, GraphQLNonNull, GraphQLString } from 'graphql'
-import { Context, decodeHashId, isAuthenticated } from '../../utils'
+import { decodeHashId, IContext, isAuthenticated } from '../../utils'
 
 import KeywordModel from '../../models/Keyword'
 import { Keyword } from '../types'
@@ -13,7 +13,7 @@ export const keyword: GraphQLFieldConfig<any, any, any> = {
             type: new GraphQLNonNull(GraphQLString),
         },
     },
-    resolve: async (parent, { id }, context: Context, resolveInfo) => {
+    resolve: async (parent, { id }, context: IContext, resolveInfo) => {
         isAuthenticated(context)
         const decodedId = decodeHashId(KeywordModel, id)
         return context.dataLoaders.keyword.getById.load(decodedId)
@@ -29,7 +29,7 @@ export const keywords: GraphQLFieldConfig<any, any, any> = {
             type: GraphQLString,
         },
     },
-    resolve: async (parent, args, context: Context, resolveInfo) => {
+    resolve: async (parent, args, context: IContext, resolveInfo) => {
         isAuthenticated(context)
         if (args.search) {
             return KeywordModel.query().whereRaw(

@@ -9,7 +9,7 @@ import FileProcessor from './FileStorage/FileProcessor'
 import Keyword from './models/Keyword'
 import Post from './models/Post'
 import Task from './models/Task'
-import { decodeHashId, encodeHashId, to } from './utils'
+import {decodeHashId, encodeHashId, FileStorageError, to} from './utils'
 
 // Enums
 
@@ -20,7 +20,7 @@ export enum FileType {
 }
 
 // Interfaces
-interface StoreData {
+interface IStoreData {
     postData: any
     typedStream: fileType.ReadableStreamWithFileType
 
@@ -31,9 +31,9 @@ interface StoreData {
     }
 }
 
-interface QueueItem {
+interface IQueueItem {
     taskObject: Task
-    data: StoreData
+    data: IStoreData
 }
 
 // Options
@@ -48,7 +48,7 @@ const options = {
  * Keeps track of queue and saves files in directories
  */
 export default class FileStorage {
-    private queue: QueueItem[]
+    private queue: IQueueItem[]
     private taskMutex: Mutex
     pubSub: PostgresPubSub
 
@@ -62,7 +62,7 @@ export default class FileStorage {
     /**
      * Quick validity check of given file and data
      */
-    async checkFile(data, readStream): Promise<StoreData> {
+    async checkFile(data, readStream): Promise<IStoreData> {
         // validation
         Post.fromJson(data)
 
@@ -85,9 +85,9 @@ export default class FileStorage {
     }
 
     /**
-     * Adds File in form of StoreData to the queue
+     * Adds File in form of IStoreData to the queue
      */
-    async storeFile(data: StoreData) {
+    async storeFile(data: IStoreData) {
         const newTask = await Task.query().insert({
             title: data.postData.title,
             uploaderId: data.postData.uploaderId,
@@ -119,7 +119,7 @@ export default class FileStorage {
             const activeTasks = (await Task.query()
                 .where({ status: 'PROCESSING' })
                 .count()) as any
-            if (parseInt(activeTasks[0].count) > 0) {
+            if (parseInt(activeTasks[0].count, 10) > 0) {
                 return
             }
 
@@ -139,21 +139,20 @@ export default class FileStorage {
 
         const updatedTask = await task.$query().patchAndFetch(changes)
         this.pubSub.publish('taskUpdates', {
-            taskUpdates: {
                 id: updatedTask.id,
                 kind: 'CHANGED',
                 task: updatedTask,
-            },
-        })
+            })
         return updatedTask
     }
 
     /**
      * Processes an Item from the Queue
      */
-    private async processItem({ taskObject, data }: QueueItem) {
+    private async processItem({ taskObject, data }: IQueueItem) {
         const { postData, typedStream, type } = data
-        let processError, createdFiles
+        let processError
+        let createdFiles
         let postCreated = false
 
         const update = changes => this.updateTask(taskObject, changes)
@@ -161,7 +160,7 @@ export default class FileStorage {
         const tmpDir = tmp.dirSync()
         const processor = new FileProcessor(update)
 
-        const fileType: FileType =
+        const fileTypeEnum: FileType =
             data.type.mime === 'image/gif'
                 ? FileType.GIF
                 : data.type.kind === 'video'
@@ -169,13 +168,13 @@ export default class FileStorage {
                 : FileType.IMAGE
 
         try {
-            if (fileType === FileType.GIF || fileType === FileType.VIDEO) {
-                ;[processError, createdFiles] = await to(
-                    processor.processVideo(typedStream, tmpDir.name, fileType)
+            if (fileTypeEnum === FileType.GIF || fileTypeEnum === FileType.VIDEO) {
+                [processError, createdFiles] = await to(
+                    processor.processVideo(typedStream, tmpDir.name, fileTypeEnum)
                 )
             }
-            if (fileType === FileType.IMAGE) {
-                ;[processError, createdFiles] = await to(
+            if (fileTypeEnum === FileType.IMAGE) {
+                [processError, createdFiles] = await to(
                     processor.processImage(typedStream, tmpDir.name)
                 )
             }
@@ -185,7 +184,7 @@ export default class FileStorage {
             }
             // Create post object
             else {
-                postData.type = fileType
+                postData.type = fileTypeEnum
             }
 
             if (postData.keywords) {
@@ -232,7 +231,6 @@ export default class FileStorage {
 
             await update({ status: 'DONE', createdPostId: newPost.id })
         } catch (e) {
-            console.warn(e)
             if (postCreated) {
                 await Post.query().deleteById(postData.id)
             }
@@ -266,30 +264,17 @@ export default class FileStorage {
     }
 }
 
-function getKind(mimetype: String): string {
-    let video
-    // Treat gifs as videos
-    if (mimetype === 'image/gif') {
+function getKind(mimeType: string): string {
+    // Treat GIFs as videos
+    if (mimeType === 'image/gif') {
         return 'video'
     }
-    switch (mimetype.split('/')[0]) {
+    switch (mimeType.split('/')[0]) {
         case 'image':
             return 'image'
         case 'video':
             return 'video'
         default:
             throw new FileStorageError('File-Type is not supported')
-    }
-}
-
-class FileStorageError extends Error {
-    name = 'FileStorageError'
-    data
-
-    constructor(msg) {
-        super(msg)
-        this.data = {
-            general: msg,
-        }
     }
 }

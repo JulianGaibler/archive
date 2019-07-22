@@ -1,5 +1,5 @@
 import { GraphQLBoolean, GraphQLFieldConfig, GraphQLNonNull, GraphQLString } from 'graphql'
-import { Context, decodeHashId, isAuthenticated } from '../../utils'
+import { decodeHashId, IContext, isAuthenticated } from '../../utils'
 import { Keyword } from '../types'
 
 import KeywordModel from '../../models/Keyword'
@@ -13,7 +13,7 @@ export const createKeyword: GraphQLFieldConfig<any, any, any> = {
             type: new GraphQLNonNull(GraphQLString),
         },
     },
-    resolve: async (parent, { name }, context: Context, resolveInfo) => {
+    resolve: async (parent, { name }, context: IContext, resolveInfo) => {
         isAuthenticated(context)
         const kw = await KeywordModel.query().insert({ name })
         return context.dataLoaders.keyword.getById.load(kw.id)
@@ -29,7 +29,7 @@ export const deleteKeyword: GraphQLFieldConfig<any, any, any> = {
             type: new GraphQLNonNull(GraphQLString),
         },
     },
-    resolve: async (parent, { id }, context: Context, resolveInfo) => {
+    resolve: async (parent, { id }, context: IContext, resolveInfo) => {
         isAuthenticated(context)
         const decodedId = decodeHashId(KeywordModel, id)
         const deletedRows = await KeywordModel.query().deleteById(decodedId)

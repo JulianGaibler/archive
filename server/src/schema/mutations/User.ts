@@ -6,7 +6,7 @@ import {
     GraphQLString,
 } from 'graphql'
 import User from '../../models/User'
-import { checkAndLogin, checkAndSignup, Context, isAuthenticated, performLogout } from '../../utils'
+import { checkAndLogin, checkAndSignup, IContext, isAuthenticated, performLogout } from '../../utils'
 import { Post } from '../types'
 
 export const signup: GraphQLFieldConfig<any, any, any> = {
@@ -26,7 +26,7 @@ export const signup: GraphQLFieldConfig<any, any, any> = {
             type: new GraphQLNonNull(GraphQLString),
         },
     },
-    resolve: async (parent, args, context: Context, resolveInfo) => {
+    resolve: async (parent, args, context: IContext, resolveInfo) => {
         const id = await checkAndSignup(context, args)
         return true
     },
@@ -45,7 +45,7 @@ export const login: GraphQLFieldConfig<any, any, any> = {
             type: new GraphQLNonNull(GraphQLString),
         },
     },
-    resolve: async (parent, { username, password }, context: Context, resolveInfo) => {
+    resolve: async (parent, { username, password }, context: IContext, resolveInfo) => {
         const id = await checkAndLogin(context, username, password)
         return true
     },
@@ -54,7 +54,7 @@ export const login: GraphQLFieldConfig<any, any, any> = {
 export const logout: GraphQLFieldConfig<any, any, any> = {
     description: `Terminates the current users session.`,
     type: new GraphQLNonNull(GraphQLBoolean),
-    resolve: async (parent, args, context: Context, resolveInfo) => {
+    resolve: async (parent, args, context: IContext, resolveInfo) => {
         isAuthenticated(context)
         await performLogout(context)
         return true

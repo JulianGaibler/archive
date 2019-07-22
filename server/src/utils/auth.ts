@@ -14,11 +14,11 @@ import User from '../models/User'
 
 // Interfaces
 
-export interface Context {
+export interface IContext {
     req: Request
     res: Response
     fileStorage: FileStorage
-    auth: AuthData | null
+    auth: IAuthData | null
     pubSub: PostgresPubSub
     dataLoaders: {
         user: ReturnType<typeof User.getLoaders>
@@ -29,14 +29,14 @@ export interface Context {
     }
 }
 
-export interface AuthData {
+export interface IAuthData {
     userId: number
     token: string
 }
 
 // For population of context
 
-export async function getAuthData(req: Request): Promise<AuthData> {
+export async function getAuthData(req: Request): Promise<IAuthData> {
     const token = req.cookies.token
     if (token === undefined) {
         return null
@@ -49,7 +49,7 @@ export async function getAuthData(req: Request): Promise<AuthData> {
     }
 }
 
-export function isAuthenticated(context: Context) {
+export function isAuthenticated(context: IContext) {
     if (context.auth == null) {
         throw new AuthenticationError()
     }
@@ -57,7 +57,7 @@ export function isAuthenticated(context: Context) {
 
 // login, logout, signup
 
-export async function checkAndSignup(context: Context, args): Promise<number> {
+export async function checkAndSignup(context: IContext, args): Promise<number> {
     if (context.auth) {
         throw new RequestError(`You are already logged in.`)
     }
@@ -73,7 +73,7 @@ export async function checkAndSignup(context: Context, args): Promise<number> {
 }
 
 export async function checkAndLogin(
-    context: Context,
+    context: IContext,
     username: string,
     password: string
 ): Promise<number> {
@@ -95,7 +95,7 @@ export async function checkAndLogin(
     return user.id
 }
 
-export async function performLogout(context: Context) {
+export async function performLogout(context: IContext) {
     await deleteSession(context.auth.token)
 
     context.res.cookie('token', '', {
@@ -105,7 +105,7 @@ export async function performLogout(context: Context) {
     })
 }
 
-async function performLogin(context: Context, userId: number) {
+async function performLogin(context: IContext, userId: number) {
     const token = await createSession(userId, context.req)
 
     context.res.cookie('token', token, {

@@ -13,7 +13,7 @@ import KeywordModel from '../models/Keyword'
 import PostModel from '../models/Post'
 import SessionModel from '../models/Session'
 import TaskModel from '../models/Task'
-import { Context, encodeHashId } from '../utils'
+import { encodeHashId, IContext } from '../utils'
 
 ////
 // Scalars
@@ -165,7 +165,7 @@ export const Post = new GraphQLObjectType({
         type: { type: new GraphQLNonNull(Format) },
         keywords: {
             type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Keyword))),
-            resolve: async (post, args, ctx: Context) =>
+            resolve: async (post, args, ctx: IContext) =>
                 ctx.dataLoaders.keyword.getByPost.load(post.id),
         },
         language: {
@@ -186,7 +186,7 @@ export const Post = new GraphQLObjectType({
         },
         uploader: {
             type: User,
-            resolve: async (post, args, ctx: Context) =>
+            resolve: async (post, args, ctx: IContext) =>
                 ctx.dataLoaders.user.getById.load(post.uploaderId),
         },
         caption: {
@@ -229,13 +229,11 @@ export const Task = new GraphQLObjectType({
         },
         uploader: {
             type: User,
-            resolve: (task, args, ctx: Context) => {
-                return task.uploaderId ? ctx.dataLoaders.user.getById.load(task.uploaderId) : null
-            },
+            resolve: (task, args, ctx: IContext) => task.uploaderId ? ctx.dataLoaders.user.getById.load(task.uploaderId) : null,
         },
         createdPost: {
             type: Post,
-            resolve: (task, args, ctx: Context) =>
+            resolve: (task, args, ctx: IContext) =>
                 task.createdPostId ? ctx.dataLoaders.post.getById.load(task.createdPostId) : null,
         },
         updatedAt: {
@@ -260,7 +258,7 @@ export const Session = new GraphQLObjectType({
         user: {
             description: `User associated with that session`,
             type: User,
-            resolve: async (session, args, ctx: Context) =>
+            resolve: async (session, args, ctx: IContext) =>
                 ctx.dataLoaders.user.getById.load(session.userId),
         },
         userAgent: {
@@ -301,7 +299,7 @@ export const Keyword = new GraphQLObjectType({
         posts: {
             description: `All Posts associated with this keyword.`,
             type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Post))),
-            resolve: async (keyword, args, ctx: Context) =>
+            resolve: async (keyword, args, ctx: IContext) =>
                 ctx.dataLoaders.post.getByKeyword.load(keyword.id),
         },
     }),
@@ -322,7 +320,7 @@ export const User = new GraphQLObjectType({
         posts: {
             description: `All Posts associated with this user.`,
             type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Post))),
-            resolve: async (user, args, ctx: Context) =>
+            resolve: async (user, args, ctx: IContext) =>
                 ctx.dataLoaders.post.getByUser.load(user.id),
         },
     }),
