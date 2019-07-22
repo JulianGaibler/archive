@@ -53,9 +53,7 @@ export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
             taskIds.push(taskId)
         }
 
-        let x = await context.dataLoaders.task.getById.loadMany(taskIds)
-        console.log(x)
-        return []
+        return context.dataLoaders.task.getById.loadMany(taskIds)
     }
 }
 
