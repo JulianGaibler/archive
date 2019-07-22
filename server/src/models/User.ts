@@ -1,5 +1,6 @@
-import { Model, RelationMappings } from 'objection';
-import unique from 'objection-unique';
+import { Model, RelationMappings } from 'objection'
+import unique from 'objection-unique'
+import DataLoader from 'dataloader'
 import UniqueModel from './UniqueModel'
 
 import Post from './Post'
@@ -18,6 +19,24 @@ export default class User extends UniqueModel {
     name!: string;
     password!: string;
     posts!: Post[];
+
+
+    static async usersByIds(ids: number[]): Promise<User[]> {
+        const users = await User.query().findByIds(ids)
+
+        const userMap: { [key: string]: User } = {};
+        users.forEach(user => {
+            userMap[user.id] = user
+        })
+
+        return ids.map(id => userMap[id])
+    }
+
+    static getLoaders() {
+        const getById = new DataLoader<number, User>(this.usersByIds)
+
+        return { getById }
+    }
 
     static jsonSchema = {
         type: 'object',

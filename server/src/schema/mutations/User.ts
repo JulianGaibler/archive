@@ -1,7 +1,5 @@
 import { GraphQLFieldConfig, GraphQLString, GraphQLBoolean, GraphQLNonNull, GraphQLList, } from 'graphql'
 import { checkAndSignup, checkAndLogin, performLogout, Context, isAuthenticated } from '../../utils'
-import joinMonster from 'join-monster'
-import db from '../../database'
 import User from '../../models/User'
 import { Post } from '../types'
 

@@ -8,6 +8,12 @@ import { SubscriptionServer } from 'subscriptions-transport-ws'
 import { execute, GraphQLSchema, subscribe, DocumentNode, print, GraphQLFieldResolver, ExecutionResult } from 'graphql'
 import { PostgresPubSub } from 'graphql-postgres-subscriptions'
 
+import User from './models/User'
+import Post from './models/Post'
+import Keyword from './models/Keyword'
+import Session from './models/Session'
+import Task from './models/Task'
+
 import graphqlHTTP from 'express-graphql'
 import { graphqlUploadExpress } from 'graphql-upload'
 import expressPlayground from 'graphql-playground-middleware-express'
@@ -77,7 +83,19 @@ class Server {
             }),
             graphqlHTTP(async (req, res, graphQLParams) => ({
                 schema: schema,
-                context: { req, res, fileStorage: this.fileStorage, auth: await getAuthData(req as any), pubSub: this.pubSub },
+                context: {
+                    req, res,
+                    fileStorage: this.fileStorage,
+                    auth: await getAuthData(req as any),
+                    pubSub: this.pubSub,
+                    dataLoaders: {
+                        user: User.getLoaders(),
+                        post: Post.getLoaders(),
+                        keyword: Keyword.getLoaders(),
+                        session: Session.getLoaders(),
+                        task: Task.getLoaders(),
+                    },
+                },
                 customFormatErrorFn: process.env.NODE_ENV === 'development' ? this.debugErrorHandler : this.productionErrorHandler,
                 graphiql: false,
             }))

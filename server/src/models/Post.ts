@@ -1,4 +1,5 @@
 import { Model, RelationMappings } from 'objection';
+import DataLoader from 'dataloader'
 import BaseModel from './BaseModel'
 
 import User from './User'
@@ -25,6 +26,41 @@ export default class Post extends BaseModel {
     keywords: Keyword[];
     caption?: string;
 
+    static async postsByIds(postIds: number[]): Promise<Post[]> {
+        const posts = await Post.query().findByIds(postIds)
+
+        const postMap: { [key: string]: Post } = {};
+        posts.forEach(post => {
+            postMap[post.id] = post
+        })
+
+        return postIds.map(id => postMap[id])
+    }
+
+    static async postsByUsers(userIds: number[]): Promise<Post[][]> {
+        const users = await Post.query().whereIn('uploaderId', userIds)
+
+        return userIds.map(id => users.filter(x => x.uploaderId === id))
+    }
+
+    static async postsbyKeywords(keywordIds: number[]): Promise<Post[][]> {
+        const keywords: any = await Keyword.query().findByIds(keywordIds).select('Keyword.id', 'posts').eagerAlgorithm(Keyword.JoinEagerAlgorithm).eager('posts')
+
+        const keywordMap: { [key: string]: any } = {};
+        keywords.forEach(keyword => {
+            keywordMap[keyword.id] = keyword
+        })
+
+        return keywordIds.map(id => keywordMap[id] ? keywordMap[id].posts : [])
+    }
+
+    static getLoaders() {
+        const getById = new DataLoader<number, Post>(this.postsByIds)
+        const getByUser = new DataLoader<number, Post[]>(this.postsByUsers)
+        const getByKeyword = new DataLoader<number, Post[]>(this.postsbyKeywords)
+
+        return { getById, getByUser, getByKeyword }
+    }
 
     static jsonSchema = {
         type: 'object',

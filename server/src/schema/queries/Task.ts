@@ -1,5 +1,3 @@
-import joinMonster from 'join-monster'
-import db from '../../database'
 import { decodeHashId, isAuthenticated, Context } from '../../utils'
 import {
     GraphQLFieldConfig,
@@ -20,14 +18,10 @@ export const task: GraphQLFieldConfig<any, any, any> = {
             type: new GraphQLNonNull(GraphQLString)
         }
     },
-    where: (table, args, context) => {
-        if (args.id) return `${table}.id = ${context.id}`
-    },
     resolve: (parent, { id }, context: Context, resolveInfo) => {
         isAuthenticated(context)
-        return joinMonster(resolveInfo, {}, sql => {
-            return db.knexInstance.raw(sql)
-        }, { dialect: 'pg' })
+        const decodedId = decodeHashId(TaskModel, id)
+        return context.dataLoaders.task.getById.load(decodedId)
     }
 }
 
@@ -36,8 +30,6 @@ export const tasks: GraphQLFieldConfig<any, any, any> = {
     type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Task))),
     resolve: (parent, args, context: Context, resolveInfo) => {
         isAuthenticated(context)
-        return joinMonster(resolveInfo, {}, sql => {
-            return db.knexInstance.raw(sql)
-        }, { dialect: 'pg' })
+        return TaskModel.query()
     }
 }

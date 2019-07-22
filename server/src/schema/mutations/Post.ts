@@ -1,10 +1,5 @@
 import { GraphQLFieldConfig, GraphQLString, GraphQLBoolean, GraphQLNonNull, GraphQLList, } from 'graphql'
 import { decodeHashId, to, isAuthenticated, Context, InputError } from '../../utils'
-import joinMonster from 'join-monster'
-import * as bcrypt from 'bcryptjs'
-import db from '../../database'
-import User from '../../models/User'
-import graphqlFields from 'graphql-fields'
 import { Post, Task, NewPost } from '../types'
 
 import PostModel from '../../models/Post'
@@ -12,15 +7,12 @@ import TaskModel from '../../models/Task'
 
 export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
     description: `Creates one or more posts.`,
-    type: new GraphQLNonNull(Task),
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Task))),
     args: {
         items: {
             description: `Items to be uploaded.`,
             type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(NewPost)))
         }
-    },
-    where: (table, args, context) => {
-        return `${table}.id IN (${context.ids.join()})`
     },
     resolve: async (parent, { items }, context: Context, resolveInfo) => {
         isAuthenticated(context)
@@ -61,10 +53,9 @@ export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
             taskIds.push(taskId)
         }
 
-        return joinMonster(resolveInfo, { ids: taskIds }, sql => {
-            return db.knexInstance.raw(sql)
-        })
-
+        let x = await context.dataLoaders.task.getById.loadMany(taskIds)
+        console.log(x)
+        return []
     }
 }
 

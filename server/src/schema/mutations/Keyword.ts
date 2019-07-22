@@ -1,9 +1,5 @@
-import { GraphQLFieldConfig, GraphQLString, GraphQLBoolean, GraphQLNonNull, GraphQLList, } from 'graphql'
+import { GraphQLFieldConfig, GraphQLString, GraphQLBoolean, GraphQLNonNull } from 'graphql'
 import { decodeHashId, isAuthenticated, Context } from '../../utils'
-import joinMonster from 'join-monster'
-import * as bcrypt from 'bcryptjs'
-import db from '../../database'
-import User from '../../models/User'
 import { Keyword } from '../types'
 
 import KeywordModel from '../../models/Keyword'
@@ -17,15 +13,10 @@ export const createKeyword: GraphQLFieldConfig<any, any, any> = {
             type: new GraphQLNonNull(GraphQLString)
         },
     },
-    where: (table, args, context) => {
-        return `${table}.id = ${context.id}`
-    },
     resolve: async (parent, { name }, context: Context, resolveInfo) => {
         isAuthenticated(context)
         let kw = await KeywordModel.query().insert({ name })
-        return joinMonster(resolveInfo, { id: kw.id }, sql => {
-            return db.knexInstance.raw(sql)
-        }, { dialect: 'pg' })
+        return context.dataLoaders.keyword.getById.load(kw.id)
     }
 }
 

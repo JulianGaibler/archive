@@ -1,4 +1,5 @@
 import { Model, RelationMappings } from 'objection';
+import DataLoader from 'dataloader'
 import UniqueModel from './UniqueModel'
 
 import Post from './Post'
@@ -16,6 +17,35 @@ export default class Keyword extends UniqueModel {
     readonly id!: number;
     name!: string;
     posts!: Post[];
+
+    static async keywordsByIds(keywordIds: number[]): Promise<Keyword[]> {
+        const keyword = await Keyword.query().findByIds(keywordIds)
+
+        const keywordMap: { [key: string]: Keyword } = {};
+        keyword.forEach(kw => {
+            keywordMap[kw.id] = kw
+        })
+
+        return keywordIds.map(id => keywordMap[id])
+    }
+
+    static async keywordsByPost(postIds: number[]): Promise<Keyword[][]> {
+        const posts: any = await Post.query().findByIds(postIds).select('Post.id', 'keywords').eagerAlgorithm(Post.JoinEagerAlgorithm).eager('keywords')
+
+        const postMap: { [key: string]: any } = {};
+        posts.forEach(post => {
+            postMap[post.id] = post
+        })
+
+        return postIds.map(id => postMap[id] ? postMap[id].keywords : [])
+    }
+
+    static getLoaders() {
+        const getById = new DataLoader<number, Keyword>(this.keywordsByIds)
+        const getByPost = new DataLoader<number, Keyword[]>(this.keywordsByPost)
+
+        return { getById, getByPost }
+    }
 
     static jsonSchema = {
         type: 'object',

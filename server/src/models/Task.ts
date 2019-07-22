@@ -1,5 +1,6 @@
 import { Model, RelationMappings } from 'objection';
 import BaseModel from './BaseModel'
+import DataLoader from 'dataloader'
 
 import User from './User'
 import Post from './Post'
@@ -23,6 +24,22 @@ export default class Task extends BaseModel {
     uploader?: User | null;
     createdPost?: Post | null;
 
+    static async tasksByIds(taskIds: number[]): Promise<Task[]> {
+        const tasks = await Task.query().findByIds(taskIds)
+
+        const taskMap: { [key: string]: Task } = {};
+        tasks.forEach(task => {
+            taskMap[task.id] = task
+        })
+
+        return taskIds.map(id => taskMap[id])
+    }
+
+    static getLoaders() {
+        const getById = new DataLoader<number, Task>(this.tasksByIds)
+
+        return { getById }
+    }
 
     static jsonSchema = {
         type: 'object',

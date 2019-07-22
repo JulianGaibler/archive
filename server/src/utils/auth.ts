@@ -1,11 +1,16 @@
 import { Response, Request } from 'express';
-import User from '../models/User'
 import * as bcrypt from 'bcryptjs'
-import Session from '../models/Session'
 import sodium from 'sodium'
 import FileStorage from '../FileStorage'
 import { PostgresPubSub } from "graphql-postgres-subscriptions";
+
 import { AuthenticationError, RequestError } from '../utils'
+
+import User from '../models/User'
+import Post from '../models/Post'
+import Keyword from '../models/Keyword'
+import Session from '../models/Session'
+import Task from '../models/Task'
 
 // Interfaces
 
@@ -14,7 +19,14 @@ export interface Context {
     res: Response
     fileStorage: FileStorage
     auth: AuthData | null
-    pubSub: PostgresPubSub
+    pubSub: PostgresPubSub,
+    dataLoaders: {
+        user: ReturnType<typeof User.getLoaders>
+        post: ReturnType<typeof Post.getLoaders>
+        keyword: ReturnType<typeof Keyword.getLoaders>
+        session: ReturnType<typeof Session.getLoaders>
+        task: ReturnType<typeof Task.getLoaders>
+    }
 }
 
 export interface AuthData {

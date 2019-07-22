@@ -1,6 +1,3 @@
-import joinMonster from 'join-monster'
-import db from '../../database'
-import escape from 'pg-escape'
 import { decodeHashId, isAuthenticated, Context } from '../../utils'
 import {
     GraphQLFieldConfig,
@@ -21,15 +18,10 @@ export const keyword: GraphQLFieldConfig<any, any, any> = {
             type: new GraphQLNonNull(GraphQLString)
         }
     },
-    where: (table, args, context) => {
-        if (args.id) return `${table}.id = ${context.id}`
-    },
     resolve: async (parent, { id }, context: Context, resolveInfo) => {
         isAuthenticated(context)
         const decodedId = decodeHashId(KeywordModel, id)
-        return joinMonster(resolveInfo, {id: decodedId}, sql => {
-            return db.knexInstance.raw(sql)
-        }, { dialect: 'pg' })
+        return context.dataLoaders.keyword.getById.load(decodedId)
     }
 }
 
@@ -42,13 +34,9 @@ export const keywords: GraphQLFieldConfig<any, any, any> = {
             type: GraphQLString
         }
     },
-    where: (table, args, context) => {
-        if (args.search) return escape(`LOWER(${table}.name) LIKE %L`, `%${args.search.toLowerCase()}%`)
-    },
     resolve: async (parent, args, context: Context, resolveInfo) => {
         isAuthenticated(context)
-        return joinMonster(resolveInfo, {}, sql => {
-            return db.knexInstance.raw(sql)
-        }, { dialect: 'pg' })
+        if (args.search) return KeywordModel.query().whereRaw('LOWER(name) LIKE ?', `%${args.search.toLowerCase()}%`)
+        else return KeywordModel.query()
     }
 }

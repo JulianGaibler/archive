@@ -1,6 +1,5 @@
-import joinMonster from 'join-monster'
 import { GraphQLUpload } from 'graphql-upload'
-import { encodeHashId } from '../utils'
+import { encodeHashId, Context } from '../utils'
 import PostModel from '../models/Post'
 import TaskModel from '../models/Task'
 import SessionModel from '../models/Session'
@@ -159,20 +158,13 @@ export const Post = new GraphQLObjectType({
     fields: () => ({
         id: {
             type: new GraphQLNonNull(GraphQLString),
-            sqlColumn: 'id',
             resolve: post => encodeHashId(PostModel, post.id)
         },
         title: { type: new GraphQLNonNull(GraphQLString) },
         type: { type: new GraphQLNonNull(Format) },
         keywords: {
             type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Keyword))),
-            junction: {
-                sqlTable: '"KeywordToPost"',
-                sqlJoins: [
-                    (from, junction, args) => `${from}.id = ${junction}.post_id`,
-                    (junction, to, args) => `${junction}.keyword_id = ${to}.id`
-                ]
-            }
+            resolve: async (post, args, ctx: Context) => ctx.dataLoaders.keyword.getByPost.load(post.id)
         },
         language: {
             description : `Language in which caption and title are written.`,
@@ -192,9 +184,11 @@ export const Post = new GraphQLObjectType({
         },
         uploader: {
             type: User,
-            sqlJoin: (postTable, userTable) => `${postTable}."uploaderId" = ${userTable}.id`,
+            resolve: async (post, args, ctx: Context) => ctx.dataLoaders.user.getById.load(post.uploaderId)
         },
-        caption: { type: GraphQLString },
+        caption: {
+            type: GraphQLString
+        },
         updatedAt: {
             description : `Identifies the date and time when the object was last updated..`,
             type: new GraphQLNonNull(DateTime)
@@ -205,11 +199,6 @@ export const Post = new GraphQLObjectType({
         },
     })
 });
-// Workaround util https://github.com/acarl005/join-monster/issues/352 is fixed
-Post._typeConfig = {...Post._typeConfig, ...{
-    sqlTable: '"Post"',
-    uniqueKey: 'id',
-}}
 
 export const Task = new GraphQLObjectType({
     name: 'Task',
@@ -217,7 +206,6 @@ export const Task = new GraphQLObjectType({
     fields: () => ({
         id: {
             type: new GraphQLNonNull(GraphQLString),
-            sqlColumn: 'id',
             resolve: task => encodeHashId(TaskModel, task.id)
         },
         title: {
@@ -238,11 +226,11 @@ export const Task = new GraphQLObjectType({
         },
         uploader: {
             type: User,
-            sqlJoin: (taskTable, userTable) => `${taskTable}."uploaderId" = ${userTable}.id`,
+            resolve: async (task, args, ctx: Context) => ctx.dataLoaders.user.getById.load(task.uploaderId)
         },
         createdPost: {
             type: Post,
-            sqlJoin: (taskTable, postTable) => `${taskTable}."createdPostId" = ${postTable}.id`,
+            resolve: async (task, args, ctx: Context) => ctx.dataLoaders.post.getById.load(task.createdPostId)
         },
         updatedAt: {
             description : `Identifies the date and time when the object was last updated..`,
@@ -254,11 +242,6 @@ export const Task = new GraphQLObjectType({
         },
     })
 });
-// Workaround util https://github.com/acarl005/join-monster/issues/352 is fixed
-(Task as any)._typeConfig = {...(Task as any)._typeConfig, ...{
-    sqlTable: '"Task"',
-    uniqueKey: 'id',
-}}
 
 export const Session = new GraphQLObjectType({
     name: 'Session',
@@ -266,13 +249,12 @@ export const Session = new GraphQLObjectType({
     fields: () => ({
         id: {
             type: new GraphQLNonNull(GraphQLString),
-            sqlColumn: 'id',
             resolve: session => encodeHashId(SessionModel, session.id)
         },
         user: {
             description: `User associated with that session`,
             type: User,
-            sqlJoin: (sessionTable, userTable) => `${sessionTable}."userId" = ${userTable}.id`,
+            resolve: async (session, args, ctx: Context) => ctx.dataLoaders.user.getById.load(session.userId)
         },
         userAgent: {
             description: `Last known User-Agent string of this session.`,
@@ -296,11 +278,6 @@ export const Session = new GraphQLObjectType({
         },
     })
 });
-// Workaround util https://github.com/acarl005/join-monster/issues/352 is fixed
-(Session as any)._typeConfig = {...(Session as any)._typeConfig, ...{
-    sqlTable: '"Session"',
-    uniqueKey: 'id',
-}}
 
 export const Keyword = new GraphQLObjectType({
     name: 'Keyword',
@@ -308,7 +285,6 @@ export const Keyword = new GraphQLObjectType({
     fields: () => ({
         id: {
             type: new GraphQLNonNull(GraphQLString),
-            sqlColumn: 'id',
             resolve: keyword => encodeHashId(KeywordModel, keyword.id)
         },
         name: {
@@ -318,21 +294,10 @@ export const Keyword = new GraphQLObjectType({
         posts: {
             description: `All Posts associated with this keyword.`,
             type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Post))),
-            junction: {
-                sqlTable: 'KeywordToPost',
-                sqlJoins: [
-                    (from, junction, args) => `${from}.id = ${junction}.keyword_id`,
-                    (junction, to, args) => `${junction}.post_id = ${to}.id`
-                ]
-            }
+            resolve: async (keyword, args, ctx: Context) => ctx.dataLoaders.post.getByKeyword.load(keyword.id)
         },
     })
 });
-// Workaround util https://github.com/acarl005/join-monster/issues/352 is fixed
-Keyword._typeConfig = {...Keyword._typeConfig, ...{
-    sqlTable: '"Keyword"',
-    uniqueKey: 'id',
-}}
 
 export const User = new GraphQLObjectType({
     name: 'User',
@@ -349,14 +314,10 @@ export const User = new GraphQLObjectType({
         posts: {
             description: `All Posts associated with this user.`,
             type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Post))),
+            resolve: async (user, args, ctx: Context) => ctx.dataLoaders.post.getByUser.load(user.id)
         },
     })
 });
-// Workaround util https://github.com/acarl005/join-monster/issues/352 is fixed
-(User as any)._typeConfig = {...(User as any)._typeConfig, ...{
-    sqlTable: '"User"',
-    uniqueKey: 'id',
-}}
 
 ////
 // Other Objects
@@ -368,7 +329,6 @@ export const TaskUpdate = new GraphQLObjectType({
         id: {
             description : `ID of the task.`,
             type: new GraphQLNonNull(GraphQLString),
-            sqlColumn: 'id',
             resolve: task => encodeHashId(TaskModel, task.id)
         },
         kind: {
