@@ -51,7 +51,6 @@
     "dotenv-cli": "2.0.1",
     "graphql-playground-middleware-express": "^1.7.12",
     "nodemon": "1.19.1",
-    "prettier": "^1.18.2",
     "rimraf": "2.6.3",
     "ts-node": "8.3.0",
     "tslint": "^5.18.0",
