@@ -93,6 +93,7 @@ export default class FileProcessor {
 
         const renderProgress = fileType === FileType.GIF ? [0,0,0,0,0] : [0,0,0,0]
         const updateProgress = (idx: number, progress: number) => {
+            if (isNaN(progress)) return;
             if (progress <= renderProgress[idx]) return;
             renderProgress[idx] = progress
             const average = renderProgress.reduce((a,b) => a + b, 0) / renderProgress.length
