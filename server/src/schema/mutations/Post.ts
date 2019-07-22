@@ -61,8 +61,6 @@ export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
             taskIds.push(taskId)
         }
 
-        console.log(taskIds)
-
         return joinMonster(resolveInfo, { ids: taskIds }, sql => {
             return db.knexInstance.raw(sql)
         })

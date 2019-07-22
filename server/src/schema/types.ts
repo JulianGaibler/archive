@@ -50,6 +50,22 @@ export const Format = new GraphQLEnumType({
     }
 })
 
+export const UpdateKind = new GraphQLEnumType({
+    name: 'UpdateKind',
+    description: `Enum that specifies if an update contains a new object, an update or if an object has been deleted.`,
+    values: {
+        CREATED: {
+            description: `Contains a new object`,
+        },
+        CHANGED: {
+            description: `Contains a changed object`,
+        },
+        DELETED: {
+            description: `Contains a deleted object`,
+        },
+    }
+})
+
 export const Language = new GraphQLEnumType({
     name: 'Language',
     description: `Possible languages that an object can have.`,
@@ -300,7 +316,7 @@ export const Keyword = new GraphQLObjectType({
             type: new GraphQLNonNull(GraphQLString)
         },
         posts: {
-            description: `All Posts associated with that keyword.`,
+            description: `All Posts associated with this keyword.`,
             type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Post))),
             junction: {
                 sqlTable: 'KeywordToPost',
@@ -330,6 +346,10 @@ export const User = new GraphQLObjectType({
             description: `The user's profile name.`,
             type: new GraphQLNonNull(GraphQLString)
         },
+        posts: {
+            description: `All Posts associated with this user.`,
+            type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Post))),
+        },
     })
 });
 // Workaround util https://github.com/acarl005/join-monster/issues/352 is fixed
@@ -346,21 +366,18 @@ export const TaskUpdate = new GraphQLObjectType({
     description: `Update data of a tasks current status.`,
     fields: () => ({
         id: {
+            description : `ID of the task.`,
             type: new GraphQLNonNull(GraphQLString),
             sqlColumn: 'id',
             resolve: task => encodeHashId(TaskModel, task.id)
         },
-        notes: {
-            description : `Notes created while processing, usually used for debugging.`,
-            type: new GraphQLNonNull(GraphQLString)
+        kind: {
+            description : `Indicates what kind of update this is.`,
+            type: new GraphQLNonNull(UpdateKind)
         },
-        status: {
-            description : `Current status of the task.`,
-            type: new GraphQLNonNull(TaskStatus)
-        },
-        progress: {
-            description : `Current progress of the task.`,
-            type: GraphQLInt
+        task: {
+            description : `The updated or created task.`,
+            type: Task
         },
     })
 });

@@ -25,7 +25,6 @@ export const task: GraphQLFieldConfig<any, any, any> = {
     },
     resolve: (parent, { id }, context: Context, resolveInfo) => {
         isAuthenticated(context)
-        const decodedId = decodeHashId(TaskModel, id)
         return joinMonster(resolveInfo, {}, sql => {
             return db.knexInstance.raw(sql)
         }, { dialect: 'pg' })

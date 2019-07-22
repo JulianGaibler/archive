@@ -84,6 +84,14 @@ export default class FileStorage {
     async storeFile(data: StoreData) {
         const newTask = await Task.query().insert({ title: data.postObject.title, uploaderId: data.postObject.uploaderId, ext: data.type.ext })
 
+        this.pubSub.publish('taskUpdates', {
+            taskUpdates: {
+                id: newTask.id,
+                kind: 'CREATED',
+                task: newTask,
+            }
+        })
+
         this.queue.push({ taskObject: newTask, data })
         this.checkQueue()
 
@@ -119,9 +127,8 @@ export default class FileStorage {
         this.pubSub.publish('taskUpdates', {
             taskUpdates: {
                 id: updatedTask.id,
-                notes: updatedTask.notes,
-                status: updatedTask.status,
-                progress: updatedTask.progress,
+                kind: 'CHANGED',
+                task: updatedTask,
             }
         })
         return updatedTask
