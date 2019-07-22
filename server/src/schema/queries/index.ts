@@ -1,7 +1,7 @@
 import { GraphQLObjectType } from 'graphql'
 
-import { keywords, keyword } from './Keyword'
-import { posts, post } from './Post'
+import { keyword, keywords } from './Keyword'
+import { post, posts } from './Post'
 import { userSessions } from './Session'
 import { task, tasks } from './Task'
 import { me } from './User'
@@ -18,5 +18,5 @@ export default new GraphQLObjectType({
         tasks,
         task,
         me,
-    })
+    }),
 })

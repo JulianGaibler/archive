@@ -1,12 +1,11 @@
-import { Model, RelationMappings } from 'objection';
 import DataLoader from 'dataloader'
+import { Model, RelationMappings } from 'objection'
 import UniqueModel from './UniqueModel'
 
 import Post from './Post'
 
-
 export default class Keyword extends UniqueModel {
-    static tableName = 'Keyword';
+    static tableName = 'Keyword'
     static readonly hashid = 85
 
     $unique = {
@@ -14,14 +13,14 @@ export default class Keyword extends UniqueModel {
         identifiers: ['id'],
     }
 
-    readonly id!: number;
-    name!: string;
-    posts!: Post[];
+    readonly id!: number
+    name!: string
+    posts!: Post[]
 
     static async keywordsByIds(keywordIds: number[]): Promise<Keyword[]> {
         const keyword = await Keyword.query().findByIds(keywordIds)
 
-        const keywordMap: { [key: string]: Keyword } = {};
+        const keywordMap: { [key: string]: Keyword } = {}
         keyword.forEach(kw => {
             keywordMap[kw.id] = kw
         })
@@ -30,14 +29,18 @@ export default class Keyword extends UniqueModel {
     }
 
     static async keywordsByPost(postIds: number[]): Promise<Keyword[][]> {
-        const posts: any = await Post.query().findByIds(postIds).select('Post.id', 'keywords').eagerAlgorithm(Post.JoinEagerAlgorithm).eager('keywords')
+        const posts: any = await Post.query()
+            .findByIds(postIds)
+            .select('Post.id', 'keywords')
+            .eagerAlgorithm(Post.JoinEagerAlgorithm)
+            .eager('keywords')
 
-        const postMap: { [key: string]: any } = {};
+        const postMap: { [key: string]: any } = {}
         posts.forEach(post => {
             postMap[post.id] = post
         })
 
-        return postIds.map(id => postMap[id] ? postMap[id].keywords : [])
+        return postIds.map(id => (postMap[id] ? postMap[id].keywords : []))
     }
 
     static getLoaders() {
@@ -54,10 +57,10 @@ export default class Keyword extends UniqueModel {
         properties: {
             id: { type: 'number' },
             name: { type: 'string', minLength: 2, maxLength: 64 },
-        }
-    };
+        },
+    }
 
-    static modelPaths = [__dirname];
+    static modelPaths = [__dirname]
 
     static relationMappings: RelationMappings = {
         posts: {
@@ -67,10 +70,10 @@ export default class Keyword extends UniqueModel {
                 from: 'Keyword.id',
                 through: {
                     from: 'KeywordToPost.keyword_id',
-                    to: 'KeywordToPost.post_id'
+                    to: 'KeywordToPost.post_id',
                 },
-                to: 'Post.id'
-            }
+                to: 'Post.id',
+            },
         },
     }
 }

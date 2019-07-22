@@ -1,16 +1,16 @@
-import { Response, Request } from 'express';
 import * as bcrypt from 'bcryptjs'
+import { Request, Response } from 'express'
+import { PostgresPubSub } from 'graphql-postgres-subscriptions'
 import sodium from 'sodium'
 import FileStorage from '../FileStorage'
-import { PostgresPubSub } from "graphql-postgres-subscriptions";
 
 import { AuthenticationError, RequestError } from '../utils'
 
-import User from '../models/User'
-import Post from '../models/Post'
 import Keyword from '../models/Keyword'
+import Post from '../models/Post'
 import Session from '../models/Session'
 import Task from '../models/Task'
+import User from '../models/User'
 
 // Interfaces
 
@@ -19,7 +19,7 @@ export interface Context {
     res: Response
     fileStorage: FileStorage
     auth: AuthData | null
-    pubSub: PostgresPubSub,
+    pubSub: PostgresPubSub
     dataLoaders: {
         user: ReturnType<typeof User.getLoaders>
         post: ReturnType<typeof Post.getLoaders>
@@ -38,17 +38,21 @@ export interface AuthData {
 
 export async function getAuthData(req: Request): Promise<AuthData> {
     const token = req.cookies.token
-    if (token === undefined) return null
+    if (token === undefined) {
+        return null
+    }
     try {
         const userId = await verifySession(token, req)
         return { userId, token }
-    } catch(e) {
-        return null;
+    } catch (e) {
+        return null
     }
 }
 
 export function isAuthenticated(context: Context) {
-    if (context.auth == null) throw new AuthenticationError();
+    if (context.auth == null) {
+        throw new AuthenticationError()
+    }
 }
 
 // login, logout, signup
@@ -58,14 +62,21 @@ export async function checkAndSignup(context: Context, args): Promise<number> {
         throw new RequestError(`You are already logged in.`)
     }
     const password = await bcrypt.hash(args.password, 10)
-    const user = await User.query().insert({ ...args, password }) as any as User
+    const user = ((await User.query().insert({
+        ...args,
+        password,
+    })) as any) as User
 
-    await performLogin(context, user.id);
+    await performLogin(context, user.id)
 
-    return user.id;
+    return user.id
 }
 
-export async function checkAndLogin(context: Context, username: string, password: string): Promise<number> {
+export async function checkAndLogin(
+    context: Context,
+    username: string,
+    password: string
+): Promise<number> {
     if (context.auth) {
         throw new RequestError(`You are already logged in.`)
     }
@@ -79,9 +90,9 @@ export async function checkAndLogin(context: Context, username: string, password
         throw new AuthenticationError('Invalid password')
     }
 
-    await performLogin(context, user.id);
+    await performLogin(context, user.id)
 
-    return user.id;
+    return user.id
 }
 
 export async function performLogout(context: Context) {
@@ -90,8 +101,8 @@ export async function performLogout(context: Context) {
     context.res.cookie('token', '', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        expires: new Date(0)
-    });
+        expires: new Date(0),
+    })
 }
 
 async function performLogin(context: Context, userId: number) {
@@ -100,48 +111,51 @@ async function performLogin(context: Context, userId: number) {
     context.res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
-    });
+        maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+    })
 }
 
 // Session Management
 
 async function createSession(userId: number, req: Request): Promise<string> {
-
-    let buffer = Buffer.allocUnsafe(32);
-    sodium.api.randombytes_buf(buffer,32);
+    const buffer = Buffer.allocUnsafe(32)
+    sodium.api.randombytes_buf(buffer, 32)
     const token = buffer.toString('base64')
 
-    let userAgent = req.headers['user-agent'] ? req.headers['user-agent'] : ''
+    const userAgent = req.headers['user-agent'] ? req.headers['user-agent'] : ''
     await Session.query().insert({
         token,
         userId,
-        userAgent: userAgent,
+        userAgent,
         firstIP: req.ip,
         latestIP: req.ip,
     })
-    return token;
+    return token
 }
 
 async function verifySession(token: string, req: Request): Promise<number> {
     const oldSession = await Session.query().findOne({ token })
-    if (!oldSession) throw new AuthenticationError()
+    if (!oldSession) {
+        throw new AuthenticationError()
+    }
 
-    let userAgent = req.headers['user-agent'] ? req.headers['user-agent'] : ''
+    const userAgent = req.headers['user-agent'] ? req.headers['user-agent'] : ''
     const updatedSession = await oldSession.$query().updateAndFetch({
         userAgent,
         latestIP: req.ip,
     })
 
     // Diff between last update and now is more than 5 days
-    if (Math.abs(updatedSession.updatedAt.getTime() - Date.now()) > 4.32e+8) {
+    if (Math.abs(updatedSession.updatedAt.getTime() - Date.now()) > 4.32e8) {
         await Session.query().deleteById(updatedSession.id)
         throw new AuthenticationError('Your Session timed out.')
     }
 
-    return updatedSession.userId;
+    return updatedSession.userId
 }
 
 async function deleteSession(token: string) {
-    let { createdAt, updatedAt, userId } = await Session.query().delete().findOne({ token })
+    const { createdAt, updatedAt, userId } = await Session.query()
+        .delete()
+        .findOne({ token })
 }

@@ -1,30 +1,28 @@
+import DataLoader from 'dataloader'
 import { Model, RelationMappings } from 'objection'
 import unique from 'objection-unique'
-import DataLoader from 'dataloader'
 import UniqueModel from './UniqueModel'
 
 import Post from './Post'
 
-
 export default class User extends UniqueModel {
-    static tableName = 'User';
+    static tableName = 'User'
 
     $unique = {
         fields: ['username'],
         identifiers: ['id'],
     }
 
-    readonly id!: number;
-    username!: string;
-    name!: string;
-    password!: string;
-    posts!: Post[];
-
+    readonly id!: number
+    username!: string
+    name!: string
+    password!: string
+    posts!: Post[]
 
     static async usersByIds(ids: number[]): Promise<User[]> {
         const users = await User.query().findByIds(ids)
 
-        const userMap: { [key: string]: User } = {};
+        const userMap: { [key: string]: User } = {}
         users.forEach(user => {
             userMap[user.id] = user
         })
@@ -46,11 +44,11 @@ export default class User extends UniqueModel {
             id: { type: 'number' },
             username: { type: 'string', minLength: 2, maxLength: 64 },
             name: { type: 'string', minLength: 2, maxLength: 64 },
-            password: { type: 'string', minLength: 5, maxLength: 255 }
-        }
-    };
+            password: { type: 'string', minLength: 5, maxLength: 255 },
+        },
+    }
 
-    static modelPaths = [__dirname];
+    static modelPaths = [__dirname]
 
     static relationMappings: RelationMappings = {
         posts: {
@@ -60,10 +58,10 @@ export default class User extends UniqueModel {
                 from: 'User.id',
                 through: {
                     from: 'PostToUser.user_id',
-                    to: 'PostToUser.post_id'
+                    to: 'PostToUser.post_id',
                 },
-                to: 'Post.id'
-            }
+                to: 'Post.id',
+            },
         },
     }
 }

@@ -7,5 +7,5 @@ export default new GraphQLObjectType({
     description: `The subscription root of the GraphQL interface.`,
     fields: () => ({
         taskUpdates,
-    })
+    }),
 })

@@ -1,33 +1,32 @@
-import { Model, RelationMappings } from 'objection';
-import BaseModel from './BaseModel'
 import DataLoader from 'dataloader'
+import { Model, RelationMappings } from 'objection'
+import BaseModel from './BaseModel'
 
-import User from './User'
 import Post from './Post'
-
+import User from './User'
 
 export default class Task extends BaseModel {
-    static tableName = 'Task';
+    static tableName = 'Task'
 
     static readonly hashid = 991
 
-    readonly id!: number;
-    title!: string;
-    notes!: string;
-    status!: string;
-    ext!: string;
-    progress?: number;
+    readonly id!: number
+    title!: string
+    notes!: string
+    status!: string
+    ext!: string
+    progress?: number
 
-    uploaderId?: number;
-    createdPostId?: number;
+    uploaderId?: number
+    createdPostId?: number
 
-    uploader?: User | null;
-    createdPost?: Post | null;
+    uploader?: User | null
+    createdPost?: Post | null
 
     static async tasksByIds(taskIds: number[]): Promise<Task[]> {
         const tasks = await Task.query().findByIds(taskIds)
 
-        const taskMap: { [key: string]: Task } = {};
+        const taskMap: { [key: string]: Task } = {}
         tasks.forEach(task => {
             taskMap[task.id] = task
         })
@@ -49,14 +48,18 @@ export default class Task extends BaseModel {
             title: { type: 'string' },
             ext: { type: 'string' },
             notes: { type: 'string', default: '' },
-            status: { type: 'string', enum: ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'], default: 'QUEUED' },
+            status: {
+                type: 'string',
+                enum: ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'],
+                default: 'QUEUED',
+            },
             progress: { type: 'number' },
             uploaderId: { type: ['number', 'null'] },
             createdPostId: { type: ['number', 'null'] },
-        }
-    };
+        },
+    }
 
-    static modelPaths = [__dirname];
+    static modelPaths = [__dirname]
 
     static relationMappings: RelationMappings = {
         uploader: {

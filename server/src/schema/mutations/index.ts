@@ -1,9 +1,9 @@
 import { GraphQLObjectType } from 'graphql'
 
 import { createKeyword, deleteKeyword } from './Keyword'
-import { uploadPosts, deletePost } from './Post'
+import { deletePost, uploadPosts } from './Post'
 import { revokeSession } from './Session'
-import { signup, login, logout } from './User'
+import { login, logout, signup } from './User'
 
 export default new GraphQLObjectType({
     name: 'Mutation',
@@ -17,5 +17,5 @@ export default new GraphQLObjectType({
         signup,
         login,
         logout,
-    })
+    }),
 })

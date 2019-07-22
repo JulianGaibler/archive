@@ -1,29 +1,28 @@
-import { Model, RelationMappings } from 'objection';
-import BaseModel from './BaseModel'
 import DataLoader from 'dataloader'
+import { Model, RelationMappings } from 'objection'
+import BaseModel from './BaseModel'
 
-import User from './User'
 import Post from './Post'
-
+import User from './User'
 
 export default class Session extends BaseModel {
-    static tableName = 'Session';
+    static tableName = 'Session'
     static readonly hashid = 41
 
-    readonly id: number;
-    readonly token: string;
-    readonly userId: number;
+    readonly id: number
+    readonly token: string
+    readonly userId: number
 
-    readonly firstIP: string;
-    latestIP: string;
-    userAgent: string;
+    readonly firstIP: string
+    latestIP: string
+    userAgent: string
 
-    user: User | null;
+    user: User | null
 
     static async sessionsByIds(sessionIds: number[]): Promise<Session[]> {
         const sessions = await Session.query().findByIds(sessionIds)
 
-        const sessionMap: { [key: string]: Session } = {};
+        const sessionMap: { [key: string]: Session } = {}
         sessions.forEach(session => {
             sessionMap[session.id] = session
         })
@@ -32,7 +31,9 @@ export default class Session extends BaseModel {
     }
 
     static async sessionsByUsers(userIds: number[]): Promise<Session[][]> {
-        const sessions = await Session.query().whereIn('userId', userIds).andWhere('updatedAt', '>=', Date.now()-4.32e+8)
+        const sessions = await Session.query()
+            .whereIn('userId', userIds)
+            .andWhere('updatedAt', '>=', Date.now() - 4.32e8)
 
         return userIds.map(id => sessions.filter(s => s.userId === id))
     }
@@ -54,10 +55,10 @@ export default class Session extends BaseModel {
             firstIP: { type: 'string' },
             latestIP: { type: 'string' },
             userAgent: { type: 'string' },
-        }
-    };
+        },
+    }
 
-    static modelPaths = [__dirname];
+    static modelPaths = [__dirname]
 
     static relationMappings: RelationMappings = {
         user: {

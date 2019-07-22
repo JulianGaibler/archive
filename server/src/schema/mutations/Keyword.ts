@@ -1,5 +1,5 @@
-import { GraphQLFieldConfig, GraphQLString, GraphQLBoolean, GraphQLNonNull } from 'graphql'
-import { decodeHashId, isAuthenticated, Context } from '../../utils'
+import { GraphQLBoolean, GraphQLFieldConfig, GraphQLNonNull, GraphQLString } from 'graphql'
+import { Context, decodeHashId, isAuthenticated } from '../../utils'
 import { Keyword } from '../types'
 
 import KeywordModel from '../../models/Keyword'
@@ -10,14 +10,14 @@ export const createKeyword: GraphQLFieldConfig<any, any, any> = {
     args: {
         name: {
             description: `Name of the keyword.`,
-            type: new GraphQLNonNull(GraphQLString)
+            type: new GraphQLNonNull(GraphQLString),
         },
     },
     resolve: async (parent, { name }, context: Context, resolveInfo) => {
         isAuthenticated(context)
-        let kw = await KeywordModel.query().insert({ name })
+        const kw = await KeywordModel.query().insert({ name })
         return context.dataLoaders.keyword.getById.load(kw.id)
-    }
+    },
 }
 
 export const deleteKeyword: GraphQLFieldConfig<any, any, any> = {
@@ -26,7 +26,7 @@ export const deleteKeyword: GraphQLFieldConfig<any, any, any> = {
     args: {
         id: {
             description: `The ID of the keyword to delete.`,
-            type: new GraphQLNonNull(GraphQLString)
+            type: new GraphQLNonNull(GraphQLString),
         },
     },
     resolve: async (parent, { id }, context: Context, resolveInfo) => {
@@ -34,5 +34,5 @@ export const deleteKeyword: GraphQLFieldConfig<any, any, any> = {
         const decodedId = decodeHashId(KeywordModel, id)
         const deletedRows = await KeywordModel.query().deleteById(decodedId)
         return deletedRows > 0
-    }
+    },
 }

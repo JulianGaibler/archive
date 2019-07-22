@@ -1,35 +1,34 @@
-import { Model, RelationMappings } from 'objection';
 import DataLoader from 'dataloader'
+import { Model, RelationMappings } from 'objection'
 import BaseModel from './BaseModel'
 
-import User from './User'
 import Keyword from './Keyword'
-
+import User from './User'
 
 export default class Post extends BaseModel {
-    static tableName = 'Post';
+    static tableName = 'Post'
 
     static readonly hashid = 51
 
-    readonly id!: number;
+    readonly id!: number
 
-    title!: string;
-    type!: string;
-    language?: string;
+    title!: string
+    type!: string
+    language?: string
 
-    compressedPath?: string;
-    thumbnailPath?: string;
-    originalPath?: string;
-    uploaderId?: number;
+    compressedPath?: string
+    thumbnailPath?: string
+    originalPath?: string
+    uploaderId?: number
 
-    uploader?: User;
-    keywords: Keyword[];
-    caption?: string;
+    uploader?: User
+    keywords: Keyword[]
+    caption?: string
 
     static async postsByIds(postIds: number[]): Promise<Post[]> {
         const posts = await Post.query().findByIds(postIds)
 
-        const postMap: { [key: string]: Post } = {};
+        const postMap: { [key: string]: Post } = {}
         posts.forEach(post => {
             postMap[post.id] = post
         })
@@ -44,14 +43,18 @@ export default class Post extends BaseModel {
     }
 
     static async postsbyKeywords(keywordIds: number[]): Promise<Post[][]> {
-        const keywords: any = await Keyword.query().findByIds(keywordIds).select('Keyword.id', 'posts').eagerAlgorithm(Keyword.JoinEagerAlgorithm).eager('posts')
+        const keywords: any = await Keyword.query()
+            .findByIds(keywordIds)
+            .select('Keyword.id', 'posts')
+            .eagerAlgorithm(Keyword.JoinEagerAlgorithm)
+            .eager('posts')
 
-        const keywordMap: { [key: string]: any } = {};
+        const keywordMap: { [key: string]: any } = {}
         keywords.forEach(keyword => {
             keywordMap[keyword.id] = keyword
         })
 
-        return keywordIds.map(id => keywordMap[id] ? keywordMap[id].posts : [])
+        return keywordIds.map(id => (keywordMap[id] ? keywordMap[id].posts : []))
     }
 
     static getLoaders() {
@@ -71,15 +74,31 @@ export default class Post extends BaseModel {
             title: { type: 'string', minLength: 4, maxLength: 255 },
             type: { type: 'string', enum: ['VIDEO', 'IMAGE', 'GIF'] },
             language: { type: ['string'], maxLength: 64 },
-            compressedPath: { type: ['string', 'null'], minLength: 2, maxLength: 32 },
-            thumbnailPath: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
-            originalPath: { type: ['string', 'null'], minLength: 2, maxLength: 64 },
-            uploaderId: { type: ['number', 'null'], minLength: 2, maxLength: 64 },
+            compressedPath: {
+                type: ['string', 'null'],
+                minLength: 2,
+                maxLength: 32,
+            },
+            thumbnailPath: {
+                type: ['string', 'null'],
+                minLength: 2,
+                maxLength: 64,
+            },
+            originalPath: {
+                type: ['string', 'null'],
+                minLength: 2,
+                maxLength: 64,
+            },
+            uploaderId: {
+                type: ['number', 'null'],
+                minLength: 2,
+                maxLength: 64,
+            },
             caption: { type: ['string', 'null'], minLength: 4 },
-        }
-    };
+        },
+    }
 
-    static modelPaths = [__dirname];
+    static modelPaths = [__dirname]
 
     static relationMappings: RelationMappings = {
         uploader: {
@@ -97,10 +116,10 @@ export default class Post extends BaseModel {
                 from: 'Post.id',
                 through: {
                     from: 'KeywordToPost.post_id',
-                    to: 'KeywordToPost.keyword_id'
+                    to: 'KeywordToPost.keyword_id',
                 },
-                to: 'Keyword.id'
-            }
+                to: 'Keyword.id',
+            },
         },
     }
 }

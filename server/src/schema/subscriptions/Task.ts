@@ -1,14 +1,10 @@
-import { withFilter } from 'graphql-subscriptions';
-import { decodeHashId, isAuthenticated, Context } from '../../utils'
-import {
-    GraphQLFieldConfig,
-    GraphQLList,
-    GraphQLString,
-    GraphQLNonNull,
-} from 'graphql'
+import { GraphQLFieldConfig, GraphQLList, GraphQLNonNull, GraphQLString } from 'graphql'
+import { withFilter } from 'graphql-subscriptions'
+import db from '../../database'
+import { Context, decodeHashId, isAuthenticated } from '../../utils'
 
-import { TaskUpdate } from '../types'
 import TaskModel from '../../models/Task'
+import { TaskUpdate } from '../types'
 
 export const taskUpdates: GraphQLFieldConfig<any, any, any> = {
     description: `Returns updates from tasks.`,
@@ -16,8 +12,9 @@ export const taskUpdates: GraphQLFieldConfig<any, any, any> = {
     args: {
         ids: {
             description: `List of Task IDs.`,
-            type: new GraphQLList(new GraphQLNonNull(GraphQLString))
-        }
+            type: new GraphQLList(new GraphQLNonNull(GraphQLString)),
+        },
+    },
     },
     subscribe: (parent, args, context: Context, resolveInfo) => {
         isAuthenticated(context)
@@ -26,10 +23,12 @@ export const taskUpdates: GraphQLFieldConfig<any, any, any> = {
 
         return withFilter(
             () => context.pubSub.asyncIterator('taskUpdates'),
-            (payload) => {
-                if (decodedIds && !decodedIds.includes(payload.taskUpdates.id)) return false
+            payload => {
+                if (decodedIds && !decodedIds.includes(payload.taskUpdates.id)) {
+                    return false
+                }
                 return true
-            },
+            }
         )()
-    }
+    },
 }

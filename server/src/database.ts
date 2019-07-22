@@ -1,36 +1,36 @@
-import Knex from 'knex';
-import knexfile from '../knexfile';
-import { Model } from 'objection';
+import Knex from 'knex'
+import { Model } from 'objection'
+import knexfile from '../knexfile'
 
 class Database {
-    knexInstance: Knex;
-    private config: object;
+    knexInstance: Knex
+    private config: object
 
     connect(options = {}): void {
         if (this.knexInstance) {
-            return;
+            return
         }
-        this.config = knexfile;
-        this.knexInstance = Knex(this.config);
-        Model.knex(this.knexInstance);
+        this.config = knexfile
+        this.knexInstance = Knex(this.config)
+        Model.knex(this.knexInstance)
     }
 
     get query(): Knex {
         if (!this.knexInstance) {
-            this.connect();
+            this.connect()
         }
 
-        return this.knexInstance;
+        return this.knexInstance
     }
 
     close(done): void {
         if (!this.knexInstance) {
-            done();
-            return;
+            done()
+            return
         }
 
-        this.knexInstance.destroy(done);
+        this.knexInstance.destroy(done)
     }
 }
 
-export default new Database();
+export default new Database()

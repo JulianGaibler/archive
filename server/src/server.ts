@@ -1,27 +1,35 @@
-import express from 'express'
-import http from 'http'
-import cors from 'cors'
-import logger from 'morgan'
 import cookieParser from 'cookie-parser'
-import { createServer, Server as HttpServer } from 'http'
-import { SubscriptionServer } from 'subscriptions-transport-ws'
-import { execute, GraphQLSchema, subscribe, DocumentNode, print, GraphQLFieldResolver, ExecutionResult } from 'graphql'
+import cors from 'cors'
+import express from 'express'
+import {
+    DocumentNode,
+    execute,
+    ExecutionResult,
+    GraphQLFieldResolver,
+    GraphQLSchema,
+    print,
+    subscribe,
+} from 'graphql'
 import { PostgresPubSub } from 'graphql-postgres-subscriptions'
+import http from 'http'
+import { createServer, Server as HttpServer } from 'http'
+import logger from 'morgan'
+import { SubscriptionServer } from 'subscriptions-transport-ws'
 
-import User from './models/User'
-import Post from './models/Post'
 import Keyword from './models/Keyword'
+import Post from './models/Post'
 import Session from './models/Session'
 import Task from './models/Task'
+import User from './models/User'
 
 import graphqlHTTP from 'express-graphql'
-import { graphqlUploadExpress } from 'graphql-upload'
 import expressPlayground from 'graphql-playground-middleware-express'
+import { graphqlUploadExpress } from 'graphql-upload'
 
-import { getAuthData } from './utils'
-import schema from './schema'
+import db from './database'
 import FileStorage from './FileStorage'
-import db from './database';
+import schema from './schema'
+import { getAuthData } from './utils'
 
 // TODO remove once `@types/graphql` is fixed for `execute`
 type ExecuteFunction = (
@@ -33,14 +41,13 @@ type ExecuteFunction = (
         [key: string]: any
     },
     operationName?: string,
-    fieldResolver?: GraphQLFieldResolver<any, any>,
+    fieldResolver?: GraphQLFieldResolver<any, any>
 ) => Promise<ExecutionResult> | AsyncIterator<ExecutionResult>
 
 const corsOptions = {
     credentials: true,
-    origin: 'http://localhost:8080'
+    origin: 'http://localhost:8080',
 }
-
 
 class Server {
     app: express.Application
@@ -57,17 +64,17 @@ class Server {
     }
 
     constructor() {
-        this.app = express();
+        this.app = express()
         this.cookieParserInstance = cookieParser()
         this.pubSub = new PostgresPubSub({
             user: 'archive',
             password: 'archive',
-            //host: connection.hosts && connection.hosts[0].name,
-            port:  5432,
+            // host: connection.hosts && connection.hosts[0].name,
+            port: 5432,
             database: 'archive',
         })
         this.fileStorage = new FileStorage(this.pubSub)
-        this.middleware();
+        this.middleware()
     }
 
     middleware() {
@@ -75,16 +82,26 @@ class Server {
         this.app.use(this.cookieParserInstance)
         this.app.use(cors(corsOptions))
         this.app.use('/content', express.static('public'))
-        if (process.env.NODE_ENV === 'development') this.app.use('/playground', expressPlayground({ endpoint: '/', subscriptionEndpoint: 'ws://localhost:4000/' }))
-        this.app.use(this.options.endpoint,
+        if (process.env.NODE_ENV === 'development') {
+            this.app.use(
+                '/playground',
+                expressPlayground({
+                    endpoint: '/',
+                    subscriptionEndpoint: 'ws://localhost:4000/',
+                })
+            )
+        }
+        this.app.use(
+            this.options.endpoint,
             graphqlUploadExpress({
-                maxFileSize: 100000000,  // 100000000 = 100 MB
+                maxFileSize: 100000000, // 100000000 = 100 MB
                 maxFiles: 10,
             }),
             graphqlHTTP(async (req, res, graphQLParams) => ({
-                schema: schema,
+                schema,
                 context: {
-                    req, res,
+                    req,
+                    res,
                     fileStorage: this.fileStorage,
                     auth: await getAuthData(req as any),
                     pubSub: this.pubSub,
@@ -96,10 +113,13 @@ class Server {
                         task: Task.getLoaders(),
                     },
                 },
-                customFormatErrorFn: process.env.NODE_ENV === 'development' ? this.debugErrorHandler : this.productionErrorHandler,
+                customFormatErrorFn:
+                    process.env.NODE_ENV === 'development'
+                        ? this.debugErrorHandler
+                        : this.productionErrorHandler,
                 graphiql: false,
             }))
-        );
+        )
     }
 
     start() {
@@ -114,7 +134,7 @@ class Server {
 
     stop() {
         if (this.combinedServer) {
-            this.combinedServer.close();
+            this.combinedServer.close()
         }
     }
 
@@ -126,7 +146,7 @@ class Server {
             message: error.message,
             locations: error.locations,
             stack: error.stack ? error.stack.split('\n') : [],
-            path: error.path
+            path: error.path,
         }
     }
 
@@ -137,30 +157,46 @@ class Server {
             code: error.originalError && error.originalError.code,
             message: error.message,
             locations: error.locations,
-            path: error.path
+            path: error.path,
         }
     }
 
     private createSubscriptionServer(combinedServer) {
-        this.subscriptionServer = SubscriptionServer.create({
-            schema,
-            execute: execute as ExecuteFunction,
-            subscribe,
-            onConnect: async (connectionParams, webSocket) => ({ ...connectionParams }),
-            onOperation: async (message, params, webSocket) => {
-                await new Promise((resolve, reject) => {
-                    this.cookieParserInstance(webSocket.upgradeReq, null, error => {
-                        if (error) reject(error)
-                        else resolve()
+        this.subscriptionServer = SubscriptionServer.create(
+            {
+                schema,
+                execute: execute as ExecuteFunction,
+                subscribe,
+                onConnect: async (connectionParams, webSocket) => ({
+                    ...connectionParams,
+                }),
+                onOperation: async (message, params, webSocket) => {
+                    await new Promise((resolve, reject) => {
+                        this.cookieParserInstance(webSocket.upgradeReq, null, error => {
+                            if (error) {
+                                reject(error)
+                            } else {
+                                resolve()
+                            }
+                        })
                     })
-                })
-                return { ...params, context: { req: webSocket.upgradeReq, webSocket, fileStorage: this.fileStorage, auth: await getAuthData(webSocket.upgradeReq), pubSub: this.pubSub } }
+                    return {
+                        ...params,
+                        context: {
+                            req: webSocket.upgradeReq,
+                            webSocket,
+                            fileStorage: this.fileStorage,
+                            auth: await getAuthData(webSocket.upgradeReq),
+                            pubSub: this.pubSub,
+                        },
+                    }
+                },
             },
-        },
-        {
-            server: combinedServer,
-        })
+            {
+                server: combinedServer,
+            }
+        )
     }
 }
 
-export default new Server();
+export default new Server()

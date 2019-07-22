@@ -1,7 +1,7 @@
 import { GraphQLSchema } from 'graphql'
 
-import resolvers from './queries'
 import mutations from './mutations'
+import resolvers from './queries'
 import subscriptions from './subscriptions'
 
 export default new GraphQLSchema({

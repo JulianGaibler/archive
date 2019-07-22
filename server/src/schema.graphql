@@ -32,7 +32,6 @@ input NewPost {
     file: Upload!
 }
 
-
 # # #
 # Types
 
