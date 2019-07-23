@@ -30,19 +30,6 @@ import FileStorage from './FileStorage'
 import schema from './schema'
 import { getAuthData } from './utils'
 
-// TODO remove once `@types/graphql` is fixed for `execute`
-type ExecuteFunction = (
-    schema: GraphQLSchema,
-    document: DocumentNode,
-    rootValue?: any,
-    contextValue?: any,
-    variableValues?: {
-        [key: string]: any
-    },
-    operationName?: string,
-    fieldResolver?: GraphQLFieldResolver<any, any>
-) => Promise<ExecutionResult> | AsyncIterator<ExecutionResult>
-
 const corsOptions = {
     credentials: true,
     origin: 'http://localhost:8080',
@@ -168,7 +155,7 @@ class Server {
         this.subscriptionServer = SubscriptionServer.create(
             {
                 schema,
-                execute: execute as ExecuteFunction,
+                execute: execute,
                 subscribe,
                 onConnect: async (connectionParams, webSocket) => ({
                     ...connectionParams,
