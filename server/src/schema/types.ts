@@ -164,7 +164,9 @@ export const Post = new GraphQLObjectType({
         title: { type: new GraphQLNonNull(GraphQLString) },
         type: { type: new GraphQLNonNull(Format) },
         keywords: {
-            type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Keyword))),
+            type: new GraphQLNonNull(
+                new GraphQLList(new GraphQLNonNull(Keyword)),
+            ),
             resolve: async (post, args, ctx: IContext) =>
                 ctx.dataLoaders.keyword.getByPost.load(post.id),
         },
@@ -229,12 +231,17 @@ export const Task = new GraphQLObjectType({
         },
         uploader: {
             type: User,
-            resolve: (task, args, ctx: IContext) => task.uploaderId ? ctx.dataLoaders.user.getById.load(task.uploaderId) : null,
+            resolve: (task, args, ctx: IContext) =>
+                task.uploaderId
+                    ? ctx.dataLoaders.user.getById.load(task.uploaderId)
+                    : null,
         },
         createdPost: {
             type: Post,
             resolve: (task, args, ctx: IContext) =>
-                task.createdPostId ? ctx.dataLoaders.post.getById.load(task.createdPostId) : null,
+                task.createdPostId
+                    ? ctx.dataLoaders.post.getById.load(task.createdPostId)
+                    : null,
         },
         updatedAt: {
             description: `Identifies the date and time when the object was last updated..`,

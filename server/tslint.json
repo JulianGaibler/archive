@@ -9,6 +9,8 @@
     "semicolon": [true, "never"],
     "no-submodule-imports": false,
     "object-literal-sort-keys": false,
+    "quotemark": [true, "single"],
+    "trailing-comma": [true, {"multiline": "always", "singleline": "never"}],
     "member-ordering": false,
     "member-access": false
   }
