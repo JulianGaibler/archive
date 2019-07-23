@@ -1,12 +1,13 @@
 import DataLoader from 'dataloader'
 import { Model, RelationMappings } from 'objection'
+import { ModelId } from '../utils/modelEnum'
 import UniqueModel from './UniqueModel'
 
 import Post from './Post'
 
 export default class Keyword extends UniqueModel {
     static tableName = 'Keyword'
-    static readonly hashid = 85
+    static readonly modelId = ModelId.KEYWORD
 
     $unique = {
         fields: ['name'],

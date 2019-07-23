@@ -1,7 +1,7 @@
 import { GraphQLBoolean, GraphQLFieldConfig, GraphQLNonNull, GraphQLString } from 'graphql'
 import {
     AuthorizationError,
-    decodeHashId,
+    decodeHashIdAndCheck,
     IContext,
     isAuthenticated,
     NotFoundError,
@@ -20,7 +20,7 @@ export const revokeSession: GraphQLFieldConfig<any, any, any> = {
     },
     resolve: async (parent, { id }, context: IContext, resolveInfo) => {
         isAuthenticated(context)
-        const decodedId = decodeHashId(SessionModel, id)
+        const decodedId = decodeHashIdAndCheck(SessionModel, id)
         const session = await SessionModel.query().findById(decodedId)
         if (!session) {
             throw new NotFoundError('There was no session by this id')

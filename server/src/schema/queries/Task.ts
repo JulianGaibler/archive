@@ -1,5 +1,5 @@
 import { GraphQLFieldConfig, GraphQLList, GraphQLNonNull, GraphQLString } from 'graphql'
-import { decodeHashId, IContext, isAuthenticated } from '../../utils'
+import { decodeHashIdAndCheck, IContext, isAuthenticated } from '../../utils'
 
 import TaskModel from '../../models/Task'
 import { Task } from '../types'
@@ -15,7 +15,7 @@ export const task: GraphQLFieldConfig<any, any, any> = {
     },
     resolve: (parent, { id }, context: IContext, resolveInfo) => {
         isAuthenticated(context)
-        const decodedId = decodeHashId(TaskModel, id)
+        const decodedId = decodeHashIdAndCheck(TaskModel, id)
         return context.dataLoaders.task.getById.load(decodedId)
     },
 }

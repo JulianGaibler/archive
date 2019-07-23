@@ -188,9 +188,10 @@ export default class FileStorage {
             }
 
             if (postData.keywords) {
-                postData.keywords = postData.keywords.map(id => ({
-                    id: decodeHashId(Keyword, id),
-                }))
+                postData.keywords = postData.keywords.map(stringId => {
+                    const { id } = decodeHashId(stringId)
+                    return { id }
+                })
             }
 
             const [newPost] = await Post.query().insertGraph([postData], {

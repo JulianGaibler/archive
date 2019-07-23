@@ -1,7 +1,7 @@
 import { GraphQLFieldConfig, GraphQLList, GraphQLNonNull, GraphQLString } from 'graphql'
 import { withFilter } from 'graphql-subscriptions'
 import db from '../../database'
-import { decodeHashId, IContext, isAuthenticated } from '../../utils'
+import { decodeHashIdAndCheck, IContext, isAuthenticated } from '../../utils'
 
 import TaskModel from '../../models/Task'
 import { TaskUpdate } from '../types'
@@ -19,7 +19,7 @@ export const taskUpdates: GraphQLFieldConfig<any, any, any> = {
     subscribe: (parent, args, context: IContext, resolveInfo) => {
         isAuthenticated(context)
 
-        const decodedIds = args.ids ? args.ids.map(id => +decodeHashId(TaskModel, id)) : false
+        const decodedIds = args.ids ? args.ids.map(id => +decodeHashIdAndCheck(TaskModel, id)) : false
 
         return withFilter(
             () => context.pubSub.asyncIterator('taskUpdates'),

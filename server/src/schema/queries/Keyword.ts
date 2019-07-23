@@ -1,5 +1,5 @@
 import { GraphQLFieldConfig, GraphQLList, GraphQLNonNull, GraphQLString } from 'graphql'
-import { decodeHashId, IContext, isAuthenticated } from '../../utils'
+import { decodeHashIdAndCheck, IContext, isAuthenticated } from '../../utils'
 
 import KeywordModel from '../../models/Keyword'
 import { Keyword } from '../types'
@@ -15,7 +15,7 @@ export const keyword: GraphQLFieldConfig<any, any, any> = {
     },
     resolve: async (parent, { id }, context: IContext, resolveInfo) => {
         isAuthenticated(context)
-        const decodedId = decodeHashId(KeywordModel, id)
+        const decodedId = decodeHashIdAndCheck(KeywordModel, id)
         return context.dataLoaders.keyword.getById.load(decodedId)
     },
 }

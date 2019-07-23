@@ -1,5 +1,6 @@
 import DataLoader from 'dataloader'
 import { Model, RelationMappings } from 'objection'
+import { ModelId } from '../utils/modelEnum'
 import BaseModel from './BaseModel'
 
 import Post from './Post'
@@ -7,7 +8,7 @@ import User from './User'
 
 export default class Session extends BaseModel {
     static tableName = 'Session'
-    static readonly hashid = 41
+    static readonly modelId = ModelId.SESSION
 
     readonly id: number
     readonly token: string

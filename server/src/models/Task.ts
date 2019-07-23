@@ -1,5 +1,6 @@
 import DataLoader from 'dataloader'
 import { Model, RelationMappings } from 'objection'
+import { ModelId } from '../utils/modelEnum'
 import BaseModel from './BaseModel'
 
 import Post from './Post'
@@ -7,8 +8,7 @@ import User from './User'
 
 export default class Task extends BaseModel {
     static tableName = 'Task'
-
-    static readonly hashid = 991
+    static readonly modelId = ModelId.TASK
 
     readonly id!: number
     title!: string

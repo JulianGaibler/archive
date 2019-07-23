@@ -5,7 +5,7 @@ import {
     GraphQLNonNull,
     GraphQLString,
 } from 'graphql'
-import { decodeHashId, IContext, InputError, isAuthenticated, to } from '../../utils'
+import { decodeHashIdAndCheck, IContext, InputError, isAuthenticated, to } from '../../utils'
 import { NewPost, Post, Task } from '../types'
 
 import PostModel from '../../models/Post'
@@ -77,7 +77,7 @@ export const deletePost: GraphQLFieldConfig<any, any, any> = {
     },
     resolve: async (parent, { id }, context: IContext, resolveInfo) => {
         isAuthenticated(context)
-        const decodedId = decodeHashId(PostModel, id)
+        const decodedId = decodeHashIdAndCheck(PostModel, id)
         const deletedRows = await PostModel.query().deleteById(decodedId)
         return deletedRows > 0
     },

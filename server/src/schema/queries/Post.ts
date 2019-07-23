@@ -1,5 +1,5 @@
 import { GraphQLFieldConfig, GraphQLList, GraphQLNonNull, GraphQLString } from 'graphql'
-import { decodeHashId, IContext, isAuthenticated } from '../../utils'
+import { decodeHashIdAndCheck, IContext, isAuthenticated } from '../../utils'
 
 import PostModel from '../../models/Post'
 import { Post } from '../types'
@@ -15,7 +15,7 @@ export const post: GraphQLFieldConfig<any, any, any> = {
     },
     resolve: async (parent, { id }, context: IContext, resolveInfo) => {
         isAuthenticated(context)
-        const decodedId = decodeHashId(PostModel, id)
+        const decodedId = decodeHashIdAndCheck(PostModel, id)
         return context.dataLoaders.post.getById.load(decodedId)
     },
 }

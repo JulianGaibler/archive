@@ -1,5 +1,5 @@
 import { GraphQLBoolean, GraphQLFieldConfig, GraphQLNonNull, GraphQLString } from 'graphql'
-import { decodeHashId, IContext, isAuthenticated } from '../../utils'
+import { decodeHashIdAndCheck, IContext, isAuthenticated } from '../../utils'
 import { Keyword } from '../types'
 
 import KeywordModel from '../../models/Keyword'
@@ -31,7 +31,7 @@ export const deleteKeyword: GraphQLFieldConfig<any, any, any> = {
     },
     resolve: async (parent, { id }, context: IContext, resolveInfo) => {
         isAuthenticated(context)
-        const decodedId = decodeHashId(KeywordModel, id)
+        const decodedId = decodeHashIdAndCheck(KeywordModel, id)
         const deletedRows = await KeywordModel.query().deleteById(decodedId)
         return deletedRows > 0
     },
