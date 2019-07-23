@@ -1,14 +1,17 @@
 import { GraphQLFieldConfig, GraphQLList, GraphQLNonNull } from 'graphql'
 import { IContext, isAuthenticated } from '../../utils'
 
-import SessionModel from '../../models/Post'
-import { Session } from '../types'
+import SessionType from './SessionType'
 
-export const userSessions: GraphQLFieldConfig<any, any, any> = {
+const userSessions: GraphQLFieldConfig<any, any, any> = {
     description: `Returns a list of sessions of the the currently authenticated user.`,
-    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Session))),
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(SessionType))),
     resolve: async (parent, args, context: IContext, resolveInfo) => {
         isAuthenticated(context)
         return context.dataLoaders.session.getByUser.load(context.auth.userId)
     },
+}
+
+export default {
+    userSessions,
 }

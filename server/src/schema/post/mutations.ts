@@ -5,15 +5,14 @@ import {
     GraphQLNonNull,
     GraphQLString,
 } from 'graphql'
-import { decodeHashIdAndCheck, IContext, InputError, isAuthenticated, to } from '../../utils'
-import { NewPost, Post, Task } from '../types'
-
 import PostModel from '../../models/Post'
-import TaskModel from '../../models/Task'
+import { decodeHashIdAndCheck, IContext, InputError, isAuthenticated, to } from '../../utils'
+import TaskType from '../task/TaskType'
+import {NewPost} from './PostType'
 
-export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
+const uploadPosts: GraphQLFieldConfig<any, any, any> = {
     description: `Creates one or more posts.`,
-    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Task))),
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(TaskType))),
     args: {
         items: {
             description: `Items to be uploaded.`,
@@ -66,7 +65,7 @@ export const uploadPosts: GraphQLFieldConfig<any, any, any> = {
     },
 }
 
-export const deletePost: GraphQLFieldConfig<any, any, any> = {
+const deletePost: GraphQLFieldConfig<any, any, any> = {
     description: `Deletes a post.`,
     type: new GraphQLNonNull(GraphQLBoolean),
     args: {
@@ -75,10 +74,15 @@ export const deletePost: GraphQLFieldConfig<any, any, any> = {
             type: new GraphQLNonNull(GraphQLString),
         },
     },
-    resolve: async (parent, { id }, context: IContext, resolveInfo) => {
+    resolve: async (parent, { id }, context: IContext) => {
         isAuthenticated(context)
         const decodedId = decodeHashIdAndCheck(PostModel, id)
         const deletedRows = await PostModel.query().deleteById(decodedId)
         return deletedRows > 0
     },
+}
+
+export default {
+    uploadPosts,
+    deletePost,
 }

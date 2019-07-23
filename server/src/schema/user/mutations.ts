@@ -1,15 +1,12 @@
 import {
     GraphQLBoolean,
     GraphQLFieldConfig,
-    GraphQLList,
     GraphQLNonNull,
     GraphQLString,
 } from 'graphql'
-import User from '../../models/User'
 import { checkAndLogin, checkAndSignup, IContext, isAuthenticated, performLogout } from '../../utils'
-import { Post } from '../types'
 
-export const signup: GraphQLFieldConfig<any, any, any> = {
+const signup: GraphQLFieldConfig<any, any, any> = {
     description: `Creates a new user and performs a login.`,
     type: new GraphQLNonNull(GraphQLBoolean),
     args: {
@@ -26,13 +23,13 @@ export const signup: GraphQLFieldConfig<any, any, any> = {
             type: new GraphQLNonNull(GraphQLString),
         },
     },
-    resolve: async (parent, args, context: IContext, resolveInfo) => {
-        const id = await checkAndSignup(context, args)
+    resolve: async (parent, args, context: IContext) => {
+        await checkAndSignup(context, args)
         return true
     },
 }
 
-export const login: GraphQLFieldConfig<any, any, any> = {
+const login: GraphQLFieldConfig<any, any, any> = {
     description: `Creates a new session for the user.`,
     type: new GraphQLNonNull(GraphQLBoolean),
     args: {
@@ -45,18 +42,24 @@ export const login: GraphQLFieldConfig<any, any, any> = {
             type: new GraphQLNonNull(GraphQLString),
         },
     },
-    resolve: async (parent, { username, password }, context: IContext, resolveInfo) => {
+    resolve: async (parent, { username, password }, context: IContext) => {
         const id = await checkAndLogin(context, username, password)
         return true
     },
 }
 
-export const logout: GraphQLFieldConfig<any, any, any> = {
+const logout: GraphQLFieldConfig<any, any, any> = {
     description: `Terminates the current users session.`,
     type: new GraphQLNonNull(GraphQLBoolean),
-    resolve: async (parent, args, context: IContext, resolveInfo) => {
+    resolve: async (parent, args, context: IContext) => {
         isAuthenticated(context)
         await performLogout(context)
         return true
     },
+}
+
+export default {
+    signup,
+    login,
+    logout,
 }

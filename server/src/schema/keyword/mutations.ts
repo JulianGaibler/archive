@@ -1,12 +1,11 @@
 import { GraphQLBoolean, GraphQLFieldConfig, GraphQLNonNull, GraphQLString } from 'graphql'
-import { decodeHashIdAndCheck, IContext, isAuthenticated } from '../../utils'
-import { Keyword } from '../types'
-
 import KeywordModel from '../../models/Keyword'
+import { decodeHashIdAndCheck, IContext, isAuthenticated } from '../../utils'
+import KeywordType from './KeywordType'
 
 export const createKeyword: GraphQLFieldConfig<any, any, any> = {
     description: `Creates a new keyword.`,
-    type: new GraphQLNonNull(Keyword),
+    type: new GraphQLNonNull(KeywordType),
     args: {
         name: {
             description: `Name of the keyword.`,
@@ -35,4 +34,9 @@ export const deleteKeyword: GraphQLFieldConfig<any, any, any> = {
         const deletedRows = await KeywordModel.query().deleteById(decodedId)
         return deletedRows > 0
     },
+}
+
+export default {
+    createKeyword,
+    deleteKeyword,
 }

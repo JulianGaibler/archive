@@ -1,4 +1,5 @@
 import { GraphQLBoolean, GraphQLFieldConfig, GraphQLNonNull, GraphQLString } from 'graphql'
+import SessionModel from '../../models/Session'
 import {
     AuthorizationError,
     decodeHashIdAndCheck,
@@ -7,9 +8,7 @@ import {
     NotFoundError,
 } from '../../utils'
 
-import SessionModel from '../../models/Session'
-
-export const revokeSession: GraphQLFieldConfig<any, any, any> = {
+const revokeSession: GraphQLFieldConfig<any, any, any> = {
     description: `Revokes the session of a user.`,
     type: new GraphQLNonNull(GraphQLBoolean),
     args: {
@@ -32,4 +31,8 @@ export const revokeSession: GraphQLFieldConfig<any, any, any> = {
         const deletedRows = await SessionModel.query().deleteById(session.id)
         return deletedRows > 0
     },
+}
+
+export default {
+    revokeSession,
 }
