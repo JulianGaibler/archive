@@ -2,7 +2,6 @@ import { nodeDefinitions } from 'graphql-relay'
 import { decodeHashId, IContext } from '../utils'
 import { ModelId } from '../utils/modelEnum'
 
-
 export const { nodeInterface, nodeField, nodesField } = nodeDefinitions(
     (stringId, ctx: IContext) => {
         const { type, id } = decodeHashId(stringId)
@@ -22,6 +21,19 @@ export const { nodeInterface, nodeField, nodesField } = nodeDefinitions(
         }
     },
     obj => {
-        return obj ? obj.__type : undefined
+        switch (obj.constructor.name) {
+            case 'User':
+                return require('./user/UserType').default
+            case 'Keyword':
+                return require('./keyword/KeywordType').default
+            case 'Post':
+                return require('./post/PostType').default
+            case 'Session':
+                return require('./session/SessionType').default
+            case 'Task':
+                return require('./task/TaskType').default
+            default:
+                return null
+        }
     },
 )

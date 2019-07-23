@@ -1,10 +1,10 @@
-import {GraphQLEnumType, GraphQLInt, GraphQLNonNull, GraphQLObjectType, GraphQLString} from 'graphql'
-import { connectionArgs, connectionDefinitions, connectionFromPromisedArray, globalIdField } from 'graphql-relay'
+import { GraphQLEnumType, GraphQLInt, GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
+import { connectionDefinitions } from 'graphql-relay'
 import TaskModel from '../../models/Task'
 import {encodeHashId, IContext} from '../../utils'
 import { nodeInterface } from '../node'
 import PostType from '../post/PostType'
-import {DateTime, UpdateKind} from '../types'
+import { DateTime, globalIdField, UpdateKind } from '../types'
 import UserType from '../user/UserType'
 
 const TaskType = new GraphQLObjectType({
@@ -12,7 +12,7 @@ const TaskType = new GraphQLObjectType({
     description: 'A task for an uploaded item.',
     interfaces: [nodeInterface],
     fields: () => ({
-        id: globalIdField(),
+        id: globalIdField(TaskModel),
         title: {
             description: `Name of soon-to-be-created post.`,
             type: new GraphQLNonNull(GraphQLString),

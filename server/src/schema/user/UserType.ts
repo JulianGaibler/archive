@@ -1,15 +1,17 @@
 import { GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
-import { connectionArgs, connectionDefinitions, connectionFromPromisedArray, globalIdField } from 'graphql-relay'
+import { connectionArgs, connectionDefinitions, connectionFromPromisedArray } from 'graphql-relay'
+import UserModel from '../../models/User'
 import { IContext } from '../../utils'
 import { nodeInterface } from '../node'
 import { postConnection } from '../post/PostType'
+import { globalIdField } from '../types'
 
 const UserType = new GraphQLObjectType({
     name: 'User',
     description: `A user is an account that can make new content.`,
     interfaces: [nodeInterface],
     fields: () => ({
-        id: globalIdField(),
+        id: globalIdField(UserModel),
         username: {
             description: ` The username used to login.`,
             type: new GraphQLNonNull(GraphQLString),

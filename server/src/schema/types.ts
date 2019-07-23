@@ -1,4 +1,5 @@
-import {GraphQLEnumType, GraphQLScalarType} from 'graphql'
+import {GraphQLEnumType, GraphQLFieldConfig, GraphQLID, GraphQLNonNull, GraphQLScalarType} from 'graphql'
+import {encodeHashId} from '../utils'
 
 ////
 // Scalars
@@ -81,3 +82,11 @@ export const Language = new GraphQLEnumType({
         },
     },
 })
+
+export function globalIdField(model): GraphQLFieldConfig<any, any> {
+    return {
+        description: 'The ID of an object',
+        type: new GraphQLNonNull(GraphQLID),
+        resolve: post => encodeHashId(model, post.id),
+    }
+}

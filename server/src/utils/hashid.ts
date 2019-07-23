@@ -27,6 +27,6 @@ export function decodeHashId(id: string): { type: ModelId, id: number } {
     }
     return {
         type: res[0] as ModelId,
-        id: res[1]
+        id: res[1],
     }
 }

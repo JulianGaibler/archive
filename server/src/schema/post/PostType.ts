@@ -1,10 +1,11 @@
 import { GraphQLInputObjectType, GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
-import { connectionArgs, connectionDefinitions, connectionFromPromisedArray, globalIdField } from 'graphql-relay'
+import { connectionDefinitions } from 'graphql-relay'
 import {GraphQLUpload} from 'graphql-upload'
+import PostModel from '../../models/Post'
 import { IContext } from '../../utils'
 import KeywordType from '../keyword/KeywordType'
 import { nodeInterface } from '../node'
-import {DateTime, Format, Language} from '../types'
+import { DateTime, Format, globalIdField, Language} from '../types'
 import UserType from '../user/UserType'
 
 const PostType = new GraphQLObjectType({
@@ -12,7 +13,7 @@ const PostType = new GraphQLObjectType({
     description: 'A post.',
     interfaces: [nodeInterface],
     fields: () => ({
-        id: globalIdField(),
+        id: globalIdField(PostModel),
         title: { type: new GraphQLNonNull(GraphQLString) },
         type: { type: new GraphQLNonNull(Format) },
         keywords: {

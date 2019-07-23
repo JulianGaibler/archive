@@ -1,8 +1,9 @@
 import { GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
-import { connectionArgs, connectionDefinitions, connectionFromPromisedArray, globalIdField } from 'graphql-relay'
+import { connectionDefinitions } from 'graphql-relay'
+import SessionModel from '../../models/Session'
 import { IContext } from '../../utils'
 import { nodeInterface } from '../node'
-import { DateTime } from '../types'
+import { DateTime, globalIdField } from '../types'
 import UserType from '../user/UserType'
 
 const SessionType = new GraphQLObjectType({
@@ -10,7 +11,7 @@ const SessionType = new GraphQLObjectType({
     description: 'Represents a Session object of an user.',
     interfaces: [nodeInterface],
     fields: () => ({
-        id: globalIdField(),
+        id: globalIdField(SessionModel),
         user: {
             description: `User associated with that session`,
             type: UserType,

@@ -1,15 +1,17 @@
 import { GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
-import { connectionArgs, connectionDefinitions, connectionFromPromisedArray, globalIdField } from 'graphql-relay'
+import { connectionArgs, connectionDefinitions, connectionFromPromisedArray } from 'graphql-relay'
+import KeywordModel from '../../models/Keyword'
 import { IContext } from '../../utils'
 import { nodeInterface } from '../node'
 import { postConnection } from '../post/PostType'
+import { globalIdField } from '../types'
 
 const KeywordType = new GraphQLObjectType({
     name: 'Keyword',
     description: 'A keyword for categorizing Posts.',
     interfaces: [nodeInterface],
     fields: () => ({
-        id: globalIdField(),
+        id: globalIdField(KeywordModel),
         name: {
             description: `Identifies the keyword name.`,
             type: new GraphQLNonNull(GraphQLString),
