@@ -62,9 +62,6 @@ export default PostType
 
 export const {connectionType: postConnection} = connectionDefinitions({
     nodeType: PostType,
-    connectionFields: {
-        totalCount: { type: new GraphQLNonNull(GraphQLInt) },
-    },
 })
 
 export const NewPost = new GraphQLInputObjectType({

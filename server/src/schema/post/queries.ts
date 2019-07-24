@@ -28,7 +28,6 @@ const posts: GraphQLFieldConfig<any, any, any> = {
                 sliceStart: offset,
                 arrayLength: totalCount,
             }),
-            totalCount,
         }
     },
 }
