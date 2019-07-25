@@ -37,7 +37,6 @@ const corsOptions = {
 
 class Server {
     app: express.Application
-    server: HttpServer
     cookieParserInstance: cookieParser
     pubSub: PostgresPubSub
     fileStorage: FileStorage
@@ -61,13 +60,13 @@ class Server {
             database: 'archive',
         })
 
-        this.dataLoaders = {
+        this.dataLoaders = () => ({
             user: User.getLoaders(),
             post: Post.getLoaders(),
             keyword: Keyword.getLoaders(),
             session: Session.getLoaders(),
             task: Task.getLoaders(),
-        }
+        })
 
         this.fileStorage = new FileStorage(this.pubSub)
         this.middleware()
@@ -84,7 +83,7 @@ class Server {
                 expressPlayground({
                     endpoint: '/',
                     subscriptionEndpoint: 'ws://localhost:4000/',
-                })
+                }),
             )
         }
         this.app.use(
@@ -101,14 +100,14 @@ class Server {
                     fileStorage: this.fileStorage,
                     auth: await getAuthData(req as any),
                     pubSub: this.pubSub,
-                    dataLoaders: this.dataLoaders,
+                    dataLoaders: this.dataLoaders(),
                 },
                 customFormatErrorFn:
                     process.env.NODE_ENV === 'development'
                         ? this.debugErrorHandler
                         : this.productionErrorHandler,
                 graphiql: false,
-            }))
+            })),
         )
     }
 
@@ -155,7 +154,7 @@ class Server {
         this.subscriptionServer = SubscriptionServer.create(
             {
                 schema,
-                execute: execute,
+                execute,
                 subscribe,
                 onConnect: async (connectionParams, webSocket) => ({
                     ...connectionParams,
@@ -178,14 +177,14 @@ class Server {
                             fileStorage: this.fileStorage,
                             auth: await getAuthData(webSocket.upgradeReq),
                             pubSub: this.pubSub,
-                            dataLoaders: this.dataLoaders,
+                            dataLoaders: this.dataLoaders(),
                         },
                     }
                 },
             },
             {
                 server: combinedServer,
-            }
+            },
         )
     }
 }
