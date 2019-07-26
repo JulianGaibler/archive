@@ -29,7 +29,7 @@ export default {
     data() {
         return {
             content: this.value,
-            rid: this.randomId_()
+            rid: this.randomId_(),
         }
     },
     methods: {
@@ -44,7 +44,7 @@ export default {
     computed: {
         showLabel() {
             return this.content !== ''
-        }
+        },
     },
 }
 </script>

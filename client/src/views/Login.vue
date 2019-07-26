@@ -47,7 +47,7 @@ import InputField from '../components/InputField.vue'
 export default {
     name: 'Login',
     props: {
-        msg: String
+        msg: String,
     },
     components: { InputField },
     data() {
@@ -58,11 +58,11 @@ export default {
     },
     methods: {
         async onDone(data) {
-            if (!data) return;
+            if (!data) return
             const apolloClient = this.$apollo.provider.defaultClient
-            await onLogin(apolloClient);
+            await onLogin(apolloClient)
             this.$router.replace('/')
-        }
-    }
+        },
+    },
 }
 </script>

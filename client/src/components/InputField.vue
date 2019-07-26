@@ -30,7 +30,7 @@ export default {
     },
     data() {
         return {
-            content: this.value
+            content: this.value,
         }
     },
     methods: {
@@ -46,7 +46,7 @@ export default {
     computed: {
         showLabel() {
             return this.content && this.content.trim().length > 0
-        }
+        },
     },
 }
 </script>

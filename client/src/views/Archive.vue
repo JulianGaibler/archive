@@ -24,18 +24,18 @@
 <script>
 import PostsQuery from '../graphql/Posts.gql'
 
-import IconSearch from "@/assets/jw_icons/search.svg?inline";
-import IconEdit from "@/assets/jw_icons/edit.svg?inline";
+import IconSearch from '@/assets/jw_icons/search.svg?inline'
+import IconEdit from '@/assets/jw_icons/edit.svg?inline'
 
 export default {
     name: 'Archive',
     components: {
-        IconSearch, IconEdit
+        IconSearch, IconEdit,
     },
     apollo: {
         posts: {
             query: PostsQuery,
-        }
+        },
     },
 }
 </script>

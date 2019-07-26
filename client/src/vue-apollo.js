@@ -2,13 +2,13 @@ import Vue from 'vue'
 import VueApollo from 'vue-apollo'
 import { createApolloClient, restartWebsockets } from 'vue-cli-plugin-apollo/graphql-client'
 import { createUploadLink } from 'apollo-upload-client'
-import { InMemoryCache } from 'apollo-cache-inmemory';
-import customFetch from './utils/customFetch';
+import { InMemoryCache } from 'apollo-cache-inmemory'
+import customFetch from './utils/customFetch'
 
 // Install the vue plugin
 Vue.use(VueApollo)
 
-const cache = new InMemoryCache();
+const cache = new InMemoryCache()
 
 // Http endpoint
 const httpEndpoint = process.env.VUE_APP_GRAPHQL_HTTP || 'http://localhost:4000'
@@ -20,7 +20,7 @@ const link = createUploadLink({
     uri: 'http://localhost:4000',
     fetch: customFetch,
     credentials: 'include', // same-origin include
-});
+})
 
 Vue.prototype.$filesRoot = filesRoot
 

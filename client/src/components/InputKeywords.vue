@@ -41,7 +41,7 @@ import debounce from 'debounce'
 import keywordSearch from '../graphql/keywordSearch.gql'
 import createKeyword from '../graphql/mutation/createKeyword.gql'
 
-import IconClose from "@/assets/icon_close.svg?inline"
+import IconClose from '@/assets/icon_close.svg?inline'
 
 export default {
     name: 'InputKeywords',
@@ -50,7 +50,7 @@ export default {
         label: String,
     },
     components: {
-        IconClose
+        IconClose,
     },
     data() {
         return {
@@ -65,7 +65,7 @@ export default {
             createStatus: {
                 loading: false,
                 error: null,
-            }
+            },
         }
     },
     methods: {
@@ -74,13 +74,13 @@ export default {
                 query: keywordSearch,
                 variables () {
                     return {
-                        input: this.searchWord
+                        input: this.searchWord,
                     }
                 },
                 fetchPolicy: 'network-only',
                 error(e) {
                     console.log('errors', e.message)
-                }
+                },
             }).then(result => {
                 this.keywords = result.data.keywords
                 this.showResults = true
@@ -92,7 +92,7 @@ export default {
             this.showResults = false
         }),
         addItem(item) {
-            if (this.valueStore[item.id]) return;
+            if (this.valueStore[item.id]) return
             this.showResults = false
             this.valueStore[item.id] = item.name
             this.content.push(item.id)
@@ -101,7 +101,7 @@ export default {
             this.searchWord = ''
         },
         removeItem(id) {
-            const index = this.content.indexOf(id);
+            const index = this.content.indexOf(id)
             if (index !== -1) {
                 this.content.splice(index, 1)
                 delete this.valueStore[id]
@@ -114,9 +114,9 @@ export default {
             this.$apollo.mutate({
                 mutation: createKeyword,
                 variables: {
-                    input: this.searchWord
+                    input: this.searchWord,
                 },
-            }).then(({data}) => {
+            }).then(({ data }) => {
                 this.addItem(data.createKeyword)
                 this.createStatus.loading = false
                 this.createStatus.error = null
@@ -132,17 +132,17 @@ export default {
             this.handleSearch()
         },
         onArrowDown(e) {
-            if (!this.showResults) return;
+            if (!this.showResults) return
             e.preventDefault()
             if (this.currentSelect < this.keywords.length) this.currentSelect++
         },
         onArrowUp(e) {
-            if (!this.showResults) return;
+            if (!this.showResults) return
             e.preventDefault()
             if (this.currentSelect > 0) this.currentSelect--
         },
         onEnter() {
-            if (!this.showResults) return;
+            if (!this.showResults) return
             if (this.currentSelect < this.keywords.length && this.currentSelect >= 0)
                 this.addItem(this.keywords[this.currentSelect])
             else if (this.currentSelect === this.keywords.length)

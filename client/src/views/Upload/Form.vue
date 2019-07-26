@@ -53,7 +53,7 @@
 </template>
 
 <script>
-import { mapState, mapMutations } from 'vuex'
+import { mapMutations, mapState } from 'vuex'
 
 import InputField from '../../components/InputField.vue'
 import InputKeywords from '../../components/InputKeywords.vue'
@@ -70,12 +70,12 @@ export default {
     computed: {
         ...mapState('upload', [
             'items',
-        ])
+        ]),
     },
     methods: {
         ...mapMutations('upload', [
-            'updateItemProp'
-        ])
-    }
+            'updateItemProp',
+        ]),
+    },
 }
 </script>

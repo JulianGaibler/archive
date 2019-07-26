@@ -40,21 +40,21 @@
 </template>
 
 <script>
-import { mapState, mapMutations } from 'vuex'
+import { mapMutations, mapState } from 'vuex'
 import { formatBytes } from '../../utils'
 
 import Form from './Form.vue'
 
-import IconTrash from "@/assets/jw_icons/trash.svg?inline";
-import IconClose from "@/assets/jw_icons/close.svg?inline";
-import IconDone from "@/assets/jw_icons/done.svg?inline";
-import IconQueue from "@/assets/jw_icons/queue.svg?inline";
-import IconUpload from "@/assets/jw_icons/upload.svg?inline";
+import IconTrash from '@/assets/jw_icons/trash.svg?inline'
+import IconClose from '@/assets/jw_icons/close.svg?inline'
+import IconDone from '@/assets/jw_icons/done.svg?inline'
+import IconQueue from '@/assets/jw_icons/queue.svg?inline'
+import IconUpload from '@/assets/jw_icons/upload.svg?inline'
 
 export default {
     name: 'Item',
     props: {
-        uploadIndex: Number
+        uploadIndex: Number,
     },
     components: {
         Form,
@@ -66,7 +66,7 @@ export default {
     },
     computed: {
         status() {
-            const status = this.items[this.uploadIndex].upload.status;
+            const status = this.items[this.uploadIndex].upload.status
             return {
                 queued: status === 0,
                 uploading: status === 1,
@@ -86,26 +86,26 @@ export default {
         ...mapState('upload', [
             'items',
             'locked',
-        ])
+        ]),
     },
     data() {
         return {
             imagePreview: '',
-            fileType: ''
+            fileType: '',
         }
     },
     mounted() {
-        let reader  = new FileReader();
-        reader.addEventListener("load", function () {
-            this.imagePreview = reader.result;
+        let reader  = new FileReader()
+        reader.addEventListener('load', function () {
+            this.imagePreview = reader.result
             this.fileType = this.items[this.uploadIndex].payload.file.type.split('/')[0]
-        }.bind(this), false);
-        reader.readAsDataURL( this.items[this.uploadIndex].payload.file );
+        }.bind(this), false)
+        reader.readAsDataURL( this.items[this.uploadIndex].payload.file )
     },
     methods: {
         ...mapMutations('upload', [
-            'deleteItem'
-        ])
-    }
+            'deleteItem',
+        ]),
+    },
 }
 </script>

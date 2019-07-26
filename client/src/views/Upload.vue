@@ -41,12 +41,12 @@
 </template>
 
 <script>
-import { mapState, mapMutations } from 'vuex'
+import { mapMutations, mapState } from 'vuex'
 
 import Item from './Upload/Item.vue'
 
-import IconUp from "@/assets/jw_icons/up.svg?inline";
-import IconTrash from "@/assets/jw_icons/trash.svg?inline";
+import IconUp from '@/assets/jw_icons/up.svg?inline'
+import IconTrash from '@/assets/jw_icons/trash.svg?inline'
 
 export default {
     name: 'Upload',
@@ -67,7 +67,7 @@ export default {
             'errors',
             'locked',
             'working',
-        ])
+        ]),
     },
     mounted() {
         const frame = this.$refs.frame
@@ -78,28 +78,28 @@ export default {
         }
 
         frame.addEventListener('dragenter', () => {
-            this.showDropzone = true;
-        });
+            this.showDropzone = true
+        })
 
         // 2
-        dropzone.addEventListener('dragenter', allowDrag);
-        dropzone.addEventListener('dragover', allowDrag);
+        dropzone.addEventListener('dragenter', allowDrag)
+        dropzone.addEventListener('dragover', allowDrag)
 
         // 3
         dropzone.addEventListener('dragleave', () => {
-            this.showDropzone = false;
-        });
+            this.showDropzone = false
+        })
 
         // 4
-        dropzone.addEventListener('drop', (e)=>{
-            e.preventDefault();
-            Array.from(e.dataTransfer.files).forEach(f => this.$store.commit('upload/addItem', f));
-            this.showDropzone = false;
-        });
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault()
+            Array.from(e.dataTransfer.files).forEach(f => this.$store.commit('upload/addItem', f))
+            this.showDropzone = false
+        })
     },
     methods: {
         handleFileEvent(e) {
-            Array.from(e.target.files).forEach(f => this.$store.commit('upload/addItem', f));
+            Array.from(e.target.files).forEach(f => this.$store.commit('upload/addItem', f))
         },
         async initiateUpload() {
             if (await this.$store.dispatch('upload/lockUpload')) {
@@ -109,7 +109,7 @@ export default {
         ...mapMutations('upload', [
             'clearAllItems',
             'releaseUpload',
-        ])
+        ]),
     },
 }
 </script>

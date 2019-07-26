@@ -16,7 +16,7 @@
 </template>
 
 <script>
-import IconDropdown from "@/assets/jw_icons/dropdown.svg?inline";
+import IconDropdown from '@/assets/jw_icons/dropdown.svg?inline'
 
 export default {
     name: 'InputSelect',
@@ -29,7 +29,7 @@ export default {
     },
     data() {
         return {
-            showLabel: false
+            showLabel: false,
         }
     },
     methods: {

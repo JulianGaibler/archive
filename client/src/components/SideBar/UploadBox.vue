@@ -17,7 +17,7 @@
 <script>
 import { mapState } from 'vuex'
 
-import IconUpload from "@/assets/jw_icons/upload.svg?inline";
+import IconUpload from '@/assets/jw_icons/upload.svg?inline'
 
 export default {
     name: 'UploadBox',
@@ -47,6 +47,6 @@ export default {
                 return 0
             return 100
         },
-    }
+    },
 }
 </script>
