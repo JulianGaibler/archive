@@ -6,7 +6,7 @@
             ref="textarea"
             class="dynamicInput"
             rows="1"
-            v-model="content"
+            value="content"
             :placeholder="label"
             @input="updateInput_()"
         />

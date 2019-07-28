@@ -4,40 +4,42 @@
             <IconUpload />
             <div>
                 <h3>Uploading Files...</h3>
-                <p>{{current+1}} of {{items.length}}</p>
+                <p>{{uploadManager.current+1}} of {{uploadManager.items.length}}</p>
             </div>
         </div>
         <div class="btm">
-            <div class="progress" v-for="item in items" :key="item.id" :style="{flex: distributionCalc(item)}">
-                <div class="progress-bar" :style="{width: `${ percentageCalc(item) }%`}" /></div>
+            <div class="progress" v-for="item in uploadManager.items" :key="item.id" :style="{flex: distributionCalc(item)}">
+                <div class="progress-bar" :style="{width: `${ percentageCalc(item) }%`}" />{{percentageCalc(item)}}</div>
         </div>
     </div>
 </template>
 
 <script>
-import { mapState } from 'vuex'
+import uploadManager from '../../utils/UploadManager'
 
 import IconUpload from '@/assets/jw_icons/upload.svg?inline'
 
 export default {
     name: 'UploadBox',
+    data() {
+        return {
+            uploadManager,
+        }
+    },
     components: {
         IconUpload,
     },
     computed: {
-        ...mapState('upload', [
-            'current',
-            'items',
-        ]),
         distribution() {
             return {
-                main: Math.min(this.items.length, 4),
+                main: Math.min(this.uploadManager.items.length, 4),
                 other: 1,
             }
         },
     },
     methods: {
         distributionCalc(item) {
+            console.log(item)
             return item.upload.status === 1 ? this.distribution.main : this.distribution.other
         },
         percentageCalc(item) {

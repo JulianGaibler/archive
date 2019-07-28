@@ -2,7 +2,7 @@
     <div class="inputField light">
         <label :class="{ visible: showLabel }">{{label}}</label>
         <div class="autocomplete">
-            <div v-for="id in content" :key="id" class="tag">
+            <div v-for="id in value" :key="id" class="tag">
                 <span>{{valueStore[id]}}</span>
                 <div class="icon" @click="removeItem(id)"><IconClose /></div>
             </div>
@@ -54,7 +54,6 @@ export default {
     },
     data() {
         return {
-            content: [...this.value],
             valueStore: {},
             searchWord: '',
 
@@ -95,17 +94,17 @@ export default {
             if (this.valueStore[item.id]) return
             this.showResults = false
             this.valueStore[item.id] = item.name
-            this.content.push(item.id)
-            this.$emit('input', [...this.content])
+            this.value.push(item.id)
+            this.$emit('input', [...this.value])
             this.$refs.tagInput.focus()
             this.searchWord = ''
         },
         removeItem(id) {
-            const index = this.content.indexOf(id)
+            const index = this.value.indexOf(id)
             if (index !== -1) {
-                this.content.splice(index, 1)
+                this.value.splice(index, 1)
                 delete this.valueStore[id]
-                this.$emit('input', [...this.content])
+                this.$emit('input', [...this.value])
             }
         },
         createItem() {
@@ -151,7 +150,7 @@ export default {
     },
     computed: {
         showLabel() {
-            return (this.content && this.content.length) > 0 || (this.searchWord && this.searchWord.length > 0)
+            return (this.value && this.value.length) > 0 || (this.searchWord && this.searchWord.length > 0)
         },
     },
 }

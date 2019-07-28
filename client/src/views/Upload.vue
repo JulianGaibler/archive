@@ -6,29 +6,29 @@
 
         <nav class="actionBar">
             <div class="actionBar-component actionBar-component-text actionBar-grower">
-                {{ $t('state.upload.files_count', { count: items.length, max: 30 }) }}
+                {{ $t('state.upload.files_count', { count: upload.items.length, max: 30 }) }}
             </div>
-            <button v-if="locked" class="actionBar-component button button-primary" @click="releaseUpload">{{$t(working ? 'action.upload.cancel_upload' : 'action.upload.new_upload')}}</button>
+            <button v-if="upload.locked" class="actionBar-component button button-primary" @click="upload.stopUpload()">{{$t(upload.working ? 'action.upload.cancel_upload' : 'action.upload.new_upload')}}</button>
             <template v-else>
-                <button class="actionBar-component button button-icon" @click="clearAllItems"><IconTrash /></button>
-                <button class="actionBar-component button button-primary" @click="initiateUpload">{{$t('action.upload.upload_files')}}</button>
+                <button class="actionBar-component button button-icon" @click="upload.clearAllItems()"><IconTrash /></button>
+                <button class="actionBar-component button button-primary" @click="upload.startUpload()">{{$t('action.upload.upload_files')}}</button>
             </template>
         </nav>
 
-        <div class="content items" :class="{ noEdit: locked }">
-            <div v-if="errors.length > 0" class="content errorBox">
-                <div v-for="error in errors" :key="error.code">{{ error.messageT ? $t(error.messageT) : error.message }}</div>
+        <div class="content items" :class="{ noEdit: upload.locked }">
+            <div v-if="upload.errors.length > 0" class="content errorBox">
+                <div v-for="error in upload.errors" :key="error.code">{{ error.messageT ? $t(error.messageT) : error.message }}</div>
             </div>
 
-            <Item v-for="(upload, index) in items" :key="upload.id" :uploadIndex="index" />
+            <Item v-for="item in upload.items" :key="item.id" :uploadItem="item" />
 
-            <template v-if="!locked">
+            <template v-if="!upload.locked">
                 <input class="uploadclick" name="selectfile" id="selectfile" @change="handleFileEvent" type="file" multiple>
                 <div class="uploadclick item">
                     <div>
                         <label class="preview" for="selectfile">
                             <IconUp />
-                            <div v-if="items.length === 0 ">{{ $t('action.upload.select_files') }}</div>
+                            <div v-if="upload.items.length === 0 ">{{ $t('action.upload.select_files') }}</div>
                             <div v-else >{{ $t('action.upload.select_more_files') }}</div>
                         </label>
                     </div>
@@ -41,7 +41,7 @@
 </template>
 
 <script>
-import { mapMutations, mapState } from 'vuex'
+import uploadManager from '../utils/UploadManager'
 
 import Item from './Upload/Item.vue'
 
@@ -52,22 +52,14 @@ export default {
     name: 'Upload',
     data() {
         return {
+            upload: uploadManager,
             showDropzone: false,
-            counter: 0,
         }
     },
     components: {
         Item,
         IconUp,
         IconTrash,
-    },
-    computed: {
-        ...mapState('upload', [
-            'items',
-            'errors',
-            'locked',
-            'working',
-        ]),
     },
     mounted() {
         const frame = this.$refs.frame
@@ -76,40 +68,28 @@ export default {
             e.dataTransfer.dropEffect = 'copy'
             e.preventDefault()
         }
-
+        // 1
         frame.addEventListener('dragenter', () => {
             this.showDropzone = true
         })
-
         // 2
         dropzone.addEventListener('dragenter', allowDrag)
         dropzone.addEventListener('dragover', allowDrag)
-
         // 3
         dropzone.addEventListener('dragleave', () => {
             this.showDropzone = false
         })
-
         // 4
         dropzone.addEventListener('drop', (e) => {
             e.preventDefault()
-            Array.from(e.dataTransfer.files).forEach(f => this.$store.commit('upload/addItem', f))
+            Array.from(e.dataTransfer.files).forEach(f => this.upload.addItem(f))
             this.showDropzone = false
         })
     },
     methods: {
         handleFileEvent(e) {
-            Array.from(e.target.files).forEach(f => this.$store.commit('upload/addItem', f))
+            Array.from(e.target.files).forEach(f => this.upload.addItem(f))
         },
-        async initiateUpload() {
-            if (await this.$store.dispatch('upload/lockUpload')) {
-                this.$store.dispatch('upload/startUpload')
-            }
-        },
-        ...mapMutations('upload', [
-            'clearAllItems',
-            'releaseUpload',
-        ]),
     },
 }
 </script>

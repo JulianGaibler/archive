@@ -38,30 +38,33 @@
             </ul>
         </nav>
         <transition-group name="notification" tag="div" class="notification">
-            <UploadBox :key="1" v-if="working" />
+            <UploadBox :key="1" v-if="uploadManager.working" />
         </transition-group>
     </div>
 </template>
 
 <script>
-import { mapState } from 'vuex'
+import uploadManager from '../utils/UploadManager'
 
-import UploadBox from "./SideBar/UploadBox";
+import UploadBox from './SideBar/UploadBox'
 
-import IconArchive from "@/assets/jw_icons/archive.svg?inline";
-import IconCollection from "@/assets/jw_icons/collection.svg?inline";
-import IconLogout from "@/assets/jw_icons/logout.svg?inline";
-import IconQueue from "@/assets/jw_icons/queue.svg?inline";
-import IconSettings from "@/assets/jw_icons/settings.svg?inline";
-import IconUpload from "@/assets/jw_icons/upload.svg?inline";
-import IconUser from "@/assets/jw_icons/user.svg?inline";
+import IconArchive from '@/assets/jw_icons/archive.svg?inline'
+import IconCollection from '@/assets/jw_icons/collection.svg?inline'
+import IconLogout from '@/assets/jw_icons/logout.svg?inline'
+import IconQueue from '@/assets/jw_icons/queue.svg?inline'
+import IconSettings from '@/assets/jw_icons/settings.svg?inline'
+import IconUpload from '@/assets/jw_icons/upload.svg?inline'
+import IconUser from '@/assets/jw_icons/user.svg?inline'
 
-
-
-import UserQuery from "../graphql/user.gql";
+import UserQuery from '../graphql/user.gql'
 
 export default {
     name: 'SideBar',
+    data() {
+        return {
+            uploadManager,
+        }
+    },
     components: {
         UploadBox,
 
@@ -71,16 +74,11 @@ export default {
         IconQueue,
         IconSettings,
         IconUpload,
-        IconUser
-    },
-    computed: {
-        ...mapState('upload', [
-            'working',
-        ])
+        IconUser,
     },
     apollo: {
-      // Simple query that will update the 'hello' vue property
-      me: UserQuery,
+        // Simple query that will update the 'hello' vue property
+        me: UserQuery,
     },
 }
 </script>
