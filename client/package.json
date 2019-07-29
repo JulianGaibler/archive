@@ -18,8 +18,7 @@
         "vue": "^2.6.10",
         "vue-apollo": "^3.0.0-rc.1",
         "vue-i18n": "^8.12.0",
-        "vue-router": "^3.0.7",
-        "vuex": "^3.0.1"
+        "vue-router": "^3.0.7"
     },
     "devDependencies": {
         "@vue/cli-plugin-babel": "^3.9.2",
@@ -47,14 +46,39 @@
         ],
         "rules": {
             "no-console": 0,
-            "indent": ["error", 4],
-            "semi": ["error", "never"],
-            "quotes": ["error", "single", { "allowTemplateLiterals": true }],
-            "comma-dangle": ["error", "always-multiline"],
-            "no-var": ["error"],
-            "arrow-spacing": ["error"],
-            "object-curly-spacing": ["error", "always"],
-            "func-call-spacing": ["error", "never"]
+            "indent": [
+                "error",
+                4
+            ],
+            "semi": [
+                "error",
+                "never"
+            ],
+            "quotes": [
+                "error",
+                "single",
+                {
+                    "allowTemplateLiterals": true
+                }
+            ],
+            "comma-dangle": [
+                "error",
+                "always-multiline"
+            ],
+            "no-var": [
+                "error"
+            ],
+            "arrow-spacing": [
+                "error"
+            ],
+            "object-curly-spacing": [
+                "error",
+                "always"
+            ],
+            "func-call-spacing": [
+                "error",
+                "never"
+            ]
         },
         "parserOptions": {
             "parser": "babel-eslint"
