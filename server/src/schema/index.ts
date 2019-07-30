@@ -6,6 +6,7 @@ import postQueries from './post/queries'
 import sessionQueries from './session/queries'
 import taskQueries from './task/queries'
 import userQueries from './user/queries'
+import resourceQueries from './resources/queries'
 
 import keywordMutations from './keyword/mutations'
 import postMutations from './post/mutations'
@@ -25,6 +26,7 @@ export default new GraphQLSchema({
             ...sessionQueries,
             ...taskQueries,
             ...userQueries,
+            ...resourceQueries,
         },
     }),
     mutation: new GraphQLObjectType({

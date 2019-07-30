@@ -82,7 +82,7 @@ class Server {
                 '/playground',
                 expressPlayground({
                     endpoint: '/',
-                    subscriptionEndpoint: 'ws://localhost:4000/',
+                    subscriptionEndpoint: 'ws://localhost:4000/', // TODO
                 }),
             )
         }
