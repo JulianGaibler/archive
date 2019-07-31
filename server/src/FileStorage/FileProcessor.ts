@@ -72,7 +72,10 @@ export default class FileProcessor {
             mp4: `${videoThumbnail}.mp4`,
             webm: `${videoThumbnail}.webm`,
         }
-        const originalPath = await this.storeOriginal(readStream, directory)
+        const [error, originalPath] = await to(this.storeOriginal(readStream, directory))
+        if (error) {
+            throw error
+        }
 
         // Create temp dir for screenshot -_-
         const tmpDir = tmp.dirSync()
@@ -248,13 +251,14 @@ export default class FileProcessor {
         const [err] = await to(
             new Promise((resolve, reject) => {
                 readStream
-                    .pipe(ws)
                     .on('error', reject)
+                    .on('close', reject)
                     .on('finish', resolve)
+                    .pipe(ws)
             })
         )
         if (err) {
-            throw err
+            throw new Error('An error occurred during the upload of the file. (storeOriginal)')
         }
         return path
     }
@@ -306,9 +310,9 @@ export default class FileProcessor {
         const [err] = await to(
             new Promise((resolve, reject) => {
                 readStream
-                    .pipe(transform)
                     .on('error', reject)
                     .on('finish', resolve)
+                    .pipe(transform)
             })
         )
         if (err) {

@@ -25,9 +25,9 @@ interface IStoreData {
     typedStream: fileType.ReadableStreamWithFileType
 
     type: {
-        ext: string
-        mime: string
-        kind: string
+        ext: string,
+        mime: string,
+        kind: string,
     }
 }
 
@@ -133,7 +133,7 @@ export default class FileStorage {
 
     private async updateTask(task: Task, changes) {
         if (changes.notes) {
-            await task.$query().patch({ notes: raw('CONCAT(notes, ?)', changes.notes) })
+            await task.$query().patch({ notes: raw('CONCAT(notes, ?::text)', changes.notes) })
             delete changes.notes
         }
 
@@ -155,6 +155,7 @@ export default class FileStorage {
         let createdFiles
         let postCreated = false
 
+
         const update = changes => this.updateTask(taskObject, changes)
 
         const tmpDir = tmp.dirSync()
@@ -170,12 +171,12 @@ export default class FileStorage {
         try {
             if (fileTypeEnum === FileType.GIF || fileTypeEnum === FileType.VIDEO) {
                 [processError, createdFiles] = await to(
-                    processor.processVideo(typedStream, tmpDir.name, fileTypeEnum)
+                    processor.processVideo(typedStream, tmpDir.name, fileTypeEnum),
                 )
             }
             if (fileTypeEnum === FileType.IMAGE) {
                 [processError, createdFiles] = await to(
-                    processor.processImage(typedStream, tmpDir.name)
+                    processor.processImage(typedStream, tmpDir.name),
                 )
             }
 
@@ -207,16 +208,16 @@ export default class FileStorage {
                     movePromises.push(
                         jet.moveAsync(
                             createdFiles[category],
-                            jet.path(options.dist, options[category], `${hashId}.${type.ext}`)
-                        )
+                            jet.path(options.dist, options[category], `${hashId}.${type.ext}`),
+                        ),
                     )
                 } else {
                     Object.keys(createdFiles[category]).forEach(ext => {
                         movePromises.push(
                             jet.moveAsync(
                                 createdFiles[category][ext],
-                                jet.path(options.dist, options[category], `${hashId}.${ext}`)
-                            )
+                                jet.path(options.dist, options[category], `${hashId}.${ext}`),
+                            ),
                         )
                     })
                 }
@@ -236,10 +237,10 @@ export default class FileStorage {
                 await Post.query().deleteById(postData.id)
             }
             tmpDir.removeCallback()
-            await update({ status: 'FAILED', notes: e })
+            await update({ status: 'FAILED', notes: e.toString() })
         } finally {
             tmpDir.removeCallback()
-            this.checkQueue()
+            this.checkQueue() // TODO, this is recursive
         }
     }
 
