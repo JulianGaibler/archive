@@ -7,7 +7,7 @@
                 <div class="indicatorWrapper" v-if="uploadManager.locked">
                     <div class="indicator">
                         <IconQueue v-if="status.queued" />
-                        <IconUpload v-else-if="status.uploading" />
+                        <Lottie v-else-if="status.uploading" :options="animOptions" />
                         <IconDone v-else-if="status.done" />
                         <IconClose v-else-if="status.failed" />
                     </div>
@@ -43,13 +43,15 @@
 import uploadManager from '../../utils/UploadManager'
 import { formatBytes } from '../../utils'
 
-import Form from './Form.vue'
+import Lottie from '../../components/Lottie'
+import * as uploadingAnimation from '@/assets/animations/uploading.json'
+
+import Form from './Form'
 
 import IconTrash from '@/assets/jw_icons/trash.svg?inline'
 import IconClose from '@/assets/jw_icons/close.svg?inline'
 import IconDone from '@/assets/jw_icons/done.svg?inline'
 import IconQueue from '@/assets/jw_icons/queue.svg?inline'
-import IconUpload from '@/assets/jw_icons/upload.svg?inline'
 
 export default {
     name: 'Item',
@@ -61,6 +63,9 @@ export default {
             uploadManager,
             imagePreview: '',
             fileType: '',
+            animOptions: {
+                animationData: uploadingAnimation,
+            },
         }
     },
     components: {
@@ -69,7 +74,7 @@ export default {
         IconClose,
         IconDone,
         IconQueue,
-        IconUpload,
+        Lottie,
     },
     computed: {
         status() {

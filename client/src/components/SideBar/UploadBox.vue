@@ -1,7 +1,7 @@
 <template>
     <div class="notification-box">
         <div class="top">
-            <IconUpload />
+            <Lottie class="icon" :options="animOptions" />
             <div>
                 <h3>Uploading Files...</h3>
                 <p>{{uploadManager.current+1}} of {{uploadManager.items.length}}</p>
@@ -15,19 +15,23 @@
 </template>
 
 <script>
-import uploadManager from '../../utils/UploadManager'
+import Lottie from '../../components/Lottie'
+import * as uploadingAnimation from '@/assets/animations/uploading.json'
 
-import IconUpload from '@/assets/jw_icons/upload.svg?inline'
+import uploadManager from '../../utils/UploadManager'
 
 export default {
     name: 'UploadBox',
     data() {
         return {
             uploadManager,
+            animOptions: {
+                animationData: uploadingAnimation,
+            },
         }
     },
     components: {
-        IconUpload,
+        Lottie,
     },
     computed: {
         distribution() {
