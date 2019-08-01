@@ -25,6 +25,10 @@ const TaskType = new GraphQLObjectType({
             description: `Current status of the task.`,
             type: new GraphQLNonNull(TaskStatus),
         },
+        ext: {
+            description: `File Extension of original File`,
+            type: new GraphQLNonNull(GraphQLString),
+        },
         progress: {
             description: `Current progress of the task.`,
             type: GraphQLInt,
