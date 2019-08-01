@@ -30,8 +30,8 @@ const keywords: GraphQLFieldConfig<any, any, any> = {
             .offset(offset)
         if (args.search) {
             query.whereRaw(
-                'LOWER(name) LIKE ?',
-                `%${args.search.toLowerCase()}%`,
+                'name ILIKE ?',
+                `%${args.search}%`,
             )
         }
 
