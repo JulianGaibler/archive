@@ -13,28 +13,67 @@
             <button class="actionBar-component button button-primary">Create New</button>
         </nav>
 
-        <div class="content" v-if="posts">
-            <div v-for="post in posts" :key="post.id">
-                <h2>{{post.id}}</h2>
+        <div class="content mediaList" v-if="posts">
+            <div v-for="column in columns" :key="column" class="column">
+                <div class="item" v-for="post in columnPosts(posts.edges, column)" :key="post.node.id">
+                    <Preview :item="post.node" />
+                </div>
             </div>
         </div>
     </div>
 </template>
 
 <script>
-import PostsQuery from '../graphql/Posts.gql'
+import gql from 'graphql-tag'
+
+import Preview from '../components/Preview'
 
 import IconSearch from '@/assets/jw_icons/search.svg?inline'
 import IconEdit from '@/assets/jw_icons/edit.svg?inline'
 
+const POSTS_QUERY = gql`query {
+    posts(first: 100) {
+        edges {
+            node {
+                id
+                title
+                type
+                keywords {
+                    name
+                }
+                thumbnailPath
+                uploader {
+                    name
+                    username
+                }
+                caption
+                updatedAt
+                createdAt
+            }
+        }
+    }
+}`
+
 export default {
     name: 'Archive',
     components: {
-        IconSearch, IconEdit,
+        IconSearch, IconEdit, Preview,
+    },
+    data() {
+        return {
+            columns: 4,
+        }
     },
     apollo: {
         posts: {
-            query: PostsQuery,
+            query: POSTS_QUERY,
+        },
+    },
+    methods: {
+        columnPosts(items, index) {
+            return items.filter((item, i) => {
+                return (i+1-index) % this.columns === 0
+            })
         },
     },
 }

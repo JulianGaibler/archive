@@ -2,6 +2,7 @@
     "views": {
         "archive": "Archive",
         "upload": "Upload",
+        "post": "Post",
         "collections": "Collections",
         "users": "Users",
         "queue": "Queue",
