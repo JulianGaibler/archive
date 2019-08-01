@@ -15,7 +15,7 @@
             </template>
         </nav>
 
-        <div class="content items" :class="{ noEdit: upload.locked }">
+        <div class="content itemList" :class="{ 'itemList-progress': upload.locked }">
             <div v-if="upload.errors.length > 0" class="content errorBox">
                 <div v-for="error in upload.errors" :key="error.code">{{ error.messageT ? $t(error.messageT) : error.message }}</div>
             </div>
