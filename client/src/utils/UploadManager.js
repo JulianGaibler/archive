@@ -71,6 +71,7 @@ class UploadManager {
     }
 
     addItem(file) {
+        if (this.locked) return
         this.resetErrors()
         if (this.items.length >= 30) return
         const type = file.type.split('/')[0]
@@ -179,10 +180,8 @@ class UploadManager {
                         fetchOptions: {
                             useUpload: true,
                             onProgress: (ev) => {
-                                console.log((ev.loaded/ev.total)*100, { a:ev.loaded, b:ev.total })
                                 this.updateItemUpload(index, 'progress_current', ev.loaded)
                                 this.updateItemUpload(index, 'progress_total', ev.total)
-                                console.log(this.items[index].upload)
                             },
                             onAbortPossible: abort => {
                                 this.updateItemUpload(index, 'abortCallback', abort)
