@@ -26,36 +26,18 @@ Vue.prototype.$filesRoot = filesRoot
 
 // Config
 const defaultOptions = {
-    // You can use `https` for secure connection (recommended in production)
     httpEndpoint,
-    // You can use `wss` for secure connection (recommended in production)
-    // Use `null` to disable subscriptions
     wsEndpoint: process.env.VUE_APP_GRAPHQL_WS || 'ws://localhost:4000',
     // Enable Automatic Query persisting with Apollo Engine
     persisting: false,
     // Use websockets for everything (no HTTP)
     // You need to pass a `wsEndpoint` for this to work
-    websocketsOnly: false,
     // Is being rendered on the server?
     ssr: false,
-    // Override default apollo link
-    // note: don't override httpLink here, specify httpLink options in the
-    // httpLinkOptions property of defaultOptions.
+    link,
+    cache,
 
-    // Override default cache
-    // TODO: workaround for https://github.com/Akryum/vue-apollo/issues/631 or https://github.com/Akryum/vue-apollo/issues/630
-    cache: cache,
-
-    // Override the way the Authorization header is set
-    // getAuth: (tokenName) => ...
-
-    // Additional ApolloClient options
-    apollo: {
-        link,
-    },
-
-    // Client local data (see apollo-link-state)
-    // clientState: { resolvers: { ... }, defaults: { ... } }
+    defaultHttpLink: false,
 }
 
 // Create apollo client
