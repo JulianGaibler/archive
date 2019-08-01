@@ -1,6 +1,0 @@
-query keywordSearch($input: String) {
-  keywords(search: $input) {
-    id
-    name
-  }
-}

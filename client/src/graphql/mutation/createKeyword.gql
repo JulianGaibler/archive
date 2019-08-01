@@ -1,6 +1,0 @@
-mutation createKeyword($input: String!) {
-  createKeyword(name: $input) {
-    id
-    name
-  }
-}

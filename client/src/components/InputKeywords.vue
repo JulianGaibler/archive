@@ -17,11 +17,11 @@
                 v-model="searchWord" />
             <ul v-if="showResults" class="results">
                 <li
-                    v-for="(keyword, idx) in keywords"
-                    :key="keyword.id" @click="addItem(keyword)"
+                    v-for="(edge, idx) in keywords.edges"
+                    :key="edge.node.id" @click="addItem(edge.node)"
                     :class="{ selected: idx===currentSelect }"
                     class="result"
-                >{{keyword.name}}</li>
+                >{{edge.node.name}}</li>
                 <li
                     v-if="showResults"
                     @click="createItem()"
@@ -38,10 +38,28 @@
 
 <script>
 import debounce from 'debounce'
-import keywordSearch from '../graphql/keywordSearch.gql'
-import createKeyword from '../graphql/mutation/createKeyword.gql'
+import gql from 'graphql-tag'
 
 import IconClose from '@/assets/icon_close.svg?inline'
+
+const KEYWORD_SEARCH = gql`query keywordSearch($input: String) {
+  keywords(search: $input) {
+    edges {
+      node {
+        id
+        name
+      }
+    }
+  }
+}`
+
+const KEYWORD_CREATE = gql`mutation createKeyword($input: String!) {
+  createKeyword(name: $input) {
+    id
+    name
+  }
+}
+`
 
 export default {
     name: 'InputKeywords',
@@ -70,11 +88,9 @@ export default {
     methods: {
         handleSearch: debounce(function() {
             this.$apollo.query({
-                query: keywordSearch,
-                variables () {
-                    return {
-                        input: this.searchWord,
-                    }
+                query: KEYWORD_SEARCH,
+                variables: {
+                    input: this.searchWord,
                 },
                 fetchPolicy: 'network-only',
                 error(e) {
@@ -111,7 +127,7 @@ export default {
             if (this.createStatus.loading) return
             this.createStatus.loading = true
             this.$apollo.mutate({
-                mutation: createKeyword,
+                mutation: KEYWORD_CREATE,
                 variables: {
                     input: this.searchWord,
                 },

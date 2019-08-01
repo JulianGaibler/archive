@@ -2,7 +2,7 @@
     <div class="sidebar">
         <div class="sidebar-header">
             <div class="sidebar-button"></div>
-            <div class="name-combo">
+            <div class="nameCombo">
                 <div class="name">{{me ? me.name : ''}}</div>
                 <div class="username">{{me ? me.username : ''}}</div>
             </div>
@@ -25,7 +25,7 @@
                     <router-link :to="{ name: 'Upload'}"><IconUpload />Upload</router-link>
                 </li>
                 <li>
-                    <a><IconQueue/>Queue</a>
+                    <router-link :to="{ name: 'Queue'}"><IconQueue />Queue</router-link>
                 </li>
             </ul>
             <ul>
@@ -56,7 +56,14 @@ import IconSettings from '@/assets/jw_icons/settings.svg?inline'
 import IconUpload from '@/assets/jw_icons/upload.svg?inline'
 import IconUser from '@/assets/jw_icons/user.svg?inline'
 
-import UserQuery from '../graphql/user.gql'
+import gql from 'graphql-tag'
+
+const USER_QUERY = gql`{
+    me {
+        name
+        username
+    }
+}`
 
 export default {
     name: 'SideBar',
@@ -78,7 +85,7 @@ export default {
     },
     apollo: {
         // Simple query that will update the 'hello' vue property
-        me: UserQuery,
+        me: USER_QUERY,
     },
 }
 </script>

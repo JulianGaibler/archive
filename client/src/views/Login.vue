@@ -2,7 +2,7 @@
     <div class="login">
         <div class="card">
             <ApolloMutation
-                :mutation="require('../graphql/mutation/login.gql')"
+                :mutation="LOGIN_MUTATION"
                 :variables="{
                         username,
                         password,
@@ -44,6 +44,15 @@
 import { onLogin } from '../vue-apollo.js'
 import InputField from '../components/InputField.vue'
 
+import gql from 'graphql-tag'
+
+const LOGIN_MUTATION = gql`{
+    me {
+        name
+        username
+    }
+}`
+
 export default {
     name: 'Login',
     props: {
@@ -52,6 +61,7 @@ export default {
     components: { InputField },
     data() {
         return {
+            LOGIN_MUTATION,
             username: '',
             password: '',
         }
