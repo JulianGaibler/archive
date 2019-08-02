@@ -310,9 +310,9 @@ export default class FileProcessor {
         const [err] = await to(
             new Promise((resolve, reject) => {
                 readStream
+                    .pipe(transform)
                     .on('error', reject)
                     .on('finish', resolve)
-                    .pipe(transform)
             })
         )
         if (err) {
