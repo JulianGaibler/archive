@@ -75,7 +75,6 @@ exports.up = async knex => {
                 IMMUTABLE;
 
                 CREATE INDEX idx_fts_post ON "Post" USING gin(gin_fts_fct(title, caption, language));
-
                 CREATE INDEX post_title_trgmidx ON "Post" USING gin(title gin_trgm_ops);
                 CREATE INDEX post_caption_trgmidx ON "Post" USING gin(caption gin_trgm_ops);
                 CREATE INDEX keyword_name_trgmidx ON "Keyword" USING gin(name gin_trgm_ops);
@@ -95,5 +94,4 @@ exports.down = async knex => {
         .dropTableIfExists('User');
     await knex.raw('DROP TYPE "Format"')
     await knex.raw('DROP TYPE "TaskStatus"')
-    await knex.raw('CREATE EXTENSION pg_trgm')
 }
