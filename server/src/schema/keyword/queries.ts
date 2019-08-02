@@ -4,9 +4,8 @@ import {
     cursorToOffset,
     forwardConnectionArgs,
 } from 'graphql-relay'
-import { IContext, isAuthenticated } from '../../utils'
-
 import KeywordModel from '../../models/Keyword'
+import { IContext, isAuthenticated } from '../../utils'
 import { keywordConnection } from './KeywordType'
 
 const keywords: GraphQLFieldConfig<any, any, any> = {

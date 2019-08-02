@@ -1,4 +1,4 @@
-import { GraphQLFieldConfig } from 'graphql'
+import { GraphQLFieldConfig, GraphQLString } from 'graphql'
 import {
     connectionFromArraySlice,
     cursorToOffset,
@@ -20,17 +20,32 @@ const me: GraphQLFieldConfig<any, any, any> = {
 const users: GraphQLFieldConfig<any, any, any> = {
     type: userConnection,
     description: `Returns a list of users.`,
-    args: forwardConnectionArgs,
+    args: {
+        ...forwardConnectionArgs,
+        byUsername: {
+            description: `Returns all users whose user name contains this string.`,
+            type: GraphQLString,
+        },
+    },
     resolve: async (parent, args, ctx: IContext) => {
         isAuthenticated(ctx)
         const limit = typeof args.first === 'undefined' ? '10' : args.first
         const offset = args.after ? cursorToOffset(args.after) + 1 : 0
 
-        const [data, totalCount] = await Promise.all([
-            UserModel.query()
+        const query = UserModel.query()
                 .orderBy('createdAt', 'desc')
                 .limit(limit)
                 .offset(offset)
+
+        if (args.byUsername) {
+            query.whereRaw(
+                'username ILIKE ?',
+                `%${args.byUsername}%`,
+            )
+        }
+
+        const [data, totalCount] = await Promise.all([
+            query.execute()
                 .then(rows => {
                     rows.forEach(x =>
                         ctx.dataLoaders.user.getById.prime(x.id, x),
