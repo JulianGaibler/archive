@@ -33,9 +33,6 @@ const users: GraphQLFieldConfig<any, any, any> = {
         const offset = args.after ? cursorToOffset(args.after) + 1 : 0
 
         const query = UserModel.query()
-                .orderBy('createdAt', 'desc')
-                .limit(limit)
-                .offset(offset)
 
         if (args.byUsername) {
             query.whereRaw(
@@ -45,7 +42,12 @@ const users: GraphQLFieldConfig<any, any, any> = {
         }
 
         const [data, totalCount] = await Promise.all([
-            query.execute()
+            query
+                .clone()
+                .orderBy('createdAt', 'desc')
+                .limit(limit)
+                .offset(offset)
+                .execute()
                 .then(rows => {
                     rows.forEach(x =>
                         ctx.dataLoaders.user.getById.prime(x.id, x),

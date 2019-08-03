@@ -39,9 +39,6 @@ const posts: GraphQLFieldConfig<any, any, any> = {
         const offset = args.after ? cursorToOffset(args.after) + 1 : 0
 
         const query = PostModel.query()
-            .orderBy('createdAt', 'desc')
-            .limit(limit)
-            .offset(offset)
 
         if (args.byLanguage) {
             query.where('language', args.byLanguage)
@@ -86,15 +83,21 @@ const posts: GraphQLFieldConfig<any, any, any> = {
         }
 
         const [data, totalCount] = await Promise.all([
-            query.execute()
+            query
+                .clone()
+                .orderBy('createdAt', 'desc')
+                .limit(limit)
+                .offset(offset)
+                .execute()
                 .then(rows => {
                     rows.forEach(x =>
                         ctx.dataLoaders.post.getById.prime(x.id, x),
                     )
                     return rows
                 }),
-            PostModel.query()
+            query
                 .count()
+                .execute()
                 .then(x => (x[0] as any).count),
         ])
 

@@ -43,7 +43,7 @@ import gql from 'graphql-tag'
 import IconClose from '@/assets/icon_close.svg?inline'
 
 const KEYWORD_SEARCH = gql`query keywordSearch($input: String) {
-  keywords(search: $input) {
+  keywords(byName: $input) {
     edges {
       node {
         id

@@ -29,9 +29,6 @@ const tasks: GraphQLFieldConfig<any, any, any> = {
         const offset = args.after ? cursorToOffset(args.after) + 1 : 0
 
         const query = TaskModel.query()
-                .orderBy('createdAt', 'desc')
-                .limit(limit)
-                .offset(offset)
 
         if (args.byUser) {
             const ids = args.byUser.map(globalId => {
@@ -48,7 +45,12 @@ const tasks: GraphQLFieldConfig<any, any, any> = {
         }
 
         const [data, totalCount] = await Promise.all([
-            query.execute()
+            query
+            .clone()
+            .orderBy('createdAt', 'desc')
+            .limit(limit)
+            .offset(offset)
+            .execute()
                 .then(rows => {
                     rows.forEach(x =>
                         ctx.dataLoaders.task.getById.prime(x.id, x),

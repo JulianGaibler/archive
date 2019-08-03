@@ -13,7 +13,7 @@ const keywords: GraphQLFieldConfig<any, any, any> = {
     description: `Returns a list of keywords.`,
     args: {
         ...forwardConnectionArgs,
-        search: {
+        byName: {
             description: `Returns all keywords containing this string.`,
             type: GraphQLString,
         },
@@ -24,24 +24,28 @@ const keywords: GraphQLFieldConfig<any, any, any> = {
         const offset = args.after ? cursorToOffset(args.after) + 1 : 0
 
         const query = KeywordModel.query()
-            .orderBy('createdAt', 'desc')
-            .limit(limit)
-            .offset(offset)
-        if (args.search) {
+
+        if (args.byName) {
             query.whereRaw(
                 'name ILIKE ?',
-                `%${args.search}%`,
+                `%${args.byName}%`,
             )
         }
 
         const [data, totalCount] = await Promise.all([
-            query.execute().then(rows => {
+            query
+                .clone()
+                .orderBy('createdAt', 'desc')
+                .limit(limit)
+                .offset(offset)
+                .execute()
+                .then(rows => {
                 rows.forEach(x =>
                     ctx.dataLoaders.keyword.getById.prime(x.id, x),
                 )
                 return rows
             }),
-            KeywordModel.query()
+            query
                 .count()
                 .then(x => (x[0] as any).count),
         ])
