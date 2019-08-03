@@ -3,8 +3,8 @@
         <label :class="{ visible: showLabel }">{{label}}</label>
         <div class="selectFlex" :class="{ noItemSelected: !showLabel }">
             <select @input="updateInput_">
-                <option value="" v-if="!showLabel" selected>{{label}}</option>
-                <option v-for="option in options" :key="option.value" :value="option.value">{{option.name}}</option>
+                <option value="" v-if="!showLabel" :selected="!showLabel">{{label}}</option>
+                <option v-for="option in options" :selected="value === option.value" :key="option.value" :value="option.value">{{option.name}}</option>
             </select>
             <IconDropdown />
         </div>
@@ -27,16 +27,15 @@ export default {
         label: String,
         errors: Array,
     },
-    data() {
-        return {
-            showLabel: false,
-        }
+    computed: {
+        showLabel() {
+            return this.value !== ''
+        },
     },
     methods: {
         updateInput_: function(event) {
             const value = event.srcElement.value
             this.$emit('input', value)
-            this.showLabel = value !== ''
         },
     },
 }
