@@ -8,7 +8,7 @@ import { raw } from 'objection'
 import PostModel from '../../models/Post'
 import { decodeHashId, IContext, InputError, isAuthenticated } from '../../utils'
 import { ModelId } from '../../utils/modelEnum'
-import { Language } from '../types'
+import { Format, Language } from '../types'
 import { postConnection } from './PostType'
 
 const posts: GraphQLFieldConfig<any, any, any> = {
@@ -24,8 +24,12 @@ const posts: GraphQLFieldConfig<any, any, any> = {
             description: `Limits the search of posts to all of these keywords.`,
             type: new GraphQLList(new GraphQLNonNull(GraphQLID)),
         },
+        byType: {
+            description: `Limits the search of posts to any of these types.`,
+            type: new GraphQLList(new GraphQLNonNull(Format)),
+        },
         byLanguage: {
-            description: `Limits the search of posts to the language.`,
+            description: `Limits the search of posts to any of these languages.`,
             type: Language,
         },
         byContent: {
@@ -43,7 +47,10 @@ const posts: GraphQLFieldConfig<any, any, any> = {
         if (args.byLanguage) {
             query.where('language', args.byLanguage)
         }
-        if (args.byUser) {
+        if (args.byType && args.byType.length > 0) {
+            query.whereIn('type', args.byType)
+        }
+        if (args.byUser && args.byUser.length > 0) {
             const ids = args.byUser.map(globalId => {
                 const { type, id } = decodeHashId(globalId)
                 if (type === null || type !== ModelId.USER) {
@@ -53,7 +60,7 @@ const posts: GraphQLFieldConfig<any, any, any> = {
             })
             query.whereIn('uploaderId', ids)
         }
-        if (args.byKeyword) {
+        if (args.byKeyword && args.byKeyword.length > 0) {
             const ids = args.byKeyword.map(globalId => {
                 const { type, id } = decodeHashId(globalId)
                 if (type === null || type !== ModelId.KEYWORD) {

@@ -30,7 +30,7 @@ const tasks: GraphQLFieldConfig<any, any, any> = {
 
         const query = TaskModel.query()
 
-        if (args.byUser) {
+        if (args.byUser && args.byUser.length > 0) {
             const ids = args.byUser.map(globalId => {
                 const { type, id } = decodeHashId(globalId)
                 if (type === null || type !== ModelId.USER) {
@@ -40,7 +40,7 @@ const tasks: GraphQLFieldConfig<any, any, any> = {
             })
             query.whereIn('uploaderId', ids)
         }
-        if (args.byStatus) {
+        if (args.byStatus && args.byStatus.length > 0) {
             query.whereIn('status', args.byStatus)
         }
 

@@ -1,4 +1,4 @@
-import { GraphQLInputObjectType, GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
+import { GraphQLFloat, GraphQLInputObjectType, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
 import { connectionDefinitions } from 'graphql-relay'
 import {GraphQLUpload} from 'graphql-upload'
 import PostModel from '../../models/Post'
@@ -38,6 +38,10 @@ const PostType = new GraphQLObjectType({
         thumbnailPath: {
             description: `Path where the thumbnails are located without file-extension.\n Possible extensions: .jpg, .webp, .mp4 (only VIDEO/GIF), .webm (only VIDEO/GIF))`,
             type: GraphQLString,
+        },
+        relHeight: {
+            description: `Height, relative to the width in percent.`,
+            type: GraphQLFloat,
         },
         uploader: {
             type: UserType,
