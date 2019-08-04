@@ -4,7 +4,7 @@ import { raw } from 'objection'
 import sharp from 'sharp'
 import tmp from 'tmp'
 import { FileType } from '../FileStorage'
-import { to } from '../utils'
+import { round, to } from '../utils'
 
 import Post from '../models/Post'
 import Task from '../models/Task'
@@ -30,6 +30,8 @@ export default class FileProcessor {
         const wsJpeg = jet.createWriteStream(filePaths.jpeg)
         const wsWebp = jet.createWriteStream(filePaths.webp)
 
+        const { height, width } = await sharp(originalPath).metadata()
+
         const transform = sharp()
             .removeAlpha()
             .resize(900, 900, {
@@ -46,17 +48,23 @@ export default class FileProcessor {
             .toFormat('webp', { quality: 80, nearLossless: true })
             .pipe(wsWebp)
 
+
+
         jet.createReadStream(originalPath).pipe(transform)
 
         const thumbnailPaths = await this.createThumbnail(
             jet.createReadStream(originalPath),
-            directory
+            directory,
         )
 
+
         return {
-            compressed: filePaths,
-            thumbnail: thumbnailPaths,
-            original: originalPath,
+            relHeight: round((height/width)*100, 4),
+            createdFiles: {
+                compressed: filePaths,
+                thumbnail: thumbnailPaths,
+                original: originalPath,
+            },
         }
     }
 
@@ -124,7 +132,7 @@ export default class FileProcessor {
             outputPath: string,
             size: string,
             outputOptions: string[],
-            optionsCallback?
+            optionsCallback?: any,
         ) => {
             return new Promise((resolve, reject) => {
                 const f = ffmpeg(inputPath)
@@ -196,9 +204,9 @@ export default class FileProcessor {
                         '-filter_complex',
                         `[0:v] fps=25,scale=${
                             width > 480 ? 480 : width
-                        }:-2,split [a][b];[a] palettegen [p];[b][p] paletteuse`
+                        }:-2,split [a][b];[a] palettegen [p];[b][p] paletteuse`,
                     )
-                }
+                },
             )
         } else {
             renderC = Promise.resolve()
@@ -220,7 +228,7 @@ export default class FileProcessor {
                 ...(fileType === FileType.VIDEO ? [...mp4AudioOptions, ...['-b:a 96k']] : ['-an']),
                 ...['-b:v: 625k', '-bufsize 500k', '-maxrate 1000k'],
             ],
-            thumbnailOptions
+            thumbnailOptions,
         )
         renderB = renderVideo(
             3,
@@ -232,16 +240,19 @@ export default class FileProcessor {
                 ...(fileType === FileType.VIDEO ? [...webmAudioOptions, ...['-b:a 96k']] : ['-an']),
                 ...['-b:v: 500k', '-bufsize 250k', '-maxrate 750k'],
             ],
-            thumbnailOptions
+            thumbnailOptions,
         )
         await Promise.all([renderA, renderB])
 
         this.updateCallback({ progress: 100 })
 
         return {
-            compressed: filePaths,
-            thumbnail: { ...thumbnailPaths, ...videoThumbnailPaths },
-            original: originalPath,
+            relHeight: round((height/width)*100, 4),
+            createdFiles: {
+                compressed: filePaths,
+                thumbnail: { ...thumbnailPaths, ...videoThumbnailPaths },
+                original: originalPath,
+            },
         }
     }
 
@@ -255,7 +266,7 @@ export default class FileProcessor {
                     .on('close', reject)
                     .on('finish', resolve)
                     .pipe(ws)
-            })
+            }),
         )
         if (err) {
             throw new Error('An error occurred during the upload of the file. (storeOriginal)')
@@ -313,7 +324,7 @@ export default class FileProcessor {
                     .pipe(transform)
                     .on('error', reject)
                     .on('finish', resolve)
-            })
+            }),
         )
         if (err) {
             throw err

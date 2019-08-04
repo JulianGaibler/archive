@@ -152,7 +152,7 @@ export default class FileStorage {
     private async processItem({ taskObject, data }: IQueueItem) {
         const { postData, typedStream, type } = data
         let processError
-        let createdFiles
+        let result
         let postCreated = false
 
 
@@ -170,12 +170,12 @@ export default class FileStorage {
 
         try {
             if (fileTypeEnum === FileType.GIF || fileTypeEnum === FileType.VIDEO) {
-                [processError, createdFiles] = await to(
+                [processError, result] = await to(
                     processor.processVideo(typedStream, tmpDir.name, fileTypeEnum),
                 )
             }
             if (fileTypeEnum === FileType.IMAGE) {
-                [processError, createdFiles] = await to(
+                [processError, result] = await to(
                     processor.processImage(typedStream, tmpDir.name),
                 )
             }
@@ -203,19 +203,19 @@ export default class FileStorage {
 
             // Save files where they belong
             const movePromises = []
-            Object.keys(createdFiles).forEach(category => {
+            Object.keys(result.createdFiles).forEach(category => {
                 if (category === 'original') {
                     movePromises.push(
                         jet.moveAsync(
-                            createdFiles[category],
+                            result.createdFiles[category],
                             jet.path(options.dist, options[category], `${hashId}.${type.ext}`),
                         ),
                     )
                 } else {
-                    Object.keys(createdFiles[category]).forEach(ext => {
+                    Object.keys(result.createdFiles[category]).forEach(ext => {
                         movePromises.push(
                             jet.moveAsync(
-                                createdFiles[category][ext],
+                                result.createdFiles[category][ext],
                                 jet.path(options.dist, options[category], `${hashId}.${ext}`),
                             ),
                         )
@@ -225,6 +225,7 @@ export default class FileStorage {
             // When all are done, delete tmp-dir
             await Promise.all(movePromises)
 
+            newPost.relHeight = result.relHeight
             newPost.compressedPath = `${options.compressed}/${hashId}`
             newPost.thumbnailPath = `${options.thumbnail}/${hashId}`
             newPost.originalPath = `${options.original}/${hashId}.${type.ext}`

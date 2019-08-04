@@ -21,6 +21,8 @@ export default class Post extends BaseModel {
     originalPath?: string
     uploaderId?: number
 
+    relHeight?: number
+
     uploader?: User
     keywords: Keyword[]
     caption?: string
