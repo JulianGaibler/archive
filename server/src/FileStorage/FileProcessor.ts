@@ -1,13 +1,12 @@
 import ffmpeg from 'fluent-ffmpeg'
+import fs from 'fs'
 import jet from 'fs-jetpack'
-import { raw } from 'objection'
 import sharp from 'sharp'
+import stream from 'stream'
 import tmp from 'tmp'
+import util from 'util'
 import { FileType } from '../FileStorage'
 import { round, to } from '../utils'
-
-import Post from '../models/Post'
-import Task from '../models/Task'
 
 export default class FileProcessor {
     updateCallback
@@ -26,11 +25,8 @@ export default class FileProcessor {
         if (error) {
             throw error
         }
-
         const wsJpeg = jet.createWriteStream(filePaths.jpeg)
         const wsWebp = jet.createWriteStream(filePaths.webp)
-
-        const { height, width } = await sharp(originalPath).metadata()
 
         const transform = sharp()
             .removeAlpha()
@@ -48,16 +44,19 @@ export default class FileProcessor {
             .toFormat('webp', { quality: 80, nearLossless: true })
             .pipe(wsWebp)
 
+        const pipeline = util.promisify(stream.pipeline)
+        const [err] = await to(pipeline(jet.createReadStream(originalPath), transform))
 
+        if (err) {
+            throw err
+        }
 
-        jet.createReadStream(originalPath).pipe(transform)
+        const { height, width } = await sharp(originalPath).metadata()
 
         const thumbnailPaths = await this.createThumbnail(
             jet.createReadStream(originalPath),
             directory,
         )
-
-
         return {
             relHeight: round((height/width)*100, 4),
             createdFiles: {
@@ -258,38 +257,21 @@ export default class FileProcessor {
 
     async storeOriginal(readStream, directory: string) {
         const path = jet.path(directory, 'original')
-        const ws = jet.createWriteStream(path)
-        const [err] = await to(
-            new Promise((resolve, reject) => {
-                readStream
-                    .on('error', reject)
-                    .on('close', reject)
-                    .on('finish', resolve)
-                    .pipe(ws)
-            }),
-        )
-        if (err) {
-            throw new Error('An error occurred during the upload of the file. (storeOriginal)')
-        }
-        return path
-    }
 
-    private storeFS(stream, filename) {
-        return new Promise((resolve, reject) => {
-            stream
+        await new Promise((resolve, reject) =>
+            readStream
                 .on('error', error => {
-                    if (stream.truncated) {
-                        reject(error)
+                    if (readStream.truncated) {
+                        fs.unlinkSync(path)
                     }
-                })
-                .pipe(jet.createWriteStream(filename))
-                .on('error', error => {
                     reject(error)
                 })
-                .on('finish', () => {
-                    resolve(filename)
-                })
-        })
+                .pipe(fs.createWriteStream(path))
+                .on('error', error => reject(error))
+                .on('finish', () => resolve()),
+        )
+
+        return path
     }
 
     private async createThumbnail(readStream, directory: string) {
@@ -318,14 +300,9 @@ export default class FileProcessor {
             .toFormat('webp', { quality: 50 })
             .pipe(wsWebp)
 
-        const [err] = await to(
-            new Promise((resolve, reject) => {
-                readStream
-                    .pipe(transform)
-                    .on('error', reject)
-                    .on('finish', resolve)
-            }),
-        )
+        const pipeline = util.promisify(stream.pipeline)
+        const [err] = await to(pipeline(readStream, transform))
+
         if (err) {
             throw err
         }
