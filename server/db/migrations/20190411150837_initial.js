@@ -5,6 +5,7 @@ exports.up = async knex => {
                 table.string('username', 64).notNullable();
                 table.string('name', 64).notNullable();
                 table.string('password', 96).notNullable();
+                table.string('profilePicture');
                 table.bigInteger('updatedAt').notNullable();
                 table.bigInteger('createdAt').notNullable();
 
@@ -23,8 +24,6 @@ exports.up = async knex => {
                 table.text('caption');
                 table.bigInteger('updatedAt').notNullable();
                 table.bigInteger('createdAt').notNullable();
-
-                table.unique(['title'])
             })
             .createTable('Keyword', table => {
                 table.increments('id');
@@ -33,6 +32,14 @@ exports.up = async knex => {
                 table.bigInteger('createdAt').notNullable();
 
                 table.unique(['name'])
+            })
+            .createTable('Collection', table => {
+                table.increments('id');
+                table.string('title').notNullable();
+                table.integer('creatorId').references('User.id').onDelete('SET NULL');
+                table.text('description');
+                table.bigInteger('updatedAt').notNullable();
+                table.bigInteger('createdAt').notNullable();
             })
             .createTable('Task', table => {
                 table.increments('id');
@@ -49,6 +56,11 @@ exports.up = async knex => {
             .createTable('KeywordToPost', table => {
                 table.increments('id');
                 table.integer('keyword_id').references('Keyword.id').onDelete('CASCADE').notNullable();
+                table.integer('post_id').references('Post.id').onDelete('CASCADE').notNullable();
+            })
+            .createTable('CollectionToPost', table => {
+                table.increments('id');
+                table.integer('collection_id').references('Collection.id').onDelete('CASCADE').notNullable();
                 table.integer('post_id').references('Post.id').onDelete('CASCADE').notNullable();
             })
             .createTable('Session', table => {
@@ -87,8 +99,10 @@ exports.down = async knex => {
     await knex.raw('DROP FUNCTION IF EXISTS gin_fts_fct')
     await knex.schema
         .dropTableIfExists('KeywordToPost')
+        .dropTableIfExists('CollectionToPost')
         .dropTableIfExists('Keyword')
         .dropTableIfExists('Task')
+        .dropTableIfExists('Collection')
         .dropTableIfExists('Post')
         .dropTableIfExists('Session')
         .dropTableIfExists('User');

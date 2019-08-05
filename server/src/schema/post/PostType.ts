@@ -1,6 +1,6 @@
 import { GraphQLFloat, GraphQLInputObjectType, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
 import { connectionDefinitions } from 'graphql-relay'
-import {GraphQLUpload} from 'graphql-upload'
+import { GraphQLUpload } from 'graphql-upload'
 import PostModel from '../../models/Post'
 import { IContext } from '../../utils'
 import KeywordType from '../keyword/KeywordType'

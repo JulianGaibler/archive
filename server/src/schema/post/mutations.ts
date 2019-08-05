@@ -8,7 +8,7 @@ import {
 import PostModel from '../../models/Post'
 import { decodeHashIdAndCheck, IContext, InputError, isAuthenticated, to } from '../../utils'
 import TaskType from '../task/TaskType'
-import {NewPost} from './PostType'
+import { NewPost } from './PostType'
 
 const uploadPosts: GraphQLFieldConfig<any, any, any> = {
     description: `Creates one or more posts.`,

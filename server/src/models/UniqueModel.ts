@@ -24,7 +24,7 @@ export default class UniqueModel extends BaseModel {
 
         if (!queryOptions.old || queryOptions.old.length < 1) {
             throw new Error(
-                'Unique validation at update only works with queries started with $query.'
+                'Unique validation at update only works with queries started with $query.',
             )
         }
 
@@ -61,7 +61,7 @@ export default class UniqueModel extends BaseModel {
 
             if (update) {
                 this.$unique.identifiers.forEach(identifier =>
-                    query.andWhereNot(identifier, queryOptions.old[identifier])
+                    query.andWhereNot(identifier, queryOptions.old[identifier]),
                 )
             }
 

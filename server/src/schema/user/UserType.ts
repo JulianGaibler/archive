@@ -20,6 +20,10 @@ const UserType = new GraphQLObjectType({
             description: `The user's profile name.`,
             type: new GraphQLNonNull(GraphQLString),
         },
+        profilePicture: {
+            description: `Name of the user's profile picture.`,
+            type: GraphQLString,
+        },
         posts: {
             type: postConnection,
             description: `All Posts associated with this user.`,

@@ -4,7 +4,18 @@ import {
     GraphQLNonNull,
     GraphQLString,
 } from 'graphql'
-import { checkAndLogin, checkAndSignup, IContext, isAuthenticated, performLogout } from '../../utils'
+import { GraphQLUpload } from 'graphql-upload'
+import User from '../../models/User'
+import {
+    AuthenticationError,
+    checkAndChangePassword,
+    checkAndLogin,
+    checkAndSignup,
+    IContext,
+    InputError,
+    isAuthenticated,
+    performLogout, to,
+} from '../../utils'
 
 const signup: GraphQLFieldConfig<any, any, any> = {
     description: `Creates a new user and performs a login.`,
@@ -58,8 +69,80 @@ const logout: GraphQLFieldConfig<any, any, any> = {
     },
 }
 
+const uploadProfilePicture: GraphQLFieldConfig<any, any, any> = {
+    description: `Sets the profile picture of the current user.`,
+    type: new GraphQLNonNull(GraphQLBoolean),
+    args: {
+        file: {
+            description: `Profile picture file.`,
+            type: new GraphQLNonNull(GraphQLUpload),
+        },
+    },
+    resolve: async (parent, args, context: IContext) => {
+        isAuthenticated(context)
+
+        const [fileErr, file] = await to(args.file)
+        if (!file) { throw new InputError(fileErr) }
+
+        await context.fileStorage.setProfilePicture(context.auth.userId, file.createReadStream())
+        return true
+    },
+}
+
+const clearProfilePicture: GraphQLFieldConfig<any, any, any> = {
+    description: `Deletes the profile picture of the current user.`,
+    type: new GraphQLNonNull(GraphQLBoolean),
+    resolve: async (parent, args, context: IContext) => {
+        isAuthenticated(context)
+        return context.fileStorage.deleteProfilePicture(context.auth.userId)
+    },
+}
+
+const changeName: GraphQLFieldConfig<any, any, any> = {
+    description: `Changes the name of the current user.`,
+    args: {
+        newName: {
+            description: `New name of the user`,
+            type: new GraphQLNonNull(GraphQLString),
+        },
+    },
+    type: new GraphQLNonNull(GraphQLBoolean),
+    resolve: async (parent, args, context: IContext) => {
+        isAuthenticated(context)
+
+        const user = await User.query().findById(context.auth.userId)
+        if (!user) {
+            throw new AuthenticationError(`This should not have happened.`)
+        }
+        await user.$query().patch({ name: args.newName })
+        return true
+    },
+}
+
+const changePassword: GraphQLFieldConfig<any, any, any> = {
+    description: `Changes the password of the current user.`,
+    type: new GraphQLNonNull(GraphQLBoolean),
+    args: {
+        oldPassword: {
+            description: `Current password of the user`,
+            type: new GraphQLNonNull(GraphQLString),
+        },
+        newPassword: {
+            description: `New password of the user.`,
+            type: new GraphQLNonNull(GraphQLString),
+        },
+    },
+    resolve: async (parent, args, context: IContext) => {
+        return checkAndChangePassword(context, args)
+    },
+}
+
 export default {
     signup,
     login,
     logout,
+    uploadProfilePicture,
+    clearProfilePicture,
+    changeName,
+    changePassword,
 }

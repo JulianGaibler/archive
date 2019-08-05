@@ -15,18 +15,18 @@ import User from '../models/User'
 // Interfaces
 
 export interface IContext {
-    req: Request
-    res: Response
-    fileStorage: FileStorage
-    auth: IAuthData | null
-    pubSub: PostgresPubSub
+    req: Request,
+    res: Response,
+    fileStorage: FileStorage,
+    auth: IAuthData | null,
+    pubSub: PostgresPubSub,
     dataLoaders: {
-        user: ReturnType<typeof User.getLoaders>
-        post: ReturnType<typeof Post.getLoaders>
-        keyword: ReturnType<typeof Keyword.getLoaders>
-        session: ReturnType<typeof Session.getLoaders>
-        task: ReturnType<typeof Task.getLoaders>
-    }
+        user: ReturnType<typeof User.getLoaders>,
+        post: ReturnType<typeof Post.getLoaders>,
+        keyword: ReturnType<typeof Keyword.getLoaders>,
+        session: ReturnType<typeof Session.getLoaders>,
+        task: ReturnType<typeof Task.getLoaders>,
+    },
 }
 
 export interface IAuthData {
@@ -75,7 +75,7 @@ export async function checkAndSignup(context: IContext, args): Promise<number> {
 export async function checkAndLogin(
     context: IContext,
     username: string,
-    password: string
+    password: string,
 ): Promise<number> {
     if (context.auth) {
         throw new RequestError(`You are already logged in.`)
@@ -113,6 +113,25 @@ async function performLogin(context: IContext, userId: number) {
         secure: process.env.NODE_ENV === 'production',
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     })
+}
+
+export async function checkAndChangePassword(context: IContext, args): Promise<boolean> {
+    isAuthenticated(context)
+
+    const user = await User.query().findById(context.auth.userId)
+    if (!user) {
+        throw new AuthenticationError(`This should not have happened.`)
+    }
+    const valid = await bcrypt.compare(args.oldPassword, user.password)
+    if (!valid) {
+        throw new AuthenticationError('Invalid password')
+    }
+
+    const password = await bcrypt.hash(args.newPassword, 10)
+
+    await user.$query().patch({ password })
+
+    return true
 }
 
 // Session Management

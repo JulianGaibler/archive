@@ -17,6 +17,7 @@ export default class User extends UniqueModel {
 
     readonly id!: number
     username!: string
+    profilePicture: string
     name!: string
     password!: string
     posts!: Post[]
