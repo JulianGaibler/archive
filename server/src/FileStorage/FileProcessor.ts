@@ -6,7 +6,23 @@ import stream from 'stream'
 import tmp from 'tmp'
 import util from 'util'
 import { FileType } from '../FileStorage'
-import { round, to } from '../utils'
+import { asyncForEach, round, to } from '../utils'
+import ReadStream = NodeJS.ReadStream
+
+const pipeline = util.promisify(stream.pipeline)
+
+const profilePictureOptions = [
+    {
+        size: 32,
+        options: { jpeg: { quality: 91, progressive: true },  webp: { quality: 80 } },
+    }, {
+        size: 80,
+        options: { jpeg: { quality: 91, progressive: true }, webp: { quality: 80 } },
+    }, {
+        size: 256,
+        options: {jpeg: { quality: 91, progressive: true }, webp: { quality: 80, nearLossless: true } },
+    },
+]
 
 export default class FileProcessor {
     updateCallback
@@ -25,6 +41,8 @@ export default class FileProcessor {
         if (error) {
             throw error
         }
+
+        const newRead = jet.createReadStream(originalPath)
         const wsJpeg = jet.createWriteStream(filePaths.jpeg)
         const wsWebp = jet.createWriteStream(filePaths.webp)
 
@@ -35,21 +53,25 @@ export default class FileProcessor {
                 withoutEnlargement: true,
             })
 
-        transform
-            .clone()
-            .toFormat('jpeg', { quality: 91, progressive: true })
-            .pipe(wsJpeg)
-        transform
-            .clone()
-            .toFormat('webp', { quality: 80, nearLossless: true })
-            .pipe(wsWebp)
+        const [err1] = await to(pipeline(
+            newRead,
+            transform
+                .clone()
+                .toFormat('jpeg', { quality: 91, progressive: true }),
+            wsJpeg,
+        ))
+        if (err1) { throw err1 }
 
-        const pipeline = util.promisify(stream.pipeline)
-        const [err] = await to(pipeline(jet.createReadStream(originalPath), transform))
 
-        if (err) {
-            throw err
-        }
+        const [err2] = await to(pipeline(
+            newRead,
+            transform
+                .clone()
+                .toFormat('webp', { quality: 80, nearLossless: true }),
+            wsWebp,
+        ))
+        if (err2) { throw err2 }
+
 
         const { height, width } = await sharp(originalPath).metadata()
 
@@ -291,22 +313,55 @@ export default class FileProcessor {
                 fit: sharp.fit.inside,
             })
 
-        transform
-            .clone()
-            .toFormat('jpeg', { quality: 50, progressive: true })
-            .pipe(wsJpeg)
-        transform
-            .clone()
-            .toFormat('webp', { quality: 50 })
-            .pipe(wsWebp)
-
-        const pipeline = util.promisify(stream.pipeline)
-        const [err] = await to(pipeline(readStream, transform))
-
-        if (err) {
-            throw err
-        }
+        const [err1] = await to(pipeline(
+            readStream,
+            transform
+                .clone()
+                .toFormat('jpeg', { quality: 50, progressive: true }),
+            wsJpeg,
+        ))
+        if (err1) { throw err1 }
+        const [err2] = await to(pipeline(
+            readStream,
+            transform
+                .clone()
+                .toFormat('webp', { quality: 50 }),
+            wsWebp,
+        ))
+        if (err2) { throw err2 }
 
         return filePaths
     }
+
+    static async createProfilePicture(readStream: ReadStream, path: string[], filename: string) {
+        const tf0 = sharp().removeAlpha()
+
+        await asyncForEach(profilePictureOptions, async sizeObj => {
+            const tf1 = tf0.clone()
+                .resize(sizeObj.size, sizeObj.size, {
+                    fit: sharp.fit.cover,
+                })
+            await asyncForEach(Object.keys(sizeObj.options), async format => {
+                const [err] = await to(pipeline(
+                    readStream,
+                    tf1.clone().toFormat(format, sizeObj.options[format]),
+                    jet.createWriteStream(jet.path(...path, `${filename}-${sizeObj.size}.${format}`)),
+                ))
+                if (err) { throw err }
+            })
+        })
+
+
+    }
+
+    static async deleteProfilePicture(path: string[], filename: string) {
+        const removePromises = []
+        profilePictureOptions.forEach(sizeObj => {
+            Object.keys(sizeObj.options).forEach(format => {
+                removePromises.push(jet.removeAsync(jet.path(...path, `${filename}-${sizeObj.size}.${format}`)))
+            })
+        })
+        await Promise.all(removePromises)
+    }
+
 }

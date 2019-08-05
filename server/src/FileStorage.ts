@@ -2,14 +2,17 @@ import fileType from 'file-type'
 import jet from 'fs-jetpack'
 import { PostgresPubSub } from 'graphql-postgres-subscriptions'
 import { raw } from 'objection'
+import sodium from 'sodium'
 import tmp from 'tmp'
+import User from './models/User'
 
-import { Mutex, MutexInterface } from 'async-mutex'
+import { Mutex } from 'async-mutex'
 import FileProcessor from './FileStorage/FileProcessor'
-import Keyword from './models/Keyword'
 import Post from './models/Post'
 import Task from './models/Task'
-import {decodeHashId, encodeHashId, FileStorageError, to} from './utils'
+import {AuthenticationError, decodeHashId, encodeHashId, FileStorageError, to} from './utils'
+import { ModelId } from './utils/ModelEnum'
+import ReadStream = NodeJS.ReadStream
 
 // Enums
 
@@ -42,6 +45,7 @@ const options = {
     compressed: 'compressed',
     thumbnail: 'thumbnail',
     original: 'original',
+    profilePictures: 'upic',
 }
 
 /**
@@ -62,7 +66,7 @@ export default class FileStorage {
     /**
      * Quick validity check of given file and data
      */
-    async checkFile(data, readStream): Promise<IStoreData> {
+    async checkFile(data, readStream: ReadStream): Promise<IStoreData> {
         // validation
         Post.fromJson(data)
 
@@ -107,7 +111,45 @@ export default class FileStorage {
     }
 
     /**
-     * Checks if there queue has items and if there are other aktive tasks
+     * Creates a Profile picture with name
+     * [userHashID]-[randomHash]-[s/m/l].[jpg/webp] where the file-extension is omitted
+     */
+    async setProfilePicture(iUserId, readStream: ReadStream): Promise<string> {
+        const user = await User.query().findById(iUserId)
+        if (!user) { throw new AuthenticationError(`This should not have happened.`) }
+
+        const userHashID = encodeHashId(User, user.id)
+
+        const buffer = Buffer.allocUnsafe(16)
+        sodium.api.randombytes_buf(buffer, 16)
+        const randomHash = buffer.toString('base64')
+
+        const filename = `${userHashID}-${randomHash}`
+
+        const [err] = await to(FileProcessor.createProfilePicture(readStream, [options.dist, options.profilePictures], filename))
+        if (err) {
+            throw err
+        }
+
+        if (user.profilePicture !== null) {
+            await FileProcessor.deleteProfilePicture([options.dist, options.profilePictures], user.profilePicture)
+        }
+
+        await user.$query().patch({ profilePicture: filename })
+        return filename
+    }
+
+    async deleteProfilePicture(iUserId): Promise<boolean> {
+        const user = await User.query().findById(iUserId)
+        if (!user) { throw new AuthenticationError(`This should not have happened.`) }
+        if (user.profilePicture === null) { return true }
+        await user.$query().patch({ profilePicture: null })
+        await FileProcessor.deleteProfilePicture([options.dist, options.profilePictures], user.profilePicture)
+        return true
+    }
+
+    /**
+     * Checks if there queue has items and if there are other active tasks
      */
     private async checkQueue() {
         if (this.queue.length < 1) {
