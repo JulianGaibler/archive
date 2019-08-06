@@ -24,17 +24,32 @@ export default new Router({
             // route level code-splitting
             // this generates a separate chunk (about.[hash].js) for this route
             // which is lazy-loaded when the route is visited.
-            component: () => import(/* webpackChunkName: "about" */ './views/Upload.vue'),
+            component: () => import(/* webpackChunkName: "upload" */ './views/Upload.vue'),
+        },
+        {
+            path: '/users',
+            name: 'Users',
+            component: () => import(/* webpackChunkName: "users" */ './views/Users.vue'),
         },
         {
             path: '/queue',
             name: 'Queue',
-            component: () => import(/* webpackChunkName: "about" */ './views/Queue.vue'),
+            component: () => import(/* webpackChunkName: "queue" */ './views/Queue.vue'),
+        },
         {
             path: '/settings',
             name: 'Settings',
             component: () => import(/* webpackChunkName: "settings" */ './views/Settings.vue'),
         },
+        {
+            path: '/u/:username',
+            name: 'User',
+            component: () => import(/* webpackChunkName: "user" */ './views/User.vue'),
+        },
+        {
+            path: '/:id',
+            name: 'Post',
+            component: () => import(/* webpackChunkName: "post" */ './views/Post.vue'),
         },
     ],
 })

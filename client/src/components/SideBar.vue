@@ -22,7 +22,7 @@
                     <a><IconCollection/>Collections</a>
                 </li>
                 <li>
-                    <a><IconUser/>Users</a>
+                    <router-link :to="{ name: 'Users'}"><IconUser />Users</router-link>
                 </li>
             </ul>
             <ul>
