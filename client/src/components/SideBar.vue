@@ -1,7 +1,12 @@
 <template>
     <div class="sidebar">
         <div class="sidebar-header">
-            <div class="sidebar-button"></div>
+            <div class="sidebar-pic">
+                <picture v-if="me && me.profilePicture && resources">
+                    <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}upic/${me.profilePicture}-80.webp`">
+                    <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${me.profilePicture}-80.jpg`">
+                </picture>
+            </div>
             <div class="nameCombo">
                 <div class="name">{{me ? me.name : ''}}</div>
                 <div class="username">{{me ? me.username : ''}}</div>
@@ -62,6 +67,14 @@ const USER_QUERY = gql`{
     me {
         name
         username
+        profilePicture
+    }
+}`
+const RESOURCES_QUERY = gql`{
+
+    resources {
+        resourceDomain
+        resourcePath
     }
 }`
 
@@ -86,6 +99,7 @@ export default {
     apollo: {
         // Simple query that will update the 'hello' vue property
         me: USER_QUERY,
+        resources: RESOURCES_QUERY,
     },
 }
 </script>

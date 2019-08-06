@@ -4,8 +4,8 @@
             <div class="preview">
                 <video v-if="fileType==='video'" autoplay muted loop v-bind:src="imagePreview"/>
                 <img v-else-if="fileType==='image'" v-bind:src="imagePreview"/>
-                <div class="indicatorWrapper" v-if="uploadManager.locked">
-                    <div class="indicator">
+                <div class="indicatorWrapper indicatorWrapper-absolute" v-if="uploadManager.locked">
+                    <div class="indicator indicator-shadow">
                         <IconQueue v-if="status.queued" />
                         <Lottie v-else-if="status.uploading" :options="animOptions" />
                         <IconDone v-else-if="status.done" />

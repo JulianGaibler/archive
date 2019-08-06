@@ -188,8 +188,7 @@ class UploadManager {
                             },
                         },
                     },
-                }).then((a) => {
-                    console.log('Upload Good: ', a)
+                }).then(() => {
                     this.updateItemUpload(index, 'status', 2)
                 }).catch((e) => {
                     this.updateItemUpload(index, 'status', 3)

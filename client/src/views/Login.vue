@@ -46,12 +46,11 @@ import InputField from '../components/InputField.vue'
 
 import gql from 'graphql-tag'
 
-const LOGIN_MUTATION = gql`{
-    me {
-        name
-        username
+const LOGIN_MUTATION = gql`
+    mutation login($username: String!, $password: String!) {
+        login(username: $username, password: $password)
     }
-}`
+`
 
 export default {
     name: 'Login',
