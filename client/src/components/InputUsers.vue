@@ -4,17 +4,17 @@
         <div class="autocomplete">
             <div v-for="id in value" :key="id" class="tag">
                 <ApolloQuery :query="gql => gql`
-                      query getKeywordName($id: ID!) {
+                      query getUsername($id: ID!) {
                         node (id: $id) {
-                          ... on Keyword {
-                            name
+                          ... on User {
+                            username
                           }
                         }
                       }
                     `"
                     :variables="{ id }" >
                         <template slot-scope="{ result: { data } }">
-                            <span v-if="data">{{data.node.name}}</span>
+                            <span v-if="data">{{data.node.username}}</span>
                         </template>
                     </ApolloQuery>
 
@@ -31,20 +31,11 @@
                 v-model="searchWord" />
             <ul v-if="showResults" class="results">
                 <li
-                    v-for="(edge, idx) in keywords.edges"
+                    v-for="(edge, idx) in users.edges"
                     :key="edge.node.id" @click="addItem(edge.node)"
                     :class="{ selected: idx===currentSelect }"
                     class="result"
-                >{{edge.node.name}}</li>
-                <li
-                    v-if="showResults"
-                    @click="createItem()"
-                    :class="{ selected: keywords.edges.length===currentSelect }"
-                    class="result create"
-                >Create Keyword "{{searchWord}}"</li>
-
-                <div v-if="createStatus.loading" class="info">Creating...</div>
-                <div v-if="createStatus.error" class="info error">{{createStatus.error}}</div>
+                >{{edge.node.username}}</li>
             </ul>
         </div>
     </div>
@@ -56,27 +47,19 @@ import gql from 'graphql-tag'
 
 import IconClose from '@/assets/icon_close.svg?inline'
 
-const KEYWORD_SEARCH = gql`query keywordSearch($input: String) {
-  keywords(byName: $input) {
+const USER_SEARCH = gql`query userSearch($input: String) {
+  users(byUsername: $input) {
     edges {
       node {
         id
-        name
+        username
       }
     }
   }
 }`
 
-const KEYWORD_CREATE = gql`mutation createKeyword($input: String!) {
-  createKeyword(name: $input) {
-    id
-    name
-  }
-}
-`
-
 export default {
-    name: 'InputKeywords',
+    name: 'InputUsers',
     props: {
         value: Array,
         label: String,
@@ -90,18 +73,13 @@ export default {
 
             showResults: false,
             currentSelect: -1,
-            keywords: [],
-
-            createStatus: {
-                loading: false,
-                error: null,
-            },
+            users: [],
         }
     },
     methods: {
         handleSearch: debounce(function() {
             this.$apollo.query({
-                query: KEYWORD_SEARCH,
+                query: USER_SEARCH,
                 variables: {
                     input: this.searchWord,
                 },
@@ -110,7 +88,7 @@ export default {
                     console.log('errors', e.message)
                 },
             }).then(result => {
-                this.keywords = result.data.keywords
+                this.users = result.data.users
                 this.showResults = true
             }).catch(() => {
                 //TODO
@@ -133,34 +111,15 @@ export default {
                 this.$emit('input', [...this.value])
             }
         },
-        createItem() {
-            if (this.createStatus.loading) return
-            this.createStatus.loading = true
-            this.$apollo.mutate({
-                mutation: KEYWORD_CREATE,
-                variables: {
-                    input: this.searchWord,
-                },
-            }).then(({ data }) => {
-                this.addItem(data.createKeyword)
-                this.createStatus.loading = false
-                this.createStatus.error = null
-            }).catch(error => {
-                this.createStatus.loading = false
-                this.createStatus.error = error
-            })
-        },
         handleInput() {
             this.showResults = false
-            this.createStatus.error = null
             this.currentSelect = -1
             this.handleSearch()
         },
         onArrowDown(e) {
             if (!this.showResults) return
             e.preventDefault()
-            console.log(this.currentSelect, this.keywords.edges.length)
-            if (this.currentSelect < this.keywords.edges.length) this.currentSelect++
+            if (this.currentSelect < this.users.edges.length) this.currentSelect++
         },
         onArrowUp(e) {
             if (!this.showResults) return
@@ -169,9 +128,9 @@ export default {
         },
         onEnter() {
             if (!this.showResults) return
-            if (this.currentSelect < this.keywords.edges.length && this.currentSelect >= 0)
-                this.addItem(this.keywords.edges[this.currentSelect].node)
-            else if (this.currentSelect === this.keywords.edges.length)
+            if (this.currentSelect < this.users.edges.length && this.currentSelect >= 0)
+                this.addItem(this.users.edges[this.currentSelect].node)
+            else if (this.currentSelect === this.users.edges.length)
                 this.createItem()
         },
     },

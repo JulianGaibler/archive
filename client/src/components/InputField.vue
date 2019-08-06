@@ -1,16 +1,17 @@
 <template>
-    <div class="inputField light" :class="{error: errors}">
+    <div class="inputField light" :class="{error: errors && errors.length > 0, disabled}">
         <label :class="{ visible: showLabel }">{{label}}</label>
         <textarea
             v-if="type==='textarea'"
             ref="textarea"
             class="dynamicInput"
             rows="1"
-            value="content"
+            :value="value"
             :placeholder="label"
+            :disabled="disabled"
             @input="updateInput_()"
         />
-        <input v-else v-model="content" :type="type" :placeholder="label" @input="handleInput" />
+        <input v-else :value="value" :autocomplete="autocomplete" :type="type" :disabled="disabled" :placeholder="label" @input="handleInput" />
 
         <ul v-if="errors" class="error">
             <li v-for="error in errors" :key="error.message">{{error.messageT ? $t(error.messageT) : error.message}}</li>
@@ -26,26 +27,26 @@ export default {
         value: String,
         label: String,
         type: String,
+        autocomplete: String,
+        disabled: {
+            type: Boolean,
+            default: false,
+        },
         errors: Array,
     },
-    data() {
-        return {
-            content: this.value,
-        }
-    },
     methods: {
-        handleInput() {
-            this.$emit('input', this.content)
+        handleInput(e) {
+            this.$emit('input', e.target.value)
         },
         updateInput_: function() {
-            this.$emit('input', this.content)
+            this.$emit('input', this.value)
             this.$refs.textarea.style.height = ''
             this.$refs.textarea.style.height = this.$refs.textarea.scrollHeight+'px'
         },
     },
     computed: {
         showLabel() {
-            return this.content && this.content.trim().length > 0
+            return this.value && this.value.trim().length > 0
         },
     },
 }

@@ -1,12 +1,12 @@
 <template>
     <div class="inputField light" :class="{error: errors}">
-        <label v-if="label" class="visible">{{label}}</label>
+        <label class="visible">{{label}}</label>
 
             <div class="option" v-for="option in options" :key="option.value">
-                <input :type="type || 'radio'" :id="rid+option.value" :value="option.value" v-model="content">
+                <input type="checkbox" :id="rid+option.value" :value="option.value" v-model="content" @input="updateInput_">
                 <label :for="rid+option.value">
-                    <div class="name">{{option.tName ? $t(option.tName) : option.name}}</div>
-                    <div v-if="option.tip" class="desc">{{option.tTip ? $t(option.tTip) : option.tip}}</div>
+                    <div class="name">{{option.name}}</div>
+                    <div v-if="option.tip" class="desc">{{option.tip}}</div>
                 </label>
             </div>
 
@@ -19,11 +19,10 @@
 <script>
 
 export default {
-    name: 'InputRadio',
+    name: 'InputCheckbox',
     props: {
         options: Array,
-        type: String,
-        value: [String, Array],
+        value: Array,
         label: String,
         errors: Array,
     },
@@ -33,12 +32,10 @@ export default {
             rid: this.randomId_(),
         }
     },
-    watch: {
-        content(val) {
-            this.$emit('input', val)
-        },
-    },
     methods: {
+        updateInput_(event) {
+            this.$emit('input', event.srcElement.value)
+        },
         // We need this to have unique label IDs
         randomId_: function() {
             return btoa(Math.random()).slice(0,5)
