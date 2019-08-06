@@ -1,6 +1,10 @@
 <template>
     <div id="app">
-        <main><router-view /></main>
+        <main>
+            <keep-alive :max="10"
+                <router-view />
+            </keep-alive>
+        </main>
         <SideBar v-if="this.$router.currentRoute !== 'Login'" />
     </div>
 </template>

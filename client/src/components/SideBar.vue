@@ -30,7 +30,7 @@
             </ul>
             <ul>
                 <li>
-                    <a><IconSettings/>Settings</a>
+                    <router-link :to="{ name: 'Settings'}"><IconSettings />Settings</router-link>
                 </li>
                 <li>
                     <a><IconLogout/>Logout</a>

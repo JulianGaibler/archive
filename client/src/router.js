@@ -30,6 +30,11 @@ export default new Router({
             path: '/queue',
             name: 'Queue',
             component: () => import(/* webpackChunkName: "about" */ './views/Queue.vue'),
+        {
+            path: '/settings',
+            name: 'Settings',
+            component: () => import(/* webpackChunkName: "settings" */ './views/Settings.vue'),
+        },
         },
     ],
 })
