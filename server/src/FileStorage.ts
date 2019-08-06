@@ -122,7 +122,7 @@ export default class FileStorage {
 
         const buffer = Buffer.allocUnsafe(16)
         sodium.api.randombytes_buf(buffer, 16)
-        const randomHash = buffer.toString('base64')
+        const randomHash = buffer.toString('hex')
 
         const filename = `${userHashID}-${randomHash}`
 
@@ -143,8 +143,8 @@ export default class FileStorage {
         const user = await User.query().findById(iUserId)
         if (!user) { throw new AuthenticationError(`This should not have happened.`) }
         if (user.profilePicture === null) { return true }
-        await user.$query().patch({ profilePicture: null })
         await FileProcessor.deleteProfilePicture([options.dist, options.profilePictures], user.profilePicture)
+        await user.$query().patch({ profilePicture: null })
         return true
     }
 
