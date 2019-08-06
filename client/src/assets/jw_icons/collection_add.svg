@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <title>collection_add</title>
+  <path d="M24,24H0V0H24Z" style="fill: none"/>
+  <g>
+    <path d="M12,13a1,1,0,0,1,1-1h2a3,3,0,1,0-3,3Z"/>
+    <path d="M12,19V17a5,5,0,1,1,5-5h2a7,7,0,1,0-7,7Z"/>
+    <path d="M14,20h5a1,1,0,0,0,1-1V14a1,1,0,0,0-1-1H14a1,1,0,0,0-1,1v5A1,1,0,0,0,14,20Zm1-4h1V15a.5.5,0,0,1,1,0v1h1a.5.5,0,0,1,0,1H17v1a.5.5,0,0,1-1,0V17H15a.5.5,0,0,1,0-1Z"/>
+  </g>
+</svg>
