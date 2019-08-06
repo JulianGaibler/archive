@@ -30,6 +30,12 @@ h1
 h2
     font-size 1.6rem
     font-weight 500
+h3
+    font-size 1.25rem
+    font-weight 500
+
+picture > img
+    width 100%
 
 #app
     height 100%
@@ -37,9 +43,36 @@ h2
     main
         flex 1
 
+input.hiddenInput
+    width 0.1px
+    height 0.1px
+    opacity 0
+    overflow hidden
+    position absolute
+    z-index -1
+
+.itemRow
+    display flex
+    flex-direction row
+    align-items center
+    &.itemRow-center
+        justify-content center
+    &.itemRow-align-start
+        align-items flex-start
+    &.itemRow-column
+        flex-direction column
+    .itemRow-grow
+        flex 1
+
+picture.profilePic
+    display inline-block
+    border-radius $archive-radius-profile
+    overflow hidden
+    line-height 0
+
 .errorBox
-    background $archive-prim2-light
-    color $archive-prim1
+    background $archive-grey1
+    color $archive-primary
     padding 1rem
     border-radius $archive-radius2
     margin-bottom 1rem
@@ -54,10 +87,12 @@ h2
         border none
         border-top 1px solid rgba(0, 0, 0, 0.03)
         margin 0
-    .sidebar-button
-        background url('data:image/png;base64,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')
-        border-radius 40%
-        fill: #ffffff
+    .sidebar-pic
+        border-radius $archive-radius-profile
+        overflow hidden
+        background $archive-grey2
+        picture
+            width 100%
         line-height 0
         margin-right 0.75rem
         width 2.75rem
@@ -80,14 +115,14 @@ h2
                 svg
                     margin 0.625rem
                 &.router-link-active
-                    background rgba($archive-prim, .1)
-                    color $archive-prim
-                    fill $archive-prim
+                    background rgba($archive-primary, .1)
+                    color $archive-primary
+                    fill $archive-primary
                     border-radius $archive-radius3
     .notification
         .notification-box
             margin-top 1rem
-            background $archive-grey
+            background $archive-grey1
             transition all .5s
             border-radius $archive-radius3
             display flex
@@ -127,8 +162,11 @@ h2
     display flex
     > .actionBar-grower
         flex 1
-    :not(:last-child)
+    > :not(:last-child)
         margin-right 0.75rem
+    .actionBar-spacer
+        display inline-block
+        flex 1
 
 .actionBar-component
     background #F6F6F6
@@ -137,8 +175,33 @@ h2
     border-radius $archive-radius2
     &.actionBar-component-search
         flex 1
+        height 2.75rem
         padding 0 0.625rem
         display flex
+        > :not(:last-child)
+            margin-right 0.625rem
+        .button-filter
+            opacity .5
+        .filterChip
+            remove-native()
+            background $archive-green
+            color $archive-white
+            border-radius $archive-radius3
+            font-weight 500
+            padding .5rem .6rem
+            &.active
+                background $archive-green-selected
+        .filterList
+            > li
+                remove-native()
+                align-items center
+                span
+                    padding .75rem 0
+                    display inline-block
+                svg
+                    width 1rem
+                &.selected
+                    opacity .5
         > input
             flex 1
     &.actionBar-component-text
@@ -147,13 +210,16 @@ h2
         line-height 0
 
 .button
+    remove-native()
     background #F6F6F6
-    font-weight 600
+    font-weight 500
     padding 0 1.5rem
     height 2.75rem
+    flex-shrink 0
     border-radius $archive-radius2
     &.button-primary
         background $archive-inv
+        font-weight 600
         color white
         fill white
     &.button-icon
@@ -162,9 +228,30 @@ h2
         align-items center
         padding 0
         width 2.75rem
-
+    &.button-withIcon
+        padding-left 0.625rem
+        svg
+            margin-right 0.4rem
+    &.button-chip
+        text-transform uppercase
+        background $archive-inv
+        height initial
+        color $archive-std
+        font-weight 600
+        font-size 0.75rem
+        padding 0.25rem 0.75rem
+        border-radius 1rem
 
 .nameCombo
+    picture
+        display inline-block
+        transform translateY(.2em)
+        border-radius $archive-radius-profile
+        overflow hidden
+        height 1.2em
+        width 1.2em
+        margin-right .3em
+        margin-left .2em
     .name, .username
         display inline-block
     .name
@@ -186,6 +273,16 @@ h2
             font-weight 400
             font-size .9em
             color: transparentify($archive-inv, 0.75)
+    &.nameCombo-inline
+        .name
+            font-weight 400
+            font-size 1em
+            color: $archive-inv
+            margin-right .25em
+        .username
+            font-weight 400
+            font-size 1em
+            color: transparentify($archive-inv, 0.75)
 
 .framed
     padding-top 2.75rem
@@ -196,15 +293,42 @@ h2
     > header
         margin-top 1rem
         margin-bottom 2.25rem
-
-    //> nav
-
-
-    > .content
+    .content
         margin-top 3rem
+        &.content-dense
+            margin-top 1rem
+        &.content-box
+            background $archive-grey1
+            border-radius $archive-radius1
+            padding 2.5rem
 
+
+.hoverParent
+    position relative
+.hoverBox
+    position absolute
+    z-index 1000
+    top 3rem
+    left 0
+    min-width 15rem
+    max-width 20rem
+    background $archive-std
+    color $archive-inv
+    font-weight 400
+    box-shadow $archive-hoverShadow
+    border-radius $archive-radius2
+    padding 1rem
+    > :not(:last-child)
+        margin-bottom .5rem
+    h2
+        font-size 1.375rem
+        font-weight 500
 
 // Old stuff, try to remove it
+
+.inputs
+    .dist
+        margin-top 1rem
 
 .inputField
     border-left 2px solid lightgrey
@@ -213,6 +337,8 @@ h2
     padding-left .5rem
     &:not(:last-child)
         margin-bottom .5rem
+    &.disabled
+        opacity .5
     input, textarea, select, .tag, .option > label
         background unset
         border none
@@ -227,13 +353,17 @@ h2
             margin-top 0.25rem
         input
             appearance none
+            flex-shrink 0
             box-sizing border-box
             height 1rem
             width 1rem
             border 0.125rem solid
-            border-radius 50%
             position relative
             margin 0.5rem 0.5rem 0.5rem 0.1rem
+            &[type="radio"]
+                border-radius 50%
+                &::before
+                    border-radius 50%
             &::after
                 content ''
                 display block
@@ -241,7 +371,6 @@ h2
                 left -.5rem
                 right -.5rem
                 bottom -.5rem
-                border-radius 50%
                 opacity 0
                 transition opacity .1s
                 position absolute
@@ -252,7 +381,6 @@ h2
                 content ''
                 display block
                 background $archive-inv
-                border-radius 50%
                 width 100%
                 height 100%
                 transition transform 0.25s
@@ -281,7 +409,7 @@ h2
     textarea
         resize none
     > label
-        color $archive-darkgrey
+        color $archive-grey3
         text-transform uppercase
         font-weight 500
         margin .4em .4em 0 0
@@ -294,10 +422,10 @@ h2
             max-height 1rem
             opacity 1
     &.error
-        border-color $archive-prim1
+        border-color $archive-primary
     .error
         font-weight 500
-        color $archive-prim1
+        color $archive-primary
         text-transform uppercase
         font-size .8em
         padding-left 1rem
@@ -321,7 +449,7 @@ h2
         .icon
             height 1rem
             svg
-                stroke $archive-black
+                stroke $archive-inv
                 height 100%
                 display block
                 width auto
@@ -330,39 +458,75 @@ h2
         position absolute
         display block
         background $archive-std
-        border-top none
         z-index 99
-        box-shadow 0px 0px 50px rgba(0, 0, 0, 0.15)
+        box-shadow $archive-hoverShadow
         top calc(100% + 2px)
         left 0
         min-width 15rem
-        border-radius .75rem
+        border-radius $archive-radius2
         padding .4rem
         hr
-            border-color $archive-grey
+            border-color $archive-grey1
             margin .2rem 0
         .result
             remove-native()
             padding .6rem .6rem
             line-height 1.1rem
+            border-radius .5rem
             &:not(:last-child)
                 margin-bottom 0.3rem
-            &:first-child
-                border-top-left-radius .5rem
-                border-top-right-radius .5rem
-            &:last-child
-                border-bottom-left-radius .5rem
-                border-bottom-right-radius .5rem
             &.create
-                background $archive-prim2-light
+                background $archive-grey1
             &:hover, &.selected
-                background $archive-prim2-dark
+                background $archive-grey2
         .info
             padding 0 0.6rem 0.3rem 0.6rem
             font-size .8rem
             &.error
-                color $archive-prim
+                color $archive-primary
 
+.indicatorWrapper
+    display flex
+    justify-content center
+    &.indicatorWrapper-absolute
+        position absolute
+        left 0
+        right 0
+        top 0
+        bottom 0
+    &.indicatorWrapper-center
+            align-items center
+
+.indicator
+    padding 0.5rem
+    background $archive-std
+    fill $archive-inv
+    line-height 0
+    border-radius $archive-radius2
+    > *
+        width 1.5rem
+    &.indicator-shadow
+        box-shadow 0 0 2rem rgba($archive-inv, 0.2)
+
+.dropzone
+    position absolute
+    visibility hidden
+    left 0
+    right 0
+    top 0
+    bottom 0
+    z-index 999
+    background rgba($archive-std, .25)
+    padding 1rem
+    &::before
+        content ''
+        box-sizing border-box
+        height 100%
+        width 100%
+        display block
+        border .25rem dashed rgba($archive-inv, .25)
+    &.showDropzone
+        visibility initial
 
 .upload
     display flex
@@ -370,25 +534,6 @@ h2
     min-height 100%
     flex-direction column
     position relative
-    .dropzone
-        position absolute
-        visibility hidden
-        left 0
-        right 0
-        top 0
-        bottom 0
-        z-index 999
-        background rgba($archive-std, .25)
-        padding 1rem
-        &::before
-            content ''
-            box-sizing border-box
-            height 100%
-            width 100%
-            display block
-            border .25rem dashed rgba($archive-inv, .25)
-        &.showDropzone
-            visibility initial
     > .itemList
         input.uploadclick
             width 0.1px
@@ -411,37 +556,25 @@ h2
                 img, video
                     width 100%
                     object-fit cover
-                .indicatorWrapper
-                    display flex
-                    justify-content center
-                    align-items center
-                    position absolute
-                    left 0
-                    right 0
-                    top 0
-                    bottom 0
-                    .indicator
-                        box-shadow 0 0 2rem rgba($archive-inv, 0.2)
                 @media screen and (max-width: $archive-screen-mid)
                     .preview
                         margin 0 auto 2rem auto
             &.uploadclick
                 .preview
-                    box-shadow none
                     line-height 1rem
                     display block
                     padding 4.25rem 1.5rem 5rem 1.5rem
                     text-align center
-                    background $archive-grey
-                    color $archive-prim
+                    background $archive-grey1
+                    color $archive-primary
                     font-weight 500
                     box-sizing border-box
                     svg
                         height 2rem
                         width auto
-                        fill $archive-prim
+                        fill $archive-primary
             &.itemList-progress .item
-                background $archive-grey
+                background $archive-grey1
                 margin-bottom 1rem
                 .preview
                     width 6.5rem
@@ -450,6 +583,68 @@ h2
                         height 100%
                         width auto
                         object-fit cover
+.users
+    .itemList .item
+        > picture
+            border-radius $archive-radius-profile
+            overflow hidden
+            width 10rem
+            height 10rem
+            margin-right 2rem
+        > .info > .top
+            font-size 1.2rem
+
+.user
+    picture
+        width 8rem
+        height 8rem
+
+.settings
+    > section > .itemRow > :not(:last-child)
+        margin-right 2rem
+    > .content
+        > h2, > h3
+            margin-top 2rem
+            margin-bottom 1rem
+    .sessionManager
+        position relative
+        > .indicatorWrapper
+            background rgba($archive-std, 0.5)
+        .item .info
+            h4
+                font-weight 500
+                margin-bottom .25rem
+            p
+                margin-bottom .75rem
+            h4, p
+                font-size 1rem
+    .profileInput
+        .dropzone::before
+            border-radius $archive-radius-profile
+        input
+            width 0.1px
+            height 0.1px
+            opacity 0
+            overflow hidden
+            position absolute
+            z-index -1
+        .profilePic
+            width 10rem
+            height 10rem
+            margin 0 auto
+            background $archive-grey2
+            overflow hidden
+            border-radius $archive-radius-profile
+            position relative
+            margin-bottom 1rem
+            picture
+                line-height 0
+        label
+            display button
+        .itemRow
+            > :not(:last-child)
+                margin-right .5rem
+
 
 code
     background $archive-std
@@ -458,15 +653,12 @@ code
     border-radius $archive-radius3
     font-family monospace
 
-.queue
-    .itemList
-        > .item
-            .indicatorWrapper
-                display flex
-                align-items center
-                padding 1rem
-            .nameCombo
-                font-size .9rem
+.itemList
+    > .item
+        .indicatorWrapper
+            display flex
+            align-items flex-start
+            padding 1rem
 
 .post
     .media
@@ -476,6 +668,28 @@ code
         line-height 0
         img, video
             width 100%
+    h2
+        margin-bottom .25rem
+    .keywords
+        remove-native()
+        display flex
+        margin-top 1rem
+        flex-wrap wrap
+        .keyword
+            text-transform uppercase
+            background $archive-std
+            height initial
+            color $archive-inv
+            font-weight 600
+            font-size 0.75rem
+            padding 0.5rem 0.75rem
+            border-radius 1rem
+            margin-bottom .5rem
+            &:not(:last-child)
+                margin-right .5rem
+
+    .caption
+        margin-top 2rem
 
 .itemList
     flex-grow 1
@@ -487,7 +701,7 @@ code
             flex 1
             > .error
                 font-weight 500
-                color $archive-prim
+                color $archive-primary
                 text-transform uppercase
         .info
             display flex
@@ -496,8 +710,6 @@ code
             margin-right 1rem
             padding 1rem 0
             h3
-                font-size 1.25rem
-                font-weight 500
                 margin-bottom .25rem
             p
                 font-size 0.9rem
@@ -506,16 +718,17 @@ code
                 margin-top 1rem
         .interaction
             display flex
+            justify-content flex-end
             flex-direction column
         @media screen and (max-width: $archive-screen-mid)
             flex-direction column
     &.itemList-progress .item
-        background $archive-grey
+        background $archive-grey1
         margin-bottom 1rem
         .interaction
             align-items flex-end
             padding 1rem
-            :not(:last-child)
+            > :not(:last-child)
                 margin-bottom .5rem
             .label
                 text-transform uppercase
@@ -526,7 +739,7 @@ code
                 padding .25rem .5rem
                 border-radius $archive-radius2
             .button
-                background $archive-prim1
+                background $archive-primary
                 justify-self flex-end
                 color white
                 font-size 0.8rem
@@ -543,36 +756,34 @@ code
         &:not(:last-child)
             margin-right 1rem
         > .item
+            display block
             overflow hidden
             text-align center
             border-radius $archive-radius2
-            background $archive-grey
+            background $archive-grey1
             &:not(:last-child)
                 margin-bottom 1rem
 
 .previewItem
     line-height 0
+    position relative
+    video, img
+        position absolute
+        left 0
+        top 0
     video
         width 100%
     img
         width 100%
 
-.indicator
-    padding 0.5rem
-    background $archive-std
-    fill $archive-inv
-    line-height 0
-    border-radius $archive-radius2
-    > *
-        width 1.5rem
 
 .progress
     height 0.25rem
-    background rgba($archive-prim1, 0.2)
+    background rgba($archive-primary, 0.2)
     border-radius $archive-radius3
     overflow hidden
     .progress-bar
-        background $archive-prim1
+        background $archive-primary
         transition .25s width cubic-bezier(0.45, 0.05, 0.55, 0.95)
         height 100%
 
@@ -585,8 +796,8 @@ code
     top 0
     bottom 0
     .card
-        color $archive-white
-        background $archive-black
+        color $archive-std
+        background $archive-inv
         flex 1
         padding $archive-margin
         card-radius true true

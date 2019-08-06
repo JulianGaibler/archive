@@ -5,9 +5,16 @@
         "post": "Post",
         "collections": "Collections",
         "users": "Users",
+        "user": "User",
         "queue": "Queue",
         "sessions": "Sessions",
         "settings": "Settings"
+    },
+    "settings": {
+        "profile": "Profile",
+        "security": "Security",
+        "security_changePassword": "Change Password",
+        "security_sessions": "Sessions"
     },
     "action": {
         "next": "Next",
@@ -17,10 +24,13 @@
         "search": "Search",
         "more": "more",
         "done": "Done",
+        "delete": "Delete",
         "import": "import",
         "export": "export",
         "show_post": "Show Post",
         "tryagain": "try again",
+        "changePassword": "Change Password",
+        "changeName": "Change Name",
         "send": "Send",
         "upload": {
             "upload_files": "Upload Files",
@@ -30,6 +40,11 @@
             "select_more_files": "Select even more"
         }
     },
+    "mediaType": {
+        "image": "Image",
+        "video": "Video",
+        "gif": "GIF"
+    },
     "state": {
         "loading": "Loading",
         "added": "Added",
@@ -38,6 +53,7 @@
         "queued": "queued",
         "processing": "processing",
         "uploading": "uploading",
+        "noCaption": "No caption",
         "done": "done",
         "failed": "failed",
         "upload": {
@@ -47,6 +63,12 @@
     },
     "input": {
         "keyword": "Enter keyword",
+        "settings": {
+            "name": "name",
+            "oldPassword": "old password",
+            "newPassword": "new password",
+            "newPassword_repeat": "repeat new password"
+        },
         "upload": {
             "title": "Title",
             "caption": "Caption",
@@ -67,6 +89,7 @@
     },
     "error": {
         "required_field": "This is a required field",
+        "haveToMatch": "Password doesn't match.",
         "file_size_limit": "You can only upload 10 files at once, with a maximum file size of 100 MB.",
         "at_least_one_file": "You have to select at least one file."
     },
@@ -79,5 +102,19 @@
         "russian": "Russian",
         "spanish": "Spanish",
         "turkish": "Turkish"
+    },
+    "filters": {
+        "type": "Type",
+        "type_filterBy": "Filter by Type",
+        "type_description": "Limits the search to any of these types. (or)",
+        "language": "Language",
+        "language_filterBy": "Filter by Language",
+        "language_description": "Limits the search to this language. Specifying a language will improve the text search.",
+        "keywords": "Keywords",
+        "keywords_filterBy": "Filter by Keywords",
+        "keywords_description": "Limits the search to results that have all of these keywords. (and)",
+        "users": "Users",
+        "users_filterBy": "Filter by Users",
+        "users_description": "Limits the search to results that are by one of these users. (or)"
     }
 }

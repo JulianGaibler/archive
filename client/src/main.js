@@ -1,11 +1,14 @@
 import Vue from 'vue'
+import vClickOutside from 'v-click-outside'
 import App from './App.vue'
 import { createProvider } from './vue-apollo'
 
 import './assets/styles/main.styl'
+
 import router from './router'
 import i18n from './i18n'
 
+Vue.use(vClickOutside)
 Vue.config.productionTip = false
 
 new Vue({

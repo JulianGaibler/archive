@@ -1,6 +1,9 @@
 <template>
-    <div class="previewItem" v-if="resources">
-        <img v-if="item.type === 'IMAGE'" :src="`//${resources.resourceDomain}/${resources.resourcePath}thumbnail/${item.id}.webp`">
+    <div class="previewItem" :style="{'padding-bottom': `${item.relHeight}%`}" v-if="resources">
+        <picture v-if="item.type === 'IMAGE'">
+            <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}thumbnail/${item.id}.webp`">
+            <img :src="`//${resources.resourceDomain}/${resources.resourcePath}thumbnail/${item.id}.jpg`">
+        </picture>
         <video muted autoplay loop v-else>
             <source :src="`//${resources.resourceDomain}/${resources.resourcePath}${item.thumbnailPath}.webm`" type="video/webm">
             <source :src="`//${resources.resourceDomain}/${resources.resourcePath}${item.thumbnailPath}.mp4`" type="video/mp4">
