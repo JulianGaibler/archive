@@ -1,4 +1,4 @@
-import { GraphQLFieldConfig, GraphQLString } from 'graphql'
+import { GraphQLFieldConfig, GraphQLNonNull, GraphQLString } from 'graphql'
 import {
     connectionFromArraySlice,
     cursorToOffset,
@@ -14,6 +14,21 @@ const me: GraphQLFieldConfig<any, any, any> = {
     resolve: async (parent, args, context: IContext) => {
         isAuthenticated(context)
         return context.dataLoaders.user.getById.load(context.auth.userId)
+    },
+}
+
+const user: GraphQLFieldConfig<any, any, any> = {
+    description: `Returns user based on username`,
+    type: UserType,
+    args: {
+        username: {
+            description: `Username of user.`,
+            type: new GraphQLNonNull(GraphQLString),
+        },
+    },
+    resolve: async (parent, { username }, context: IContext) => {
+        isAuthenticated(context)
+        return context.dataLoaders.user.getByUsername.load(username)
     },
 }
 
@@ -54,7 +69,7 @@ const users: GraphQLFieldConfig<any, any, any> = {
                     )
                     return rows
                 }),
-            UserModel.query()
+            query
                 .count()
                 .then(x => (x[0] as any).count),
         ])
@@ -71,4 +86,5 @@ const users: GraphQLFieldConfig<any, any, any> = {
 export default {
     me,
     users,
+    user,
 }

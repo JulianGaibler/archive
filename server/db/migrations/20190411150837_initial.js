@@ -91,6 +91,7 @@ exports.up = async knex => {
                 CREATE INDEX post_caption_trgmidx ON "Post" USING gin(caption gin_trgm_ops);
                 CREATE INDEX keyword_name_trgmidx ON "Keyword" USING gin(name gin_trgm_ops);
                 CREATE INDEX user_username_trgmidx ON "User" USING gin(username gin_trgm_ops);
+                CREATE UNIQUE INDEX user_username_lower_idx ON "User" ((lower(username)));
             `)
 }
 

@@ -1,4 +1,4 @@
-import { GraphQLBoolean, GraphQLFieldConfig, GraphQLNonNull, GraphQLString } from 'graphql'
+import { GraphQLBoolean, GraphQLFieldConfig, GraphQLID, GraphQLNonNull } from 'graphql'
 import SessionModel from '../../models/Session'
 import {
     AuthorizationError,
@@ -14,7 +14,7 @@ const revokeSession: GraphQLFieldConfig<any, any, any> = {
     args: {
         id: {
             description: `The ID of the session to revoke.`,
-            type: new GraphQLNonNull(GraphQLString),
+            type: new GraphQLNonNull(GraphQLID),
         },
     },
     resolve: async (parent, { id }, context: IContext, resolveInfo) => {
