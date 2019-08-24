@@ -9,7 +9,7 @@
             :value="value"
             :placeholder="label"
             :disabled="disabled"
-            @input="updateInput_()"
+            @input="updateInputArea"
         />
         <input v-else :value="value" :autocomplete="autocomplete" :type="type" :disabled="disabled" :placeholder="label" @input="handleInput" />
 
@@ -38,8 +38,8 @@ export default {
         handleInput(e) {
             this.$emit('input', e.target.value)
         },
-        updateInput_: function() {
-            this.$emit('input', this.value)
+        updateInputArea: function(e) {
+            this.$emit('input', e.target.value)
             this.$refs.textarea.style.height = ''
             this.$refs.textarea.style.height = this.$refs.textarea.scrollHeight+'px'
         },
