@@ -24,6 +24,21 @@ const profilePictureOptions = [
     },
 ]
 
+const postTypes = {
+    VIDEO: {
+        compressed: [ 'mp4', 'webm' ],
+        thumbnail: [ 'jpeg', 'mp4', 'webm', 'webp' ],
+    },
+    IMAGE: {
+        compressed: [ 'jpeg', 'webp' ],
+        thumbnail: [ 'jpeg', 'webp' ],
+    },
+    GIF: {
+        compressed: [ 'gif', 'mp4', 'webm' ],
+        thumbnail: [ 'jpeg', 'mp4', 'webm', 'webp' ],
+    },
+}
+
 export default class FileProcessor {
     updateCallback
 
@@ -335,19 +350,22 @@ export default class FileProcessor {
 
     static async createProfilePicture(readStream: ReadStream, path: string[], filename: string) {
         const tf0 = sharp().removeAlpha()
-
         await asyncForEach(profilePictureOptions, async sizeObj => {
             const tf1 = tf0.clone()
                 .resize(sizeObj.size, sizeObj.size, {
                     fit: sharp.fit.cover,
                 })
             await asyncForEach(Object.keys(sizeObj.options), async format => {
+                const fullPath = jet.path(...path, `${filename}-${sizeObj.size}.${format}`)
                 const [err] = await to(pipeline(
                     readStream,
                     tf1.clone().toFormat(format, sizeObj.options[format]),
-                    jet.createWriteStream(jet.path(...path, `${filename}-${sizeObj.size}.${format}`)),
+                    jet.createWriteStream(fullPath),
                 ))
-                if (err) { throw err }
+                if (err) {
+                    fs.unlinkSync(fullPath)
+                    throw err
+                }
             })
         })
 
@@ -361,6 +379,20 @@ export default class FileProcessor {
                 removePromises.push(jet.removeAsync(jet.path(...path, `${filename}-${sizeObj.size}.${format}`)))
             })
         })
+        await Promise.all(removePromises)
+    }
+
+    static async deletePost(path: string[], type: string, originalPath: string, thumbnailPath: string, compressedPath: string) {
+        const removePromises = []
+
+        postTypes[type].compressed.forEach(ext => {
+            removePromises.push(jet.removeAsync(jet.path(...path, `${compressedPath}.${ext}`)))
+        })
+        postTypes[type].thumbnail.forEach(ext => {
+            removePromises.push(jet.removeAsync(jet.path(...path, `${thumbnailPath}.${ext}`)))
+        })
+        removePromises.push(jet.removeAsync(jet.path(...path, originalPath)))
+
         await Promise.all(removePromises)
     }
 

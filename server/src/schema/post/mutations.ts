@@ -1,14 +1,18 @@
 import {
     GraphQLBoolean,
     GraphQLFieldConfig,
+    GraphQLID,
     GraphQLList,
     GraphQLNonNull,
     GraphQLString,
 } from 'graphql'
 import PostModel from '../../models/Post'
+import KeywordModel from '../../models/Keyword'
 import { decodeHashIdAndCheck, IContext, InputError, isAuthenticated, to } from '../../utils'
+import KeywordType from '../keyword/KeywordType'
 import TaskType from '../task/TaskType'
-import { NewPost } from './PostType'
+import { Language } from '../types'
+import PostType, { NewPost } from './PostType'
 
 const uploadPosts: GraphQLFieldConfig<any, any, any> = {
     description: `Creates one or more posts.`,
@@ -65,24 +69,72 @@ const uploadPosts: GraphQLFieldConfig<any, any, any> = {
     },
 }
 
-const deletePost: GraphQLFieldConfig<any, any, any> = {
+const editPost: GraphQLFieldConfig<any, any, any> = {
+    description: `Edits a post.`,
+    type: new GraphQLNonNull(PostType),
+    args: {
+        id: {
+            description: `The ID of the post to edit.`,
+            type: new GraphQLNonNull(GraphQLID),
+        },
+        title: {
+            type: GraphQLString,
+        },
+        keywords: {
+            type: new GraphQLList(new GraphQLNonNull(GraphQLID)),
+        },
+        language: {
+            type: Language,
+        },
+        caption: {
+            type: GraphQLString,
+        },
+    },
+    resolve: async (parent, values, context: IContext) => {
+        isAuthenticated(context)
+
+        values.id = decodeHashIdAndCheck(PostModel, values.id)
+
+        if (values.keywords) {
+            values.keywords = values.keywords.map(stringId => {
+                const id = decodeHashIdAndCheck(KeywordModel, stringId)
+                return { id }
+            })
+        }
+
+        const post = await PostModel.query().findById(values.id)
+        if (!post) { throw new InputError('There is no post with this ID') }
+
+        const [err, result] = await to(PostModel.query().upsertGraphAndFetch([values], {
+            relate: true,
+        }))
+        if (err) {
+            if (err.code === '23503') { throw new InputError('One of the Keywords does not exist.') }
+            throw new InputError('Error unknown.')
+        }
+
+        return [result]
+    },
+}
+
+const deletePosts: GraphQLFieldConfig<any, any, any> = {
     description: `Deletes a post.`,
     type: new GraphQLNonNull(GraphQLBoolean),
     args: {
-        id: {
-            description: `The ID of the post to delete.`,
-            type: new GraphQLNonNull(GraphQLString),
+        ids: {
+            description: `The IDs of the posts to delete.`,
+            type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLID))),
         },
     },
-    resolve: async (parent, { id }, context: IContext) => {
+    resolve: async (parent, { ids }, context: IContext) => {
         isAuthenticated(context)
-        const decodedId = decodeHashIdAndCheck(PostModel, id)
-        const deletedRows = await PostModel.query().deleteById(decodedId)
-        return deletedRows > 0
+        await context.fileStorage.deleteFiles(context.auth.userId, ids)
+        return true
     },
 }
 
 export default {
     uploadPosts,
-    deletePost,
+    editPost,
+    deletePosts,
 }

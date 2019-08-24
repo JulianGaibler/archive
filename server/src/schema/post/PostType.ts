@@ -5,7 +5,7 @@ import PostModel from '../../models/Post'
 import { IContext } from '../../utils'
 import KeywordType from '../keyword/KeywordType'
 import { nodeInterface } from '../node'
-import { DateTime, Format, globalIdField, Language} from '../types'
+import { DateTime, Format, globalIdField, Language } from '../types'
 import UserType from '../user/UserType'
 
 const PostType = new GraphQLObjectType({
@@ -17,9 +17,7 @@ const PostType = new GraphQLObjectType({
         title: { type: new GraphQLNonNull(GraphQLString) },
         type: { type: new GraphQLNonNull(Format) },
         keywords: {
-            type: new GraphQLNonNull(
-                new GraphQLList(new GraphQLNonNull(KeywordType)),
-            ),
+            type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(KeywordType))),
             resolve: async (post, args, ctx: IContext) =>
                 ctx.dataLoaders.keyword.getByPost.load(post.id),
         },

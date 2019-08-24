@@ -5,12 +5,13 @@ import { raw } from 'objection'
 import sodium from 'sodium'
 import tmp from 'tmp'
 import User from './models/User'
+import Post from './models/Post'
+import Task from './models/Task'
+import Keyword from './models/Keyword'
 
 import { Mutex } from 'async-mutex'
 import FileProcessor from './FileStorage/FileProcessor'
-import Post from './models/Post'
-import Task from './models/Task'
-import {AuthenticationError, decodeHashId, encodeHashId, FileStorageError, to} from './utils'
+import { asyncForEach, AuthenticationError, AuthorizationError, decodeHashId, decodeHashIdAndCheck, encodeHashId, FileStorageError, to} from './utils'
 import { ModelId } from './utils/ModelEnum'
 import ReadStream = NodeJS.ReadStream
 
@@ -37,6 +38,7 @@ interface IStoreData {
 interface IQueueItem {
     taskObject: Task
     data: IStoreData
+    type: string | null,
 }
 
 // Options
@@ -97,24 +99,38 @@ export default class FileStorage {
             uploaderId: data.postData.uploaderId,
             ext: data.type.ext,
         })
-
         this.pubSub.publish('taskUpdates', {
             id: newTask.id,
             kind: 'CREATED',
             task: newTask,
         })
 
-        this.queue.push({ taskObject: newTask, data })
+        this.queue.push({ taskObject: newTask, data, type: data.postData.type })
         this.checkQueue()
 
         return newTask.id
+    }
+
+    async deleteFiles(iUserId: number, postIds: string[]): Promise<number> {
+        const iPostIds = postIds.map(id => decodeHashIdAndCheck(Post, id))
+        const rows = await Post.query().findByIds([...iPostIds])
+        rows.forEach((post: Post) => {
+            if (post.uploaderId !== iUserId) {
+                throw new AuthorizationError('You cannot delete posts of other users.')
+            }
+        })
+
+        asyncForEach(rows, async (post: Post) => {
+            await FileProcessor.deletePost([options.dist], post.type, post.originalPath, post.thumbnailPath, post.compressedPath)
+        })
+        return Post.query().findByIds([...iPostIds]).delete()
     }
 
     /**
      * Creates a Profile picture with name
      * [userHashID]-[randomHash]-[s/m/l].[jpg/webp] where the file-extension is omitted
      */
-    async setProfilePicture(iUserId, readStream: ReadStream): Promise<string> {
+    async setProfilePicture(iUserId: number, readStream: ReadStream): Promise<string> {
         const user = await User.query().findById(iUserId)
         if (!user) { throw new AuthenticationError(`This should not have happened.`) }
 
@@ -191,7 +207,7 @@ export default class FileStorage {
     /**
      * Processes an Item from the Queue
      */
-    private async processItem({ taskObject, data }: IQueueItem) {
+    private async processItem({ taskObject, data, type: desiredType }: IQueueItem) {
         const { postData, typedStream, type } = data
         let processError
         let result
@@ -203,12 +219,15 @@ export default class FileStorage {
         const tmpDir = tmp.dirSync()
         const processor = new FileProcessor(update)
 
-        const fileTypeEnum: FileType =
+        let fileTypeEnum: FileType =
             data.type.mime === 'image/gif'
                 ? FileType.GIF
                 : data.type.kind === 'video'
                 ? FileType.VIDEO
                 : FileType.IMAGE
+
+        if (desiredType === 'VIDEO' && fileTypeEnum === FileType.GIF) { fileTypeEnum = FileType.VIDEO }
+        else if (desiredType === 'GIF' && fileTypeEnum === FileType.VIDEO) { fileTypeEnum = FileType.GIF }
 
         try {
             if (fileTypeEnum === FileType.GIF || fileTypeEnum === FileType.VIDEO) {
@@ -232,7 +251,7 @@ export default class FileStorage {
 
             if (postData.keywords) {
                 postData.keywords = postData.keywords.map(stringId => {
-                    const { id } = decodeHashId(stringId)
+                    const id = decodeHashIdAndCheck(Keyword, stringId)
                     return { id }
                 })
             }
