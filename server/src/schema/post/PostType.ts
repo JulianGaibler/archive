@@ -92,6 +92,7 @@ export const NewPost = new GraphQLInputObjectType({
         },
         file: {
             description: `The file.`,
+            // @ts-ignore
             type: new GraphQLNonNull(GraphQLUpload),
         },
     },

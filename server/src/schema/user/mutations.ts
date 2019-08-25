@@ -75,6 +75,7 @@ const uploadProfilePicture: GraphQLFieldConfig<any, any, any> = {
     args: {
         file: {
             description: `Profile picture file.`,
+            // @ts-ignore
             type: new GraphQLNonNull(GraphQLUpload),
         },
     },
