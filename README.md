@@ -6,11 +6,34 @@ A Platform to upload videos, images and GIFs so that they can be archived and or
 
 ## Client
 
-`//Todo`
+``` bash
+# Install dependencies
+npm install
+# Run dev-server
+npm run dev
+# Build client
+npm run build
+```
 
 ## Server
 
-`//Todo`
+``` bash
+# Install dependencies
+npm install
+# Run dev-server
+npm run dev
+# Build server
+npm run build
+```
+
+## Database
+
+``` bash
+# in main directory
+docker-compose up -d
+# in server directory
+npm run knex migrate:latest
+```
 
 ## Commits
 
