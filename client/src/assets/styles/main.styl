@@ -34,6 +34,9 @@ h3
     font-size 1.25rem
     font-weight 500
 
+strong
+    font-weight 500
+
 picture > img
     width 100%
 
@@ -63,6 +66,9 @@ input.hiddenInput
         flex-direction column
     .itemRow-grow
         flex 1
+
+.spacerPipe
+    margin 0 .5rem
 
 picture.profilePic
     display inline-block
@@ -299,14 +305,23 @@ picture.profilePic
             margin-top 1rem
         &.content-box
             background $archive-grey1
-            border-radius $archive-radius1
-            padding 2.5rem
+            border-radius $archive-radius2
+            padding 1rem
+            h3
+                color $archive-grey3
+                text-transform uppercase
+                font-weight 500
+                margin 1.5rem 0 .5rem 0
+                font-size 0.8em
+            .button:not(.button-primary)
+                background $archive-std
 
 
 .hoverParent
     position relative
 .hoverBox
     position absolute
+    text-align left
     z-index 1000
     top 3rem
     left 0
@@ -318,11 +333,42 @@ picture.profilePic
     box-shadow $archive-hoverShadow
     border-radius $archive-radius2
     padding 1rem
+    &.hoverBox-right
+        left initial
+        right 0
+    &.hoverBox-thin
+        padding .4rem
     > :not(:last-child)
         margin-bottom .5rem
     h2
         font-size 1.375rem
         font-weight 500
+    .optionList
+        .option
+            remove-native()
+            padding .6rem .6rem
+            line-height 1.1rem
+            border-radius .5rem
+            &:not(:last-child)
+                margin-bottom 0.3rem
+            &.option-withIcon
+                padding .4rem .4rem
+                span
+                    line-height 0
+                svg
+                    margin-right .4rem
+            &.create
+                background $archive-grey1
+            &:hover, &.selected
+                background $archive-grey2
+        &.optionList-horizontal
+            display flex
+            .option
+                flex 1
+                text-align center
+                &:not(:last-child)
+                    margin-bottom 0
+
 
 // Old stuff, try to remove it
 
@@ -346,7 +392,7 @@ picture.profilePic
         font-weight 500
         font-size 1.1em
         padding 0
-    .option
+    > .option
         display flex
         flex-direction row
         &:first-of-type
@@ -454,39 +500,9 @@ picture.profilePic
                 display block
                 width auto
 
-    .results
-        position absolute
-        display block
-        background $archive-std
-        z-index 99
-        box-shadow $archive-hoverShadow
-        top calc(100% + 2px)
-        left 0
-        min-width 15rem
-        border-radius $archive-radius2
-        padding .4rem
-        hr
-            border-color $archive-grey1
-            margin .2rem 0
-        .result
-            remove-native()
-            padding .6rem .6rem
-            line-height 1.1rem
-            border-radius .5rem
-            &:not(:last-child)
-                margin-bottom 0.3rem
-            &.create
-                background $archive-grey1
-            &:hover, &.selected
-                background $archive-grey2
-        .info
-            padding 0 0.6rem 0.3rem 0.6rem
-            font-size .8rem
-            &.error
-                color $archive-primary
-
 .indicatorWrapper
     display flex
+    align-items flex-start
     justify-content center
     &.indicatorWrapper-absolute
         position absolute
@@ -495,7 +511,7 @@ picture.profilePic
         top 0
         bottom 0
     &.indicatorWrapper-center
-            align-items center
+        align-items center
 
 .indicator
     padding 0.5rem
@@ -550,6 +566,7 @@ picture.profilePic
                 border-radius $archive-radius2
                 position relative
                 overflow hidden
+                -webkit-mask-image -webkit-radial-gradient(white, black)
                 transition .25s width
                 line-height 0
                 width 24rem
@@ -657,7 +674,6 @@ code
     > .item
         .indicatorWrapper
             display flex
-            align-items flex-start
             padding 1rem
 
 .post
@@ -665,15 +681,17 @@ code
         width 100%
         border-radius $archive-radius2
         overflow hidden
+        -webkit-mask-image -webkit-radial-gradient(white, black)
         line-height 0
         img, video
             width 100%
     h2
         margin-bottom .25rem
+    .post-info
+        padding 1rem
     .keywords
         remove-native()
         display flex
-        margin-top 1rem
         flex-wrap wrap
         .keyword
             text-transform uppercase
@@ -689,7 +707,8 @@ code
                 margin-right .5rem
 
     .caption
-        margin-top 2rem
+        white-space pre
+        line-height 1.5
 
 .itemList
     flex-grow 1
@@ -758,6 +777,7 @@ code
         > .item
             display block
             overflow hidden
+            -webkit-mask-image -webkit-radial-gradient(white, black)
             text-align center
             border-radius $archive-radius2
             background $archive-grey1

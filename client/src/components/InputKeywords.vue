@@ -1,7 +1,7 @@
 <template>
     <div class="inputField light">
         <label :class="{ visible: showLabel }">{{label}}</label>
-        <div class="autocomplete">
+        <div class="autocomplete hoverParent">
             <div v-for="id in value" :key="id" class="tag">
                 <ApolloQuery :query="gql => gql`
                       query getKeywordName($id: ID!) {
@@ -29,23 +29,25 @@
                 @keydown.up="onArrowUp"
                 @keydown.enter="onEnter"
                 v-model="searchWord" />
-            <ul v-if="showResults" class="results">
+            <div v-if="showResults" class="hoverBox hoverBox-thin">
+                <ul class="optionList">
                 <li
                     v-for="(edge, idx) in keywords.edges"
                     :key="edge.node.id" @click="addItem(edge.node)"
                     :class="{ selected: idx===currentSelect }"
-                    class="result"
+                    class="option"
                 >{{edge.node.name}}</li>
                 <li
                     v-if="showResults"
                     @click="createItem()"
                     :class="{ selected: keywords.edges.length===currentSelect }"
-                    class="result create"
+                    class="option create"
                 >Create Keyword "{{searchWord}}"</li>
 
                 <div v-if="createStatus.loading" class="info">Creating...</div>
                 <div v-if="createStatus.error" class="info error">{{createStatus.error}}</div>
-            </ul>
+                </ul>
+            </div>
         </div>
     </div>
 </template>
@@ -159,7 +161,6 @@ export default {
         onArrowDown(e) {
             if (!this.showResults) return
             e.preventDefault()
-            console.log(this.currentSelect, this.keywords.edges.length)
             if (this.currentSelect < this.keywords.edges.length) this.currentSelect++
         },
         onArrowUp(e) {
