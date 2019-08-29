@@ -46,10 +46,10 @@
 
 <script>
 
-import InputField from '../../components/InputField.vue'
-import InputKeywords from '../../components/InputKeywords.vue'
-import InputSelect from '../../components/InputSelect.vue'
-import InputRadio from '../../components/InputRadio.vue'
+import InputField from '@/components/InputField.vue'
+import InputKeywords from '@/components/InputKeywords.vue'
+import InputSelect from '@/components/InputSelect.vue'
+import InputRadio from '@/components/InputRadio.vue'
 
 export default {
     name: 'Form',

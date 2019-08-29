@@ -6,8 +6,8 @@ import {
     GraphQLNonNull,
     GraphQLString,
 } from 'graphql'
-import PostModel from '../../models/Post'
 import KeywordModel from '../../models/Keyword'
+import PostModel from '../../models/Post'
 import { decodeHashIdAndCheck, IContext, InputError, isAuthenticated, to } from '../../utils'
 import KeywordType from '../keyword/KeywordType'
 import TaskType from '../task/TaskType'

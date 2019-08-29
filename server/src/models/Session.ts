@@ -33,6 +33,7 @@ export default class Session extends BaseModel {
 
     static async sessionsByUsers(userIds: number[]): Promise<Session[][]> {
         const sessions = await Session.query()
+            .orderBy('updatedAt', 'desc')
             .whereIn('userId', userIds)
             .andWhere('updatedAt', '>=', Date.now() - 4.32e8)
 

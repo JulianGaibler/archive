@@ -4,7 +4,7 @@
             <div class="sidebar-pic">
                 <picture v-if="me && me.profilePicture && resources">
                     <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}upic/${me.profilePicture}-80.webp`">
-                    <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${me.profilePicture}-80.jpg`">
+                    <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${me.profilePicture}-80.jpeg`">
                 </picture>
             </div>
             <div class="nameCombo">

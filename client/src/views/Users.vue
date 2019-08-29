@@ -12,7 +12,7 @@
             <router-link tag="a" v-for="({ node }) in users.edges" :key="node.id" :to="{ name: 'User', params: { username: node.username }}" class="item">
                 <picture v-if="resources">
                     <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}upic/${node.profilePicture}-256.webp`">
-                    <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${node.profilePicture}-256.jpg`">
+                    <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${node.profilePicture}-256.jpeg`">
                 </picture>
                 <div class="info">
                     <div class="top">

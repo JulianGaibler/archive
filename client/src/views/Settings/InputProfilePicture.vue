@@ -5,14 +5,14 @@
         </div>
         <div class="profilePic" ref="profilePic">
             <div class="dropzone" :class="{showDropzone}" ref="dropzone"></div>
-            <div v-if="uploading" class="indicatorWrapper indicatorWrapper-absolute">
+            <div v-if="uploading" class="indicatorWrapper indicatorWrapper-absolute indicatorWrapper-center">
                 <div class="indicator indicator-shadow">
                     <Lottie :options="animOptions" />
                 </div>
             </div>
             <picture v-if="me && me.profilePicture && resources">
                 <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}upic/${me.profilePicture}-256.webp`">
-                <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${me.profilePicture}-256.jpg`">
+                <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${me.profilePicture}-256.jpeg`">
             </picture>
         </div>
 

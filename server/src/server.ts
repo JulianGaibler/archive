@@ -76,8 +76,8 @@ class Server {
         this.app.use(logger(process.env.NODE_ENV === 'development' ? 'dev' : 'tiny'))
         this.app.use(this.cookieParserInstance)
         this.app.use(cors(corsOptions))
-        this.app.use('/content', express.static('public'))
         if (process.env.NODE_ENV === 'development') {
+            this.app.use('/content', express.static('public'))
             this.app.use(
                 '/playground',
                 expressPlayground({

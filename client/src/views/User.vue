@@ -13,7 +13,7 @@
             </div>
             <picture class="profilePic" v-if="resources">
                 <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}upic/${user.profilePicture}-256.webp`">
-                <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${user.profilePicture}-256.jpg`">
+                <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${user.profilePicture}-256.jpeg`">
             </picture>
         </section>
 
