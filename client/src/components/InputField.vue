@@ -34,12 +34,16 @@ export default {
         },
         errors: Array,
     },
+    mounted() {
+        this.updateInputArea({ target: { value: this.value } })
+    },
     methods: {
         handleInput(e) {
             this.$emit('input', e.target.value)
         },
         updateInputArea: function(e) {
             this.$emit('input', e.target.value)
+            if (!this.$refs.textarea) return
             this.$refs.textarea.style.height = ''
             this.$refs.textarea.style.height = this.$refs.textarea.scrollHeight+'px'
         },
