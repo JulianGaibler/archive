@@ -83,6 +83,35 @@ picture.profilePic
     border-radius $archive-radius2
     margin-bottom 1rem
 
+.modalWrapper
+    position fixed
+    background rgba($archive-std, 0.5)
+    display flex
+    justify-content center
+    align-items center
+    left 0
+    right 0
+    top 0
+    bottom 0
+    > .modal
+        padding 1rem
+        background $archive-std
+        border-radius $archive-radius3
+        box-shadow $archive-hoverShadow
+        .message
+            max-width 20rem
+            font-size 1.1rem
+            padding .5rem
+            margin-bottom 1rem
+            :not(:last-child)
+                margin-bottom .5rem
+
+.actionsRow
+    display flex
+    justify-content flex-end
+    :not(:last-child)
+        margin-right .5rem
+
 .sidebar
     border-bottom-left-radius $archive-radius1
     min-width 15rem
@@ -228,6 +257,16 @@ picture.profilePic
         font-weight 600
         color white
         fill white
+    &.button-dangerous
+        background $archive-primary
+        font-weight 600
+        color white
+        fill white
+    &.button-slim
+        height 2rem
+        padding 0 1rem
+        font-size 0.8rem
+        text-transform uppercase
     &.button-icon
         display flex
         justify-content center
