@@ -113,7 +113,7 @@ const editPost: GraphQLFieldConfig<any, any, any> = {
             throw new InputError('Error unknown.')
         }
 
-        return [result]
+        return result[0]
     },
 }
 
