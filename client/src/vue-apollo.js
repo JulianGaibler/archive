@@ -8,7 +8,9 @@ import customFetch from './utils/customFetch'
 // Install the vue plugin
 Vue.use(VueApollo)
 
-const cache = new InMemoryCache()
+const cache = new InMemoryCache({
+    dataIdFromObject: object => object.id || null,
+})
 
 // Http endpoint
 const httpEndpoint = process.env.VUE_APP_GRAPHQL_HTTP || 'http://localhost:4000'
