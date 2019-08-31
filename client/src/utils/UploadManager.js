@@ -2,8 +2,8 @@ import gql from 'graphql-tag'
 import { apolloClient } from '../vue-apollo'
 
 const UPLOAD_FILE = gql`
-    mutation uploadPosts($posts: [NewPost!]!) {
-        uploadPosts(items: $posts) {
+    mutation uploadPosts($title: String!, $caption: String, $language: Language!, $type: Format, $keywords: [ID!], $file: Upload!) {
+        uploadPosts(title: $title, caption: $caption, language: $language, type: $type, keywords: $keywords, file: $file) {
             title
             uploader {
                 username
@@ -174,7 +174,7 @@ class UploadManager {
                 await apolloClient.mutate({
                     mutation: UPLOAD_FILE,
                     variables: {
-                        posts: [ actualUpload ],
+                        ...actualUpload,
                     },
                     context: {
                         fetchOptions: {

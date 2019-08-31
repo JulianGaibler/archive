@@ -6,66 +6,64 @@ import {
     GraphQLNonNull,
     GraphQLString,
 } from 'graphql'
+import { GraphQLUpload } from 'graphql-upload'
 import KeywordModel from '../../models/Keyword'
 import PostModel from '../../models/Post'
 import { decodeHashIdAndCheck, IContext, InputError, isAuthenticated, to } from '../../utils'
 import KeywordType from '../keyword/KeywordType'
 import TaskType from '../task/TaskType'
-import { Language } from '../types'
-import PostType, { NewPost } from './PostType'
+import { Format, Language } from '../types'
+import PostType from './PostType'
 
 const uploadPosts: GraphQLFieldConfig<any, any, any> = {
-    description: `Creates one or more posts.`,
-    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(TaskType))),
+    description: `Creates a new Post`,
+    type: new GraphQLNonNull(TaskType),
     args: {
-        items: {
-            description: `Items to be uploaded.`,
-            type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(NewPost))),
+        title: {
+            description: `Title of the post.`,
+            type: new GraphQLNonNull(GraphQLString),
+        },
+        caption: {
+            description: `Optional caption of what is written or said in the post.`,
+            type: GraphQLString,
+        },
+        language: {
+            description: `Language in which title and caption are written in.`,
+            type: new GraphQLNonNull(Language),
+        },
+        type: {
+            description: `Optional specification how to treat the uplaoded file. E.g. for turning videos into GIFs and vice versa.`,
+            type: Format,
+        },
+        keywords: {
+            description: `Optional keyword-IDs to be associated with that post.`,
+            type: new GraphQLList(new GraphQLNonNull(GraphQLID)),
+        },
+        file: {
+            description: `The file.`,
+            // @ts-ignore
+            type: new GraphQLNonNull(GraphQLUpload),
         },
     },
-    resolve: async (parent, { items }, context: IContext, resolveInfo) => {
+    resolve: async (parent, fields, context: IContext, resolveInfo) => {
         isAuthenticated(context)
 
-        if (!items || items.length < 1) {
-            throw new InputError(`You have to at least upload one file.`)
+        const [fileErr, file] = await to(fields.file)
+        if (!file) {
+            throw new InputError(fileErr)
         }
 
-        let error = false
-        const results = []
+        delete fields.file
+        fields.uploaderId = context.auth.userId
 
-        for (const fields of items) {
-
-            const [fileErr, file] = await to(fields.file)
-            if (!file) {
-                throw new InputError(fileErr)
-            }
-
-            delete fields.file
-            fields.uploaderId = context.auth.userId
-
-            const resItem = await to(context.fileStorage.checkFile(fields, file.createReadStream()))
-            results.push(resItem)
-            if (!resItem[1]) {
-                error = true
-            }
-        }
+        const [error, storeData] = await to(context.fileStorage.checkFile(fields, file.createReadStream()))
 
         if (error) {
-            const errors = results
-                .map((item, idx) => {
-                    return { index: idx, error: item[0] }
-                })
-                .filter(item => item.error)
-            throw new InputError(errors)
+            throw new InputError(error)
         }
 
-        const taskIds = []
-        for (let i = 0; i < items.length; i++) {
-            const taskId = await context.fileStorage.storeFile(results[i][1])
-            taskIds.push(taskId)
-        }
-
-        return context.dataLoaders.task.getById.loadMany(taskIds)
+        const taskId = await context.fileStorage.storeFile(storeData)
+        return context.dataLoaders.task.getById.load(taskId)
     },
 }
 
@@ -110,6 +108,7 @@ const editPost: GraphQLFieldConfig<any, any, any> = {
         }))
         if (err) {
             if (err.code === '23503') { throw new InputError('One of the Keywords does not exist.') }
+            if (err.name === 'ValidationError') { throw new InputError(err) }
             throw new InputError('Error unknown.')
         }
 

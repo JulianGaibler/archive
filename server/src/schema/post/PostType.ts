@@ -1,6 +1,5 @@
 import { GraphQLFloat, GraphQLInputObjectType, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
 import { connectionDefinitions } from 'graphql-relay'
-import { GraphQLUpload } from 'graphql-upload'
 import PostModel from '../../models/Post'
 import { IContext } from '../../utils'
 import KeywordType from '../keyword/KeywordType'
@@ -64,36 +63,4 @@ export default PostType
 
 export const {connectionType: postConnection} = connectionDefinitions({
     nodeType: PostType,
-})
-
-export const NewPost = new GraphQLInputObjectType({
-    name: 'NewPost',
-    description: 'Fields for one uploaded item.',
-    fields: {
-        title: {
-            description: `Title of the post.`,
-            type: new GraphQLNonNull(GraphQLString),
-        },
-        caption: {
-            description: `Optional caption of what is written or said in the post.`,
-            type: GraphQLString,
-        },
-        language: {
-            description: `Language in which title and caption are written in.`,
-            type: new GraphQLNonNull(Language),
-        },
-        type: {
-            description: `Optional specification how to treat the uplaoded file. E.g. for turning videos into GIFs and vice versa.`,
-            type: Format,
-        },
-        keywords: {
-            description: `Optional keyword-IDs to be associated with that post.`,
-            type: new GraphQLList(new GraphQLNonNull(GraphQLString)),
-        },
-        file: {
-            description: `The file.`,
-            // @ts-ignore
-            type: new GraphQLNonNull(GraphQLUpload),
-        },
-    },
 })
