@@ -130,23 +130,23 @@ class Server {
     private debugErrorHandler(error) {
         return {
             name: error.name,
-            errors: error.originalError && error.originalError.fields,
             code: error.originalError && (error.originalError.code || error.originalError.name),
             message: error.message,
             locations: error.locations,
-            stack: error.stack ? error.stack.split('\n') : [],
             path: error.path,
+            additionalInfo: error.originalError && error.originalError.fields,
+            stack: error.stack ? error.stack.split('\n') : [],
         }
     }
 
     private productionErrorHandler(error) {
         return {
             name: error.name,
-            errors: error.originalError && error.originalError.fields,
             code: error.originalError && error.originalError.code,
             message: error.message,
             locations: error.locations,
             path: error.path,
+            additionalInfo: error.originalError && error.originalError.fields,
         }
     }
 

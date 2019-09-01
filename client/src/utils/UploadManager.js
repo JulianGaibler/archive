@@ -1,5 +1,6 @@
 import gql from 'graphql-tag'
 import { apolloClient } from '../vue-apollo'
+import { parseError } from '@/utils'
 
 const UPLOAD_FILE = gql`
     mutation uploadPosts($title: String!, $caption: String, $language: Language!, $type: Format, $keywords: [ID!], $file: Upload!) {
@@ -32,6 +33,7 @@ class UploadManager {
 
     addErrors({ local, global, fromServer }) {
         if (fromServer) {
+            console.log(fromServer.errors)
             Object.keys(fromServer.errors).forEach(key => {
                 this.items[fromServer.index].errors[key] = fromServer.errors[key]
             })
@@ -192,14 +194,11 @@ class UploadManager {
                     this.updateItemUpload(index, 'status', 2)
                 }).catch((e) => {
                     this.updateItemUpload(index, 'status', 3)
-                    if (!e.networkError.result.errors) return
-                    for (let i = 0; i < e.networkError.result.errors.length; i++) {
-                        const err = e.networkError.result.errors[i]
-                        if (err.code === 'InputError') {
-                            this.addErrors({ fromServer: { index, errors: err.errors[0].error.data } })
-                        } else {
-                            this.addErrors({ global: { code: err.code, message: err.message } })
-                        }
+                    const parsedError = parseError(e)
+                    if (parsedError.code === 'InputError') {
+                        this.addErrors({ fromServer: { index, errors: parsedError.additionalInfo } })
+                    } else {
+                        this.addErrors({ global: { code: parsedError.code, message: parsedError.message } })
                     }
                 })
                 this.current++

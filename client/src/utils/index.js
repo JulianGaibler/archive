@@ -1,5 +1,12 @@
 import { DateTime } from 'luxon'
 
+export function removeFromArray(array, element) {
+    const index = array.indexOf(element)
+    if (index !== -1) {
+        array.splice(index, 1)
+    }
+}
+
 export function formatBytes(bytes, decimals = 2) {
     if (bytes === 0) return '0 Bytes'
 
@@ -14,4 +21,8 @@ export function formatBytes(bytes, decimals = 2) {
 
 export function parseDate(millis) {
     return DateTime.fromMillis(millis).toFormat('dd.LL.yyyy HH:mm')
+}
+
+export function parseError(error) {
+    return error.networkError.result.errors[0]
 }

@@ -39,8 +39,10 @@ export class UploadError extends RequestError {
 export class InputError extends RequestError {
     fields
     constructor(fieldErrors) {
-        super('There were errors in your request.')
-        this.fields = fieldErrors
+        super(fieldErrors ? fieldErrors.message : 'There were errors in your request.')
+        if (fieldErrors && fieldErrors.type === 'ModelValidation') {
+            this.fields = fieldErrors.data
+        }
     }
 }
 
