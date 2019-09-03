@@ -117,8 +117,8 @@ const editPost: GraphQLFieldConfig<any, any, any> = {
 }
 
 const deletePosts: GraphQLFieldConfig<any, any, any> = {
-    description: `Deletes a post.`,
-    type: new GraphQLNonNull(GraphQLBoolean),
+    description: `Deletes list of posts and returns list of the ones that were actually deleted.`,
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLID))),
     args: {
         ids: {
             description: `The IDs of the posts to delete.`,
@@ -127,8 +127,7 @@ const deletePosts: GraphQLFieldConfig<any, any, any> = {
     },
     resolve: async (parent, { ids }, context: IContext) => {
         isAuthenticated(context)
-        await context.fileStorage.deleteFiles(context.auth.userId, ids)
-        return true
+        return context.fileStorage.deleteFiles(context.auth.userId, ids)
     },
 }
 

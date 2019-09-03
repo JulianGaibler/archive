@@ -111,7 +111,7 @@ export default class FileStorage {
         return newTask.id
     }
 
-    async deleteFiles(iUserId: number, postIds: string[]): Promise<number> {
+    async deleteFiles(iUserId: number, postIds: string[]): Promise<string[]> {
         const iPostIds = postIds.map(id => decodeHashIdAndCheck(Post, id))
         const rows = await Post.query().findByIds([...iPostIds])
         rows.forEach((post: Post) => {
@@ -123,7 +123,10 @@ export default class FileStorage {
         asyncForEach(rows, async (post: Post) => {
             await FileProcessor.deletePost([options.dist], post.type, post.originalPath, post.thumbnailPath, post.compressedPath)
         })
-        return Post.query().findByIds([...iPostIds]).delete()
+        await Post.query().findByIds([...iPostIds]).delete()
+        return rows.map((post: Post) => {
+            return encodeHashId(Post, post.id)
+        })
     }
 
     /**
