@@ -56,7 +56,7 @@
 import debounce from 'debounce'
 import gql from 'graphql-tag'
 
-import IconClose from '@/assets/icon_close.svg?inline'
+import IconClose from '@/assets/jw_icons/close.svg?inline'
 
 const KEYWORD_SEARCH = gql`query keywordSearch($input: String) {
   keywords(byName: $input) {
