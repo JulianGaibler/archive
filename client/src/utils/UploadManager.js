@@ -33,7 +33,6 @@ class UploadManager {
 
     addErrors({ local, global, fromServer }) {
         if (fromServer) {
-            console.log(fromServer.errors)
             Object.keys(fromServer.errors).forEach(key => {
                 this.items[fromServer.index].errors[key] = fromServer.errors[key]
             })

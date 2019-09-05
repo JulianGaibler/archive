@@ -1,22 +1,41 @@
 <template>
     <div>
-        <div class="content mediaList" v-if="posts">
-            <div v-for="(column, i) in sortedPosts" :key="i" class="column">
-                <router-link tag="a" :to="{ name: 'Post', params: { id: post.node.id }}" class="item" v-for="post in column" :key="post.node.id">
-                    <Preview :item="post.node" />
-                </router-link>
+        <template v-if="posts">
+            <div v-if="this.posts.edges < 1" class="content notice">
+                <img src="@/assets/pictograms/empty.svg">
+                <h2>Nothing here</h2>
+            </div>
+            <div v-else class="content mediaList">
+                <div v-for="(column, i) in sortedPosts" :key="i" class="column">
+                    <router-link tag="a" :to="{ name: 'Post', params: { id: post.node.id }}" class="item" v-for="post in column" :key="post.node.id">
+                        <Preview :item="post.node" />
+                    </router-link>
+                </div>
+            </div>
+            <div class="itemRow itemRow-center">
+                <div class="indicator" v-if="$apollo.queries.posts.loading">
+                    <Lottie :options="animOptions" />
+                </div>
+                <button v-else-if="posts.pageInfo.hasNextPage" @click="showMore" class="button">Show More</button>
+            </div>
+        </template>
+        <div v-else-if="$apollo.queries.posts.loading" class="content notice">
+            <div class="indicator">
+                <Lottie :options="animOptions" />
             </div>
         </div>
-        <button v-if="posts && posts.pageInfo.hasNextPage" @click="showMore" class="button">Show More</button>
     </div>
 </template>
 
 <script>
 import gql from 'graphql-tag'
 import Preview from '@/components/Preview'
+import Lottie from '@/components/Lottie'
+
+import * as uploadingAnimation from '@/assets/animations/loading.json'
 
 const POSTS_QUERY = gql`query posts($after: String, $byUser: [ID!], $byKeyword: [ID!], $byType: [Format!], $byLanguage: Language, $byContent: String) {
-    posts(first: 10, after: $after, byUser: $byUser, byKeyword: $byKeyword, byType: $byType, byLanguage: $byLanguage, byContent: $byContent) {
+    posts(first: 20, after: $after, byUser: $byUser, byKeyword: $byKeyword, byType: $byType, byLanguage: $byLanguage, byContent: $byContent) {
         edges {
             node {
                 id
@@ -46,10 +65,14 @@ const POSTS_QUERY = gql`query posts($after: String, $byUser: [ID!], $byKeyword: 
 export default {
     name: 'MediaList',
     props: ['search'],
-    components: { Preview },
+    components: { Preview, Lottie },
     data() {
         return {
+            loading: true,
             columns: 4,
+            animOptions: {
+                animationData: uploadingAnimation,
+            },
         }
     },
     apollo: {
@@ -66,6 +89,13 @@ export default {
             },
             debounce: 500,
         },
+    },
+    mounted() {
+        this.windowResized()
+        window.addEventListener('resize', this.windowResized)
+    },
+    beforeDestroy() {
+        window.removeEventListener('resize', this.windowResized)
     },
     methods: {
         showMore() {
@@ -85,6 +115,13 @@ export default {
                     } : previousResult
                 },
             })
+        },
+        windowResized() {
+            if (this.$el.clientWidth < 300) { this.columns = 1 }
+            else if (this.$el.clientWidth < 500) { this.columns = 2 }
+            else if (this.$el.clientWidth < 700) { this.columns = 3 }
+            else if (this.$el.clientWidth < 900) { this.columns = 4 }
+            else { this.columns = 5 }
         },
     },
     computed: {

@@ -43,7 +43,6 @@ export default {
     },
     methods: {
         distributionCalc(item) {
-            console.log(item)
             return item.upload.status === 1 ? this.distribution.main : this.distribution.other
         },
         percentageCalc(item) {
