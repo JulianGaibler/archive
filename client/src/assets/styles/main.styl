@@ -257,6 +257,8 @@ picture.profilePic
         font-weight 600
         color white
         fill white
+    &.button-light
+        background $archive-std
     &.button-dangerous
         background $archive-primary
         font-weight 600
@@ -340,20 +342,25 @@ picture.profilePic
         margin-bottom 2.25rem
     .content
         margin-top 3rem
+        &.notice
+            text-align center
+            h2
+                margin-top 2rem
+            p
+                margin-top 1rem
         &.content-dense
             margin-top 1rem
         &.content-box
             background $archive-grey1
             border-radius $archive-radius2
             padding 1rem
+            h3:not(:first-child), .inputField:not(:first-child)
+                margin 1.5rem 0 .5rem 0
             h3
                 color $archive-grey3
                 text-transform uppercase
                 font-weight 500
-                margin 1.5rem 0 .5rem 0
                 font-size 0.8em
-            .button:not(.button-primary)
-                background $archive-std
 
 
 .hoverParent
@@ -553,6 +560,7 @@ picture.profilePic
         align-items center
 
 .indicator
+    display inline-block
     padding 0.5rem
     background $archive-std
     fill $archive-inv
@@ -809,6 +817,7 @@ code
 
 .mediaList
     display flex
+    margin-bottom 1rem
     > .column
         flex 1
         &:not(:last-child)
@@ -823,7 +832,11 @@ code
             &:not(:last-child)
                 margin-bottom 1rem
 
+.removeNative
+    remove-native()
+
 .previewItem
+    remove-native()
     line-height 0
     position relative
     video, img
