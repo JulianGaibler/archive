@@ -23,45 +23,27 @@
             </video>
         </section>
 
-        <section class="content content-dense content-box">
-            <h2>{{node.title}}</h2>
-            <p>created by
-                <router-link tag="a" :to="{ name: 'User', params: { username: node.uploader.username }}" class="nameCombo nameCombo-inline" >
-                    <picture>
-                        <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}upic/${node.uploader.profilePicture}-32.webp`">
-                        <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${node.uploader.profilePicture}-32.jpg`">
-                    </picture>
-                    <span class="username">{{node.uploader.username}}</span>
-                </router-link> | {{parseDate(node.createdAt)}}
-            </p>
-
-            <div v-if="node.keywords.length > 0" class="keywords">
-                <div v-for="keyword in node.keywords" :key="keyword.id" class="keyword">{{keyword.name}}</div>
-            </div>
-
-            <div class="caption">
-                {{node.caption ? node.caption : $t('state.noCaption')}}
-            </div>
-        </section>
+        <PostInfo :post="node" class="content content-dense content-box" />
 
     </div>
 </template>
 
 <script>
 import gql from 'graphql-tag'
-import { parseDate } from '@/utils'
+
+import PostInfo from '@/components/PostInfo'
 
 import IconDownload from '@/assets/jw_icons/download.svg?inline'
 import IconLink from '@/assets/jw_icons/link.svg?inline'
 import IconCollectionAdd from '@/assets/jw_icons/collection_add.svg?inline'
 
 const formats = {
-    IMAGE: ['webp', 'jpg', 'jpg'],
+    IMAGE: ['webp', 'jpeg', 'jpeg'],
     VIDEO: ['webm', 'mp4', 'mp4'],
     GIF: ['webm', 'mp4', 'gif'],
 }
 
-const NODE_QUERY = gql`
+export const NODE_QUERY = gql`
   query getNode($input: ID!) {
     node(id: $input) {
       id
@@ -70,7 +52,9 @@ const NODE_QUERY = gql`
         type
         compressedPath
         originalPath
+        language
         createdAt
+        caption
         keywords {
             id
             name
@@ -95,12 +79,8 @@ const RESOURCES_QUERY = gql`
 
 export default {
     name: 'Post',
-    data() {
-        return {
-
-        }
-    },
     components: {
+        PostInfo,
         IconDownload,
         IconLink,
         IconCollectionAdd,
@@ -117,9 +97,6 @@ export default {
         resources: {
             query: RESOURCES_QUERY,
         },
-    },
-    methods: {
-        parseDate,
     },
     computed: {
         filePaths() {

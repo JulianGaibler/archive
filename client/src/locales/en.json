@@ -16,6 +16,10 @@
         "security_changePassword": "Change Password",
         "security_sessions": "Sessions"
     },
+    "prompts": {
+        "sure_delete_post": "Are you sure you want to permanently delete this post?",
+        "cannot_undo": "You can’t undo this action."
+    },
     "action": {
         "next": "Next",
         "back": "Back",
@@ -25,6 +29,7 @@
         "more": "more",
         "done": "Done",
         "delete": "Delete",
+        "cancel": "Cancel",
         "import": "import",
         "export": "export",
         "show_post": "Show Post",
@@ -44,6 +49,10 @@
         "image": "Image",
         "video": "Video",
         "gif": "GIF"
+    },
+    "attribute": {
+        "createdBy": "created by",
+        "createdAt": "created at"
     },
     "state": {
         "loading": "Loading",
