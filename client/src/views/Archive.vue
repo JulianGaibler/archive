@@ -6,8 +6,6 @@
 
         <nav class="actionBar">
             <Search v-model="search" />
-            <button class="actionBar-component button button-icon"><IconEdit /></button>
-            <button class="actionBar-component button button-primary">Create New</button>
         </nav>
 
         <MediaList :search="search" />
@@ -18,12 +16,10 @@
 import Search from '@/components/Search'
 import MediaList from '@/components/MediaList'
 
-import IconEdit from '@/assets/jw_icons/edit.svg?inline'
-
 export default {
     name: 'Archive',
     components: {
-        Search, IconEdit, MediaList,
+        Search, MediaList,
     },
     data() {
         return {

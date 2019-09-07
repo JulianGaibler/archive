@@ -64,6 +64,10 @@ input.hiddenInput
         align-items flex-start
     &.itemRow-column
         flex-direction column
+    @media screen and (max-width: $archive-screen-small)
+        &.itemRow-smallCol
+            flex-direction column
+            align-items stretch
     .itemRow-grow
         flex 1
 
@@ -85,6 +89,7 @@ picture.profilePic
 
 .modalWrapper
     position fixed
+    z-index 400
     background rgba($archive-std, 0.5)
     display flex
     justify-content center
@@ -106,11 +111,72 @@ picture.profilePic
             :not(:last-child)
                 margin-bottom .5rem
 
+.button
+    remove-native()
+    background #F6F6F6
+    font-weight 500
+    padding 0 1.5rem
+    height 2.75rem
+    flex-shrink 0
+    border-radius $archive-radius2
+    &.button-primary
+        background $archive-inv
+        font-weight 600
+        color white
+        fill white
+    &.button-light
+        background $archive-std
+    &.button-dangerous
+        background $archive-primary
+        font-weight 600
+        color white
+        fill white
+    &.button-slim
+        height 2rem
+        padding 0 1rem
+        font-size 0.8rem
+        text-transform uppercase
+    &.button-icon
+        display flex
+        justify-content center
+        align-items center
+        padding 0
+        width 2.75rem
+    &.button-withIcon
+        padding-left 0.625rem
+        svg
+            margin-right 0.4rem
+    &.button-chip
+        text-transform uppercase
+        background $archive-inv
+        height initial
+        color $archive-std
+        font-weight 600
+        font-size 0.75rem
+        padding 0.25rem 0.75rem
+        border-radius 1rem
+
 .actionsRow
     display flex
     justify-content flex-end
     :not(:last-child)
         margin-right .5rem
+
+.button.menu-button
+    position fixed
+    right 1.5rem
+    bottom 1.5rem
+    z-index 299
+    width 3rem
+    height 3rem
+    background $archive-primary
+    fill $archive-white
+    box-shadow $archive-hoverShadow
+    svg
+        width 1.75rem
+        height 1.75rem
+    @media screen and (min-width: ($archive-screen-mid + 1))
+        display none
 
 .sidebar
     border-bottom-left-radius $archive-radius1
@@ -154,6 +220,28 @@ picture.profilePic
                     color $archive-primary
                     fill $archive-primary
                     border-radius $archive-radius3
+    @media screen and (max-width: $archive-screen-mid)
+        position fixed
+        background $archive-std
+        z-index 300
+        top 0
+        right 0
+        bottom 0
+        box-shadow $archive-hoverShadow
+        transform translateX(110%)
+        transition transform .3s ease
+        &.sidebar-open
+            transform translateX(0)
+@media screen and (max-width: $archive-screen-mid)
+    .blocker
+        position fixed
+        left 0
+        right 0
+        top 0
+        bottom 0
+        z-index 299
+        background rgba($archive-inv, 0)
+
     .notification
         .notification-box
             margin-top 1rem
@@ -195,6 +283,7 @@ picture.profilePic
 
 .actionBar
     display flex
+    flex-wrap wrap
     > .actionBar-grower
         flex 1
     > :not(:last-child)
@@ -244,51 +333,6 @@ picture.profilePic
         padding $archive-radius2
         line-height 0
 
-.button
-    remove-native()
-    background #F6F6F6
-    font-weight 500
-    padding 0 1.5rem
-    height 2.75rem
-    flex-shrink 0
-    border-radius $archive-radius2
-    &.button-primary
-        background $archive-inv
-        font-weight 600
-        color white
-        fill white
-    &.button-light
-        background $archive-std
-    &.button-dangerous
-        background $archive-primary
-        font-weight 600
-        color white
-        fill white
-    &.button-slim
-        height 2rem
-        padding 0 1rem
-        font-size 0.8rem
-        text-transform uppercase
-    &.button-icon
-        display flex
-        justify-content center
-        align-items center
-        padding 0
-        width 2.75rem
-    &.button-withIcon
-        padding-left 0.625rem
-        svg
-            margin-right 0.4rem
-    &.button-chip
-        text-transform uppercase
-        background $archive-inv
-        height initial
-        color $archive-std
-        font-weight 600
-        font-size 0.75rem
-        padding 0.25rem 0.75rem
-        border-radius 1rem
-
 .nameCombo
     picture
         display inline-block
@@ -333,8 +377,17 @@ picture.profilePic
 
 .framed
     padding-top 2.75rem
+    padding-bottom 2rem
     padding-left 4.5rem
     padding-right 2rem
+    @media screen and (max-width: $archive-screen-mid)
+        padding-top 1.75rem
+        padding-left 3rem
+        padding-right 3rem
+    @media screen and (max-width: $archive-screen-small)
+        padding-top 1.75rem
+        padding-left 2rem
+        padding-right 2rem
 
 .frame
     > header
@@ -368,7 +421,7 @@ picture.profilePic
 .hoverBox
     position absolute
     text-align left
-    z-index 1000
+    z-index 100
     top 3rem
     left 0
     min-width 15rem
@@ -578,7 +631,7 @@ picture.profilePic
     right 0
     top 0
     bottom 0
-    z-index 999
+    z-index 200
     background rgba($archive-std, .25)
     padding 1rem
     &::before
@@ -609,6 +662,8 @@ picture.profilePic
             transition .25s background, .25s margin
             > :not(:last-child)
                 margin-right 2rem
+            @media screen and (max-width: $archive-screen-mid)
+                flex-direction column
             .preview
                 border-radius $archive-radius2
                 position relative
@@ -655,11 +710,16 @@ picture.profilePic
             width 10rem
             height 10rem
             margin-right 2rem
+            @media screen and (max-width: $archive-screen-small)
+                width 5rem
+                height 5rem
+                margin-right 1rem
         > .info > .top
             font-size 1.2rem
 
 .user
     picture
+        margin-left 1rem
         width 8rem
         height 8rem
 
@@ -786,8 +846,6 @@ code
             display flex
             justify-content flex-end
             flex-direction column
-        @media screen and (max-width: $archive-screen-mid)
-            flex-direction column
     &.itemList-progress .item
         background $archive-grey1
         margin-bottom 1rem
@@ -796,6 +854,12 @@ code
             padding 1rem
             > :not(:last-child)
                 margin-bottom .5rem
+            @media screen and (max-width: $archive-screen-small)
+                flex-direction row
+                align-items center
+                > :not(:last-child)
+                    margin-bottom 0
+                    margin-right .5rem
             .label
                 text-transform uppercase
                 background $archive-std
@@ -858,6 +922,22 @@ code
         background $archive-primary
         transition .25s width cubic-bezier(0.45, 0.05, 0.55, 0.95)
         height 100%
+
+.queue
+    @media screen and (max-width: $archive-screen-small)
+        .itemList > .item
+            display grid
+            grid-template-columns: auto 1fr
+            grid-template-rows: 1fr
+            .indicatorWrapper
+                grid-row 1
+                grid-column 1
+            .info
+                grid-row 1
+                grid-column 2
+            .interaction
+                grid-row 2
+                grid-column 1 / 3
 
 .login
     position absolute

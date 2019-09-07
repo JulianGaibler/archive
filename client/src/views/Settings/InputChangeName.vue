@@ -3,7 +3,7 @@
         <div v-if="errors" class="errorBox">
             <p v-for="(error, i) in errors" :key="i">{{error.message}}</p>
         </div>
-        <form class="inputs itemRow">
+        <form class="inputs itemRow itemRow-smallCol">
             <InputField class="itemRow-grow" v-model="name" :label="$t('input.settings.name')" :disabled="loading" :type="'text'" :errors="fieldError" />
             <div class="itemRow">
                 <div class="indicator" v-if="loading">

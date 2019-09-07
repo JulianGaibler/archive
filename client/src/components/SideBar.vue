@@ -1,50 +1,56 @@
 <template>
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <div class="sidebar-pic">
-                <picture v-if="me && me.profilePicture && resources">
-                    <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}upic/${me.profilePicture}-80.webp`">
-                    <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${me.profilePicture}-80.jpeg`">
-                </picture>
-            </div>
-            <div class="nameCombo">
-                <div class="name">{{me ? me.name : ''}}</div>
-                <div class="username">{{me ? me.username : ''}}</div>
-            </div>
+    <div>
+        <div @click="toggle()" class="menu-button button button-icon">
+            <IconMenu />
         </div>
-        <hr>
-        <nav>
-            <ul>
-                <li>
-                    <router-link :to="{ name: 'Archive'}" exact><IconArchive/>Archive</router-link>
-                </li>
-                <li>
-                    <a><IconCollection/>Collections</a>
-                </li>
-                <li>
-                    <router-link :to="{ name: 'Users'}"><IconUser />Users</router-link>
-                </li>
-            </ul>
-            <ul>
-                <li>
-                    <router-link :to="{ name: 'Upload'}"><IconUpload />Upload</router-link>
-                </li>
-                <li>
-                    <router-link :to="{ name: 'Queue'}"><IconQueue />Queue</router-link>
-                </li>
-            </ul>
-            <ul>
-                <li>
-                    <router-link :to="{ name: 'Settings'}"><IconSettings />Settings</router-link>
-                </li>
-                <li>
-                    <a><IconLogout/>Logout</a>
-                </li>
-            </ul>
-        </nav>
-        <transition-group name="notification" tag="div" class="notification">
-            <UploadBox :key="1" v-if="uploadManager.working" />
-        </transition-group>
+        <div v-if="open" @click="toggle(false)" class="blocker"></div>
+        <div class="sidebar" :class="{ 'sidebar-open': open }">
+            <div class="sidebar-header">
+                <div class="sidebar-pic">
+                    <picture v-if="me && me.profilePicture && resources">
+                        <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}upic/${me.profilePicture}-80.webp`">
+                        <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${me.profilePicture}-80.jpeg`">
+                    </picture>
+                </div>
+                <div class="nameCombo">
+                    <div class="name">{{me ? me.name : ''}}</div>
+                    <div class="username">{{me ? me.username : ''}}</div>
+                </div>
+            </div>
+            <hr>
+            <nav>
+                <ul>
+                    <li>
+                        <router-link @click.native="toggle(false)" :to="{ name: 'Archive'}" exact><IconArchive/>Archive</router-link>
+                    </li>
+                    <li>
+                        <a><IconCollection/>Collections</a>
+                    </li>
+                    <li>
+                        <router-link @click.native="toggle(false)" :to="{ name: 'Users'}"><IconUser />Users</router-link>
+                    </li>
+                </ul>
+                <ul>
+                    <li>
+                        <router-link @click.native="toggle(false)" :to="{ name: 'Upload'}"><IconUpload />Upload</router-link>
+                    </li>
+                    <li>
+                        <router-link @click.native="toggle(false)" :to="{ name: 'Queue'}"><IconQueue />Queue</router-link>
+                    </li>
+                </ul>
+                <ul>
+                    <li>
+                        <router-link @click.native="toggle(false)" :to="{ name: 'Settings'}"><IconSettings />Settings</router-link>
+                    </li>
+                    <li>
+                        <a><IconLogout/>Logout</a>
+                    </li>
+                </ul>
+            </nav>
+            <transition-group name="notification" tag="div" class="notification">
+                <UploadBox :key="1" v-if="uploadManager.working" />
+            </transition-group>
+        </div>
     </div>
 </template>
 
@@ -53,6 +59,7 @@ import uploadManager from '../utils/UploadManager'
 
 import UploadBox from './SideBar/UploadBox'
 
+import IconMenu from '@/assets/jw_icons/menu.svg?inline'
 import IconArchive from '@/assets/jw_icons/archive.svg?inline'
 import IconCollection from '@/assets/jw_icons/collection.svg?inline'
 import IconLogout from '@/assets/jw_icons/logout.svg?inline'
@@ -82,12 +89,14 @@ export default {
     name: 'SideBar',
     data() {
         return {
+            open: false,
             uploadManager,
         }
     },
     components: {
         UploadBox,
 
+        IconMenu,
         IconArchive,
         IconCollection,
         IconLogout,
@@ -100,6 +109,13 @@ export default {
         // Simple query that will update the 'hello' vue property
         me: USER_QUERY,
         resources: RESOURCES_QUERY,
+    },
+    methods: {
+        toggle(bool) {
+            console.log(`toggle(${bool})`)
+            if (bool !== undefined) { this.open = bool }
+            else { this.open = !this.open }
+        },
     },
 }
 </script>

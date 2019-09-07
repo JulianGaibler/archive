@@ -20,7 +20,7 @@
         <input v-model="value.text" type="text" placeholder="Search..." />
         <div v-if="givenFilters.length > 1" class="hoverParent">
             <IconTune @click="toggleFilterMenu(true)" class="button-filter" />
-            <div v-if="showFilterMenu" v-click-outside="() => toggleFilterMenu(false)" class="hoverBox">
+            <div v-if="showFilterMenu" v-click-outside="() => toggleFilterMenu(false)" class="hoverBox hoverBox-right">
                 <div class="itemRow">
                     <h2 class="itemRow-grow">Add a Filter</h2>
                     <button @click="clearFilters" class="button button-chip">Reset</button>
@@ -122,6 +122,7 @@ export default {
             this.showFilterMenu = bool
         },
         toggleFilters(prop, bool) {
+            this.showFilterMenu = false
             this.openFilter[prop] = bool
         },
         clearFilter(prop) {
