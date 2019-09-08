@@ -1,6 +1,6 @@
 <template>
     <div class="item">
-        <div>
+        <div class="previewWrapper">
             <div class="preview">
                 <video v-if="fileType==='video'" autoplay muted loop v-bind:src="imagePreview"/>
                 <img v-else-if="fileType==='image'" v-bind:src="imagePreview"/>
