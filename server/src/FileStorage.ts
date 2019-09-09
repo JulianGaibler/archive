@@ -44,10 +44,12 @@ interface IQueueItem {
 // Options
 const options = {
     dist: 'public',
-    compressed: 'compressed',
-    thumbnail: 'thumbnail',
-    original: 'original',
-    profilePictures: 'upic',
+    directories: {
+        compressed: 'compressed',
+        thumbnail: 'thumbnail',
+        original: 'original',
+        profilePictures: 'upic',
+    }
 }
 
 /**
@@ -63,6 +65,11 @@ export default class FileStorage {
         this.queue = []
         this.taskMutex = new Mutex()
         this.performCleanup()
+
+        const newDir = jet.dir(options.dist)
+        Object.keys(options.directories).forEach(key => {
+            newDir.dir(options.directories[key])
+        })
     }
 
     /**
@@ -145,13 +152,13 @@ export default class FileStorage {
 
         const filename = `${userHashID}-${randomHash}`
 
-        const [err] = await to(FileProcessor.createProfilePicture(readStream, [options.dist, options.profilePictures], filename))
+        const [err] = await to(FileProcessor.createProfilePicture(readStream, [options.dist, options.directories.profilePictures], filename))
         if (err) {
             throw err
         }
 
         if (user.profilePicture !== null) {
-            await FileProcessor.deleteProfilePicture([options.dist, options.profilePictures], user.profilePicture)
+            await FileProcessor.deleteProfilePicture([options.dist, options.directories.profilePictures], user.profilePicture)
         }
 
         await user.$query().patch({ profilePicture: filename })
@@ -162,7 +169,7 @@ export default class FileStorage {
         const user = await User.query().findById(iUserId)
         if (!user) { throw new AuthenticationError(`This should not have happened.`) }
         if (user.profilePicture === null) { return true }
-        await FileProcessor.deleteProfilePicture([options.dist, options.profilePictures], user.profilePicture)
+        await FileProcessor.deleteProfilePicture([options.dist, options.directories.profilePictures], user.profilePicture)
         await user.$query().patch({ profilePicture: null })
         return true
     }
@@ -290,9 +297,9 @@ export default class FileStorage {
             await Promise.all(movePromises)
 
             newPost.relHeight = result.relHeight
-            newPost.compressedPath = `${options.compressed}/${hashId}`
-            newPost.thumbnailPath = `${options.thumbnail}/${hashId}`
-            newPost.originalPath = `${options.original}/${hashId}.${type.ext}`
+            newPost.compressedPath = `${options.directories.compressed}/${hashId}`
+            newPost.thumbnailPath = `${options.directories.thumbnail}/${hashId}`
+            newPost.originalPath = `${options.directories.original}/${hashId}.${type.ext}`
 
             await newPost.$query().update(newPost)
 
