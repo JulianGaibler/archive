@@ -1,12 +1,13 @@
 import Knex from 'knex'
 import { Model } from 'objection'
 import knexfile from '../knexfile'
+import { to } from './utils'
 
 class Database {
     knexInstance: Knex
     private config: object
 
-    connect(options = {}): void {
+    async connect(options = {}): Promise<void> {
         if (this.knexInstance) {
             return
         }
@@ -23,13 +24,11 @@ class Database {
         return this.knexInstance
     }
 
-    close(done): void {
+    async close(): Promise<void> {
         if (!this.knexInstance) {
-            done()
-            return
+            return Promise.resolve()
         }
-
-        this.knexInstance.destroy(done)
+        await this.knexInstance.destroy()
     }
 }
 

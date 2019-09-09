@@ -121,10 +121,10 @@ class Server {
         })
     }
 
-    stop() {
-        if (this.combinedServer) {
-            this.combinedServer.close()
-        }
+    stop(): Promise<any> {
+        return new Promise(resolve => {
+            this.combinedServer.close(resolve)
+        })
     }
 
     private debugErrorHandler(error) {
