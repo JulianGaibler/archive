@@ -41,7 +41,7 @@
 </template>
 
 <script>
-import { onLogin } from '../vue-apollo.js'
+import { resetStore } from '../vue-apollo.js'
 import InputField from '../components/InputField.vue'
 
 import gql from 'graphql-tag'
@@ -68,8 +68,7 @@ export default {
     methods: {
         async onDone(data) {
             if (!data) return
-            const apolloClient = this.$apollo.provider.defaultClient
-            await onLogin(apolloClient)
+            await resetStore()
             this.$router.replace('/')
         },
     },

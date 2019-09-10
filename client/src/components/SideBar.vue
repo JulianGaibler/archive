@@ -112,7 +112,6 @@ export default {
     },
     methods: {
         toggle(bool) {
-            console.log(`toggle(${bool})`)
             if (bool !== undefined) { this.open = bool }
             else { this.open = !this.open }
         },
