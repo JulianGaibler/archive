@@ -17,7 +17,7 @@
                 <div class="indicatorWrapper">
                     <div class="indicator">
                         <IconQueue v-if="status === 'QUEUED'" />
-                        <Lottie v-else-if="status === 'PROCESSING'" :options="animOptions" />
+                        <Lottie v-else-if="status === 'PROCESSING'" :options="processingAnimationOptions" />
                         <IconDone v-else-if="status === 'DONE'" />
                         <IconClose v-else-if="status === 'FAILED'" />
                     </div>
@@ -45,6 +45,12 @@
                 </div>
             </div>
         </div>
+        <div class="itemRow itemRow-center">
+            <div class="indicator" v-if="$apollo.queries.tasks.loading">
+                <Lottie :options="loadingAnimationOptions" />
+            </div>
+            <button v-else-if="tasks.pageInfo.hasNextPage" @click="showMore" class="button">Show More</button>
+        </div>
     </div>
 </template>
 
@@ -53,6 +59,7 @@ import gql from 'graphql-tag'
 
 import Lottie from '../components/Lottie'
 import * as processingAnimation from '@/assets/animations/processing.json'
+import * as loadingAnimation from '@/assets/animations/loading.json'
 
 import IconSearch from '@/assets/jw_icons/search.svg?inline'
 import IconClose from '@/assets/jw_icons/close.svg?inline'
@@ -60,8 +67,8 @@ import IconDone from '@/assets/jw_icons/done.svg?inline'
 import IconQueue from '@/assets/jw_icons/queue.svg?inline'
 import IconReload from '@/assets/jw_icons/reload.svg?inline'
 
-const TASKS_QUERY = gql`{
-    tasks {
+const TASKS_QUERY = gql`query posts($after: String) {
+    tasks(first: 10, after: $after) {
         edges {
             node {
                 id
@@ -78,6 +85,10 @@ const TASKS_QUERY = gql`{
                     id
                 }
             }
+        }
+        pageInfo {
+            hasNextPage
+            endCursor
         }
     }
 }`
@@ -107,8 +118,11 @@ export default {
     components: { IconSearch, IconClose, IconDone, IconQueue, Lottie, IconReload },
     data() {
         return {
-            animOptions: {
+            processingAnimationOptions: {
                 animationData: processingAnimation,
+            },
+            loadingAnimationOptions: {
+                animationData: loadingAnimation,
             },
         }
     },
@@ -149,6 +163,26 @@ export default {
                     }
                 },
             },
+        },
+    },
+    methods: {
+        showMore() {
+            this.$apollo.queries.tasks.fetchMore({
+                variables: {
+                    after: this.tasks.pageInfo.endCursor,
+                },
+                updateQuery: (previousResult, { fetchMoreResult }) => {
+                    const newEdges = fetchMoreResult.tasks.edges
+                    const pageInfo = fetchMoreResult.tasks.pageInfo
+                    return newEdges.length? {
+                        tasks: {
+                            __typename: previousResult.tasks.__typename,
+                            edges: [...previousResult.tasks.edges, ...newEdges],
+                            pageInfo,
+                        },
+                    } : previousResult
+                },
+            })
         },
     },
 }

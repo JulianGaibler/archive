@@ -32,7 +32,7 @@ import gql from 'graphql-tag'
 import Preview from '@/components/Preview'
 import Lottie from '@/components/Lottie'
 
-import * as uploadingAnimation from '@/assets/animations/loading.json'
+import * as loadingAnimation from '@/assets/animations/loading.json'
 
 const POSTS_QUERY = gql`query posts($after: String, $byUser: [ID!], $byKeyword: [ID!], $byType: [Format!], $byLanguage: Language, $byContent: String) {
     posts(first: 20, after: $after, byUser: $byUser, byKeyword: $byKeyword, byType: $byType, byLanguage: $byLanguage, byContent: $byContent) {
