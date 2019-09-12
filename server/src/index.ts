@@ -20,5 +20,5 @@ async function handleExit(options, err) {
 
 (async () => {
     await Database.connect()
-    //Server.start()
+    Server.start()
 })()
