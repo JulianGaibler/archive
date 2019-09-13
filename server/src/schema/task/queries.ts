@@ -57,11 +57,11 @@ const tasks: GraphQLFieldConfig<any, any, any> = {
                     )
                     return rows
                 }),
-            TaskModel.query()
+            query
                 .count()
+                .execute()
                 .then(x => (x[0] as any).count),
         ])
-
         return {
             ...connectionFromArraySlice(data, args, {
                 sliceStart: offset,
