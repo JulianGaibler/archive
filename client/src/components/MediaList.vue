@@ -71,7 +71,7 @@ export default {
             loading: true,
             columns: 4,
             animOptions: {
-                animationData: uploadingAnimation,
+                animationData: loadingAnimation,
             },
         }
     },
