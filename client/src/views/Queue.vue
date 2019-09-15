@@ -5,10 +5,7 @@
         </header>
 
         <nav class="actionBar">
-            <div class="actionBar-component actionBar-component-search">
-                <IconSearch />
-                <input type="text" placeholder="Search...">
-            </div>
+            <Search v-model="search" />
             <button class="actionBar-component button button-icon"><IconReload /></button>
         </nav>
 
@@ -45,7 +42,7 @@
                 </div>
             </div>
         </div>
-        <div class="itemRow itemRow-center">
+        <div v-if="tasks" class="itemRow itemRow-center">
             <div class="indicator" v-if="$apollo.queries.tasks.loading">
                 <Lottie :options="loadingAnimationOptions" />
             </div>
@@ -58,17 +55,17 @@
 import gql from 'graphql-tag'
 
 import Lottie from '../components/Lottie'
+import Search from '@/components/Search'
 import * as processingAnimation from '@/assets/animations/processing.json'
 import * as loadingAnimation from '@/assets/animations/loading.json'
 
-import IconSearch from '@/assets/jw_icons/search.svg?inline'
 import IconClose from '@/assets/jw_icons/close.svg?inline'
 import IconDone from '@/assets/jw_icons/done.svg?inline'
 import IconQueue from '@/assets/jw_icons/queue.svg?inline'
 import IconReload from '@/assets/jw_icons/reload.svg?inline'
 
-const TASKS_QUERY = gql`query posts($after: String) {
-    tasks(first: 10, after: $after) {
+const TASKS_QUERY = gql`query tasks($after: String, $byTitle: String, $byUser: [ID!], $byStatus: [TaskStatus!]) {
+    tasks(first: 10, after: $after, byUser: $byUser, byStatus: $byStatus, byTitle: $byTitle) {
         edges {
             node {
                 id
@@ -115,9 +112,14 @@ const TASKS_SUBSCRIPTION = gql`subscription taskUpdates {
 
 export default {
     name: 'Queue',
-    components: { IconSearch, IconClose, IconDone, IconQueue, Lottie, IconReload },
+    components: { Search, IconClose, IconDone, IconQueue, Lottie, IconReload },
     data() {
         return {
+            search: {
+                text: '',
+                taskType: [],
+                users: [],
+            },
             processingAnimationOptions: {
                 animationData: processingAnimation,
             },
@@ -129,6 +131,14 @@ export default {
     apollo: {
         tasks: {
             query: TASKS_QUERY,
+            variables() {
+                return {
+                    byTitle: this.search.text.length > 0 ? this.search.text : undefined,
+                    byStatus: this.search.taskType.length > 0 ? this.search.taskType : undefined,
+                    byUser: this.search.users.length > 0 ? this.search.users : undefined,
+                }
+            },
+            debounce: 500,
             subscribeToMore: {
                 document: TASKS_SUBSCRIPTION,
                 updateQuery: (currentData, { subscriptionData }) => {
