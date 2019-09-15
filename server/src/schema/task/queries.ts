@@ -4,6 +4,7 @@ import {
     cursorToOffset,
     forwardConnectionArgs,
 } from 'graphql-relay'
+import { raw } from 'objection'
 import TaskModel from '../../models/Task'
 import { decodeHashId, IContext, InputError, isAuthenticated } from '../../utils'
 import { ModelId } from '../../utils/modelEnum'
@@ -21,6 +22,10 @@ const tasks: GraphQLFieldConfig<any, any, any> = {
         byStatus: {
             description: `Limits the search of tasks to the language.`,
             type: new GraphQLList(new GraphQLNonNull(TaskStatus)),
+        },
+        byTitle: {
+            description: `Performs a text-search of tasks based on title.`,
+            type: GraphQLString,
         },
     },
     resolve: async (parent, args, ctx: IContext) => {
@@ -42,6 +47,10 @@ const tasks: GraphQLFieldConfig<any, any, any> = {
         }
         if (args.byStatus && args.byStatus.length > 0) {
             query.whereIn('status', args.byStatus)
+        }
+
+        if (args.byTitle) {
+            query.where(raw('title ILIKE ?', `%${args.byTitle}%`))
         }
 
         const [data, totalCount] = await Promise.all([
