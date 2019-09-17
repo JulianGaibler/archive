@@ -1,7 +1,7 @@
 <template>
     <div id="app">
         <main>
-            <keep-alive :max="10"
+            <keep-alive :max="10">
                 <router-view />
             </keep-alive>
         </main>
