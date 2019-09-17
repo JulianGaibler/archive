@@ -43,7 +43,7 @@
                         <router-link @click.native="toggle(false)" :to="{ name: 'Settings'}"><IconSettings />Settings</router-link>
                     </li>
                     <li>
-                        <a><IconLogout/>Logout</a>
+                        <a @click.native="toggle(false)" @click="logout"><IconLogout/>Logout</a>
                     </li>
                 </ul>
             </nav>
@@ -56,7 +56,7 @@
 
 <script>
 import uploadManager from '../utils/UploadManager'
-
+import { resetStore } from '@/vue-apollo.js'
 import UploadBox from './SideBar/UploadBox'
 
 import IconMenu from '@/assets/jw_icons/menu.svg?inline'
@@ -78,12 +78,16 @@ const USER_QUERY = gql`{
     }
 }`
 const RESOURCES_QUERY = gql`{
-
     resources {
         resourceDomain
         resourcePath
     }
 }`
+const LOGOUT_MUTATION = gql`
+    mutation logout {
+        logout
+    }
+`
 
 export default {
     name: 'SideBar',
@@ -114,6 +118,12 @@ export default {
         toggle(bool) {
             if (bool !== undefined) { this.open = bool }
             else { this.open = !this.open }
+        },
+        async logout() {
+            await this.$apollo.mutate({
+                mutation: LOGOUT_MUTATION,
+            })
+            await resetStore()
         },
     },
 }
