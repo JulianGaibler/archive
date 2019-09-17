@@ -30,15 +30,17 @@
                 @keydown.up="onArrowUp"
                 @keydown.enter="onEnter"
                 v-model="searchWord" />
-            <ul v-if="showResults" class="results">
-                <li
-                    v-for="(edge, idx) in users.edges"
-                    :key="edge.node.id"
-                    @click="addItem(edge.node)"
-                    :class="{ selected: idx===currentSelect }"
-                    class="result"
-                >{{edge.node.username}}</li>
-            </ul>
+            <div v-if="showResults" class="hoverBox hoverBox-thin">
+                <ul v-if="showResults" class="optionList">
+                    <li
+                        v-for="(edge, idx) in users.edges"
+                        :key="edge.node.id"
+                        @click="addItem(edge.node)"
+                        :class="{ selected: idx===currentSelect }"
+                        class="option"
+                    >{{edge.node.username}}</li>
+                </ul>
+            </div>
         </div>
     </div>
 </template>
