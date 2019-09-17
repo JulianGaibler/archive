@@ -4,7 +4,14 @@
             <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}thumbnail/${item.id}.webp`">
             <img :src="`//${resources.resourceDomain}/${resources.resourcePath}thumbnail/${item.id}.jpeg`">
         </picture>
-        <video ref="player" nofullscreen playsinline autoplay muted loop v-else>
+        <video
+            ref="player"
+            nofullscreen
+            playsinline
+            autoplay
+            muted
+            loop
+            v-else>
             <source :src="`//${resources.resourceDomain}/${resources.resourcePath}${item.thumbnailPath}.webm`" type="video/webm">
             <source :src="`//${resources.resourceDomain}/${resources.resourcePath}${item.thumbnailPath}.mp4`" type="video/mp4">
         </video>

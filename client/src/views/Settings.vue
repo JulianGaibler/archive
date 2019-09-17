@@ -1,7 +1,7 @@
 <template>
     <div class="frame framed settings">
         <header>
-                <h1>{{ $t('views.settings') }}</h1>
+            <h1>{{ $t('views.settings') }}</h1>
         </header>
 
         <section class="content" >

@@ -3,7 +3,8 @@
         <label :class="{ visible: showLabel }">{{label}}</label>
         <div class="autocomplete hoverParent">
             <div v-for="id in value" :key="id" class="tag">
-                <ApolloQuery :query="gql => gql`
+                <ApolloQuery
+                    :query="gql => gql`
                       query getKeywordName($id: ID!) {
                         node (id: $id) {
                           ... on Keyword {
@@ -13,10 +14,10 @@
                       }
                     `"
                     :variables="{ id }" >
-                        <template slot-scope="{ result: { data } }">
-                            <span v-if="data">{{data.node.name}}</span>
-                        </template>
-                    </ApolloQuery>
+                    <template slot-scope="{ result: { data } }">
+                        <span v-if="data">{{data.node.name}}</span>
+                    </template>
+                </ApolloQuery>
 
                 <div class="icon" @click="removeItem(id)"><IconClose /></div>
             </div>
@@ -31,21 +32,22 @@
                 v-model="searchWord" />
             <div v-if="showResults" class="hoverBox hoverBox-thin">
                 <ul class="optionList">
-                <li
-                    v-for="(edge, idx) in keywords.edges"
-                    :key="edge.node.id" @click="addItem(edge.node)"
-                    :class="{ selected: idx===currentSelect }"
-                    class="option"
-                >{{edge.node.name}}</li>
-                <li
-                    v-if="showResults"
-                    @click="createItem()"
-                    :class="{ selected: keywords.edges.length===currentSelect }"
-                    class="option create"
-                >Create Keyword "{{searchWord}}"</li>
+                    <li
+                        v-for="(edge, idx) in keywords.edges"
+                        :key="edge.node.id"
+                        @click="addItem(edge.node)"
+                        :class="{ selected: idx===currentSelect }"
+                        class="option"
+                    >{{edge.node.name}}</li>
+                    <li
+                        v-if="showResults"
+                        @click="createItem()"
+                        :class="{ selected: keywords.edges.length===currentSelect }"
+                        class="option create"
+                    >Create Keyword "{{searchWord}}"</li>
 
-                <div v-if="createStatus.loading" class="info">Creating...</div>
-                <div v-if="createStatus.error" class="info error">{{createStatus.error}}</div>
+                    <div v-if="createStatus.loading" class="info">Creating...</div>
+                    <div v-if="createStatus.error" class="info error">{{createStatus.error}}</div>
                 </ul>
             </div>
         </div>

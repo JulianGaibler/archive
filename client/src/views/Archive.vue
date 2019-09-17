@@ -1,7 +1,7 @@
 <template>
     <div class="frame framed">
         <header>
-                <h1>{{ $t('views.archive') }}</h1>
+            <h1>{{ $t('views.archive') }}</h1>
         </header>
 
         <nav class="actionBar">

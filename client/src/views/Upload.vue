@@ -1,7 +1,7 @@
 <template>
     <div class="frame framed upload" ref="frame">
         <header>
-                <h1>{{ $t('views.upload') }}</h1>
+            <h1>{{ $t('views.upload') }}</h1>
         </header>
 
         <nav class="actionBar">
@@ -23,7 +23,13 @@
             <Item v-for="item in upload.items" :key="item.id" :uploadItem="item" />
 
             <template v-if="!upload.locked">
-                <input class="uploadclick" name="selectfile" id="selectfile" @change="handleFileEvent" type="file" multiple>
+                <input
+                    class="uploadclick"
+                    name="selectfile"
+                    id="selectfile"
+                    @change="handleFileEvent"
+                    type="file"
+                    multiple>
                 <div class="uploadclick item">
                     <div>
                         <label class="preview" for="selectfile">

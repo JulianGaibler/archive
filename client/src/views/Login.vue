@@ -4,9 +4,9 @@
             <ApolloMutation
                 :mutation="LOGIN_MUTATION"
                 :variables="{
-                        username,
-                        password,
-                    }"
+                    username,
+                    password,
+                }"
                 class="wrapper"
                 @done="onDone"
             >

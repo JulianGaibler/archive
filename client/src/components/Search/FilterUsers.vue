@@ -7,7 +7,8 @@
         <p>{{ $t('filters.users_description') }}</p>
         <InputUsers
             :label="$t('filters.users')"
-            :value="value" @input="v => $emit('input', v)" />
+            :value="value"
+            @input="v => $emit('input', v)" />
     </div>
 </template>
 

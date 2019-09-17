@@ -13,7 +13,8 @@
                 { value:'VIDEO', name:$t('mediaType.video') },
                 { value:'GIF', name:$t('mediaType.gif') },
             ]"
-            :value="value" @input="v => $emit('input', v)" />
+            :value="value"
+            @input="v => $emit('input', v)" />
     </div>
 </template>
 

@@ -7,7 +7,8 @@
         <p>{{ $t('filters.keywords_description') }}</p>
         <InputKeywords
             :label="$t('filters.keywords')"
-            :value="value" @input="v => $emit('input', v)" />
+            :value="value"
+            @input="v => $emit('input', v)" />
     </div>
 </template>
 

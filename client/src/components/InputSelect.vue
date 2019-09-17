@@ -4,7 +4,11 @@
         <div class="selectFlex" :class="{ noItemSelected: !showLabel }">
             <select @input="updateInput_">
                 <option value="" v-if="!showLabel" :selected="!showLabel">{{label}}</option>
-                <option v-for="option in options" :selected="value === option.value" :key="option.value" :value="option.value">{{option.tName ? $t(option.tName) : option.name}}</option>
+                <option
+                    v-for="option in options"
+                    :selected="value === option.value"
+                    :key="option.value"
+                    :value="option.value">{{option.tName ? $t(option.tName) : option.name}}</option>
             </select>
             <IconDropdown />
         </div>

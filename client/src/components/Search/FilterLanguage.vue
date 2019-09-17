@@ -17,7 +17,8 @@
                 { value:'SPANISH', tName:'languages.spanish' },
                 { value:'TURKISH', tName:'languages.turkish' },
             ]"
-            :value="value" @input="v => $emit('input', v)" />
+            :value="value"
+            @input="v => $emit('input', v)" />
     </div>
 </template>
 

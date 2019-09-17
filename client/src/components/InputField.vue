@@ -11,7 +11,14 @@
             :disabled="disabled"
             @input="updateInputArea"
         />
-        <input v-else :value="value" :autocomplete="autocomplete" :type="type" :disabled="disabled" :placeholder="label" @input="handleInput" />
+        <input
+            v-else
+            :value="value"
+            :autocomplete="autocomplete"
+            :type="type"
+            :disabled="disabled"
+            :placeholder="label"
+            @input="handleInput" />
 
         <ul v-if="errors" class="error">
             <li v-for="error in errors" :key="error.message">{{error.messageT ? $t(error.messageT) : error.message}}</li>

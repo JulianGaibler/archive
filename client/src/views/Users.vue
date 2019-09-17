@@ -1,7 +1,7 @@
 <template>
     <div class="frame framed users">
         <header>
-                <h1>{{ $t('views.users') }}</h1>
+            <h1>{{ $t('views.users') }}</h1>
         </header>
 
         <nav class="actionBar">
@@ -9,7 +9,12 @@
         </nav>
 
         <div class="content itemList" v-if="users">
-            <router-link tag="a" v-for="({ node }) in users.edges" :key="node.id" :to="{ name: 'User', params: { username: node.username }}" class="item">
+            <router-link
+                tag="a"
+                v-for="({ node }) in users.edges"
+                :key="node.id"
+                :to="{ name: 'User', params: { username: node.username }}"
+                class="item">
                 <picture v-if="resources">
                     <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}upic/${node.profilePicture}-256.webp`">
                     <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${node.profilePicture}-256.jpeg`">

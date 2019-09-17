@@ -2,11 +2,13 @@
     <div class="actionBar-component actionBar-component-search">
         <IconSearch />
 
-        <div v-for="label in showLabels.array" :key="label"
+        <div
+            v-for="label in showLabels.array"
+            :key="label"
             class="filterChip hoverParent"
             @click="() => toggleFilters(label, true)"
             :class="{ active: openFilter[label] }"
-            >
+        >
             {{ $t(filterProperties[label].tName) }}
             <component
                 v-if="openFilter[label]"
@@ -27,7 +29,11 @@
                 </div>
                 <ul class="filterList">
                     <li v-if="value.text.length > 0" class="itemRow selected"><span class="itemRow-grow">Text</span><IconClose @click="() => clearFilter('text')" /></li>
-                    <li v-for="label in givenFilters" :key="label" class="itemRow" :class="{selected: showLabels.bool[label]}">
+                    <li
+                        v-for="label in givenFilters"
+                        :key="label"
+                        class="itemRow"
+                        :class="{selected: showLabels.bool[label]}">
                         <span class="itemRow-grow" @click="() => toggleFilters(label, true)">{{ $t(filterProperties[label].tName) }}</span>
                         <IconClose v-if="showLabels.bool[label]" @click="() => clearFilter(label)" />
                     </li>

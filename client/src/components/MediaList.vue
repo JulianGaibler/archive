@@ -7,7 +7,12 @@
             </div>
             <div v-else class="content mediaList">
                 <div v-for="(column, i) in sortedPosts" :key="i" class="column">
-                    <router-link tag="a" :to="{ name: 'Post', params: { id: post.node.id }}" class="item" v-for="post in column" :key="post.node.id">
+                    <router-link
+                        tag="a"
+                        :to="{ name: 'Post', params: { id: post.node.id }}"
+                        class="item"
+                        v-for="post in column"
+                        :key="post.node.id">
                         <Preview :item="post.node" />
                     </router-link>
                 </div>

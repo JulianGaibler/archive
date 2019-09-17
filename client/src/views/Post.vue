@@ -1,7 +1,7 @@
 <template>
     <div v-if="resources && node" class="frame framed post" ref="frame">
         <header>
-                <h1>{{ $t('views.post') }}</h1>
+            <h1>{{ $t('views.post') }}</h1>
         </header>
 
         <nav class="actionBar">
@@ -17,7 +17,11 @@
                 <source :srcset="filePaths.format1" type="image/webp">
                 <img :src="filePaths.format2">
             </picture>
-            <video controls muted loop v-else>
+            <video
+                controls
+                muted
+                loop
+                v-else>
                 <source :src="filePaths.format1" type="video/webm">
                 <source :src="filePaths.format2" type="video/mp4">
             </video>

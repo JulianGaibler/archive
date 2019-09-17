@@ -3,7 +3,8 @@
         <label :class="{ visible: showLabel }">{{label}}</label>
         <div class="autocomplete">
             <div v-for="id in value" :key="id" class="tag">
-                <ApolloQuery :query="gql => gql`
+                <ApolloQuery
+                    :query="gql => gql`
                       query getUsername($id: ID!) {
                         node (id: $id) {
                           ... on User {
@@ -13,10 +14,10 @@
                       }
                     `"
                     :variables="{ id }" >
-                        <template slot-scope="{ result: { data } }">
-                            <span v-if="data">{{data.node.username}}</span>
-                        </template>
-                    </ApolloQuery>
+                    <template slot-scope="{ result: { data } }">
+                        <span v-if="data">{{data.node.username}}</span>
+                    </template>
+                </ApolloQuery>
 
                 <div class="icon" @click="removeItem(id)"><IconClose /></div>
             </div>
@@ -32,7 +33,8 @@
             <ul v-if="showResults" class="results">
                 <li
                     v-for="(edge, idx) in users.edges"
-                    :key="edge.node.id" @click="addItem(edge.node)"
+                    :key="edge.node.id"
+                    @click="addItem(edge.node)"
                     :class="{ selected: idx===currentSelect }"
                     class="result"
                 >{{edge.node.username}}</li>

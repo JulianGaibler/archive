@@ -1,7 +1,7 @@
 <template>
     <div class="frame framed queue">
         <header>
-                <h1>{{ $t('views.queue') }}</h1>
+            <h1>{{ $t('views.queue') }}</h1>
         </header>
 
         <nav class="actionBar">
@@ -38,7 +38,11 @@
                 </div>
                 <div class="interaction">
                     <div class="label">{{ext}}</div>
-                    <router-link v-if="createdPost" tag="button" :to="{ name: 'Post', params: { id: createdPost.id }}" class="button">{{ $t('action.show_post') }}</router-link>
+                    <router-link
+                        v-if="createdPost"
+                        tag="button"
+                        :to="{ name: 'Post', params: { id: createdPost.id }}"
+                        class="button">{{ $t('action.show_post') }}</router-link>
                 </div>
             </div>
         </div>

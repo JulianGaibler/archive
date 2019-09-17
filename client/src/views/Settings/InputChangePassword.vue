@@ -4,10 +4,33 @@
             <p v-for="(error, i) in errors" :key="i">{{error.message}}</p>
         </div>
         <form v-if="me" class="inputs">
-            <input class="hiddenInput" disabled type="text" autocomplete="username" :value="me.username">
-            <InputField v-model="oldPassword" :label="$t('input.settings.oldPassword')" :disabled="loading" :type="'password'" :autocomplete="'current-password'" :errors="fieldErrors[0]" />
-            <InputField v-model="newPassword1" :label="$t('input.settings.newPassword')" :disabled="loading" :type="'password'" :autocomplete="'new-password'" :errors="fieldErrors[1]" />
-            <InputField v-model="newPassword2" :label="$t('input.settings.newPassword_repeat')" :disabled="loading" :type="'password'" :autocomplete="'new-password'" :errors="fieldErrors[2]" />
+            <input
+                class="hiddenInput"
+                disabled
+                type="text"
+                autocomplete="username"
+                :value="me.username">
+            <InputField
+                v-model="oldPassword"
+                :label="$t('input.settings.oldPassword')"
+                :disabled="loading"
+                :type="'password'"
+                :autocomplete="'current-password'"
+                :errors="fieldErrors[0]" />
+            <InputField
+                v-model="newPassword1"
+                :label="$t('input.settings.newPassword')"
+                :disabled="loading"
+                :type="'password'"
+                :autocomplete="'new-password'"
+                :errors="fieldErrors[1]" />
+            <InputField
+                v-model="newPassword2"
+                :label="$t('input.settings.newPassword_repeat')"
+                :disabled="loading"
+                :type="'password'"
+                :autocomplete="'new-password'"
+                :errors="fieldErrors[2]" />
             <div class="itemRow dist">
                 <button @click="changePassword" class="button">{{ $t('action.changePassword') }}</button>
                 <div class="indicator" v-if="loading">

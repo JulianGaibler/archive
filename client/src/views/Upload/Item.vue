@@ -2,7 +2,12 @@
     <div class="item">
         <div class="previewWrapper">
             <div class="preview">
-                <video v-if="fileType==='video'" autoplay muted loop v-bind:src="imagePreview"/>
+                <video
+                    v-if="fileType==='video'"
+                    autoplay
+                    muted
+                    loop
+                    v-bind:src="imagePreview"/>
                 <img v-else-if="fileType==='image'" v-bind:src="imagePreview"/>
                 <div class="indicatorWrapper indicatorWrapper-absolute indicatorWrapper-center" v-if="uploadManager.locked">
                     <div class="indicator indicator-shadow">

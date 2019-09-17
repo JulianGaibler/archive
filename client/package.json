@@ -48,6 +48,10 @@
             "eslint:recommended"
         ],
         "rules": {
+            "vue/html-indent": ["error", 4],
+            "vue/max-attributes-per-line": ["error", {
+              "singleline": 3
+            }],
             "no-console": 0,
             "indent": [
                 "error",

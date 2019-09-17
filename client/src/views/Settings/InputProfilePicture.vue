@@ -17,7 +17,12 @@
         </div>
 
         <div class="itemRow itemRow-center">
-            <input v-if="uploadReady" name="selectfile" id="selectfile" @change="uploadPicture" type="file">
+            <input
+                v-if="uploadReady"
+                name="selectfile"
+                id="selectfile"
+                @change="uploadPicture"
+                type="file">
             <label class="button button-icon" for="selectfile"><UploadEdit /></label>
             <button class="button button-icon" @click="deletePicture"><TrashEdit /></button>
         </div>

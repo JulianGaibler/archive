@@ -8,7 +8,11 @@
             </div>
         </div>
         <div class="btm">
-            <div class="progress" v-for="item in uploadManager.items" :key="item.id" :style="{flex: distributionCalc(item)}">
+            <div
+                class="progress"
+                v-for="item in uploadManager.items"
+                :key="item.id"
+                :style="{flex: distributionCalc(item)}">
                 <div class="progress-bar" :style="{width: `${ percentageCalc(item) }%`}" />{{percentageCalc(item)}}</div>
         </div>
     </div>

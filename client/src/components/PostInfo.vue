@@ -69,7 +69,10 @@
                     </ul>
                 </div>
 
-                <Modal v-if="showDelete" @cancel="toggleDelete(false)" @confirm="deletePost"
+                <Modal
+                    v-if="showDelete"
+                    @cancel="toggleDelete(false)"
+                    @confirm="deletePost"
                     :important="true"
                     :messageA="$t('prompts.sure_delete_post')"
                     :messageB="$t('prompts.cannot_undo')"

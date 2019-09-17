@@ -5,7 +5,7 @@
             <button @click="$emit('clear')" class="button button-chip">{{ $t('action.delete') }}</button>
         </div>
         <p>{{ $t('filters.type_description') }}</p>
-    <InputRadio
+        <InputRadio
             :label="$t('input.upload.treatas')"
             :type="'checkbox'"
             :options="[
@@ -14,7 +14,8 @@
                 { value:'DONE', name:$t('state.done') },
                 { value:'FAILED', name:$t('state.failed') },
             ]"
-            :value="value" @input="v => $emit('input', v)" />
+            :value="value"
+            @input="v => $emit('input', v)" />
     </div>
 </template>
 

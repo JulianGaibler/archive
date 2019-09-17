@@ -1,7 +1,7 @@
 <template>
     <div class="frame framed user">
         <header>
-                <h1>{{ $t('views.user') }}</h1>
+            <h1>{{ $t('views.user') }}</h1>
         </header>
 
         <section v-if="user" class="content content-dense content-box itemRow">
