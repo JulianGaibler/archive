@@ -1,11 +1,11 @@
 <template>
     <div id="app">
         <main>
-            <keep-alive :max="10">
+            <keep-alive :max="10" :exclude="'Login'">
                 <router-view />
             </keep-alive>
         </main>
-        <SideBar v-if="this.$router.currentRoute !== 'Login'" />
+        <SideBar v-if="$router.currentRoute.name !== 'Login'" />
     </div>
 </template>
 
@@ -21,11 +21,12 @@ export default {
     created() {
         // Taking control of global error handler
         this.$apolloProvider.errorHandler = error => {
-            console.error(error)
-            for (let i = 0; i < error.graphQLErrors.length; i++) {
-                if (error.graphQLErrors[i].code === 'AuthenticationError') {
-                    this.$router.replace('/login')
-                    break
+            if (this.$router.currentRoute.name !== 'Login') {
+                for (let i = 0; i < error.graphQLErrors.length; i++) {
+                    if (error.graphQLErrors[i].code === 'AuthenticationError') {
+                        this.$router.replace('/login')
+                        break
+                    }
                 }
             }
         }
