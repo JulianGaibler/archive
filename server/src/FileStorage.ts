@@ -328,6 +328,7 @@ export default class FileStorage {
             const [newPost] = await Post.query().insertGraph([postData], {
                 relate: true,
             })
+            postData.id = newPost.id
             postCreated = true
             const hashId = encodeHashId(Post, newPost.id)
 
@@ -340,7 +341,7 @@ export default class FileStorage {
                             result.createdFiles[category],
                             jet.path(
                                 options.dist,
-                                options[category],
+                                options.directories[category],
                                 `${hashId}.${type.ext}`,
                             ),
                         ),
@@ -352,7 +353,7 @@ export default class FileStorage {
                                 result.createdFiles[category][ext],
                                 jet.path(
                                     options.dist,
-                                    options[category],
+                                    options.directories[category],
                                     `${hashId}.${ext}`,
                                 ),
                             ),
@@ -372,7 +373,7 @@ export default class FileStorage {
 
             await update({ status: 'DONE', createdPostId: newPost.id })
         } catch (e) {
-            if (postCreated) {
+            if (postCreated && postData.id) {
                 await Post.query().deleteById(postData.id)
             }
             tmpDir.removeCallback()
