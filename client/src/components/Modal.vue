@@ -7,7 +7,7 @@
             </div>
             <div class="actionsRow">
                 <button @click="cancel" class="button button-slim">{{ optionA }}</button>
-                <button @click="confirm" class="button button-slim" :class="[ important ? 'button-dangerous' : 'button-primary' ]">{{ optionB }}</button>
+                <button v-if="optionB" @click="confirm" class="button button-slim" :class="[ important ? 'button-dangerous' : 'button-primary' ]">{{ optionB }}</button>
             </div>
         </div>
     </div>

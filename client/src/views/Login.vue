@@ -1,50 +1,72 @@
 <template>
     <div class="login">
-        <div class="card">
-            <ApolloMutation
-                :mutation="LOGIN_MUTATION"
-                :variables="{
-                    username,
-                    password,
-                }"
-                class="wrapper"
-                @done="onDone"
+        <div class="headerWrapper">
+            <header>
+                <h1><img alt="Archive Box-Logo" src="@/assets/archive-box.svg">Archive</h1>
+                <p>Where memes <del>go to die</del> get indexed.</p>
+            </header>
+            <RedTriangle />
+        </div>
+        <div class="mainWrapper">
+            <div class="content indicatorWrapper" v-if="checkLogin">
+                <div class="indicator">
+                    <Lottie :options="animOptions" />
+                </div>
+            </div>
+            <form
+                v-else
+                class="content form"
+                @submit.prevent="login()"
             >
-                <form
-                    slot-scope="{ mutate, loading, gqlError: error }"
-                    class="form"
-                    @submit.prevent="mutate()"
-                >
-                    <InputField
-                        v-model="username"
-                        :type="'username'"
-                        :label="'Username'"
-                    />
-                    <InputField
-                        v-model="password"
-                        :type="'password'"
-                        :label="'Password'"
-                    />
-                    <div v-if="error" class="error">{{ error.message }}</div>
-                    <template>
-                        <button
-                            type="submit"
-                            :disabled="loading"
-                            class="inputButton"
-                            data-id="login"
-                        >Login</button>
-                    </template>
-                </form>
-            </ApolloMutation>
+                <Modal
+                    v-if="errorMessage"
+                    @cancel="() => { errorMessage = null }"
+                    :messageA="$t('prompts.no_right')"
+                    :messageB="errorMessage"
+                    :optionA="$t('action.okay')"
+                />
+                <InputField
+                    v-model="username"
+                    :type="'text'"
+                    :disabled="formLoading"
+                    :autocomplete="'username'"
+                    :label="'Username'"
+                />
+                <InputField
+                    v-model="password"
+                    :type="'password'"
+                    :disabled="formLoading"
+                    :autocomplete="'current-password'"
+                    :label="'Password'"
+                />
+                <button
+                    type="submit"
+                    :disabled="formLoading"
+                    class="button"
+                    data-id="login"
+                >Login</button>
+            </form>
+            <div class="logoWrapper">
+                <img alt="Archive Box-Logo" src="@/assets/wels-logo.svg">
+            </div>
+            <YellowPolygon />
         </div>
     </div>
 </template>
 
 <script>
-import { resetStore } from '../vue-apollo.js'
-import InputField from '../components/InputField.vue'
+import { resetStore } from '@/vue-apollo.js'
+import { parseError } from '@/utils'
+import InputField from '@/components/InputField.vue'
+import Modal from '@/components/Modal'
+import Lottie from '@/components/Lottie'
 
+import * as uploadingAnimation from '@/assets/animations/loading.json'
 
+import RedTriangle from '@/assets/shapes/red-triangle.svg?inline'
+import YellowPolygon from '@/assets/shapes/yellow-polygon.svg?inline'
+
+import ME_QUERY from '@/graphql/meQuery.gql'
 import LOGIN_MUTATION from '@/graphql/loginMutation.gql'
 
 export default {
@@ -52,19 +74,46 @@ export default {
     props: {
         msg: String,
     },
-    components: { InputField },
+    components: { InputField, RedTriangle, YellowPolygon, Lottie, Modal },
     data() {
         return {
-            LOGIN_MUTATION,
+            checkLogin: true,
+            formLoading: false,
+            errorMessage: null,
             username: '',
             password: '',
+            animOptions: {
+                animationData: uploadingAnimation,
+            },
         }
     },
-    methods: {
-        async onDone(data) {
-            if (!data) return
-            await resetStore()
+    mounted() {
+        this.$apollo.query({
+            query: ME_QUERY,
+        }).then(() => {
             this.$router.replace('/')
+        }).catch(() => {
+            this.checkLogin = false
+        })
+    },
+    methods: {
+        login() {
+            this.formLoading = true
+
+            this.$apollo.mutate({
+                mutation: LOGIN_MUTATION,
+                variables: {
+                    username: this.username,
+                    password: this.password,
+                },
+            }).then(async () => {
+                await resetStore()
+                this.$router.replace('/')
+            }).catch((error) => {
+                this.formLoading = false
+                const e = parseError(error)
+                this.errorMessage = e.message
+            })
         },
     },
 }

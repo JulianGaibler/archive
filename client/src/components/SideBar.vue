@@ -68,7 +68,7 @@ import IconSettings from '@/assets/jw_icons/settings.svg?inline'
 import IconUpload from '@/assets/jw_icons/upload.svg?inline'
 import IconUser from '@/assets/jw_icons/user.svg?inline'
 
-import USER_QUERY from '@/graphql/meQuery.gql'
+import ME_QUERY from '@/graphql/meQuery.gql'
 import RESOURCES_QUERY from '@/graphql/resourcesQuery.gql'
 import LOGOUT_MUTATION from '@/graphql/logoutMutation.gql'
 
@@ -94,7 +94,7 @@ export default {
     },
     apollo: {
         // Simple query that will update the 'hello' vue property
-        me: USER_QUERY,
+        me: ME_QUERY,
         resources: RESOURCES_QUERY,
     },
     methods: {
