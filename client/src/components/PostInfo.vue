@@ -98,25 +98,8 @@ import IconMore from '@/assets/jw_icons/more.svg?inline'
 import IconTrash from '@/assets/jw_icons/trash.svg?inline'
 import IconEdit from '@/assets/jw_icons/edit.svg?inline'
 
-import gql from 'graphql-tag'
-const EDIT_POST = gql`
-    mutation editPost($id: ID!, $title: String, $keywords: [ID!], $language: Language, $caption: String) {
-        editPost(id: $id, title: $title, keywords: $keywords, language: $language, caption: $caption) {
-            id
-            title
-            language
-            caption
-            keywords {
-                id
-            }
-        }
-    }
-`
-const DELETE_POST = gql`
-    mutation deletePosts($ids: [ID!]!) {
-        deletePosts(ids: $ids)
-    }
-`
+import EDIT_POST from '@/graphql/editPostMutation.gql'
+import DELETE_POST from '@/graphql/deletePostsMutation.gql'
 
 export default {
     name: 'PostInfo',

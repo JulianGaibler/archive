@@ -44,13 +44,8 @@
 import { resetStore } from '../vue-apollo.js'
 import InputField from '../components/InputField.vue'
 
-import gql from 'graphql-tag'
 
-const LOGIN_MUTATION = gql`
-    mutation login($username: String!, $password: String!) {
-        login(username: $username, password: $password)
-    }
-`
+import LOGIN_MUTATION from '@/graphql/loginMutation.gql'
 
 export default {
     name: 'Login',

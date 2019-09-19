@@ -30,28 +30,15 @@
 </template>
 
 <script>
-import gql from 'graphql-tag'
 import UAParser from 'ua-parser-js'
 import { parseDate } from '@/utils'
-
 
 import Lottie from '@/components/Lottie'
 import * as uploadingAnimation from '@/assets/animations/loading.json'
 import IconSession from '@/assets/jw_icons/session.svg?inline'
 
-const SESSION_QUERY = gql`{
-  userSessions {
-    id
-    latestIP
-    firstIP
-    createdAt
-    updatedAt
-    userAgent
-  }
-}`
-const REVOKE_SESSION = gql`mutation revokeSession($id: ID!){
-    revokeSession(id: $id)
-}`
+import SESSION_QUERY from '@/graphql/userSessionsQuery.gql'
+import REVOKE_SESSION from '@/graphql/revokeSessionMutatioon.gql'
 
 export default {
     name: 'SessionManager',

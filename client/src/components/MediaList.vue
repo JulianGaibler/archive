@@ -33,40 +33,12 @@
 </template>
 
 <script>
-import gql from 'graphql-tag'
 import Preview from '@/components/Preview'
 import Lottie from '@/components/Lottie'
 
 import * as loadingAnimation from '@/assets/animations/loading.json'
 
-const POSTS_QUERY = gql`query posts($after: String, $byUser: [ID!], $byKeyword: [ID!], $byType: [Format!], $byLanguage: Language, $byContent: String) {
-    posts(first: 20, after: $after, byUser: $byUser, byKeyword: $byKeyword, byType: $byType, byLanguage: $byLanguage, byContent: $byContent) {
-        edges {
-            node {
-                id
-                title
-                type
-                relHeight
-                color
-                keywords {
-                    name
-                }
-                thumbnailPath
-                uploader {
-                    name
-                    username
-                }
-                caption
-                updatedAt
-                createdAt
-            }
-        }
-        pageInfo {
-            hasNextPage
-            endCursor
-        }
-    }
-}`
+import POSTS_QUERY from '@/graphql/postsQuery.gql'
 
 export default {
     name: 'MediaList',

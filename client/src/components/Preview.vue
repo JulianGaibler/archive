@@ -19,14 +19,8 @@
 </template>
 
 <script>
-import gql from 'graphql-tag'
 
-const RESOURCES = gql`query getResources{
-    resources {
-        resourceDomain
-        resourcePath
-    }
-}`
+import RESOURCES_QUERY from '@/graphql/resourcesQuery.gql'
 
 export default {
     name: 'Preview',
@@ -52,7 +46,7 @@ export default {
     },
     apollo: {
         resources: {
-            query: RESOURCES,
+            query: RESOURCES_QUERY,
         },
     },
     methods: {

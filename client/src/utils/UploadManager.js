@@ -1,18 +1,7 @@
-import gql from 'graphql-tag'
 import { apolloClient } from '../vue-apollo'
 import { parseError } from '@/utils'
 
-const UPLOAD_FILE = gql`
-    mutation uploadPosts($title: String!, $caption: String, $language: Language!, $type: Format, $keywords: [ID!], $file: Upload!) {
-        uploadPosts(title: $title, caption: $caption, language: $language, type: $type, keywords: $keywords, file: $file) {
-            title
-            uploader {
-                username
-            }
-            status
-        }
-    }
-`
+import UPLOAD_FILE from '@/graphql/uploadPostsMutation.gql'
 
 class UploadManager {
 

@@ -56,8 +56,6 @@
 </template>
 
 <script>
-import gql from 'graphql-tag'
-
 import Lottie from '../components/Lottie'
 import Search from '@/components/Search'
 import * as processingAnimation from '@/assets/animations/processing.json'
@@ -68,51 +66,8 @@ import IconDone from '@/assets/jw_icons/done.svg?inline'
 import IconQueue from '@/assets/jw_icons/queue.svg?inline'
 import IconReload from '@/assets/jw_icons/reload.svg?inline'
 
-const TASKS_QUERY = gql`query tasks($after: String, $byTitle: String, $byUser: [ID!], $byStatus: [TaskStatus!]) {
-    tasks(first: 10, after: $after, byUser: $byUser, byStatus: $byStatus, byTitle: $byTitle) {
-        edges {
-            node {
-                id
-                title
-                status
-                progress
-                notes
-                ext
-                uploader {
-                    name
-                    username
-                }
-                createdPost {
-                    id
-                }
-            }
-        }
-        pageInfo {
-            hasNextPage
-            endCursor
-        }
-    }
-}`
-
-const TASKS_SUBSCRIPTION = gql`subscription taskUpdates {
-    taskUpdates {
-        id
-        kind
-        task {
-            id
-            title
-            notes
-            status
-            progress
-            uploader {
-                username
-            }
-            createdPost {
-                id
-            }
-        }
-    }
-}`
+import TASKS_QUERY from '@/graphql/tasksQuery.gql'
+import TASKS_SUBSCRIPTION from '@/graphql/taskUpdatesQuery.gql'
 
 export default {
     name: 'Queue',

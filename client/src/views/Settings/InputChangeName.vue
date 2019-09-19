@@ -22,22 +22,13 @@
 </template>
 
 <script>
-import gql from 'graphql-tag'
-
-const CHANGE_NAME = gql`mutation changeName($newName: String!){
-    changeName(newName: $newName)
-}`
-
 import InputField from '@/components/InputField'
 
 import Lottie from '@/components/Lottie'
 import * as uploadingAnimation from '@/assets/animations/loading.json'
 
-const USER_QUERY = gql`{
-    me {
-        name
-    }
-}`
+import ME_QUERY from '@/graphql/meQuery.gql'
+import CHANGE_NAME from '@/graphql/changeNameMutation.gql'
 
 export default {
     name: 'InputChangeName',
@@ -55,7 +46,7 @@ export default {
     components: { Lottie, InputField },
     mounted() {
         this.$apollo.query({
-            query: USER_QUERY,
+            query: ME_QUERY,
         }).then(({ data }) => {
             this.name = data.me.name
         })
@@ -78,7 +69,7 @@ export default {
                 variables: {
                     newName: this.name,
                 },
-                refetchQueries: [{ query: USER_QUERY }],
+                refetchQueries: [{ query: ME_QUERY }],
             }).then(() => {
                 this.loading = false
             }).catch((error) => {

@@ -1,0 +1,11 @@
+mutation editPost($id: ID!, $title: String, $keywords: [ID!], $language: Language, $caption: String) {
+    editPost(id: $id, title: $title, keywords: $keywords, language: $language, caption: $caption) {
+        id
+        title
+        language
+        caption
+        keywords {
+            id
+        }
+    }
+}

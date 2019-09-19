@@ -30,34 +30,17 @@
 </template>
 
 <script>
-import gql from 'graphql-tag'
-
 import UploadEdit from '@/assets/jw_icons/upload.svg?inline'
 import TrashEdit from '@/assets/jw_icons/trash.svg?inline'
 
 import Lottie from '@/components/Lottie'
 import * as uploadingAnimation from '@/assets/animations/loading.json'
 
-const USER_QUERY = gql`{
-    me {
-        profilePicture
-    }
-}`
-const RESOURCES_QUERY = gql`{
+import ME_QUERY from '@/graphql/meQuery.gql'
+import RESOURCES_QUERY from '@/graphql/resourcesQuery.gql'
 
-    resources {
-        resourceDomain
-        resourcePath
-    }
-}`
-
-const UPLOAD_PICTURE = gql`mutation uploadPicture($file: Upload!){
-    uploadProfilePicture(file: $file)
-}`
-
-const DELETE_PICTURE = gql`mutation {
-    clearProfilePicture
-}`
+import UPLOAD_PICTURE from '@/graphql/uploadProfilePictureMutation.gql'
+import DELETE_PICTURE from '@/graphql/clearProfilePictureMutation.gql'
 
 export default {
     name: 'Settings',
@@ -74,7 +57,7 @@ export default {
     },
     components: { UploadEdit, TrashEdit, Lottie },
     apollo: {
-        me: USER_QUERY,
+        me: ME_QUERY,
         resources: RESOURCES_QUERY,
     },
     mounted() {
@@ -113,7 +96,7 @@ export default {
                 variables: {
                     file,
                 },
-                refetchQueries: [{ query: USER_QUERY }],
+                refetchQueries: [{ query: ME_QUERY }],
             }).then((data) => {
                 console.log(data)
                 this.uploading = false
@@ -131,7 +114,7 @@ export default {
             this.errors = null
             this.$apollo.mutate({
                 mutation: DELETE_PICTURE,
-                refetchQueries: [{ query: USER_QUERY }],
+                refetchQueries: [{ query: ME_QUERY }],
             }).then((data) => {
                 console.log(data)
                 this.uploading = false

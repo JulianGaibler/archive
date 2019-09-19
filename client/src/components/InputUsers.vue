@@ -47,20 +47,10 @@
 
 <script>
 import debounce from 'debounce'
-import gql from 'graphql-tag'
 
 import IconClose from '@/assets/jw_icons/close.svg?inline'
 
-const USER_SEARCH = gql`query userSearch($input: String) {
-  users(byUsername: $input) {
-    edges {
-      node {
-        id
-        username
-      }
-    }
-  }
-}`
+import USER_SEARCH from '@/graphql/userSearchQuery.gql'
 
 export default {
     name: 'InputUsers',

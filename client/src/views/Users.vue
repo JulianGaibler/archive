@@ -34,32 +34,10 @@
 </template>
 
 <script>
-import gql from 'graphql-tag'
-
 import Search from '../components/Search'
 
-const USERS_QUERY = gql`query users($after: String, $byUsername: String) {
-    users(first: 10, after: $after, byUsername: $byUsername) {
-        edges {
-            node {
-                id
-                name
-                username
-                profilePicture
-            }
-        }
-        pageInfo {
-            hasNextPage
-            endCursor
-        }
-    }
-}`
-const RESOURCES_QUERY = gql`{
-    resources {
-        resourceDomain
-        resourcePath
-    }
-}`
+import USERS_QUERY from '@/graphql/usersQuery.gql'
+import RESOURCES_QUERY from '@/graphql/resourcesQuery.gql'
 
 export default {
     name: 'Users',

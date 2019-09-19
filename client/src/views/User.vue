@@ -27,28 +27,11 @@
 </template>
 
 <script>
-import gql from 'graphql-tag'
-
 import Search from '@/components/Search'
 import MediaList from '@/components/MediaList'
 
-
-const NODE_QUERY = gql`
-  query getUser($input: String!) {
-    user(username: $input) {
-      id
-      name
-      username
-      profilePicture
-    }
-  }
-`
-const RESOURCES_QUERY = gql`{
-    resources {
-        resourceDomain
-        resourcePath
-    }
-}`
+import USER_QUERY from '@/graphql/userQuery.gql'
+import RESOURCES_QUERY from '@/graphql/resourcesQuery.gql'
 
 export default {
     name: 'Users',
@@ -69,7 +52,7 @@ export default {
     },
     apollo: {
         user: {
-            query: NODE_QUERY,
+            query: USER_QUERY,
             variables() {
                 return {
                     input: this.$route.params.username,

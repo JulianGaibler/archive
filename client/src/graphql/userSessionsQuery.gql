@@ -1,0 +1,10 @@
+{
+    userSessions {
+        id
+        latestIP
+        firstIP
+        createdAt
+        updatedAt
+        userAgent
+    }
+}

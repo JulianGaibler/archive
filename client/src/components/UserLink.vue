@@ -9,16 +9,7 @@
 </template>
 
 <script>
-import gql from 'graphql-tag'
-
-const RESOURCES_QUERY = gql`
-  query {
-    resources {
-      resourceDomain
-        resourcePath
-    }
-  }
-`
+import RESOURCES_QUERY from '@/graphql/resourcesQuery.gql'
 
 export default {
     name: 'UserLink',

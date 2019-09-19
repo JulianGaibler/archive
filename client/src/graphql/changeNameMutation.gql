@@ -1,0 +1,3 @@
+mutation changeName($newName: String!){
+    changeName(newName: $newName)
+}

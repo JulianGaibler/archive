@@ -42,22 +42,13 @@
 </template>
 
 <script>
-import gql from 'graphql-tag'
-
-const CHANAGE_PASSWORD = gql`mutation changePassword($oldPassword: String!, $newPassword: String!){
-    changePassword(oldPassword: $oldPassword, newPassword: $newPassword)
-}`
-
 import InputField from '@/components/InputField'
 
 import Lottie from '@/components/Lottie'
 import * as uploadingAnimation from '@/assets/animations/loading.json'
 
-const USER_QUERY = gql`{
-    me {
-        username
-    }
-}`
+import ME_QUERY from '@/graphql/meQuery.gql'
+import CHANAGE_PASSWORD from '@/graphql/changePasswordMutation.gql'
 
 export default {
     name: 'InputChangePassword',
@@ -76,7 +67,7 @@ export default {
     },
     components: { Lottie, InputField },
     apollo: {
-        me: USER_QUERY,
+        me: ME_QUERY,
     },
     methods: {
         changePassword(e) {
@@ -108,7 +99,7 @@ export default {
                     oldPassword: this.oldPassword,
                     newPassword: this.newPassword1,
                 },
-                refetchQueries: [{ query: USER_QUERY }],
+                refetchQueries: [{ query: ME_QUERY }],
             }).then(() => {
                 this.loading = false
             }).catch((error) => {

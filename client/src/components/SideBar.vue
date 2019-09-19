@@ -68,26 +68,9 @@ import IconSettings from '@/assets/jw_icons/settings.svg?inline'
 import IconUpload from '@/assets/jw_icons/upload.svg?inline'
 import IconUser from '@/assets/jw_icons/user.svg?inline'
 
-import gql from 'graphql-tag'
-
-const USER_QUERY = gql`{
-    me {
-        name
-        username
-        profilePicture
-    }
-}`
-const RESOURCES_QUERY = gql`{
-    resources {
-        resourceDomain
-        resourcePath
-    }
-}`
-const LOGOUT_MUTATION = gql`
-    mutation logout {
-        logout
-    }
-`
+import USER_QUERY from '@/graphql/meQuery.gql'
+import RESOURCES_QUERY from '@/graphql/resourcesQuery.gql'
+import LOGOUT_MUTATION from '@/graphql/logoutMutation.gql'
 
 export default {
     name: 'SideBar',

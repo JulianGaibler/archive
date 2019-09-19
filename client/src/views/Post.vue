@@ -33,8 +33,6 @@
 </template>
 
 <script>
-import gql from 'graphql-tag'
-
 import PostInfo from '@/components/PostInfo'
 
 import IconDownload from '@/assets/jw_icons/download.svg?inline'
@@ -47,39 +45,8 @@ const formats = {
     GIF: ['webm', 'mp4', 'gif'],
 }
 
-export const NODE_QUERY = gql`
-  query getNode($input: ID!) {
-    node(id: $input) {
-      id
-      ... on Post {
-        title
-        type
-        compressedPath
-        originalPath
-        language
-        createdAt
-        caption
-        keywords {
-            id
-            name
-        }
-        uploader {
-            name
-            username
-            profilePicture
-        }
-      }
-    }
-  }
-`
-const RESOURCES_QUERY = gql`
-  query {
-    resources {
-      resourceDomain
-        resourcePath
-    }
-  }
-`
+import POST_QUERY from '@/graphql/postQuery.gql'
+import RESOURCES_QUERY from '@/graphql/resourcesQuery.gql'
 
 export default {
     name: 'Post',
@@ -91,7 +58,7 @@ export default {
     },
     apollo: {
         node: {
-            query: NODE_QUERY,
+            query: POST_QUERY,
             variables() {
                 return {
                     input: this.$route.params.id,

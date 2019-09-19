@@ -1,0 +1,23 @@
+query getNode($input: ID!) {
+    node(id: $input) {
+        id
+        ... on Post {
+            title
+            type
+            compressedPath
+            originalPath
+            language
+            createdAt
+            caption
+            keywords {
+                    id
+                    name
+            }
+            uploader {
+                    name
+                    username
+                    profilePicture
+            }
+        }
+    }
+}

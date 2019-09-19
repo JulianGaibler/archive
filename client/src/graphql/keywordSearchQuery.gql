@@ -1,0 +1,10 @@
+query keywordSearch($input: String) {
+    keywords(byName: $input) {
+        edges {
+            node {
+                id
+                name
+            }
+        }
+    }
+}

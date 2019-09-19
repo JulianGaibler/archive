@@ -1,0 +1,16 @@
+query users($after: String, $byUsername: String) {
+    users(first: 10, after: $after, byUsername: $byUsername) {
+        edges {
+            node {
+                id
+                name
+                username
+                profilePicture
+            }
+        }
+        pageInfo {
+            hasNextPage
+            endCursor
+        }
+    }
+}

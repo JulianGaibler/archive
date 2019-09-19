@@ -1,0 +1,19 @@
+subscription taskUpdates {
+    taskUpdates {
+        id
+        kind
+        task {
+            id
+            title
+            notes
+            status
+            progress
+            uploader {
+                username
+            }
+            createdPost {
+                id
+            }
+        }
+    }
+}

@@ -1,0 +1,10 @@
+query userSearch($input: String) {
+    users(byUsername: $input) {
+        edges {
+            node {
+                id
+                username
+            }
+        }
+    }
+}

@@ -1,0 +1,7 @@
+{
+    me {
+        name
+        username
+        profilePicture
+    }
+}

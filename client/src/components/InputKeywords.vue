@@ -56,28 +56,11 @@
 
 <script>
 import debounce from 'debounce'
-import gql from 'graphql-tag'
 
 import IconClose from '@/assets/jw_icons/close.svg?inline'
 
-const KEYWORD_SEARCH = gql`query keywordSearch($input: String) {
-  keywords(byName: $input) {
-    edges {
-      node {
-        id
-        name
-      }
-    }
-  }
-}`
-
-const KEYWORD_CREATE = gql`mutation createKeyword($input: String!) {
-  createKeyword(name: $input) {
-    id
-    name
-  }
-}
-`
+import KEYWORD_SEARCH from '@/graphql/keywordSearchQuery.gql'
+import KEYWORD_CREATE from '@/graphql/createKeywordMutation.gql'
 
 export default {
     name: 'InputKeywords',
