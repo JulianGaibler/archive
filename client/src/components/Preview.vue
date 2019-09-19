@@ -1,5 +1,5 @@
 <template>
-    <div class="previewItem" :style="{'padding-bottom': `${item.relHeight}%`}" v-if="resources">
+    <div class="previewItem" :style="{'padding-bottom': `${item.relHeight}%`, 'background-color': item.color}" v-if="resources">
         <picture v-if="item.type === 'IMAGE' || !initiatedPlayback">
             <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}thumbnail/${item.id}.webp`">
             <img :src="`//${resources.resourceDomain}/${resources.resourcePath}thumbnail/${item.id}.jpeg`">

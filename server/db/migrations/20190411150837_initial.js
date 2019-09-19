@@ -16,6 +16,7 @@ exports.up = async knex => {
                 table.string('title').notNullable();
                 table.enu('type', ['VIDEO', 'IMAGE', 'GIF'], { useNative: true, enumName: 'Format' }).notNullable();
                 table.string('language', 32).notNullable();
+                table.string('color', 7);
                 table.string('originalPath');
                 table.string('compressedPath');
                 table.string('thumbnailPath');
@@ -36,8 +37,8 @@ exports.up = async knex => {
             .createTable('Collection', table => {
                 table.increments('id');
                 table.string('title').notNullable();
-                table.integer('creatorId').references('User.id').onDelete('SET NULL');
                 table.text('description');
+                table.integer('creatorId').references('User.id').onDelete('SET NULL');
                 table.bigInteger('updatedAt').notNullable();
                 table.bigInteger('createdAt').notNullable();
             })

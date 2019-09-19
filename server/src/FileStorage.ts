@@ -4,6 +4,7 @@ import { PostgresPubSub } from 'graphql-postgres-subscriptions'
 import { raw } from 'objection'
 import sodium from 'sodium'
 import tmp from 'tmp'
+import Vibrant from 'node-vibrant'
 import Keyword from './models/Keyword'
 import Post from './models/Post'
 import Task from './models/Task'
@@ -324,6 +325,9 @@ export default class FileStorage {
                     return { id }
                 })
             }
+
+            const palette = await Vibrant.from(result.createdFiles.thumbnail.jpeg).getPalette()
+            postData.color = palette.LightVibrant.getHex()
 
             const [newPost] = await Post.query().insertGraph([postData], {
                 relate: true,

@@ -16,6 +16,7 @@ export default class Post extends BaseModel {
     type!: string
     language?: string
 
+    color?: string
     compressedPath?: string
     thumbnailPath?: string
     originalPath?: string
@@ -78,6 +79,7 @@ export default class Post extends BaseModel {
         properties: {
             id: { type: 'number' },
             title: { type: 'string', minLength: 4, maxLength: 255 },
+            color: { type: 'string', maxLength: 7 },
             type: { type: 'string', enum: ['VIDEO', 'IMAGE', 'GIF'] },
             language: { type: ['string'], maxLength: 64 },
             compressedPath: {

@@ -47,6 +47,7 @@ const POSTS_QUERY = gql`query posts($after: String, $byUser: [ID!], $byKeyword: 
                 title
                 type
                 relHeight
+                color
                 keywords {
                     name
                 }

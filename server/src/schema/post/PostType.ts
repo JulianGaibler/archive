@@ -29,6 +29,7 @@ const PostType = new GraphQLObjectType({
             resolve: async (post, args, ctx: IContext) =>
                 ctx.dataLoaders.keyword.getByPost.load(post.id),
         },
+        color: { type: new GraphQLNonNull(GraphQLString) },
         language: {
             description: `Language in which caption and title are written.`,
             type: Language,
