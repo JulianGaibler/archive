@@ -3,6 +3,7 @@ import { Model, RelationMappings } from 'objection'
 import { ModelId } from '../utils/modelEnum'
 import BaseModel from './BaseModel'
 
+import Collection from './Collection'
 import Keyword from './Keyword'
 import User from './User'
 
@@ -26,6 +27,7 @@ export default class Post extends BaseModel {
 
     uploader?: User
     keywords: Keyword[]
+    collections: Collection[]
     caption?: string
 
     static async postsByIds(postIds: number[]): Promise<Post[]> {
@@ -62,14 +64,30 @@ export default class Post extends BaseModel {
         )
     }
 
+    static async postsbyCollections(collectionIds: number[]): Promise<Post[][]> {
+        const collections: any = await Collection.query()
+            .findByIds(collectionIds)
+            .select('Collection.id', 'posts')
+            .eagerAlgorithm(Collection.JoinEagerAlgorithm)
+            .eager('posts')
+
+        const collectionMap: { [key: string]: any } = {}
+        collections.forEach(collection => {
+            collectionMap[collection.id] = collection
+        })
+
+        return collectionIds.map(id =>
+            collectionMap[id] ? collectionMap[id].posts : [],
+        )
+    }
+
     static getLoaders() {
         const getById = new DataLoader<number, Post>(this.postsByIds)
         const getByUser = new DataLoader<number, Post[]>(this.postsByUsers)
-        const getByKeyword = new DataLoader<number, Post[]>(
-            this.postsbyKeywords,
-        )
+        const getByKeyword = new DataLoader<number, Post[]>(this.postsbyKeywords)
+        const getByCollection = new DataLoader<number, Post[]>(this.postsbyCollections)
 
-        return { getById, getByUser, getByKeyword }
+        return { getById, getByUser, getByKeyword, getByCollection }
     }
 
     static jsonSchema = {
@@ -127,6 +145,18 @@ export default class Post extends BaseModel {
                     to: 'KeywordToPost.keyword_id',
                 },
                 to: 'Keyword.id',
+            },
+        },
+        collections: {
+            relation: Model.ManyToManyRelation,
+            modelClass: 'Collections',
+            join: {
+                from: 'Post.id',
+                through: {
+                    from: 'CollectionToPost.post_id',
+                    to: 'CollectionToPost.collections_id',
+                },
+                to: 'Collections.id',
             },
         },
     }

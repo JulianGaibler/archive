@@ -15,6 +15,7 @@ import { createServer, Server as HttpServer } from 'http'
 import logger from 'morgan'
 import { SubscriptionServer } from 'subscriptions-transport-ws'
 
+import Collection from './models/Collection'
 import Keyword from './models/Keyword'
 import Post from './models/Post'
 import Session from './models/Session'
@@ -66,6 +67,7 @@ class Server {
             keyword: Keyword.getLoaders(),
             session: Session.getLoaders(),
             task: Task.getLoaders(),
+            collection: Collection.getLoaders(),
         })
 
         this.fileStorage = new FileStorage(this.pubSub)

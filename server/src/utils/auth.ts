@@ -6,6 +6,7 @@ import FileStorage from '../FileStorage'
 
 import { AuthenticationError, RequestError } from '../utils'
 
+import Collection from '../models/Collection'
 import Keyword from '../models/Keyword'
 import Post from '../models/Post'
 import Session from '../models/Session'
@@ -26,6 +27,7 @@ export interface IContext {
         keyword: ReturnType<typeof Keyword.getLoaders>;
         session: ReturnType<typeof Session.getLoaders>;
         task: ReturnType<typeof Task.getLoaders>;
+        collection: ReturnType<typeof Collection.getLoaders>;
     }
 }
 
@@ -84,7 +86,7 @@ export async function checkAndLogin(
     const user = await User.query().findOne({ username })
     if (!user) {
         throw new AuthenticationError(
-            `No such user found for username: ${username}`,
+            `No user found by that name.`,
         )
     }
     const valid = await bcrypt.compare(password, user.password)

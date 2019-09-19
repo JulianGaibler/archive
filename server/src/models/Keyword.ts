@@ -4,6 +4,7 @@ import { ModelId } from '../utils/modelEnum'
 import UniqueModel from './UniqueModel'
 
 import Post from './Post'
+import Collection from './Collection'
 
 export default class Keyword extends UniqueModel {
     static tableName = 'Keyword'
@@ -17,6 +18,7 @@ export default class Keyword extends UniqueModel {
     readonly id!: number
     name!: string
     posts!: Post[]
+    collections!: Collection[]
 
     static async keywordsByIds(keywordIds: number[]): Promise<Keyword[]> {
         const keyword = await Keyword.query().findByIds(keywordIds)
@@ -44,13 +46,27 @@ export default class Keyword extends UniqueModel {
         return postIds.map(id => (postMap[id] ? postMap[id].keywords : []))
     }
 
+    static async keywordsByCollection(collectionIds: number[]): Promise<Keyword[][]> {
+        const collections: any = await Collection.query()
+            .findByIds(collectionIds)
+            .select('Collection.id', 'keywords')
+            .eagerAlgorithm(Collection.JoinEagerAlgorithm)
+            .eager('keywords')
+
+        const collectionMap: { [key: string]: any } = {}
+        collections.forEach(collection => {
+            collectionMap[collection.id] = collection
+        })
+
+        return collectionIds.map(id => (collectionMap[id] ? collectionMap[id].keywords : []))
+    }
+
     static getLoaders() {
         const getById = new DataLoader<number, Keyword>(this.keywordsByIds)
-        const getByPost = new DataLoader<number, Keyword[]>(
-            this.keywordsByPost,
-        )
+        const getByPost = new DataLoader<number, Keyword[]>(this.keywordsByPost)
+        const getByCollection = new DataLoader<number, Keyword[]>(this.keywordsByCollection)
 
-        return { getById, getByPost }
+        return { getById, getByPost, getByCollection }
     }
 
     static jsonSchema = {
@@ -76,6 +92,18 @@ export default class Keyword extends UniqueModel {
                     to: 'KeywordToPost.post_id',
                 },
                 to: 'Post.id',
+            },
+        },
+        collections: {
+            relation: Model.ManyToManyRelation,
+            modelClass: 'Collection',
+            join: {
+                from: 'Keyword.id',
+                through: {
+                    from: 'KeywordToCollection.keyword_id',
+                    to: 'KeywordToCollection.collection_id',
+                },
+                to: 'Collection.id',
             },
         },
     }

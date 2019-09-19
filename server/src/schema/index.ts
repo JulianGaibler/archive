@@ -1,6 +1,7 @@
 import { GraphQLObjectType, GraphQLSchema } from 'graphql'
 import { nodeField, nodesField } from './node'
 
+import collectionQueries from './collection/queries'
 import keywordQueries from './keyword/queries'
 import postQueries from './post/queries'
 import resourceQueries from './resources/queries'
@@ -8,6 +9,7 @@ import sessionQueries from './session/queries'
 import taskQueries from './task/queries'
 import userQueries from './user/queries'
 
+import collectionMutations from './collection/mutations'
 import keywordMutations from './keyword/mutations'
 import postMutations from './post/mutations'
 import sessionMutations from './session/mutations'
@@ -27,6 +29,7 @@ export default new GraphQLSchema({
             ...taskQueries,
             ...userQueries,
             ...resourceQueries,
+            ...collectionQueries,
         },
     }),
     mutation: new GraphQLObjectType({
@@ -36,6 +39,7 @@ export default new GraphQLSchema({
             ...postMutations,
             ...sessionMutations,
             ...userMutations,
+            ...collectionMutations,
         },
     }),
     subscription: new GraphQLObjectType({

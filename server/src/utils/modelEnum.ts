@@ -4,4 +4,5 @@ export enum ModelId {
     POST = 2,
     SESSION = 3,
     TASK = 4,
+    COLLECTION = 5,
 }
