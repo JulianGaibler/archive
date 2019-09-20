@@ -49,6 +49,8 @@ export const createCollection: GraphQLFieldConfig<any, any, any> = {
             })
         }
 
+        data.creatorId = context.auth.userId
+
         const [newCollection] = await CollectionModel.query().insertGraph([data], {
             relate: true,
         })

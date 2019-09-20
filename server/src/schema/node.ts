@@ -16,6 +16,8 @@ export const { nodeInterface, nodeField, nodesField } = nodeDefinitions(
                 return ctx.dataLoaders.keyword.getById.load(id)
             case ModelId.USER:
                 return ctx.dataLoaders.user.getById.load(id)
+            case ModelId.COLLECTION:
+                return ctx.dataLoaders.collection.getById.load(id)
             default:
                 return null
         }
@@ -32,6 +34,8 @@ export const { nodeInterface, nodeField, nodesField } = nodeDefinitions(
                 return require('./session/SessionType').default
             case 'Task':
                 return require('./task/TaskType').default
+            case 'Collection':
+                return require('./collection/CollectionType').default
             default:
                 return null
         }
