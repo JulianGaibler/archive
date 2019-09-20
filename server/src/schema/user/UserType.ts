@@ -2,13 +2,15 @@ import { GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
 import {
     connectionArgs,
     connectionDefinitions,
-    connectionFromPromisedArray,
+    connectionFromArray,
 } from 'graphql-relay'
 import UserModel from '../../models/User'
 import { IContext } from '../../utils'
 import { nodeInterface } from '../node'
-import { postConnection } from '../post/PostType'
 import { globalIdField } from '../types'
+
+import { collectionConnection } from '../collection/CollectionType'
+import { postConnection } from '../post/PostType'
 
 const UserType = new GraphQLObjectType({
     name: 'User',
@@ -32,11 +34,31 @@ const UserType = new GraphQLObjectType({
             type: postConnection,
             description: `All Posts associated with this user.`,
             args: connectionArgs,
-            resolve: async (user, args, ctx: IContext) =>
-                connectionFromPromisedArray(
-                    ctx.dataLoaders.post.getByUser.load(user.id),
-                    args,
-                ),
+            resolve: async (user, args, ctx: IContext) => {
+                const data = await ctx.dataLoaders.post.getByUser.load(user.id)
+                return {
+                    ...connectionFromArray(
+                        data,
+                        args,
+                    ),
+                    totalCount: data.length,
+                }
+            },
+        },
+        collections: {
+            type: collectionConnection,
+            description: `All Collections associated with this user.`,
+            args: connectionArgs,
+            resolve: async (user, args, ctx: IContext) => {
+                const data = await ctx.dataLoaders.collection.getByUser.load(user.id)
+                return {
+                    ...connectionFromArray(
+                        data,
+                        args,
+                    ),
+                    totalCount: data.length,
+                }
+            },
         },
     }),
 })

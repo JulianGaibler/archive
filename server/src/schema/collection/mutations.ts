@@ -11,7 +11,9 @@ import CollectionModel from '../../models/Collection'
 import KeywordModel from '../../models/Keyword'
 import PostModel from '../../models/Post'
 import {
+    AuthorizationError,
     decodeHashIdAndCheck,
+    encodeHashId,
     IContext,
     InputError,
     isAuthenticated,
@@ -207,7 +209,23 @@ const deleteCollections: GraphQLFieldConfig<any, any, any> = {
     },
     resolve: async (parent, { ids }, context: IContext) => {
         isAuthenticated(context)
-        return context.fileStorage.deleteFiles(context.auth.userId, ids)
+
+        const iCollectionIds = ids.map(id => decodeHashIdAndCheck(CollectionModel, id))
+
+        const rows = await CollectionModel.query().findByIds(iCollectionIds)
+        rows.forEach((collection: CollectionModel) => {
+            if (collection.creatorId !== context.auth.userId) {
+                throw new AuthorizationError(
+                    'You cannot delete collection of other users.',
+                )
+            }
+        })
+        await CollectionModel.query()
+            .findByIds(iCollectionIds)
+            .delete()
+        return rows.map((collection: CollectionModel) => {
+            return encodeHashId(CollectionModel, collection.id)
+        })
     },
 }
 

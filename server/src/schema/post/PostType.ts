@@ -1,6 +1,7 @@
 import {
     GraphQLFloat,
     GraphQLInputObjectType,
+    GraphQLInt,
     GraphQLList,
     GraphQLNonNull,
     GraphQLObjectType,
@@ -59,7 +60,7 @@ const PostType = new GraphQLObjectType({
             type: GraphQLString,
         },
         updatedAt: {
-            description: `Identifies the date and time when the object was last updated..`,
+            description: `Identifies the date and time when the object was last updated.`,
             type: new GraphQLNonNull(DateTime),
         },
         createdAt: {
@@ -73,4 +74,7 @@ export default PostType
 
 export const { connectionType: postConnection } = connectionDefinitions({
     nodeType: PostType,
+    connectionFields: {
+        totalCount: { type: new GraphQLNonNull(GraphQLInt) },
+    },
 })

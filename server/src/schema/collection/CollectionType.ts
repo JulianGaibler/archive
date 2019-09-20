@@ -1,6 +1,7 @@
 import {
     GraphQLFloat,
     GraphQLInputObjectType,
+    GraphQLInt,
     GraphQLList,
     GraphQLNonNull,
     GraphQLObjectType,
@@ -9,7 +10,7 @@ import {
 import {
     connectionArgs,
     connectionDefinitions,
-    connectionFromPromisedArray,
+    connectionFromArray,
 } from 'graphql-relay'
 import CollectionModel from '../../models/Collection'
 import { IContext } from '../../utils'
@@ -33,11 +34,16 @@ const CollectionType = new GraphQLObjectType({
             type: postConnection,
             description: `All Posts associated with this collection.`,
             args: connectionArgs,
-            resolve: async (collection, args, ctx: IContext) =>
-                connectionFromPromisedArray(
-                    ctx.dataLoaders.post.getByCollection.load(collection.id),
-                    args,
-                ),
+            resolve: async (collection, args, ctx: IContext) => {
+                const data = await ctx.dataLoaders.post.getByCollection.load(collection.id)
+                return {
+                    ...connectionFromArray(
+                        data,
+                        args,
+                    ),
+                    totalCount: data.length,
+                }
+            },
         },
         keywords: {
             type: new GraphQLNonNull(
@@ -66,4 +72,7 @@ export default CollectionType
 
 export const { connectionType: collectionConnection } = connectionDefinitions({
     nodeType: CollectionType,
+    connectionFields: {
+        totalCount: { type: new GraphQLNonNull(GraphQLInt) },
+    },
 })

@@ -2,7 +2,7 @@ import { GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
 import {
     connectionArgs,
     connectionDefinitions,
-    connectionFromPromisedArray,
+    connectionFromArray,
 } from 'graphql-relay'
 import KeywordModel from '../../models/Keyword'
 import { IContext } from '../../utils'
@@ -24,11 +24,16 @@ const KeywordType = new GraphQLObjectType({
             type: postConnection,
             description: `All Posts associated with this keyword.`,
             args: connectionArgs,
-            resolve: async (keyword, args, ctx: IContext) =>
-                connectionFromPromisedArray(
-                    ctx.dataLoaders.post.getByKeyword.load(keyword.id),
-                    args,
-                ),
+            resolve: async (keyword, args, ctx: IContext) => {
+                const data = await ctx.dataLoaders.post.getByKeyword.load(keyword.id)
+                return {
+                    ...connectionFromArray(
+                        data,
+                        args,
+                    ),
+                    totalCount: data.length,
+                }
+            },
         },
     }),
 })

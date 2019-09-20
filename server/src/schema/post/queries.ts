@@ -104,7 +104,7 @@ const posts: GraphQLFieldConfig<any, any, any> = {
             })
         }
 
-        const [data, totalCount] = await Promise.all([
+        const [data, totalSearchCount, totalCount] = await Promise.all([
             query
                 .clone()
                 .orderBy('createdAt', 'desc')
@@ -121,13 +121,18 @@ const posts: GraphQLFieldConfig<any, any, any> = {
                 .count()
                 .execute()
                 .then(x => (x[0] as any).count),
+            PostModel
+                .query()
+                .count()
+                .then(x => (x[0] as any).count),
         ])
 
         return {
             ...connectionFromArraySlice(data, args, {
                 sliceStart: offset,
-                arrayLength: totalCount,
+                arrayLength: totalSearchCount,
             }),
+            totalCount,
         }
     },
 }
