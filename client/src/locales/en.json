@@ -21,6 +21,11 @@
         "cannot_undo": "You can’t undo this action.",
         "no_right": "Something was not right..."
     },
+    "items": {
+        "post": "0 Posts | 1 Post | {n} Posts",
+        "collection": "0 Collections | 1 Collection | {n} Collections",
+        "keyword": "0 Keywords | 1 Keyword | {n} Keywords"
+    },
     "action": {
         "next": "Next",
         "back": "Back",

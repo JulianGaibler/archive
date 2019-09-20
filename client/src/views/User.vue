@@ -10,6 +10,8 @@
                     <div class="name">{{user.name}}</div>
                     <div class="username">{{user.username}}</div>
                 </div>
+                <p>{{ $tc('items.post', user.posts.totalCount) }}</p>
+                <p>{{ $tc('items.collection', user.collections.totalCount) }}</p>
             </div>
             <picture class="profilePic" v-if="resources">
                 <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}upic/${user.profilePicture}-256.webp`">

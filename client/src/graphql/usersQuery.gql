@@ -6,6 +6,12 @@ query users($after: String, $byUsername: String) {
                 name
                 username
                 profilePicture
+                posts {
+                    totalCount
+                }
+                collections {
+                    totalCount
+                }
             }
         }
         pageInfo {

@@ -26,6 +26,7 @@
                             <div class="username">{{node.username}}</div>
                         </div>
                     </div>
+                    <div class="btm">{{ $tc('items.post', node.posts.totalCount) }} | {{ $tc('items.collection', node.collections.totalCount) }}</div>
                 </div>
             </router-link>
         </div>

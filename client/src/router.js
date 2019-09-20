@@ -32,6 +32,11 @@ export default new Router({
             component: () => import(/* webpackChunkName: "users" */ './views/Users.vue'),
         },
         {
+            path: '/u/:username',
+            name: 'User',
+            component: () => import(/* webpackChunkName: "user" */ './views/User.vue'),
+        },
+        {
             path: '/queue',
             name: 'Queue',
             component: () => import(/* webpackChunkName: "queue" */ './views/Queue.vue'),
@@ -40,11 +45,6 @@ export default new Router({
             path: '/settings',
             name: 'Settings',
             component: () => import(/* webpackChunkName: "settings" */ './views/Settings.vue'),
-        },
-        {
-            path: '/u/:username',
-            name: 'User',
-            component: () => import(/* webpackChunkName: "user" */ './views/User.vue'),
         },
         {
             path: '/:id',

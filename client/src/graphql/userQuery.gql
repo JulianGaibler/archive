@@ -4,5 +4,11 @@ query getUser($input: String!) {
         name
         username
         profilePicture
+        posts {
+            totalCount
+        }
+        collections {
+            totalCount
+        }
     }
 }
