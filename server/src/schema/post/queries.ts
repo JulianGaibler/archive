@@ -35,6 +35,10 @@ const posts: GraphQLFieldConfig<any, any, any> = {
             description: `Limits the search of posts to all of these keywords.`,
             type: new GraphQLList(new GraphQLNonNull(GraphQLID)),
         },
+        byCollection: {
+            description: `Limits the search of posts to all of these collections.`,
+            type: new GraphQLList(new GraphQLNonNull(GraphQLID)),
+        },
         byType: {
             description: `Limits the search of posts to any of these types.`,
             type: new GraphQLList(new GraphQLNonNull(Format)),
@@ -85,6 +89,25 @@ const posts: GraphQLFieldConfig<any, any, any> = {
                    FROM "KeywordToPost" AT
                    INNER JOIN "Post" "Post" ON "Post".id = at.post_id
                    WHERE at.keyword_id IN (${ids.join(',')})
+                   GROUP BY at.id) aa ON "Post".id = aa.post_id
+            `)
+            query.groupBy('Post.id')
+            query.havingRaw(`Count("Post".id) = ${ids.length}`)
+        }
+        if (args.byCollection && args.byCollection.length > 0) {
+            const ids = args.byCollection.map(globalId => {
+                const { type, id } = decodeHashId(globalId)
+                if (type === null || type !== ModelId.COLLECTION) {
+                    throw new InputError('Collection ID was incorrect')
+                }
+                return id
+            })
+            query.joinRaw(`
+                INNER JOIN
+                  (SELECT at.post_id
+                   FROM "CollectionToPost" AT
+                   INNER JOIN "Post" "Post" ON "Post".id = at.post_id
+                   WHERE at.collection_id IN (${ids.join(',')})
                    GROUP BY at.id) aa ON "Post".id = aa.post_id
             `)
             query.groupBy('Post.id')
