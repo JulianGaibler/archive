@@ -134,7 +134,7 @@ export default class FileStorage {
 
     async deleteFiles(iUserId: number, postIds: string[]): Promise<string[]> {
         const iPostIds = postIds.map(id => decodeHashIdAndCheck(Post, id))
-        const rows = await Post.query().findByIds([...iPostIds])
+        const rows = await Post.query().findByIds(iPostIds)
         rows.forEach((post: Post) => {
             if (post.uploaderId !== iUserId) {
                 throw new AuthorizationError(
@@ -153,7 +153,7 @@ export default class FileStorage {
             )
         })
         await Post.query()
-            .findByIds([...iPostIds])
+            .findByIds(iPostIds)
             .delete()
         return rows.map((post: Post) => {
             return encodeHashId(Post, post.id)
@@ -336,6 +336,10 @@ export default class FileStorage {
             postCreated = true
             const hashId = encodeHashId(Post, newPost.id)
 
+            const buffer = Buffer.allocUnsafe(8)
+            sodium.api.randombytes_buf(buffer, 8)
+            const randomHash = buffer.toString('hex')
+
             // Save files where they belong
             const movePromises = []
             Object.keys(result.createdFiles).forEach(category => {
@@ -346,7 +350,7 @@ export default class FileStorage {
                             jet.path(
                                 options.dist,
                                 options.directories[category],
-                                `${hashId}.${type.ext}`,
+                                `${hashId}-${randomHash}.${type.ext}`,
                             ),
                         ),
                     )
@@ -358,7 +362,7 @@ export default class FileStorage {
                                 jet.path(
                                     options.dist,
                                     options.directories[category],
-                                    `${hashId}.${ext}`,
+                                    `${hashId}-${randomHash}.${ext}`,
                                 ),
                             ),
                         )
