@@ -62,6 +62,7 @@ export default {
                     byType: this.search.postType,
                     byLanguage: this.search.language && this.search.language.length > 0 ? this.search.language : null,
                     byKeyword: this.search.keywords,
+                    byCollection: this.search.collections,
                     byUser: this.search.users,
                 }
             },

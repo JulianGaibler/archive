@@ -233,7 +233,6 @@ picture.profilePic
         transition transform .3s ease
         &.sidebar-open
             transform translateX(0)
-@media screen and (max-width: $archive-screen-mid)
     .blocker
         position fixed
         left 0
@@ -742,6 +741,18 @@ picture.profilePic
         > .info > .top
             font-size 1.2rem
 
+.collections
+    .itemList .item
+        > .collectionPreview
+            margin-right 2rem
+            @media screen and (max-width: $archive-screen-small)
+                width 5rem
+                height 5rem
+                margin-right 1rem
+        > .info > .top
+            font-size 1.4rem
+            font-weight 700
+
 .user
     picture
         margin-left 1rem
@@ -866,7 +877,7 @@ code
                 font-size 0.9rem
                 font-weight 400
             .btm
-                margin-top 1rem
+                margin-top .5rem
         .interaction
             display flex
             justify-content flex-end
@@ -1013,4 +1024,39 @@ code
             bottom 0
             width 100%
             height 100%
+
+.collectionPreview
+    width 10rem
+    height 10rem
+    overflow hidden
+    border-radius 50%
+    position relative
+    picture
+        position absolute
+        left 0
+        right 0
+        top 0
+        bottom 0
+        &:nth-child(2), &:nth-child(3)
+            border 4px solid $archive-std
+            overflow hidden
+            border-radius 50%
+            box-shadow $archive-collectionShadow
+        &:nth-child(2)
+            left 12%
+            right 12%
+            top 12%
+            bottom 12%
+            z-index 1
+        &:nth-child(3)
+            left 26%
+            right 26%
+            top 26%
+            bottom 26%
+            z-index 2
+        > *
+            object-fit cover
+            height 100%
+            width 100%
+
 

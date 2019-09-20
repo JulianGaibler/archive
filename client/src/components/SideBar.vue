@@ -24,7 +24,7 @@
                         <router-link @click.native="toggle(false)" :to="{ name: 'Archive'}" exact><IconArchive/>Archive</router-link>
                     </li>
                     <li>
-                        <a><IconCollection/>Collections</a>
+                        <router-link @click.native="toggle(false)" :to="{ name: 'Collections'}"><IconCollection/>Collections</router-link>
                     </li>
                     <li>
                         <router-link @click.native="toggle(false)" :to="{ name: 'Users'}"><IconUser />Users</router-link>

@@ -1,0 +1,27 @@
+query collections($after: String) {
+    collections(first: 10, after: $after) {
+        edges {
+            node {
+                id
+                title
+                creator {
+                    profilePicture
+                    username
+                }
+                posts(first: 3) {
+                    totalCount
+                    edges {
+                        node {
+                            thumbnailPath
+                            color
+                        }
+                    }
+                }
+            }
+        }
+        pageInfo {
+            hasNextPage
+            endCursor
+        }
+    }
+}

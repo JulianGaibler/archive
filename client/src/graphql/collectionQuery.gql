@@ -1,0 +1,27 @@
+query getNode($input: ID!) {
+    node(id: $input) {
+        id
+        ... on Collection {
+            title
+            description
+            createdAt
+            posts(first: 3) {
+                edges {
+                    node {
+                        thumbnailPath
+                        color
+                    }
+                }
+            }
+            keywords {
+                    id
+                    name
+            }
+            creator {
+                    name
+                    username
+                    profilePicture
+            }
+        }
+    }
+}
