@@ -97,8 +97,7 @@ export default {
                     file,
                 },
                 refetchQueries: [{ query: ME_QUERY }],
-            }).then((data) => {
-                console.log(data)
+            }).then(() => {
                 this.uploading = false
             }).catch((error) => {
                 this.errors = error.networkError.result.errors
@@ -115,11 +114,9 @@ export default {
             this.$apollo.mutate({
                 mutation: DELETE_PICTURE,
                 refetchQueries: [{ query: ME_QUERY }],
-            }).then((data) => {
-                console.log(data)
+            }).then(() => {
                 this.uploading = false
-            }).catch((error) => {
-                console.log(error)
+            }).catch(() => {
                 this.uploading = false
             })
         },
