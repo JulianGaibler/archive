@@ -105,13 +105,14 @@ exports.down = async knex => {
     await knex.raw('DROP INDEX IF EXISTS idx_fts_post')
     await knex.raw('DROP FUNCTION IF EXISTS gin_fts_fct')
     await knex.schema
-        .dropTableIfExists('KeywordToPost')
+        .dropTableIfExists('Session')
         .dropTableIfExists('CollectionToPost')
-        .dropTableIfExists('Keyword')
+        .dropTableIfExists('KeywordToCollection')
+        .dropTableIfExists('KeywordToPost')
         .dropTableIfExists('Task')
         .dropTableIfExists('Collection')
+        .dropTableIfExists('Keyword')
         .dropTableIfExists('Post')
-        .dropTableIfExists('Session')
         .dropTableIfExists('User');
     await knex.raw('DROP TYPE "Format"')
     await knex.raw('DROP TYPE "TaskStatus"')
