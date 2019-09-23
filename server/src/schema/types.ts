@@ -1,5 +1,11 @@
-import {GraphQLEnumType, GraphQLFieldConfig, GraphQLID, GraphQLNonNull, GraphQLScalarType} from 'graphql'
-import {encodeHashId} from '../utils'
+import {
+    GraphQLEnumType,
+    GraphQLFieldConfig,
+    GraphQLID,
+    GraphQLNonNull,
+    GraphQLScalarType,
+} from 'graphql'
+import { encodeHashId } from '../utils'
 
 ////
 // Scalars

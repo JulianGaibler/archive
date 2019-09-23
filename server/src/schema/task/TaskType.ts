@@ -1,7 +1,13 @@
-import { GraphQLEnumType, GraphQLInt, GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
+import {
+    GraphQLEnumType,
+    GraphQLInt,
+    GraphQLNonNull,
+    GraphQLObjectType,
+    GraphQLString,
+} from 'graphql'
 import { connectionDefinitions } from 'graphql-relay'
 import TaskModel from '../../models/Task'
-import {encodeHashId, IContext} from '../../utils'
+import { encodeHashId, IContext } from '../../utils'
 import { nodeInterface } from '../node'
 import PostType from '../post/PostType'
 import { DateTime, globalIdField, UpdateKind } from '../types'
@@ -60,7 +66,7 @@ const TaskType = new GraphQLObjectType({
 
 export default TaskType
 
-export const {connectionType: taskConnection} = connectionDefinitions({
+export const { connectionType: taskConnection } = connectionDefinitions({
     nodeType: TaskType,
 })
 

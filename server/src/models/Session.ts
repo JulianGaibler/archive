@@ -42,7 +42,9 @@ export default class Session extends BaseModel {
 
     static getLoaders() {
         const getById = new DataLoader<number, Session>(this.sessionsByIds)
-        const getByUser = new DataLoader<number, Session[]>(this.sessionsByUsers)
+        const getByUser = new DataLoader<number, Session[]>(
+            this.sessionsByUsers,
+        )
 
         return { getById, getByUser }
     }

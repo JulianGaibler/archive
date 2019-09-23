@@ -14,7 +14,8 @@ import {
     IContext,
     InputError,
     isAuthenticated,
-    performLogout, to,
+    performLogout,
+    to,
 } from '../../utils'
 
 const signup: GraphQLFieldConfig<any, any, any> = {
@@ -83,9 +84,14 @@ const uploadProfilePicture: GraphQLFieldConfig<any, any, any> = {
         isAuthenticated(context)
 
         const [fileErr, file] = await to(args.file)
-        if (!file) { throw new InputError(fileErr) }
+        if (!file) {
+            throw new InputError(fileErr)
+        }
 
-        await context.fileStorage.setProfilePicture(context.auth.userId, file.createReadStream())
+        await context.fileStorage.setProfilePicture(
+            context.auth.userId,
+            file.createReadStream(),
+        )
         return true
     },
 }

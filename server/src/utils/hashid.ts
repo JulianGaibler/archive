@@ -2,7 +2,6 @@ import Hashids from 'hashids'
 import { InputError } from './index'
 import { ModelId } from './modelEnum'
 
-
 const hashIds = new Hashids('archive', 5)
 
 export function encodeHashId(model: any, id: number) {
@@ -17,7 +16,7 @@ export function decodeHashIdAndCheck(model: any, stringId: string) {
     return id
 }
 
-export function decodeHashId(id: string): { type: ModelId, id: number } {
+export function decodeHashId(id: string): { type: ModelId; id: number } {
     const res = hashIds.decode(id)
     if (res.length < 2 || !(res[0] in ModelId)) {
         return {

@@ -1,4 +1,9 @@
-import { GraphQLBoolean, GraphQLFieldConfig, GraphQLNonNull, GraphQLString } from 'graphql'
+import {
+    GraphQLBoolean,
+    GraphQLFieldConfig,
+    GraphQLNonNull,
+    GraphQLString,
+} from 'graphql'
 import KeywordModel from '../../models/Keyword'
 import { decodeHashIdAndCheck, IContext, isAuthenticated } from '../../utils'
 import KeywordType from './KeywordType'

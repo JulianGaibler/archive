@@ -15,18 +15,18 @@ import User from '../models/User'
 // Interfaces
 
 export interface IContext {
-    req: Request,
-    res: Response,
-    fileStorage: FileStorage,
-    auth: IAuthData | null,
-    pubSub: PostgresPubSub,
+    req: Request
+    res: Response
+    fileStorage: FileStorage
+    auth: IAuthData | null
+    pubSub: PostgresPubSub
     dataLoaders: {
-        user: ReturnType<typeof User.getLoaders>,
-        post: ReturnType<typeof Post.getLoaders>,
-        keyword: ReturnType<typeof Keyword.getLoaders>,
-        session: ReturnType<typeof Session.getLoaders>,
-        task: ReturnType<typeof Task.getLoaders>,
-    },
+        user: ReturnType<typeof User.getLoaders>;
+        post: ReturnType<typeof Post.getLoaders>;
+        keyword: ReturnType<typeof Keyword.getLoaders>;
+        session: ReturnType<typeof Session.getLoaders>;
+        task: ReturnType<typeof Task.getLoaders>;
+    }
 }
 
 export interface IAuthData {
@@ -83,7 +83,9 @@ export async function checkAndLogin(
 
     const user = await User.query().findOne({ username })
     if (!user) {
-        throw new AuthenticationError(`No such user found for username: ${username}`)
+        throw new AuthenticationError(
+            `No such user found for username: ${username}`,
+        )
     }
     const valid = await bcrypt.compare(password, user.password)
     if (!valid) {
@@ -115,7 +117,10 @@ async function performLogin(context: IContext, userId: number) {
     })
 }
 
-export async function checkAndChangePassword(context: IContext, args): Promise<boolean> {
+export async function checkAndChangePassword(
+    context: IContext,
+    args,
+): Promise<boolean> {
     isAuthenticated(context)
 
     const user = await User.query().findById(context.auth.userId)
@@ -141,7 +146,9 @@ async function createSession(userId: number, req: Request): Promise<string> {
     sodium.api.randombytes_buf(buffer, 32)
     const token = buffer.toString('base64')
 
-    const userAgent = req.headers['user-agent'] ? req.headers['user-agent'] : ''
+    const userAgent = req.headers['user-agent']
+        ? req.headers['user-agent']
+        : ''
     await Session.query().insert({
         token,
         userId,
@@ -158,7 +165,9 @@ async function verifySession(token: string, req: Request): Promise<number> {
         throw new AuthenticationError()
     }
 
-    const userAgent = req.headers['user-agent'] ? req.headers['user-agent'] : ''
+    const userAgent = req.headers['user-agent']
+        ? req.headers['user-agent']
+        : ''
     const updatedSession = await oldSession.$query().updateAndFetch({
         userAgent,
         latestIP: req.ip,

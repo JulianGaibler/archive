@@ -1,4 +1,11 @@
-import { GraphQLFloat, GraphQLInputObjectType, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
+import {
+    GraphQLFloat,
+    GraphQLInputObjectType,
+    GraphQLList,
+    GraphQLNonNull,
+    GraphQLObjectType,
+    GraphQLString,
+} from 'graphql'
 import { connectionDefinitions } from 'graphql-relay'
 import PostModel from '../../models/Post'
 import { IContext } from '../../utils'
@@ -16,7 +23,9 @@ const PostType = new GraphQLObjectType({
         title: { type: new GraphQLNonNull(GraphQLString) },
         type: { type: new GraphQLNonNull(Format) },
         keywords: {
-            type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(KeywordType))),
+            type: new GraphQLNonNull(
+                new GraphQLList(new GraphQLNonNull(KeywordType)),
+            ),
             resolve: async (post, args, ctx: IContext) =>
                 ctx.dataLoaders.keyword.getByPost.load(post.id),
         },
@@ -61,6 +70,6 @@ const PostType = new GraphQLObjectType({
 
 export default PostType
 
-export const {connectionType: postConnection} = connectionDefinitions({
+export const { connectionType: postConnection } = connectionDefinitions({
     nodeType: PostType,
 })

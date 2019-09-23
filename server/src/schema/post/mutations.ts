@@ -9,7 +9,13 @@ import {
 import { GraphQLUpload } from 'graphql-upload'
 import KeywordModel from '../../models/Keyword'
 import PostModel from '../../models/Post'
-import { decodeHashIdAndCheck, IContext, InputError, isAuthenticated, to } from '../../utils'
+import {
+    decodeHashIdAndCheck,
+    IContext,
+    InputError,
+    isAuthenticated,
+    to,
+} from '../../utils'
 import KeywordType from '../keyword/KeywordType'
 import TaskType from '../task/TaskType'
 import { Format, Language } from '../types'
@@ -56,7 +62,9 @@ const uploadPosts: GraphQLFieldConfig<any, any, any> = {
         delete fields.file
         fields.uploaderId = context.auth.userId
 
-        const [error, storeData] = await to(context.fileStorage.checkFile(fields, file.createReadStream()))
+        const [error, storeData] = await to(
+            context.fileStorage.checkFile(fields, file.createReadStream()),
+        )
 
         if (error) {
             throw new InputError(error)
@@ -101,14 +109,22 @@ const editPost: GraphQLFieldConfig<any, any, any> = {
         }
 
         const post = await PostModel.query().findById(values.id)
-        if (!post) { throw new InputError('There is no post with this ID') }
+        if (!post) {
+            throw new InputError('There is no post with this ID')
+        }
 
-        const [err, result] = await to(PostModel.query().upsertGraphAndFetch([values], {
-            relate: true,
-        }))
+        const [err, result] = await to(
+            PostModel.query().upsertGraphAndFetch([values], {
+                relate: true,
+            }),
+        )
         if (err) {
-            if (err.code === '23503') { throw new InputError('One of the Keywords does not exist.') }
-            if (err.name === 'ValidationError') { throw new InputError(err) }
+            if (err.code === '23503') {
+                throw new InputError('One of the Keywords does not exist.')
+            }
+            if (err.name === 'ValidationError') {
+                throw new InputError(err)
+            }
             throw new InputError('Error unknown.')
         }
 
@@ -122,7 +138,9 @@ const deletePosts: GraphQLFieldConfig<any, any, any> = {
     args: {
         ids: {
             description: `The IDs of the posts to delete.`,
-            type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLID))),
+            type: new GraphQLNonNull(
+                new GraphQLList(new GraphQLNonNull(GraphQLID)),
+            ),
         },
     },
     resolve: async (parent, { ids }, context: IContext) => {

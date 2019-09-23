@@ -1,5 +1,9 @@
 import { GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
-import { connectionArgs, connectionDefinitions, connectionFromPromisedArray } from 'graphql-relay'
+import {
+    connectionArgs,
+    connectionDefinitions,
+    connectionFromPromisedArray,
+} from 'graphql-relay'
 import UserModel from '../../models/User'
 import { IContext } from '../../utils'
 import { nodeInterface } from '../node'
@@ -29,13 +33,16 @@ const UserType = new GraphQLObjectType({
             description: `All Posts associated with this user.`,
             args: connectionArgs,
             resolve: async (user, args, ctx: IContext) =>
-                connectionFromPromisedArray(ctx.dataLoaders.post.getByUser.load(user.id), args),
+                connectionFromPromisedArray(
+                    ctx.dataLoaders.post.getByUser.load(user.id),
+                    args,
+                ),
         },
     }),
 })
 
 export default UserType
 
-export const {connectionType: userConnection} = connectionDefinitions({
+export const { connectionType: userConnection } = connectionDefinitions({
     nodeType: UserType,
 })

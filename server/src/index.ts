@@ -14,8 +14,12 @@ async function handleExit(options, err) {
         process.exit()
     }
     // tslint:disable-next-line:no-console
-    if (err) { console.error(err) }
-    if (options.exit) { process.exit() }
+    if (err) {
+        console.error(err)
+    }
+    if (options.exit) {
+        process.exit()
+    }
 }
 
 (async () => {

@@ -1,4 +1,10 @@
-import { GraphQLFieldConfig, GraphQLID, GraphQLList, GraphQLNonNull, GraphQLString } from 'graphql'
+import {
+    GraphQLFieldConfig,
+    GraphQLID,
+    GraphQLList,
+    GraphQLNonNull,
+    GraphQLString,
+} from 'graphql'
 import {
     connectionFromArraySlice,
     cursorToOffset,
@@ -6,7 +12,12 @@ import {
 } from 'graphql-relay'
 import { raw } from 'objection'
 import TaskModel from '../../models/Task'
-import { decodeHashId, IContext, InputError, isAuthenticated } from '../../utils'
+import {
+    decodeHashId,
+    IContext,
+    InputError,
+    isAuthenticated,
+} from '../../utils'
 import { ModelId } from '../../utils/modelEnum'
 import { taskConnection, TaskStatus } from './TaskType'
 
@@ -55,11 +66,11 @@ const tasks: GraphQLFieldConfig<any, any, any> = {
 
         const [data, totalCount] = await Promise.all([
             query
-            .clone()
-            .orderBy('createdAt', 'desc')
-            .limit(limit)
-            .offset(offset)
-            .execute()
+                .clone()
+                .orderBy('createdAt', 'desc')
+                .limit(limit)
+                .offset(offset)
+                .execute()
                 .then(rows => {
                     rows.forEach(x =>
                         ctx.dataLoaders.task.getById.prime(x.id, x),

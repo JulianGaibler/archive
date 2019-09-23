@@ -1,5 +1,9 @@
 import { GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
-import { connectionArgs, connectionDefinitions, connectionFromPromisedArray } from 'graphql-relay'
+import {
+    connectionArgs,
+    connectionDefinitions,
+    connectionFromPromisedArray,
+} from 'graphql-relay'
 import KeywordModel from '../../models/Keyword'
 import { IContext } from '../../utils'
 import { nodeInterface } from '../node'
@@ -21,13 +25,16 @@ const KeywordType = new GraphQLObjectType({
             description: `All Posts associated with this keyword.`,
             args: connectionArgs,
             resolve: async (keyword, args, ctx: IContext) =>
-                connectionFromPromisedArray(ctx.dataLoaders.post.getByKeyword.load(keyword.id), args),
+                connectionFromPromisedArray(
+                    ctx.dataLoaders.post.getByKeyword.load(keyword.id),
+                    args,
+                ),
         },
     }),
 })
 
 export default KeywordType
 
-export const {connectionType: keywordConnection} = connectionDefinitions({
+export const { connectionType: keywordConnection } = connectionDefinitions({
     nodeType: KeywordType,
 })

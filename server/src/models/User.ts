@@ -36,7 +36,10 @@ export default class User extends UniqueModel {
     static async usersByUsername(usernames: string[]): Promise<User[]> {
         const lowerUsernames = usernames.map(name => name.toLowerCase())
         const marks = usernames.map(() => '?').join(',')
-        const users = await User.query().whereRaw(`lower(username) IN (${marks})`, lowerUsernames)
+        const users = await User.query().whereRaw(
+            `lower(username) IN (${marks})`,
+            lowerUsernames,
+        )
 
         const userMap: { [key: string]: User } = {}
         users.forEach(user => {
@@ -49,7 +52,9 @@ export default class User extends UniqueModel {
     static getLoaders() {
         const getById = new DataLoader<number, User>(this.usersByIds)
 
-        const getByUsername = new DataLoader<string, User>(this.usersByUsername)
+        const getByUsername = new DataLoader<string, User>(
+            this.usersByUsername,
+        )
 
         return { getById, getByUsername }
     }

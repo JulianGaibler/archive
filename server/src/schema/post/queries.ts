@@ -1,4 +1,10 @@
-import { GraphQLFieldConfig, GraphQLID, GraphQLList, GraphQLNonNull, GraphQLString } from 'graphql'
+import {
+    GraphQLFieldConfig,
+    GraphQLID,
+    GraphQLList,
+    GraphQLNonNull,
+    GraphQLString,
+} from 'graphql'
 import {
     connectionFromArraySlice,
     cursorToOffset,
@@ -6,7 +12,12 @@ import {
 } from 'graphql-relay'
 import { raw } from 'objection'
 import PostModel from '../../models/Post'
-import { decodeHashId, IContext, InputError, isAuthenticated } from '../../utils'
+import {
+    decodeHashId,
+    IContext,
+    InputError,
+    isAuthenticated,
+} from '../../utils'
 import { ModelId } from '../../utils/modelEnum'
 import { Format, Language } from '../types'
 import { postConnection } from './PostType'
@@ -73,7 +84,7 @@ const posts: GraphQLFieldConfig<any, any, any> = {
                   (SELECT at.post_id
                    FROM "KeywordToPost" AT
                    INNER JOIN "Post" "Post" ON "Post".id = at.post_id
-                   WHERE at.keyword_id IN (${ ids.join(',') })
+                   WHERE at.keyword_id IN (${ids.join(',')})
                    GROUP BY at.id) aa ON "Post".id = aa.post_id
             `)
             query.groupBy('Post.id')
@@ -82,10 +93,14 @@ const posts: GraphQLFieldConfig<any, any, any> = {
         if (args.byContent) {
             const lang = args.byLanguage ? args.byLanguage : 'english'
             query.where(qB => {
-                qB
-                    .where(raw('title ILIKE ?', `%${args.byContent}%`))
+                qB.where(raw('title ILIKE ?', `%${args.byContent}%`))
                     .orWhere(raw('caption ILIKE ?', `%${args.byContent}%`))
-                    .orWhere(raw(`to_tsvector(title || '. ' || COALESCE(caption, '')) @@ plainto_tsquery(?, ?)`, [lang, args.byContent]))
+                    .orWhere(
+                        raw(
+                            `to_tsvector(title || '. ' || COALESCE(caption, '')) @@ plainto_tsquery(?, ?)`,
+                            [lang, args.byContent],
+                        ),
+                    )
             })
         }
 

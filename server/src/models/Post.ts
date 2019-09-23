@@ -56,13 +56,17 @@ export default class Post extends BaseModel {
             keywordMap[keyword.id] = keyword
         })
 
-        return keywordIds.map(id => (keywordMap[id] ? keywordMap[id].posts : []))
+        return keywordIds.map(id =>
+            keywordMap[id] ? keywordMap[id].posts : [],
+        )
     }
 
     static getLoaders() {
         const getById = new DataLoader<number, Post>(this.postsByIds)
         const getByUser = new DataLoader<number, Post[]>(this.postsByUsers)
-        const getByKeyword = new DataLoader<number, Post[]>(this.postsbyKeywords)
+        const getByKeyword = new DataLoader<number, Post[]>(
+            this.postsbyKeywords,
+        )
 
         return { getById, getByUser, getByKeyword }
     }

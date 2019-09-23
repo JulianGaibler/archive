@@ -1,4 +1,9 @@
-import { GraphQLBoolean, GraphQLFieldConfig, GraphQLID, GraphQLNonNull } from 'graphql'
+import {
+    GraphQLBoolean,
+    GraphQLFieldConfig,
+    GraphQLID,
+    GraphQLNonNull,
+} from 'graphql'
 import SessionModel from '../../models/Session'
 import {
     AuthorizationError,
@@ -25,7 +30,9 @@ const revokeSession: GraphQLFieldConfig<any, any, any> = {
             throw new NotFoundError('There was no session by this id')
         }
         if (session.userId !== context.auth.userId) {
-            throw new AuthorizationError(`You can't revoke sessions of other users.`)
+            throw new AuthorizationError(
+                `You can't revoke sessions of other users.`,
+            )
         }
 
         const deletedRows = await SessionModel.query().deleteById(session.id)

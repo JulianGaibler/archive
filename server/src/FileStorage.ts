@@ -4,14 +4,23 @@ import { PostgresPubSub } from 'graphql-postgres-subscriptions'
 import { raw } from 'objection'
 import sodium from 'sodium'
 import tmp from 'tmp'
-import User from './models/User'
+import Keyword from './models/Keyword'
 import Post from './models/Post'
 import Task from './models/Task'
-import Keyword from './models/Keyword'
+import User from './models/User'
 
 import { Mutex } from 'async-mutex'
 import FileProcessor from './FileStorage/FileProcessor'
-import { asyncForEach, AuthenticationError, AuthorizationError, decodeHashId, decodeHashIdAndCheck, encodeHashId, FileStorageError, to} from './utils'
+import {
+    asyncForEach,
+    AuthenticationError,
+    AuthorizationError,
+    decodeHashId,
+    decodeHashIdAndCheck,
+    encodeHashId,
+    FileStorageError,
+    to,
+} from './utils'
 import { ModelId } from './utils/ModelEnum'
 import ReadStream = NodeJS.ReadStream
 
@@ -29,16 +38,16 @@ interface IStoreData {
     typedStream: fileType.ReadableStreamWithFileType
 
     type: {
-        ext: string,
-        mime: string,
-        kind: string,
+        ext: string;
+        mime: string;
+        kind: string;
     }
 }
 
 interface IQueueItem {
     taskObject: Task
     data: IStoreData
-    type: string | null,
+    type: string | null
 }
 
 // Options
@@ -49,7 +58,7 @@ const options = {
         thumbnail: 'thumbnail',
         original: 'original',
         profilePictures: 'upic',
-    }
+    },
 }
 
 /**
@@ -112,7 +121,11 @@ export default class FileStorage {
             task: newTask,
         })
 
-        this.queue.push({ taskObject: newTask, data, type: data.postData.type })
+        this.queue.push({
+            taskObject: newTask,
+            data,
+            type: data.postData.type,
+        })
         this.checkQueue()
 
         return newTask.id
@@ -123,14 +136,24 @@ export default class FileStorage {
         const rows = await Post.query().findByIds([...iPostIds])
         rows.forEach((post: Post) => {
             if (post.uploaderId !== iUserId) {
-                throw new AuthorizationError('You cannot delete posts of other users.')
+                throw new AuthorizationError(
+                    'You cannot delete posts of other users.',
+                )
             }
         })
 
         asyncForEach(rows, async (post: Post) => {
-            await FileProcessor.deletePost([options.dist], post.type, post.originalPath, post.thumbnailPath, post.compressedPath)
+            await FileProcessor.deletePost(
+                [options.dist],
+                post.type,
+                post.originalPath,
+                post.thumbnailPath,
+                post.compressedPath,
+            )
         })
-        await Post.query().findByIds([...iPostIds]).delete()
+        await Post.query()
+            .findByIds([...iPostIds])
+            .delete()
         return rows.map((post: Post) => {
             return encodeHashId(Post, post.id)
         })
@@ -140,9 +163,14 @@ export default class FileStorage {
      * Creates a Profile picture with name
      * [userHashID]-[randomHash]-[s/m/l].[jpg/webp] where the file-extension is omitted
      */
-    async setProfilePicture(iUserId: number, readStream: ReadStream): Promise<string> {
+    async setProfilePicture(
+        iUserId: number,
+        readStream: ReadStream,
+    ): Promise<string> {
         const user = await User.query().findById(iUserId)
-        if (!user) { throw new AuthenticationError(`This should not have happened.`) }
+        if (!user) {
+            throw new AuthenticationError(`This should not have happened.`)
+        }
 
         const userHashID = encodeHashId(User, user.id)
 
@@ -152,13 +180,22 @@ export default class FileStorage {
 
         const filename = `${userHashID}-${randomHash}`
 
-        const [err] = await to(FileProcessor.createProfilePicture(readStream, [options.dist, options.directories.profilePictures], filename))
+        const [err] = await to(
+            FileProcessor.createProfilePicture(
+                readStream,
+                [options.dist, options.directories.profilePictures],
+                filename,
+            ),
+        )
         if (err) {
             throw err
         }
 
         if (user.profilePicture !== null) {
-            await FileProcessor.deleteProfilePicture([options.dist, options.directories.profilePictures], user.profilePicture)
+            await FileProcessor.deleteProfilePicture(
+                [options.dist, options.directories.profilePictures],
+                user.profilePicture,
+            )
         }
 
         await user.$query().patch({ profilePicture: filename })
@@ -167,9 +204,16 @@ export default class FileStorage {
 
     async deleteProfilePicture(iUserId): Promise<boolean> {
         const user = await User.query().findById(iUserId)
-        if (!user) { throw new AuthenticationError(`This should not have happened.`) }
-        if (user.profilePicture === null) { return true }
-        await FileProcessor.deleteProfilePicture([options.dist, options.directories.profilePictures], user.profilePicture)
+        if (!user) {
+            throw new AuthenticationError(`This should not have happened.`)
+        }
+        if (user.profilePicture === null) {
+            return true
+        }
+        await FileProcessor.deleteProfilePicture(
+            [options.dist, options.directories.profilePictures],
+            user.profilePicture,
+        )
         await user.$query().patch({ profilePicture: null })
         return true
     }
@@ -201,28 +245,33 @@ export default class FileStorage {
 
     private async updateTask(task: Task, changes) {
         if (changes.notes) {
-            await task.$query().patch({ notes: raw('CONCAT(notes, ?::text)', changes.notes) })
+            await task
+                .$query()
+                .patch({ notes: raw('CONCAT(notes, ?::text)', changes.notes) })
             delete changes.notes
         }
 
         const updatedTask = await task.$query().patchAndFetch(changes)
         this.pubSub.publish('taskUpdates', {
-                id: updatedTask.id,
-                kind: 'CHANGED',
-                task: updatedTask,
-            })
+            id: updatedTask.id,
+            kind: 'CHANGED',
+            task: updatedTask,
+        })
         return updatedTask
     }
 
     /**
      * Processes an Item from the Queue
      */
-    private async processItem({ taskObject, data, type: desiredType }: IQueueItem) {
+    private async processItem({
+        taskObject,
+        data,
+        type: desiredType,
+    }: IQueueItem) {
         const { postData, typedStream, type } = data
         let processError
         let result
         let postCreated = false
-
 
         const update = changes => this.updateTask(taskObject, changes)
 
@@ -236,13 +285,23 @@ export default class FileStorage {
                 ? FileType.VIDEO
                 : FileType.IMAGE
 
-        if (desiredType === 'VIDEO' && fileTypeEnum === FileType.GIF) { fileTypeEnum = FileType.VIDEO }
-        else if (desiredType === 'GIF' && fileTypeEnum === FileType.VIDEO) { fileTypeEnum = FileType.GIF }
+        if (desiredType === 'VIDEO' && fileTypeEnum === FileType.GIF) {
+            fileTypeEnum = FileType.VIDEO
+        } else if (desiredType === 'GIF' && fileTypeEnum === FileType.VIDEO) {
+            fileTypeEnum = FileType.GIF
+        }
 
         try {
-            if (fileTypeEnum === FileType.GIF || fileTypeEnum === FileType.VIDEO) {
+            if (
+                fileTypeEnum === FileType.GIF ||
+                fileTypeEnum === FileType.VIDEO
+            ) {
                 [processError, result] = await to(
-                    processor.processVideo(typedStream, tmpDir.name, fileTypeEnum),
+                    processor.processVideo(
+                        typedStream,
+                        tmpDir.name,
+                        fileTypeEnum,
+                    ),
                 )
             }
             if (fileTypeEnum === FileType.IMAGE) {
@@ -279,7 +338,11 @@ export default class FileStorage {
                     movePromises.push(
                         jet.moveAsync(
                             result.createdFiles[category],
-                            jet.path(options.dist, options[category], `${hashId}.${type.ext}`),
+                            jet.path(
+                                options.dist,
+                                options[category],
+                                `${hashId}.${type.ext}`,
+                            ),
                         ),
                     )
                 } else {
@@ -287,7 +350,11 @@ export default class FileStorage {
                         movePromises.push(
                             jet.moveAsync(
                                 result.createdFiles[category][ext],
-                                jet.path(options.dist, options[category], `${hashId}.${ext}`),
+                                jet.path(
+                                    options.dist,
+                                    options[category],
+                                    `${hashId}.${ext}`,
+                                ),
                             ),
                         )
                     })
@@ -329,7 +396,8 @@ export default class FileStorage {
             await Task.query()
                 .update({
                     status: 'FAILED',
-                    notes: 'Marked as failed and cleaned up after server restart',
+                    notes:
+                        'Marked as failed and cleaned up after server restart',
                 })
                 .findByIds(result.map(({ id }) => id))
         } finally {

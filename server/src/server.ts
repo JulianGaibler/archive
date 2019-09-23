@@ -73,7 +73,9 @@ class Server {
     }
 
     middleware() {
-        this.app.use(logger(process.env.NODE_ENV === 'development' ? 'dev' : 'tiny'))
+        this.app.use(
+            logger(process.env.NODE_ENV === 'development' ? 'dev' : 'tiny'),
+        )
         this.app.use(this.cookieParserInstance)
         this.app.use(cors(corsOptions))
         if (process.env.NODE_ENV === 'development') {
@@ -130,7 +132,9 @@ class Server {
     private debugErrorHandler(error) {
         return {
             name: error.name,
-            code: error.originalError && (error.originalError.code || error.originalError.name),
+            code:
+                error.originalError &&
+                (error.originalError.code || error.originalError.name),
             message: error.message,
             locations: error.locations,
             path: error.path,
@@ -161,13 +165,17 @@ class Server {
                 }),
                 onOperation: async (message, params, webSocket) => {
                     await new Promise((resolve, reject) => {
-                        this.cookieParserInstance(webSocket.upgradeReq, null, error => {
-                            if (error) {
-                                reject(error)
-                            } else {
-                                resolve()
-                            }
-                        })
+                        this.cookieParserInstance(
+                            webSocket.upgradeReq,
+                            null,
+                            error => {
+                                if (error) {
+                                    reject(error)
+                                } else {
+                                    resolve()
+                                }
+                            },
+                        )
                     })
                     return {
                         ...params,

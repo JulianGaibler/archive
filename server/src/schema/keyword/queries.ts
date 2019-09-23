@@ -26,10 +26,7 @@ const keywords: GraphQLFieldConfig<any, any, any> = {
         const query = KeywordModel.query()
 
         if (args.byName) {
-            query.whereRaw(
-                'name ILIKE ?',
-                `%${args.byName}%`,
-            )
+            query.whereRaw('name ILIKE ?', `%${args.byName}%`)
         }
 
         const [data, totalCount] = await Promise.all([
@@ -40,14 +37,12 @@ const keywords: GraphQLFieldConfig<any, any, any> = {
                 .offset(offset)
                 .execute()
                 .then(rows => {
-                rows.forEach(x =>
-                    ctx.dataLoaders.keyword.getById.prime(x.id, x),
-                )
-                return rows
-            }),
-            query
-                .count()
-                .then(x => (x[0] as any).count),
+                    rows.forEach(x =>
+                        ctx.dataLoaders.keyword.getById.prime(x.id, x),
+                    )
+                    return rows
+                }),
+            query.count().then(x => (x[0] as any).count),
         ])
 
         return {

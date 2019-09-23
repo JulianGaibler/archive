@@ -43,6 +43,6 @@ const SessionType = new GraphQLObjectType({
 
 export default SessionType
 
-export const {connectionType: sessionConnection} = connectionDefinitions({
+export const { connectionType: sessionConnection } = connectionDefinitions({
     nodeType: SessionType,
 })

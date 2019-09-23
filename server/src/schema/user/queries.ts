@@ -50,10 +50,7 @@ const users: GraphQLFieldConfig<any, any, any> = {
         const query = UserModel.query()
 
         if (args.byUsername) {
-            query.whereRaw(
-                'username ILIKE ?',
-                `%${args.byUsername}%`,
-            )
+            query.whereRaw('username ILIKE ?', `%${args.byUsername}%`)
         }
 
         const [data, totalCount] = await Promise.all([
@@ -69,9 +66,7 @@ const users: GraphQLFieldConfig<any, any, any> = {
                     )
                     return rows
                 }),
-            query
-                .count()
-                .then(x => (x[0] as any).count),
+            query.count().then(x => (x[0] as any).count),
         ])
 
         return {
