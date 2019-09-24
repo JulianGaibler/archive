@@ -373,9 +373,9 @@ export default class FileStorage {
             await Promise.all(movePromises)
 
             newPost.relHeight = result.relHeight
-            newPost.compressedPath = `${options.directories.compressed}/${hashId}`
-            newPost.thumbnailPath = `${options.directories.thumbnail}/${hashId}`
-            newPost.originalPath = `${options.directories.original}/${hashId}.${type.ext}`
+            newPost.compressedPath = `${options.directories.compressed}/${hashId}-${randomHash}`
+            newPost.thumbnailPath = `${options.directories.thumbnail}/${hashId}-${randomHash}`
+            newPost.originalPath = `${options.directories.original}/${hashId}-${randomHash}.${type.ext}`
 
             await newPost.$query().update(newPost)
 
