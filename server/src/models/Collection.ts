@@ -117,6 +117,10 @@ export default class Collection extends BaseModel {
                 through: {
                     from: 'CollectionToPost.collection_id',
                     to: 'CollectionToPost.post_id',
+                    beforeInsert(model) {
+                        model['addedAt'] = new Date().getTime()
+                    },
+                    extra: ['addedAt'],
                 },
                 to: 'Post.id',
             },
@@ -129,6 +133,10 @@ export default class Collection extends BaseModel {
                 through: {
                     from: 'KeywordToCollection.collection_id',
                     to: 'KeywordToCollection.keyword_id',
+                    beforeInsert(model) {
+                        model['addedAt'] = new Date().getTime()
+                    },
+                    extra: ['addedAt'],
                 },
                 to: 'Keyword.id',
             },

@@ -58,16 +58,19 @@ exports.up = async knex => {
                 table.increments('id');
                 table.integer('keyword_id').references('Keyword.id').onDelete('CASCADE').notNullable();
                 table.integer('post_id').references('Post.id').onDelete('CASCADE').notNullable();
+                table.bigInteger('addedAt').notNullable();
             })
             .createTable('KeywordToCollection', table => {
                 table.increments('id');
                 table.integer('keyword_id').references('Keyword.id').onDelete('CASCADE').notNullable();
                 table.integer('collection_id').references('Collection.id').onDelete('CASCADE').notNullable();
+                table.bigInteger('addedAt').notNullable();
             })
             .createTable('CollectionToPost', table => {
                 table.increments('id');
                 table.integer('collection_id').references('Collection.id').onDelete('CASCADE').notNullable();
                 table.integer('post_id').references('Post.id').onDelete('CASCADE').notNullable();
+                table.bigInteger('addedAt').notNullable();
             })
             .createTable('Session', table => {
                 table.increments('id');

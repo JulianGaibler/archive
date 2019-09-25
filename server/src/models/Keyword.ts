@@ -90,6 +90,10 @@ export default class Keyword extends UniqueModel {
                 through: {
                     from: 'KeywordToPost.keyword_id',
                     to: 'KeywordToPost.post_id',
+                    beforeInsert(model) {
+                        model['addedAt'] = new Date().getTime()
+                    },
+                    extra: ['addedAt'],
                 },
                 to: 'Post.id',
             },
@@ -102,6 +106,10 @@ export default class Keyword extends UniqueModel {
                 through: {
                     from: 'KeywordToCollection.keyword_id',
                     to: 'KeywordToCollection.collection_id',
+                    beforeInsert(model) {
+                        model['addedAt'] = new Date().getTime()
+                    },
+                    extra: ['addedAt'],
                 },
                 to: 'Collection.id',
             },

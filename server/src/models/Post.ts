@@ -67,6 +67,7 @@ export default class Post extends BaseModel {
     static async postsbyCollections(collectionIds: number[]): Promise<Post[][]> {
         const collections: any = await Collection.query()
             .findByIds(collectionIds)
+            .orderBy('posts:addedAt', 'desc')
             .select('Collection.id', 'posts')
             .eagerAlgorithm(Collection.JoinEagerAlgorithm)
             .eager('posts')
@@ -143,20 +144,28 @@ export default class Post extends BaseModel {
                 through: {
                     from: 'KeywordToPost.post_id',
                     to: 'KeywordToPost.keyword_id',
+                    beforeInsert(model) {
+                        model['addedAt'] = new Date().getTime()
+                    },
+                    extra: ['addedAt'],
                 },
                 to: 'Keyword.id',
             },
         },
         collections: {
             relation: Model.ManyToManyRelation,
-            modelClass: 'Collections',
+            modelClass: 'Collection',
             join: {
                 from: 'Post.id',
                 through: {
                     from: 'CollectionToPost.post_id',
-                    to: 'CollectionToPost.collections_id',
+                    to: 'CollectionToPost.collection_id',
+                    beforeInsert(model) {
+                        model['addedAt'] = new Date().getTime()
+                    },
+                    extra: ['addedAt'],
                 },
-                to: 'Collections.id',
+                to: 'Collection.id',
             },
         },
     }

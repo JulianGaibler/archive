@@ -19,6 +19,7 @@ export default class BaseModel extends Model {
         json = super.$parseDatabaseJson(json)
         toDate(json, 'createdAt')
         toDate(json, 'updatedAt')
+        toDate(json, 'addedAt')
         return json
     }
 
@@ -26,6 +27,7 @@ export default class BaseModel extends Model {
         json = super.$formatDatabaseJson(json)
         toTime(json, 'createdAt')
         toTime(json, 'updatedAt')
+        toTime(json, 'addedAt')
         return json
     }
 }

@@ -5,6 +5,7 @@ import { ModelId } from '../utils/modelEnum'
 import UniqueModel from './UniqueModel'
 
 import Post from './Post'
+import Collection from './Collection'
 
 export default class User extends UniqueModel {
     static tableName = 'User'
@@ -20,7 +21,9 @@ export default class User extends UniqueModel {
     profilePicture: string
     name!: string
     password!: string
+
     posts!: Post[]
+    collections!: Collection[]
 
     static async usersByIds(ids: number[]): Promise<User[]> {
         const users = await User.query().findByIds(ids)
@@ -75,15 +78,19 @@ export default class User extends UniqueModel {
 
     static relationMappings: RelationMappings = {
         posts: {
-            relation: Model.ManyToManyRelation,
+            relation: Model.HasManyRelation,
             modelClass: 'Post',
             join: {
                 from: 'User.id',
-                through: {
-                    from: 'PostToUser.user_id',
-                    to: 'PostToUser.post_id',
-                },
-                to: 'Post.id',
+                to: 'Post.uploaderId',
+            },
+        },
+        collections: {
+            relation: Model.HasManyRelation,
+            modelClass: 'Collection',
+            join: {
+                from: 'User.id',
+                to: 'Collection.creatorId',
             },
         },
     }
