@@ -83,14 +83,11 @@ const posts: GraphQLFieldConfig<any, any, any> = {
                 }
                 return id
             })
-            query.where('id', 'IN', raw(`
-                SELECT "Post".id FROM "Post" INNER JOIN
-                  (SELECT at.post_id
-                   FROM "KeywordToPost" AT
-                   INNER JOIN "Post" "Post" ON "Post".id = at.post_id
-                   WHERE at.keyword_id IN (${ids.join(',')})
-                   GROUP BY at.id) aa ON "Post".id = aa.post_id
-            `))
+            query
+                .joinRelation('keywords')
+                .whereIn('keywords.id', ids)
+                .groupBy('Post.id', 'keywords_join.addedAt')
+                .orderBy('keywords_join.addedAt', 'desc')
         }
         if (args.byCollection && args.byCollection.length > 0) {
             const ids = args.byCollection.map(globalId => {
@@ -100,15 +97,11 @@ const posts: GraphQLFieldConfig<any, any, any> = {
                 }
                 return id
             })
-
-            query.where('id', 'IN', raw(`
-                SELECT "Post".id FROM "Post" INNER JOIN
-                  (SELECT at.post_id
-                   FROM "CollectionToPost" AT
-                   INNER JOIN "Post" "Post" ON "Post".id = at.post_id
-                   WHERE at.collection_id IN (${ids.join(',')})
-                   GROUP BY at.id) aa ON "Post".id = aa.post_id
-            `))
+            query
+                .joinRelation('collections')
+                .whereIn('collections.id', ids)
+                .groupBy('Post.id', 'collections_join.addedAt')
+                .orderBy('collections_join.addedAt', 'desc')
         }
         if (args.byContent) {
             const lang = args.byLanguage ? args.byLanguage : 'english'
@@ -140,7 +133,7 @@ const posts: GraphQLFieldConfig<any, any, any> = {
             query
                 .count()
                 .execute()
-                .then(x => (x[0] as any).count),
+                .then(x => (x as any).reduce((acc, val) => acc + parseInt(val.count), 0)),
             PostModel
                 .query()
                 .count()
