@@ -83,16 +83,14 @@ const posts: GraphQLFieldConfig<any, any, any> = {
                 }
                 return id
             })
-            query.joinRaw(`
-                INNER JOIN
+            query.where('id', 'IN', raw(`
+                SELECT "Post".id FROM "Post" INNER JOIN
                   (SELECT at.post_id
                    FROM "KeywordToPost" AT
                    INNER JOIN "Post" "Post" ON "Post".id = at.post_id
                    WHERE at.keyword_id IN (${ids.join(',')})
                    GROUP BY at.id) aa ON "Post".id = aa.post_id
-            `)
-            query.groupBy('Post.id')
-            query.havingRaw(`Count("Post".id) = ${ids.length}`)
+            `))
         }
         if (args.byCollection && args.byCollection.length > 0) {
             const ids = args.byCollection.map(globalId => {
@@ -102,16 +100,15 @@ const posts: GraphQLFieldConfig<any, any, any> = {
                 }
                 return id
             })
-            query.joinRaw(`
-                INNER JOIN
+
+            query.where('id', 'IN', raw(`
+                SELECT "Post".id FROM "Post" INNER JOIN
                   (SELECT at.post_id
                    FROM "CollectionToPost" AT
                    INNER JOIN "Post" "Post" ON "Post".id = at.post_id
                    WHERE at.collection_id IN (${ids.join(',')})
                    GROUP BY at.id) aa ON "Post".id = aa.post_id
-            `)
-            query.groupBy('Post.id')
-            query.havingRaw(`Count("Post".id) = ${ids.length}`)
+            `))
         }
         if (args.byContent) {
             const lang = args.byLanguage ? args.byLanguage : 'english'
