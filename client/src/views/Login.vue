@@ -118,3 +118,58 @@ export default {
     },
 }
 </script>
+
+
+<style scoped lang="stylus">
+@import "~@/assets/styles/palette.styl"
+
+.login
+    min-height 100%
+    display flex
+    flex-direction column
+.headerWrapper
+    position relative
+    z-index 2
+    header
+        padding 3rem
+        color white
+        img
+            margin-right .5rem
+        h1
+            font-size 3.25rem
+            font-weight 700
+            margin-bottom .5rem
+        p
+            font-size 1.5rem
+            font-weight 500
+        background $archive-primary
+    > svg
+        position absolute
+        z-index 1
+        width 100%
+        height 15rem
+        max-height 20vh
+.mainWrapper
+    position relative
+    flex 1
+    display flex
+    flex-direction column
+    > .content
+        position relative
+        z-index 3
+        padding 3rem
+        padding-top 5rem
+        flex 1
+    .logoWrapper
+        align-self flex-end
+        margin 0 .5rem .5rem 0
+    > svg
+        z-index -1
+        position absolute
+        top 0
+        left 0
+        right 0
+        bottom 0
+        width 100%
+        height 100%
+</style>

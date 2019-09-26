@@ -52,6 +52,17 @@ input.hiddenInput
     position absolute
     z-index -1
 
+.headerRow
+    display flex
+    > :nth-child(1)
+        width 8.75rem
+        height 8.75rem
+        flex-shrink 0
+        margin-right 1.5rem
+    > :nth-child(2)
+        flex 1
+        padding-top 1rem
+
 .itemRow
     display flex
     flex-direction row
@@ -72,7 +83,7 @@ input.hiddenInput
 .spacerPipe
     margin 0 .5rem
 
-picture.profilePic
+.profilePic
     display inline-block
     border-radius $archive-radius-profile
     overflow hidden
@@ -80,10 +91,21 @@ picture.profilePic
 
 .errorBox
     background $archive-grey1
-    color $archive-primary
+    color $archive-primary1
     padding 1rem
     border-radius $archive-radius2
     margin-bottom 1rem
+
+.keyword-chip
+    display inline-block
+    padding .45rem .6rem
+    border-radius $archive-radius1
+    color $archive-black
+    background $archive-primary2
+    font-weight 500
+    line-height 1
+    font-size 0.875rem
+    text-transform uppercase
 
 .modalWrapper
     position fixed
@@ -100,7 +122,7 @@ picture.profilePic
         padding 1rem
         background $archive-std
         border-radius $archive-radius3
-        box-shadow $archive-hoverShadow
+        box-shadow $archive-hoverShadow3
         .message
             max-width 20rem
             font-size 1.1rem
@@ -121,11 +143,12 @@ picture.profilePic
         background $archive-inv
         font-weight 700
         color white
-        fill white
+        > svg
+            fill white
     &.button-light
         background $archive-std
     &.button-dangerous
-        background $archive-primary
+        background $archive-primary1
         font-weight 700
         color white
         fill white
@@ -167,117 +190,15 @@ picture.profilePic
     z-index 299
     width 3rem
     height 3rem
-    background $archive-primary
+    background $archive-primary1
     fill $archive-white
-    box-shadow $archive-hoverShadow
+    box-shadow $archive-hoverShadow3
     svg
         width 1.75rem
         height 1.75rem
     @media screen and (min-width: ($archive-screen-mid + 1))
         display none
 
-.sidebar
-    border-bottom-left-radius $archive-radius1
-    min-width 15rem
-    height 100%
-    box-sizing border-box
-    display flex
-    flex-direction column
-    padding .75rem 2rem 1.5rem 2rem
-    hr
-        border none
-        border-top 1px solid rgba(0, 0, 0, 0.03)
-        margin 0
-    .sidebar-pic
-        border-radius $archive-radius-profile
-        overflow hidden
-        background $archive-grey2
-        picture
-            width 100%
-        line-height 0
-        margin-right 0.75rem
-        width 2.75rem
-        height 2.75rem
-    .sidebar-header
-        display flex
-        align-items center
-        margin 2rem 0
-        margin-left 0.625rem
-        .nameCombo
-            flex 1
-    nav
-        font-weight 500
-        flex 1
-        ul
-            margin 1.5rem 0
-            a
-                cursor pointer
-                display flex
-                align-items center
-                svg
-                    margin 0.625rem
-                &.router-link-active
-                    background rgba($archive-primary, .1)
-                    color $archive-primary
-                    fill $archive-primary
-                    border-radius $archive-radius3
-    @media screen and (max-width: $archive-screen-mid)
-        position fixed
-        background $archive-std
-        z-index 300
-        top 0
-        right 0
-        bottom 0
-        box-shadow $archive-hoverShadow
-        transform translateX(110%)
-        transition transform .3s ease
-        &.sidebar-open
-            transform translateX(0)
-    .blocker
-        position fixed
-        left 0
-        right 0
-        top 0
-        bottom 0
-        z-index 299
-        background rgba($archive-inv, 0)
-
-    .notification
-        .notification-box
-            margin-top 1rem
-            background $archive-grey1
-            transition all .5s
-            border-radius $archive-radius3
-            display flex
-            flex-direction column
-            padding 1.25rem
-            h1
-
-            p
-                margin-top 0.2rem
-                font-size 0.875rem
-            .top
-                display flex
-                align-items center
-                .icon
-                    width 1.5rem
-                    margin-right 1rem
-            .btm
-                margin-top 1rem
-                display flex
-                .progress
-                    transition flex .5s
-                    &:not(:last-child)
-                        margin-right 0.5rem
-
-.notification-enter, .notification-leave-to {
-  opacity 0
-  z-index -1
-}
-.notification-leave-active {
-  position absolute
-  width 12.5rem
-}
 
 // Components
 
@@ -298,7 +219,8 @@ picture.profilePic
         flex 1
 
 .actionBar-component
-    background #F6F6F6
+    background $archive-std
+    box-shadow $archive-hoverShadow1
     display flex
     align-items center
     border-radius $archive-radius2
@@ -353,12 +275,12 @@ picture.profilePic
         display inline-block
     .name
         font-weight 700
-        font-size 1.33em
+        font-size 1em
         color: $archive-inv
         margin-right .25em
     .username
         font-weight 400
-        font-size 1em
+        font-size .66em
         color: transparentify($archive-inv, 0.75)
     &.nameCombo-small
         .name
@@ -381,9 +303,11 @@ picture.profilePic
             font-size 1em
             color: transparentify($archive-inv, 0.75)
 
+
+
 .framed
-    padding-top 2.75rem
-    padding-bottom 2.75rem
+    padding-top 1rem
+    padding-bottom 1.5rem
     padding-left 4.5rem
     padding-right 2rem
     @media screen and (max-width: $archive-screen-mid)
@@ -395,32 +319,43 @@ picture.profilePic
         padding-left 2rem
         padding-right 2rem
 
-.frame
-    > header
+header.framed
+    background $archive-grey1
+    position relative
+    padding-top 2.75rem
+    padding-bottom 1rem
+    border-bottom-right-radius $archive-radius1
+    h1
         margin-top 1rem
         margin-bottom 2.25rem
-    .content
-        margin-top 2.5rem
-        &.notice
-            text-align center
-            h2
-                margin-top 2rem
-            p
-                margin-top 1rem
-        &.content-dense
-            margin-top 1rem
-        &.content-box
+    section
+        margin-bottom 2rem
+    &.extended
+        border-bottom-right-radius 0
+        padding-bottom 0
+        &::after
+            content ''
+            position absolute
+            bottom -3rem
+            z-index -1
+            left 0
+            width 100%
+            height 3rem
             background $archive-grey1
-            border-radius $archive-radius2
-            padding 1rem
-            h3:not(:first-child), .inputField:not(:first-child)
-                margin 1.5rem 0 .5rem 0
-            h3
-                color $archive-grey3
-                text-transform uppercase
-                font-weight 500
-                font-size 0.8em
+            border-bottom-right-radius $archive-radius1
 
+.miniSearch
+    background $archive-grey1
+    display flex
+    align-items center
+    border-radius $archive-radius2
+    height 2.25rem
+    padding 0 0.625rem
+    display flex
+    > :not(:last-child)
+        margin-right 0.625rem
+    > input
+        flex 1
 
 .hoverParent
     position relative
@@ -435,7 +370,7 @@ picture.profilePic
     background $archive-std
     color $archive-inv
     font-weight 400
-    box-shadow $archive-hoverShadow
+    box-shadow $archive-hoverShadow3
     border-radius $archive-radius2
     padding 1rem
     &.hoverBox-right
@@ -651,84 +586,10 @@ picture.profilePic
     &.showDropzone
         visibility initial
 
-.upload
-    display flex
-    box-sizing border-box
-    min-height 100%
-    flex-direction column
-    position relative
-    > .itemList
-        input.uploadclick
-            width 0.1px
-            height 0.1px
-            opacity 0
-            overflow hidden
-            position absolute
-            z-index -1
-        > .item
-            transition .25s background, .25s margin
-            > :not(:last-child)
-                margin-right 2rem
-                @media screen and (max-width: $archive-screen-large)
-                    margin-right 0
-            .preview
-                border-radius $archive-radius2
-                position relative
-                overflow hidden
-                -webkit-mask-image -webkit-radial-gradient(white, black)
-                transition .25s width
-                line-height 0
-                max-width 24rem
-                img, video
-                    width 100%
-                    object-fit cover
-            label.preview
-                min-width 20rem
-            @media screen and (max-width: $archive-screen-large)
-                display grid
-                grid-gap 1rem
-                grid-template-columns 1fr
-                grid-template-rows 1fr auto
-                .previewWrapper
-                    grid-row 1
-                    grid-column 1 / 3
-                .data
-                    grid-row 2
-                    grid-column 1
-                .interaction
-                    grid-row 2
-                    grid-column 2
-                label.preview
-                    min-width auto
-                .preview
-                    margin 0 auto 0 auto
-            &.uploadclick
-                .preview
-                    line-height 1rem
-                    display block
-                    padding 4.25rem 1.5rem 5rem 1.5rem
-                    text-align center
-                    background $archive-grey1
-                    color $archive-primary
-                    font-weight 500
-                    box-sizing border-box
-                    svg
-                        height 2rem
-                        width auto
-                        fill $archive-primary
-            &.itemList-progress .item
-                background $archive-grey1
-                margin-bottom 1rem
-                .preview
-                    width 6.5rem
-                    height 6.5rem
-                    > *
-                        height 100%
-                        width auto
-                        object-fit cover
 .users
     .itemList .item
         > picture
+            background $archive-grey1
             border-radius $archive-radius-profile
             overflow hidden
             width 10rem
@@ -741,6 +602,24 @@ picture.profilePic
         > .info > .top
             font-size 1.2rem
 
+.infoBox
+    h2
+        font-size 1.3
+        font-weight 700
+    .info
+        font-size 0.875
+    .text
+        h3
+            font-size 0.875rem
+            margin-top .75rem
+            margin-bottom .25rem
+            text-transform uppercase
+            color $archive-grey3
+        .indent
+            margin-left .75rem
+        font-size 0.875
+        margin-top 1rem
+
 .collections
     .itemList .item
         > .collectionPreview
@@ -752,59 +631,6 @@ picture.profilePic
         > .info > .top
             font-size 1.4rem
             font-weight 700
-
-.user
-    picture
-        margin-left 1rem
-        width 8rem
-        height 8rem
-
-.settings
-    > section > .itemRow > :not(:last-child)
-        margin-right 2rem
-    > .content
-        > h2, > h3
-            margin-top 2rem
-            margin-bottom 1rem
-    .sessionManager
-        position relative
-        > .indicatorWrapper
-            background rgba($archive-std, 0.5)
-        .item .info
-            h4
-                font-weight 500
-                margin-bottom .25rem
-            p
-                margin-bottom .75rem
-            h4, p
-                font-size 1rem
-    .profileInput
-        .dropzone::before
-            border-radius $archive-radius-profile
-        input
-            width 0.1px
-            height 0.1px
-            opacity 0
-            overflow hidden
-            position absolute
-            z-index -1
-        .profilePic
-            width 10rem
-            height 10rem
-            margin 0 auto
-            background $archive-grey2
-            overflow hidden
-            border-radius $archive-radius-profile
-            position relative
-            margin-bottom 1rem
-            picture
-                line-height 0
-        label
-            display button
-        .itemRow
-            > :not(:last-child)
-                margin-right .5rem
-
 
 code
     background $archive-std
@@ -819,40 +645,6 @@ code
             display flex
             padding 1rem
 
-.post
-    .media
-        width 100%
-        border-radius $archive-radius2
-        overflow hidden
-        -webkit-mask-image -webkit-radial-gradient(white, black)
-        line-height 0
-        img, video
-            width 100%
-    h2
-        margin-bottom .25rem
-    .post-info
-        padding 1rem
-    .keywords
-        remove-native()
-        display flex
-        flex-wrap wrap
-        .keyword
-            text-transform uppercase
-            background $archive-std
-            height initial
-            color $archive-inv
-            font-weight 700
-            font-size 0.75rem
-            padding 0.5rem 0.75rem
-            border-radius 1rem
-            margin-bottom .5rem
-            &:not(:last-child)
-                margin-right .5rem
-
-    .caption
-        white-space pre
-        line-height 1.5
-
 .itemList
     flex-grow 1
     > .item
@@ -863,7 +655,7 @@ code
             flex 1
             > .error
                 font-weight 500
-                color $archive-primary
+                color $archive-primary1
                 text-transform uppercase
         .info
             display flex
@@ -905,7 +697,7 @@ code
                 padding .25rem .5rem
                 border-radius $archive-radius2
             .button
-                background $archive-primary
+                background $archive-primary1
                 justify-self flex-end
                 color white
                 font-size 0.8rem
@@ -913,24 +705,6 @@ code
                 text-transform uppercase
                 font-weight 700
                 height 2rem
-
-
-.mediaList
-    display flex
-    margin-bottom 1rem
-    > .column
-        flex 1
-        &:not(:last-child)
-            margin-right 1rem
-        > .item
-            display block
-            overflow hidden
-            -webkit-mask-image -webkit-radial-gradient(white, black)
-            text-align center
-            border-radius $archive-radius2
-            background $archive-grey1
-            &:not(:last-child)
-                margin-bottom 1rem
 
 .removeNative
     remove-native()
@@ -951,79 +725,13 @@ code
 
 .progress
     height 0.25rem
-    background rgba($archive-primary, 0.2)
+    background rgba($archive-primary1, 0.2)
     border-radius $archive-radius3
     overflow hidden
     .progress-bar
-        background $archive-primary
+        background $archive-primary1
         transition .25s width cubic-bezier(0.45, 0.05, 0.55, 0.95)
         height 100%
-
-.queue
-    @media screen and (max-width: $archive-screen-small)
-        .itemList > .item
-            display grid
-            grid-template-columns: auto 1fr
-            grid-template-rows: 1fr
-            .indicatorWrapper
-                grid-row 1
-                grid-column 1
-            .info
-                grid-row 1
-                grid-column 2
-            .interaction
-                grid-row 2
-                grid-column 1 / 3
-
-.login
-    min-height 100%
-    display flex
-    flex-direction column
-    .headerWrapper
-        position relative
-        z-index 2
-        header
-            padding 3rem
-            color white
-            img
-                margin-right .5rem
-            h1
-                font-size 3.25rem
-                font-weight 700
-                margin-bottom .5rem
-            p
-                font-size 1.5rem
-                font-weight 500
-            background $archive-primary
-        > svg
-            position absolute
-            z-index 1
-            width 100%
-            height 15rem
-            max-height 20vh
-    .mainWrapper
-        position relative
-        flex 1
-        display flex
-        flex-direction column
-        > .content
-            position relative
-            z-index 3
-            padding 3rem
-            padding-top 5rem
-            flex 1
-        .logoWrapper
-            align-self flex-end
-            margin 0 .5rem .5rem 0
-        > svg
-            z-index -1
-            position absolute
-            top 0
-            left 0
-            right 0
-            bottom 0
-            width 100%
-            height 100%
 
 .collectionPreview
     width 10rem
@@ -1031,7 +739,11 @@ code
     overflow hidden
     border-radius 50%
     position relative
+    background $archive-grey1
     picture
+        &:nth-child(2), &:nth-child(3)
+            box-shadow $archive-hoverShadow2
+    picture, div
         position absolute
         left 0
         right 0
@@ -1041,22 +753,52 @@ code
             border 4px solid $archive-std
             overflow hidden
             border-radius 50%
-            box-shadow $archive-collectionShadow
         &:nth-child(2)
-            left 12%
-            right 12%
-            top 12%
-            bottom 12%
+            width 70%
+            height 70%
+            left 50%
+            top 50%
+            transform translate(-50%, -50%)
             z-index 1
         &:nth-child(3)
-            left 26%
-            right 26%
-            top 26%
-            bottom 26%
+            width 40%
+            height 40%
+            left 50%
+            top 50%
+            transform translate(-50%, -50%)
             z-index 2
         > *
             object-fit cover
             height 100%
             width 100%
+    &.collectionPreview-mini
+        picture, div
+            &:nth-child(2)
+                border-width 2px
+                width 61%
+                height 61%
+            &:nth-child(3)
+                border-width 2px
+                width 24%
+                height 24%
 
 
+.collectionItems
+    margin-top 1rem
+    .collectionItem
+        display flex
+        &:not(:last-child)
+            margin-bottom .5rem
+        .collectionPreview
+            height 2.35rem
+            width 2.35rem
+            margin-right .5rem
+        .desc
+            flex 1
+            padding-top .5rem
+            .top
+                font-size 1rem
+                line-height 1.2
+            .btm
+                font-size 0.75rem
+                line-height 1.2

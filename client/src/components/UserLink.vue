@@ -1,6 +1,6 @@
 <template>
     <router-link tag="a" :to="{ name: 'User', params: { username: username }}" class="nameCombo nameCombo-inline" >
-        <picture v-if="resources">
+        <picture v-if="profilePicture && resources">
             <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}upic/${profilePicture}-32.webp`">
             <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${profilePicture}-32.jpeg`">
         </picture>

@@ -1,36 +1,38 @@
 <template>
-    <div class="frame framed users">
-        <header>
+    <div class="users">
+        <header class="framed">
             <h1>{{ $t('views.users') }}</h1>
+
+            <nav class="actionBar">
+                <Search v-model="search" />
+            </nav>
         </header>
 
-        <nav class="actionBar">
-            <Search v-model="search" />
-        </nav>
-
-        <div class="content itemList" v-if="users">
-            <router-link
-                tag="a"
-                v-for="({ node }) in users.edges"
-                :key="node.id"
-                :to="{ name: 'User', params: { username: node.username }}"
-                class="item">
-                <picture v-if="resources">
-                    <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}upic/${node.profilePicture}-256.webp`">
-                    <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${node.profilePicture}-256.jpeg`">
-                </picture>
-                <div class="info">
-                    <div class="top">
-                        <div class="nameCombo">
-                            <div class="name">{{node.name}}</div>
-                            <div class="username">{{node.username}}</div>
+        <div class="frame framed">
+            <div class="content itemList" v-if="users">
+                <router-link
+                    tag="a"
+                    v-for="({ node }) in users.edges"
+                    :key="node.id"
+                    :to="{ name: 'User', params: { username: node.username }}"
+                    class="item">
+                    <picture v-if="resources">
+                        <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}upic/${node.profilePicture}-256.webp`">
+                        <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${node.profilePicture}-256.jpeg`">
+                    </picture>
+                    <div class="info">
+                        <div class="top">
+                            <div class="nameCombo">
+                                <div class="name">{{node.name}}</div>
+                                <div class="username">{{node.username}}</div>
+                            </div>
                         </div>
+                        <div class="btm">{{ $tc('items.post', node.posts.totalCount) }} <span class="spacerPipe">|</span> {{ $tc('items.collection', node.collections.totalCount) }}</div>
                     </div>
-                    <div class="btm">{{ $tc('items.post', node.posts.totalCount) }} | {{ $tc('items.collection', node.collections.totalCount) }}</div>
-                </div>
-            </router-link>
+                </router-link>
+            </div>
+            <button v-if="users && users.pageInfo.hasNextPage" @click="showMore" class="button">Show More</button>
         </div>
-        <button v-if="users && users.pageInfo.hasNextPage" @click="showMore" class="button">Show More</button>
     </div>
 </template>
 

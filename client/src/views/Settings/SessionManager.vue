@@ -93,3 +93,20 @@ export default {
     },
 }
 </script>
+
+<style scoped lang="stylus">
+@import "~@/assets/styles/palette.styl"
+
+.sessionManager
+    position relative
+    > .indicatorWrapper
+        background rgba($archive-std, 0.5)
+    .item .info
+        h4
+            font-weight 500
+            margin-bottom .25rem
+        p
+            margin-bottom .75rem
+        h4, p
+            font-size 1rem
+</style>

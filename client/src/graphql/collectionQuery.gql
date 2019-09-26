@@ -6,6 +6,7 @@ query getNode($input: ID!) {
             description
             createdAt
             posts(first: 3) {
+                totalCount
                 edges {
                     node {
                         thumbnailPath

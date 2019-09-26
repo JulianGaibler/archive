@@ -1,28 +1,31 @@
 <template>
-    <div class="frame framed collections">
-        <header>
+    <div>
+        <header class="framed extended">
             <h1>{{ $t('views.collections') }}</h1>
+
+            <nav class="actionBar">
+                <Search v-model="search" />
+                <button class="actionBar-component button button-primary" >{{$t('action.new_collection')}}</button>
+            </nav>
         </header>
 
-        <nav class="actionBar">
-            <Search v-model="search" />
-        </nav>
-
-        <div class="content itemList" v-if="collections">
-            <router-link
-                tag="a"
-                v-for="({ node }) in collections.edges"
-                :key="node.id"
-                :to="{ name: 'Collection', params: { id: node.id }}"
-                class="item">
-                <CollectionPreview :items="node.posts.edges" />
-                <div class="info">
-                    <div class="top">{{node.title}}</div>
-                    <div class="btm"><UserLink :username="node.creator.username" :profilePicture="node.creator.profilePicture" /> | {{ $tc('items.post', node.posts.totalCount) }}</div>
-                </div>
-            </router-link>
+        <div class="frame framed collections">
+            <div class="itemList" v-if="collections">
+                <router-link
+                    tag="a"
+                    v-for="({ node }) in collections.edges"
+                    :key="node.id"
+                    :to="{ name: 'Collection', params: { id: node.id }}"
+                    class="item">
+                    <CollectionPreview :items="node.posts.edges" />
+                    <div class="info">
+                        <div class="top">{{node.title}}</div>
+                        <div class="btm"><UserLink :username="node.creator.username" :profilePicture="node.creator.profilePicture" /> <span class="spacerPipe">|</span> {{ $tc('items.post', node.posts.totalCount) }}</div>
+                    </div>
+                </router-link>
+            </div>
+            <button v-if="collections && collections.pageInfo.hasNextPage" @click="showMore" class="button">Show More</button>
         </div>
-        <button v-if="collections && collections.pageInfo.hasNextPage" @click="showMore" class="button">Show More</button>
     </div>
 </template>
 

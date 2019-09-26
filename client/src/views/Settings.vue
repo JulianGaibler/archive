@@ -1,22 +1,23 @@
 <template>
-    <div class="frame framed settings">
-        <header>
+    <div class="settings">
+        <header class="framed">
             <h1>{{ $t('views.settings') }}</h1>
         </header>
 
-        <section class="content" >
-            <h2>{{ $t('settings.profile') }}</h2>
-            <InputProfilePicture />
-            <InputChangeName />
-        </section>
-        <section class="content" >
-            <h2>{{ $t('settings.security') }}</h2>
-            <h3>{{ $t('settings.security_changePassword') }}</h3>
-            <InputChangePassword />
-            <h3>{{ $t('settings.security_sessions') }}</h3>
-            <SessionManager />
-        </section>
-
+        <div class="frame framed">
+            <section>
+                <h2>{{ $t('settings.profile') }}</h2>
+                <InputProfilePicture />
+                <InputChangeName />
+            </section>
+            <section>
+                <h2>{{ $t('settings.security') }}</h2>
+                <h3>{{ $t('settings.security_changePassword') }}</h3>
+                <InputChangePassword />
+                <h3>{{ $t('settings.security_sessions') }}</h3>
+                <SessionManager />
+            </section>
+        </div>
     </div>
 </template>
 
@@ -31,3 +32,15 @@ export default {
     components: { InputProfilePicture, InputChangePassword, InputChangeName, SessionManager },
 }
 </script>
+
+<style scoped lang="stylus">
+@import "~@/assets/styles/palette.styl"
+
+.settings
+    > section > .itemRow > :not(:last-child)
+        margin-right 2rem
+    > div > section
+        > h2, > h3
+            margin-top 1.5rem
+            margin-bottom 1rem
+</style>

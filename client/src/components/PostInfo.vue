@@ -1,62 +1,65 @@
 <template>
-    <div class="itemRow itemRow-align-start">
-        <div class="itemRow-grow post-info">
+    <div class="post-info itemRow itemRow-align-start">
+        <div class="itemRow-grow infoBox">
             <div v-if="error" class="errorBox">
                 {{ error }}
             </div>
-            <h2 v-if="!editMode">{{post.title}}</h2>
-            <InputField
-                v-else
-                :label="$t('input.upload.title')"
-                :type="'text'"
-                v-model="payload.title" />
-            <p>{{ $t('attribute.createdBy') }}
-                <UserLink :username="post.uploader.username" :profilePicture="post.uploader.profilePicture" />
-                <span class="spacerPipe">|</span>{{ $t('attribute.createdAt') }} {{ parseDate(post.createdAt) }}
-            </p>
-            <template v-if="!editMode">
-                <h3>Caption</h3>
-                <div class="caption">{{post.caption ? post.caption : $t('state.noCaption')}}</div>
-            </template>
-            <InputField
-                v-else
-                :label="$t('input.upload.caption')"
-                :type="'textarea'"
-                v-model="payload.caption" />
 
             <template v-if="!editMode">
-                <h3>Keywords</h3>
-                <div v-if="post.keywords.length > 0" class="keywords">
-                    <div v-for="keyword in post.keywords" :key="keyword.id" class="keyword">{{keyword.name}}</div>
+                <h2>{{post.title}}</h2>
+                <div class="info">{{ $t('attribute.createdBy') }}
+                    <UserLink :username="post.uploader.username" :profilePicture="post.uploader.profilePicture" />
+                    <span class="spacerPipe">|</span>{{ $t('attribute.createdAt') }} {{ parseDate(post.createdAt) }}
+                </div>
+
+                <div class="text">
+                    <h3>Caption</h3>
+                    <div class="caption indent">{{post.caption ? post.caption : $t('state.noCaption')}}</div>
+                    <h3>Keywords</h3>
+                    <div v-if="post.keywords.length > 0" class="keywords indent">
+                        <div v-for="keyword in post.keywords" :key="keyword.id" class="keyword-chip">{{keyword.name}}</div>
+                    </div>
+                    <h3>Language</h3>
+                    <div class="indent">{{ $t(`languages.${post.language.toLowerCase()}`) }}</div>
+                </div>
+
+            </template>
+
+            <template v-else>
+                <InputField
+                    :label="$t('input.upload.title')"
+                    :type="'text'"
+                    v-model="payload.title" />
+
+                <InputField
+                    :label="$t('input.upload.caption')"
+                    :type="'textarea'"
+                    v-model="payload.caption" />
+
+                <InputKeywords
+                    :label="$t('input.upload.keywords')"
+                    v-model="payload.keywords" />
+
+                <InputSelect
+                    :label="$t('input.upload.language')"
+                    :options="[
+                        { value:'ENGLISH',name:'English' },
+                        { value:'GERMAN',name:'German' },
+                        { value:'FRENCH',name:'French' },
+                        { value:'ITALIAN',name:'Italian' },
+                        { value:'NORWEGIAN',name:'Norwegian' },
+                        { value:'RUSSIAN',name:'Russian' },
+                        { value:'SPANISH',name:'Spanish' },
+                        { value:'TURKISH',name:'Turkish' },
+                    ]"
+                    v-model="payload.language" />
+
+
+                <div v-if="editMode" class="actionsRow">
+                    <button @click="toggleEditMode(false)" class="button button-slim button-light">{{ $t('action.cancel') }}</button>
+                    <button @click="editPost" class="button button-slim button-primary">{{ $t('action.send') }}</button>
                 </div>
             </template>
-            <InputKeywords
-                v-else
-                :label="$t('input.upload.keywords')"
-                v-model="payload.keywords" />
-
-            <template v-if="!editMode">
-                <h3>Language</h3>
-                <div class="caption">{{ $t(`languages.${post.language.toLowerCase()}`) }}</div>
-            </template>
-            <InputSelect
-                v-else
-                :label="$t('input.upload.language')"
-                :options="[
-                    { value:'ENGLISH',name:'English' },
-                    { value:'GERMAN',name:'German' },
-                    { value:'FRENCH',name:'French' },
-                    { value:'ITALIAN',name:'Italian' },
-                    { value:'NORWEGIAN',name:'Norwegian' },
-                    { value:'RUSSIAN',name:'Russian' },
-                    { value:'SPANISH',name:'Spanish' },
-                    { value:'TURKISH',name:'Turkish' },
-                ]"
-                v-model="payload.language" />
-            <div v-if="editMode" class="actionsRow">
-                <button @click="toggleEditMode(false)" class="button button-slim button-light">{{ $t('action.cancel') }}</button>
-                <button @click="editPost" class="button button-slim button-primary">{{ $t('action.send') }}</button>
-            </div>
         </div>
         <div v-if="!editMode">
             <div class="hoverParent">
@@ -192,3 +195,17 @@ export default {
     },
 }
 </script>
+
+<style scoped lang="stylus">
+@import "~@/assets/styles/palette.styl"
+
+.post-info
+    margin-top 2rem
+    .caption
+        white-space pre
+        line-height 1.4
+    .keywords > :not(:last-child)
+        margin-right .5rem
+        margin-bottom .5rem
+
+</style>

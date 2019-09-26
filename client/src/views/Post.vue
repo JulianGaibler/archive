@@ -1,34 +1,41 @@
 <template>
-    <div v-if="resources && node" class="frame framed post" ref="frame">
-        <header>
+    <div v-if="resources && node" class="post" ref="frame">
+        <header class="framed extended">
             <h1>{{ $t('views.post') }}</h1>
+
+            <nav class="actionBar">
+                <a :href="filePaths.download" download="true" class="actionBar-component button button-withIcon"><IconDownload />Compressed</a>
+                <a :href="filePaths.original" download="true" class="actionBar-component button button-withIcon"><IconDownload />Original</a>
+                <button class="actionBar-component button button-withIcon"><IconLink />Copy link to Post</button>
+                <span class="actionBar-spacer"></span>
+                <button class="actionBar-component button button-primary button-icon hoverParent">
+                    <IconCollectionAdd @click="toggleCollections(true)" />
+                    <div v-if="collectionAdd" v-click-outside="() => toggleCollections(false)" class="hoverBox hoverBox-right">
+                        <h2>Add to Collection</h2>
+                    </div>
+                </button>
+            </nav>
         </header>
 
-        <nav class="actionBar">
-            <a :href="filePaths.download" download="true" class="actionBar-component button button-withIcon"><IconDownload />Compressed</a>
-            <a :href="filePaths.original" download="true" class="actionBar-component button button-withIcon"><IconDownload />Original</a>
-            <button class="actionBar-component button button-withIcon"><IconLink />Copy link to Post</button>
-            <span class="actionBar-spacer"></span>
-            <button class="actionBar-component button button-primary button-withIcon"><IconCollectionAdd />Add to Collection</button>
-        </nav>
+        <div class="frame framed">
+            <section class="media">
+                <picture v-if="node.type === 'IMAGE'">
+                    <source :srcset="filePaths.format1" type="image/webp">
+                    <img :src="filePaths.format2">
+                </picture>
+                <video
+                    controls
+                    muted
+                    loop
+                    v-else>
+                    <source :src="filePaths.format1" type="video/webm">
+                    <source :src="filePaths.format2" type="video/mp4">
+                </video>
+            </section>
 
-        <section class="media content content-dense">
-            <picture v-if="node.type === 'IMAGE'">
-                <source :srcset="filePaths.format1" type="image/webp">
-                <img :src="filePaths.format2">
-            </picture>
-            <video
-                controls
-                muted
-                loop
-                v-else>
-                <source :src="filePaths.format1" type="video/webm">
-                <source :src="filePaths.format2" type="video/mp4">
-            </video>
-        </section>
+            <PostInfo :post="node" />
 
-        <PostInfo :post="node" class="content content-dense content-box" />
-
+        </div>
     </div>
 </template>
 
@@ -50,6 +57,12 @@ import RESOURCES_QUERY from '@/graphql/resourcesQuery.gql'
 
 export default {
     name: 'Post',
+    data() {
+        return {
+            currentID: this.$route.params.id,
+            collectionAdd: false,
+        }
+    },
     components: {
         PostInfo,
         IconDownload,
@@ -61,12 +74,17 @@ export default {
             query: POST_QUERY,
             variables() {
                 return {
-                    input: this.$route.params.id,
+                    input: this.currentID,
                 }
             },
         },
         resources: {
             query: RESOURCES_QUERY,
+        },
+    },
+    methods: {
+        toggleCollections(bool) {
+            this.collectionAdd = bool
         },
     },
     computed: {
@@ -83,3 +101,19 @@ export default {
     },
 }
 </script>
+
+<style scoped lang="stylus">
+@import "~@/assets/styles/palette.styl"
+
+.post
+    .media
+        width 100%
+        border-radius $archive-radius2
+        overflow hidden
+        -webkit-mask-image -webkit-radial-gradient(white, black)
+        line-height 0
+        img, video
+            width 100%
+    h2
+        margin-bottom .25rem
+</style>

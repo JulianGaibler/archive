@@ -1,56 +1,58 @@
 <template>
-    <div class="frame framed queue">
-        <header>
+    <div class="queue">
+        <header class="framed">
             <h1>{{ $t('views.queue') }}</h1>
+
+            <nav class="actionBar">
+                <Search v-model="search" />
+                <button class="actionBar-component button button-icon"><IconReload /></button>
+            </nav>
         </header>
 
-        <nav class="actionBar">
-            <Search v-model="search" />
-            <button class="actionBar-component button button-icon"><IconReload /></button>
-        </nav>
-
-        <div v-if="tasks" class="content itemList itemList-progress">
-            <div v-for="{ node: { id, title, status, uploader, progress, ext, createdPost, notes } } in tasks.edges" :key="id" class="item">
-                <div class="indicatorWrapper">
-                    <div class="indicator">
-                        <IconQueue v-if="status === 'QUEUED'" />
-                        <Lottie v-else-if="status === 'PROCESSING'" :options="processingAnimationOptions" />
-                        <IconDone v-else-if="status === 'DONE'" />
-                        <IconClose v-else-if="status === 'FAILED'" />
-                    </div>
-                </div>
-                <div class="info">
-                    <div class="top">
-                        <h3>{{ title }}</h3>
-                        <div class="nameCombo nameCombo-small">
-                            <div class="name">{{uploader.name}}</div>
-                            <div class="username">{{uploader.username}}</div>
+        <div class="frame framed">
+            <div v-if="tasks" class="itemList itemList-progress">
+                <div v-for="{ node: { id, title, status, uploader, progress, ext, createdPost, notes } } in tasks.edges" :key="id" class="item">
+                    <div class="indicatorWrapper">
+                        <div class="indicator">
+                            <IconQueue v-if="status === 'QUEUED'" />
+                            <Lottie v-else-if="status === 'PROCESSING'" :options="processingAnimationOptions" />
+                            <IconDone v-else-if="status === 'DONE'" />
+                            <IconClose v-else-if="status === 'FAILED'" />
                         </div>
                     </div>
-                    <div v-if="status === 'PROCESSING'" class="btm">
-                        <div class="progress">
-                            <div class="progress-bar" :style="{width: `${progress}%`}"> </div>
+                    <div class="info">
+                        <div class="top">
+                            <h3>{{ title }}</h3>
+                            <div class="nameCombo nameCombo-small">
+                                <div class="name">{{uploader.name}}</div>
+                                <div class="username">{{uploader.username}}</div>
+                            </div>
+                        </div>
+                        <div v-if="status === 'PROCESSING'" class="btm">
+                            <div class="progress">
+                                <div class="progress-bar" :style="{width: `${progress}%`}"> </div>
+                            </div>
+                        </div>
+                        <div v-if="status === 'FAILED'" class="btm">
+                            <code>{{notes}}</code>
                         </div>
                     </div>
-                    <div v-if="status === 'FAILED'" class="btm">
-                        <code>{{notes}}</code>
+                    <div class="interaction">
+                        <div class="label">{{ext}}</div>
+                        <router-link
+                            v-if="createdPost"
+                            tag="button"
+                            :to="{ name: 'Post', params: { id: createdPost.id }}"
+                            class="button">{{ $t('action.show_post') }}</router-link>
                     </div>
                 </div>
-                <div class="interaction">
-                    <div class="label">{{ext}}</div>
-                    <router-link
-                        v-if="createdPost"
-                        tag="button"
-                        :to="{ name: 'Post', params: { id: createdPost.id }}"
-                        class="button">{{ $t('action.show_post') }}</router-link>
+            </div>
+            <div v-if="tasks" class="itemRow itemRow-center">
+                <div class="indicator" v-if="$apollo.queries.tasks.loading">
+                    <Lottie :options="loadingAnimationOptions" />
                 </div>
+                <button v-else-if="tasks.pageInfo.hasNextPage" @click="showMore" class="button">Show More</button>
             </div>
-        </div>
-        <div v-if="tasks" class="itemRow itemRow-center">
-            <div class="indicator" v-if="$apollo.queries.tasks.loading">
-                <Lottie :options="loadingAnimationOptions" />
-            </div>
-            <button v-else-if="tasks.pageInfo.hasNextPage" @click="showMore" class="button">Show More</button>
         </div>
     </div>
 </template>
@@ -67,7 +69,7 @@ import IconQueue from '@/assets/jw_icons/queue.svg?inline'
 import IconReload from '@/assets/jw_icons/reload.svg?inline'
 
 import TASKS_QUERY from '@/graphql/tasksQuery.gql'
-import TASKS_SUBSCRIPTION from '@/graphql/taskUpdatesQuery.gql'
+import TASKS_SUBSCRIPTION from '@/graphql/taskUpdatesSubscription.gql'
 
 export default {
     name: 'Queue',
@@ -156,3 +158,21 @@ export default {
     },
 }
 </script>
+
+<style scoped lang="stylus">
+.queue
+    @media screen and (max-width: $archive-screen-small)
+        .itemList > .item
+            display grid
+            grid-template-columns: auto 1fr
+            grid-template-rows: 1fr
+            .indicatorWrapper
+                grid-row 1
+                grid-column 1
+            .info
+                grid-row 1
+                grid-column 2
+            .interaction
+                grid-row 2
+                grid-column 1 / 3
+</style>

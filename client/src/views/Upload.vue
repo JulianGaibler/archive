@@ -1,48 +1,49 @@
 <template>
-    <div class="frame framed upload" ref="frame">
-        <header>
+    <div class="upload" ref="frame">
+        <header class="framed">
             <h1>{{ $t('views.upload') }}</h1>
-        </header>
 
-        <nav class="actionBar">
-            <div class="actionBar-component actionBar-component-text actionBar-grower">
-                {{ $t('state.upload.files_count', { count: upload.items.length, max: 30 }) }}
-            </div>
-            <button v-if="upload.locked" class="actionBar-component button button-primary" @click="upload.stopUpload()">{{$t(upload.working ? 'action.upload.cancel_upload' : 'action.upload.new_upload')}}</button>
-            <template v-else>
-                <button class="actionBar-component button button-icon" @click="upload.clearAllItems()"><IconTrash /></button>
-                <button class="actionBar-component button button-primary" @click="upload.startUpload()">{{$t('action.upload.upload_files')}}</button>
-            </template>
-        </nav>
-
-        <div class="content itemList" :class="{ 'itemList-progress': upload.locked }">
-            <div v-if="upload.errors.length > 0" class="errorBox">
-                <div v-for="error in upload.errors" :key="error.code">{{ error.messageT ? $t(error.messageT) : error.message }}</div>
-            </div>
-
-            <Item v-for="item in upload.items" :key="item.id" :uploadItem="item" />
-
-            <template v-if="!upload.locked">
-                <input
-                    class="uploadclick"
-                    name="selectfile"
-                    id="selectfile"
-                    @change="handleFileEvent"
-                    type="file"
-                    multiple>
-                <div class="uploadclick item">
-                    <div>
-                        <label class="preview" for="selectfile">
-                            <IconUp />
-                            <div v-if="upload.items.length === 0 ">{{ $t('action.upload.select_files') }}</div>
-                            <div v-else >{{ $t('action.upload.select_more_files') }}</div>
-                        </label>
-                    </div>
+            <nav class="actionBar">
+                <div class="actionBar-component actionBar-component-text actionBar-grower">
+                    {{ $t('state.upload.files_count', { count: upload.items.length, max: 30 }) }}
                 </div>
-            </template>
-        </div>
+                <button v-if="upload.locked" class="actionBar-component button button-primary" @click="upload.stopUpload()">{{$t(upload.working ? 'action.upload.cancel_upload' : 'action.upload.new_upload')}}</button>
+                <template v-else>
+                    <button class="actionBar-component button button-icon" @click="upload.clearAllItems()"><IconTrash /></button>
+                    <button class="actionBar-component button button-primary" @click="upload.startUpload()">{{$t('action.upload.upload_files')}}</button>
+                </template>
+            </nav>
+        </header>
+        <div class="frame framed">
+            <div class="itemList" :class="{ 'itemList-progress': upload.locked }">
+                <div v-if="upload.errors.length > 0" class="errorBox">
+                    <div v-for="error in upload.errors" :key="error.code">{{ error.messageT ? $t(error.messageT) : error.message }}</div>
+                </div>
 
-        <div class="dropzone" :class="{showDropzone}" ref="dropzone"></div>
+                <Item v-for="item in upload.items" :key="item.id" :uploadItem="item" />
+
+                <template v-if="!upload.locked">
+                    <input
+                        class="uploadclick"
+                        name="selectfile"
+                        id="selectfile"
+                        @change="handleFileEvent"
+                        type="file"
+                        multiple>
+                    <div class="uploadclick item">
+                        <div>
+                            <label class="preview" for="selectfile">
+                                <IconUp />
+                                <div v-if="upload.items.length === 0 ">{{ $t('action.upload.select_files') }}</div>
+                                <div v-else >{{ $t('action.upload.select_more_files') }}</div>
+                            </label>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div class="dropzone" :class="{showDropzone}" ref="dropzone"></div>
+        </div>
     </div>
 </template>
 
@@ -99,3 +100,86 @@ export default {
     },
 }
 </script>
+
+<style scoped lang="stylus">
+@import "~@/assets/styles/palette.styl"
+
+.upload
+    display flex
+    box-sizing border-box
+    min-height 100%
+    flex-direction column
+    position relative
+    .itemList
+        input.uploadclick
+            width 0.1px
+            height 0.1px
+            opacity 0
+            overflow hidden
+            position absolute
+            z-index -1
+        > .item
+            transition .25s background, .25s margin
+            > :not(:last-child)
+                margin-right 2rem
+                @media screen and (max-width: $archive-screen-large)
+                    margin-right 0
+            .preview
+                border-radius $archive-radius2
+                position relative
+                overflow hidden
+                -webkit-mask-image -webkit-radial-gradient(white, black)
+                transition .25s width
+                line-height 0
+                img, video
+                    width 100%
+                    object-fit cover
+            label.preview
+                min-width 20rem
+            @media screen and (max-width: $archive-screen-large)
+                display grid
+                padding-top 1rem
+                padding-bottom .5rem
+                grid-gap 1rem
+                grid-template-columns 1fr
+                grid-template-rows 1fr auto
+                .previewWrapper
+                    grid-row 1
+                    grid-column 1 / 3
+                    .preview
+                        margin 0
+                .data
+                    grid-row 2
+                    grid-column 1
+                .interaction
+                    grid-row 2
+                    grid-column 2
+                label.preview
+                    min-width auto
+                .preview
+                    margin 0 auto 0 auto
+            &.uploadclick
+                .preview
+                    line-height 1rem
+                    display block
+                    padding 4.25rem 1.5rem 5rem 1.5rem
+                    text-align center
+                    border 2px solid $archive-grey1
+                    color $archive-primary
+                    font-weight 500
+                    box-sizing border-box
+                    svg
+                        height 2rem
+                        width auto
+                        fill $archive-primary
+            &.itemList-progress .item
+                background $archive-grey1
+                margin-bottom 1rem
+                .preview
+                    width 6.5rem
+                    height 6.5rem
+                    > *
+                        height 100%
+                        width auto
+                        object-fit cover
+</style>

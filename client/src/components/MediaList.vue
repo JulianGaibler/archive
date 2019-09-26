@@ -1,11 +1,11 @@
 <template>
     <div>
         <template v-if="posts">
-            <div v-if="this.posts.edges < 1" class="content notice">
+            <div v-if="this.posts.edges < 1" class="pictogram">
                 <img src="@/assets/pictograms/empty.svg">
                 <h2>Nothing here</h2>
             </div>
-            <div v-else class="content mediaList">
+            <div v-else class="mediaList">
                 <div v-for="(column, i) in sortedPosts" :key="i" class="column">
                     <router-link
                         tag="a"
@@ -24,7 +24,7 @@
                 <button v-else-if="posts.pageInfo.hasNextPage" @click="showMore" class="button">Show More</button>
             </div>
         </template>
-        <div v-else-if="$apollo.queries.posts.loading" class="content notice">
+        <div v-else-if="$apollo.queries.posts.loading">
             <div class="indicator">
                 <Lottie :options="animOptions" />
             </div>
@@ -121,3 +121,30 @@ export default {
     },
 }
 </script>
+
+<style scoped lang="stylus">
+@import "~@/assets/styles/palette.styl"
+
+.mediaList
+    display flex
+    margin-bottom 1rem
+    > .column
+        flex 1
+        &:not(:last-child)
+            margin-right 1rem
+        > .item
+            display block
+            overflow hidden
+            -webkit-mask-image -webkit-radial-gradient(white, black)
+            text-align center
+            border-radius $archive-radius2
+            background $archive-grey1
+            &:not(:last-child)
+                margin-bottom 1rem
+
+.pictogram
+    padding 1rem
+    text-align center
+    h2
+        margin-top 1rem
+</style>

@@ -1,14 +1,13 @@
 <template>
-    <div class="frame framed">
-        <header>
+    <div>
+        <header class="framed extended">
             <h1>{{ $t('views.archive') }}</h1>
+            <nav class="actionBar">
+                <Search v-model="search" />
+            </nav>
         </header>
 
-        <nav class="actionBar">
-            <Search v-model="search" />
-        </nav>
-
-        <MediaList :search="search" />
+        <MediaList class="frame framed" :search="search" />
     </div>
 </template>
 

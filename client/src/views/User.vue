@@ -1,29 +1,31 @@
 <template>
-    <div class="frame framed user">
-        <header>
+    <div class="user">
+        <header class="framed extended">
             <h1>{{ $t('views.user') }}</h1>
-        </header>
 
-        <section v-if="user" class="content content-dense content-box itemRow">
-            <div class="itemRow-grow">
-                <div class="nameCombo">
-                    <div class="name">{{user.name}}</div>
-                    <div class="username">{{user.username}}</div>
+            <section v-if="user" class="headerRow">
+                <picture class="profilePic" v-if="resources">
+                    <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}upic/${user.profilePicture}-256.webp`">
+                    <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${user.profilePicture}-256.jpeg`">
+                </picture>
+                <div class="infoBox">
+                    <h2 class="nameCombo">
+                        <div class="name">{{user.name}}</div>
+                        <div class="username">{{user.username}}</div>
+                    </h2>
+
+                    <div class="text">
+                        <p>{{ $tc('items.post', user.posts.totalCount) }}</p>
+                        <p>{{ $tc('items.collection', user.collections.totalCount) }}</p>
+                    </div>
                 </div>
-                <p>{{ $tc('items.post', user.posts.totalCount) }}</p>
-                <p>{{ $tc('items.collection', user.collections.totalCount) }}</p>
-            </div>
-            <picture class="profilePic" v-if="resources">
-                <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}upic/${user.profilePicture}-256.webp`">
-                <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${user.profilePicture}-256.jpeg`">
-            </picture>
-        </section>
+            </section>
 
-        <nav class="actionBar content content-dense">
-            <Search v-model="search" />
-        </nav>
-
-        <MediaList v-if="user" :search="search" />
+            <nav class="actionBar">
+                <Search v-model="search" />
+            </nav>
+        </header>
+        <MediaList class="frame framed" v-if="user" :search="search" />
 
     </div>
 </template>

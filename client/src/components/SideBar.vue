@@ -111,3 +111,113 @@ export default {
     },
 }
 </script>
+
+<style scoped lang="stylus">
+@import "~@/assets/styles/palette.styl"
+
+.sidebar
+    border-bottom-left-radius $archive-radius1
+    min-width 15rem
+    height 100%
+    box-sizing border-box
+    display flex
+    flex-direction column
+    padding .75rem 2rem 1.5rem 2rem
+    hr
+        border none
+        border-top 1px solid rgba(0, 0, 0, 0.03)
+        margin 0
+    .sidebar-pic
+        border-radius $archive-radius-profile
+        overflow hidden
+        background $archive-grey2
+        picture
+            width 100%
+        line-height 0
+        margin-right 0.75rem
+        width 2.75rem
+        height 2.75rem
+    .sidebar-header
+        display flex
+        align-items center
+        margin 2rem 0
+        margin-left 0.625rem
+        .nameCombo
+            flex 1
+            font-size 1.3rem
+    nav
+        font-weight 500
+        flex 1
+        ul
+            margin 1.5rem 0
+            a
+                cursor pointer
+                display flex
+                align-items center
+                svg
+                    margin 0.625rem
+                &.router-link-active
+                    background rgba($archive-primary1, .1)
+                    color $archive-primary1
+                    fill $archive-primary1
+                    border-radius $archive-radius3
+    @media screen and (max-width: $archive-screen-mid)
+        position fixed
+        background $archive-std
+        z-index 300
+        top 0
+        right 0
+        bottom 0
+        box-shadow $archive-hoverShadow3
+        transform translateX(110%)
+        transition transform .3s ease
+        &.sidebar-open
+            transform translateX(0)
+    .blocker
+        position fixed
+        left 0
+        right 0
+        top 0
+        bottom 0
+        z-index 299
+        background rgba($archive-inv, 0)
+    .notification
+        .notification-box
+            margin-top 1rem
+            background $archive-grey1
+            transition all .5s
+            border-radius $archive-radius3
+            display flex
+            flex-direction column
+            padding 1.25rem
+            h1
+
+            p
+                margin-top 0.2rem
+                font-size 0.875rem
+            .top
+                display flex
+                align-items center
+                .icon
+                    width 1.5rem
+                    margin-right 1rem
+            .btm
+                margin-top 1rem
+                display flex
+                .progress
+                    transition flex .5s
+                    &:not(:last-child)
+                        margin-right 0.5rem
+
+</style>
+
+<style lang="stylus">
+.notification-enter, .notification-leave-to {
+  opacity 0
+  z-index -1
+}
+.notification-leave-active {
+  position absolute
+  width 12.5rem
+}
+</style>

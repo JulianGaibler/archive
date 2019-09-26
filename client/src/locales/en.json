@@ -23,6 +23,7 @@
         "no_right": "Something was not right..."
     },
     "items": {
+        "item": "0 Items | 1 Item | {n} Items",
         "post": "0 Posts | 1 Post | {n} Posts",
         "collection": "0 Collections | 1 Collection | {n} Collections",
         "keyword": "0 Keywords | 1 Keyword | {n} Keywords"
@@ -45,6 +46,7 @@
         "changePassword": "Change Password",
         "changeName": "Change Name",
         "send": "Send",
+        "new_collection": "New Collection",
         "upload": {
             "upload_files": "Upload Files",
             "cancel_upload": "Cancel Upload",

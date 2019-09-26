@@ -111,3 +111,73 @@ export default {
     },
 }
 </script>
+
+<style scoped lang="stylus">
+@import "~@/assets/styles/palette.styl"
+
+.item
+    transition .25s background, .25s margin
+    > :not(:last-child)
+        margin-right 2rem
+        @media screen and (max-width: $archive-screen-large)
+            margin-right 0
+    .preview
+        border-radius $archive-radius2
+        position relative
+        overflow hidden
+        -webkit-mask-image -webkit-radial-gradient(white, black)
+        transition .25s width
+        line-height 0
+        img, video
+            width 100%
+            object-fit cover
+    label.preview
+        min-width 20rem
+    @media screen and (max-width: $archive-screen-large)
+        display grid
+        padding-top 1rem
+        padding-left 1rem
+        padding-bottom .5rem
+        grid-gap 1rem
+        grid-template-columns 1fr
+        grid-template-rows 1fr auto
+        .previewWrapper
+            grid-row 1
+            grid-column 1 / 3
+            .preview
+                margin 0
+        .data
+            grid-row 2
+            grid-column 1
+        .interaction
+            grid-row 2
+            grid-column 2
+        label.preview
+            min-width auto
+        .preview
+            margin 0 auto 0 auto
+    &.uploadclick
+        .preview
+            line-height 1rem
+            display block
+            padding 4.25rem 1.5rem 5rem 1.5rem
+            text-align center
+            border 2px solid $archive-grey1
+            color $archive-primary
+            font-weight 500
+            box-sizing border-box
+            svg
+                height 2rem
+                width auto
+                fill $archive-primary
+    &.itemList-progress .item
+        background $archive-grey1
+        margin-bottom 1rem
+        .preview
+            width 6.5rem
+            height 6.5rem
+            > *
+                height 100%
+                width auto
+                object-fit cover
+</style>

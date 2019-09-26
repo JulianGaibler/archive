@@ -123,3 +123,35 @@ export default {
     },
 }
 </script>
+
+
+<style scoped lang="stylus">
+@import "~@/assets/styles/palette.styl"
+
+.profileInput
+    .dropzone::before
+        border-radius $archive-radius-profile
+    input
+        width 0.1px
+        height 0.1px
+        opacity 0
+        overflow hidden
+        position absolute
+        z-index -1
+    .profilePic
+        width 10rem
+        height 10rem
+        margin 0 auto
+        background $archive-grey2
+        overflow hidden
+        border-radius $archive-radius-profile
+        position relative
+        margin-bottom 1rem
+        picture
+            line-height 0
+    label
+        display button
+    .itemRow
+        > :not(:last-child)
+            margin-right .5rem
+</style>
