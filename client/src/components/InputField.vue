@@ -1,5 +1,5 @@
 <template>
-    <div class="inputField light" :class="{error: errors && errors.length > 0, disabled}">
+    <div class="inputField light" :class="{error: errors && errors.length > 0, disabled, focused}">
         <label :class="{ visible: showLabel }">{{label}}</label>
         <textarea
             v-if="type==='textarea'"
@@ -9,6 +9,8 @@
             :value="value"
             :placeholder="label"
             :disabled="disabled"
+            @focus="focused = true"
+            @blur="focused = false"
             @input="updateInputArea"
         />
         <input
@@ -18,6 +20,8 @@
             :type="type"
             :disabled="disabled"
             :placeholder="label"
+            @focus="focused = true"
+            @blur="focused = false"
             @input="handleInput" />
 
         <ul v-if="errors" class="error">
@@ -30,6 +34,11 @@
 
 export default {
     name: 'InputField',
+    data() {
+        return {
+            focused: false,
+        }
+    },
     props: {
         value: String,
         label: String,

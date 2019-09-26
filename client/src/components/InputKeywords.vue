@@ -1,5 +1,5 @@
 <template>
-    <div class="inputField light">
+    <div class="inputField light" :class="{focused}">
         <label :class="{ visible: showLabel }">{{label}}</label>
         <div class="autocomplete hoverParent">
             <div v-for="id in value" :key="id" class="tag">
@@ -25,6 +25,7 @@
                 :placeholder="label"
                 ref="tagInput"
                 @input="handleInput"
+                @focus="focused = true"
                 @blur="handleBlur"
                 @keydown.down="onArrowDown"
                 @keydown.up="onArrowUp"
@@ -74,6 +75,7 @@ export default {
     data() {
         return {
             searchWord: '',
+            focused: false,
 
             showResults: false,
             currentSelect: -1,
@@ -104,6 +106,7 @@ export default {
             })
         }, 200),
         handleBlur: debounce(function() {
+            this.focused = false
             this.showResults = false
         }),
         addItem(item) {
