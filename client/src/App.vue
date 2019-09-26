@@ -1,7 +1,7 @@
 <template>
     <div id="app">
         <main>
-            <keep-alive :max="10" :exclude="'Login'">
+            <keep-alive :max="10" :exclude="['Login', 'Post', 'Collection', 'User']">
                 <router-view />
             </keep-alive>
         </main>
