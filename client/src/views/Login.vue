@@ -57,7 +57,7 @@
 <script>
 import { resetStore } from '@/vue-apollo.js'
 import { parseError } from '@/utils'
-import InputField from '@/components/InputField.vue'
+import InputField from '@/components/Input/InputField.vue'
 import Modal from '@/components/Modal'
 import Lottie from '@/components/Lottie'
 

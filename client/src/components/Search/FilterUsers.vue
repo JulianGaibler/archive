@@ -13,7 +13,7 @@
 </template>
 
 <script>
-import InputUsers from '../../components/InputUsers.vue'
+import InputUsers from '../../components/Input/InputUsers.vue'
 
 export default {
     name: 'FilterUsers',

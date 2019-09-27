@@ -42,7 +42,7 @@
 </template>
 
 <script>
-import InputField from '@/components/InputField'
+import InputField from '@/components/Input/InputField'
 
 import Lottie from '@/components/Lottie'
 import * as uploadingAnimation from '@/assets/animations/loading.json'

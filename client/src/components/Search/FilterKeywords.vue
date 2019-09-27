@@ -13,7 +13,7 @@
 </template>
 
 <script>
-import InputKeywords from '../../components/InputKeywords.vue'
+import InputKeywords from '../../components/Input/InputKeywords.vue'
 
 export default {
     name: 'FilterKeywords',

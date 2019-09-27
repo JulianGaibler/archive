@@ -23,7 +23,7 @@
 </template>
 
 <script>
-import InputSelect from '../../components/InputSelect.vue'
+import InputSelect from '../../components/Input/InputSelect.vue'
 
 export default {
     name: 'FilterLanguage',

@@ -20,7 +20,7 @@
 </template>
 
 <script>
-import InputRadio from '../../components/InputRadio'
+import InputRadio from '../../components/Input/InputRadio'
 
 export default {
     name: 'FilterTaskType',

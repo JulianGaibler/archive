@@ -93,9 +93,9 @@ import UserLink from '@/components/UserLink'
 import { parseDate, parseError } from '@/utils'
 import { resetStore } from '@/vue-apollo'
 
-import InputField from '@/components/InputField.vue'
-import InputKeywords from '@/components/InputKeywords.vue'
-import InputSelect from '@/components/InputSelect.vue'
+import InputField from '@/components/Input/InputField.vue'
+import InputKeywords from '@/components/Input/InputKeywords.vue'
+import InputSelect from '@/components/Input/InputSelect.vue'
 
 import IconMore from '@/assets/jw_icons/more.svg?inline'
 import IconTrash from '@/assets/jw_icons/trash.svg?inline'
