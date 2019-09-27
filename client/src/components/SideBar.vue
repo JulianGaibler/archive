@@ -43,7 +43,7 @@
                         <router-link @click.native="toggle(false)" :to="{ name: 'Settings'}"><IconSettings />Settings</router-link>
                     </li>
                     <li>
-                        <a @click.native="toggle(false)" @click="logout"><IconLogout/>Logout</a>
+                        <button @click.native="toggle(false)" @click="logout"><IconLogout/>Logout</button>
                     </li>
                 </ul>
             </nav>
@@ -150,17 +150,22 @@ export default {
         flex 1
         ul
             margin 1.5rem 0
-            a
+            a, button
                 cursor pointer
+                width 100%
+                padding 0
+                margin 0
                 display flex
                 align-items center
+                border-radius $archive-radius3
                 svg
                     margin 0.625rem
+                &:focus
+                    box-shadow inset 0 0 0 0.15rem rgba($archive-primary1, .1)
                 &.router-link-active
                     background rgba($archive-primary1, .1)
                     color $archive-primary1
                     fill $archive-primary1
-                    border-radius $archive-radius3
     @media screen and (max-width: $archive-screen-mid)
         position fixed
         background $archive-std
@@ -181,33 +186,6 @@ export default {
         bottom 0
         z-index 299
         background rgba($archive-inv, 0)
-    .notification
-        .notification-box
-            margin-top 1rem
-            background $archive-grey1
-            transition all .5s
-            border-radius $archive-radius3
-            display flex
-            flex-direction column
-            padding 1.25rem
-            h1
-
-            p
-                margin-top 0.2rem
-                font-size 0.875rem
-            .top
-                display flex
-                align-items center
-                .icon
-                    width 1.5rem
-                    margin-right 1rem
-            .btm
-                margin-top 1rem
-                display flex
-                .progress
-                    transition flex .5s
-                    &:not(:last-child)
-                        margin-right 0.5rem
 
 </style>
 

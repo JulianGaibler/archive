@@ -59,3 +59,34 @@ export default {
     },
 }
 </script>
+
+<style scoped lang="stylus">
+@import "~@/assets/styles/palette.styl"
+
+.notification-box
+    margin-top 1rem
+    background $archive-grey1
+    transition all .5s
+    border-radius $archive-radius3
+    display flex
+    flex-direction column
+    padding 1.25rem
+    h1
+
+    p
+        margin-top 0.2rem
+        font-size 0.875rem
+    .top
+        display flex
+        align-items center
+        .icon
+            width 1.5rem
+            margin-right 1rem
+    .btm
+        margin-top 1rem
+        display flex
+        .progress
+            transition flex .5s
+            &:not(:last-child)
+                margin-right 0.5rem
+</style>

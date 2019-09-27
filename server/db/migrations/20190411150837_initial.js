@@ -55,21 +55,21 @@ exports.up = async knex => {
                 table.bigInteger('createdAt').notNullable();
             })
             .createTable('KeywordToPost', table => {
-                table.increments('id');
                 table.integer('keyword_id').references('Keyword.id').onDelete('CASCADE').notNullable();
                 table.integer('post_id').references('Post.id').onDelete('CASCADE').notNullable();
+                table.primary(['keyword_id', 'post_id'],'KeywordToPost_primary_pair');
                 table.bigInteger('addedAt').notNullable();
             })
             .createTable('KeywordToCollection', table => {
-                table.increments('id');
                 table.integer('keyword_id').references('Keyword.id').onDelete('CASCADE').notNullable();
                 table.integer('collection_id').references('Collection.id').onDelete('CASCADE').notNullable();
+                table.primary(['keyword_id', 'collection_id'],'KeywordToCollection_primary_pair');
                 table.bigInteger('addedAt').notNullable();
             })
             .createTable('CollectionToPost', table => {
-                table.increments('id');
                 table.integer('collection_id').references('Collection.id').onDelete('CASCADE').notNullable();
                 table.integer('post_id').references('Post.id').onDelete('CASCADE').notNullable();
+                table.primary(['collection_id', 'post_id'],'CollectionToPost_primary_pair');
                 table.bigInteger('addedAt').notNullable();
             })
             .createTable('Session', table => {

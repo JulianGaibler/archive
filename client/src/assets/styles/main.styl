@@ -19,6 +19,7 @@ input, button, textarea, select, a
     border none
     color inherit
     font-family inherit
+    font-weight inherit
     font-size inherit
     outline none
 
@@ -133,12 +134,14 @@ input.hiddenInput
 
 .button
     remove-native()
-    background #F6F6F6
+    background $archive-grey1
     font-weight 500
     padding 0 1.5rem
     height 2.75rem
     flex-shrink 0
     border-radius $archive-radius2
+    &:focus
+        box-shadow 0px 0px 0 0.15rem rgba($archive-inv, 0.1)
     &.button-primary
         background $archive-inv
         font-weight 700
@@ -224,6 +227,8 @@ input.hiddenInput
     display flex
     align-items center
     border-radius $archive-radius2
+    &:focus
+        box-shadow $archive-hoverShadow1, 0px 0px 0 .15rem rgba($archive-inv, 0.1)
     &.actionBar-component-search
         flex 1
         height 2.75rem
@@ -232,7 +237,16 @@ input.hiddenInput
         > :not(:last-child)
             margin-right 0.625rem
         .button-filter
-            opacity .5
+            padding .25rem
+            display flex
+            justify-content center
+            align-items center
+            svg
+                opacity .5
+            &:focus
+                background rgba($archive-inv, .05)
+                border-radius 50%
+
         .filterChip
             remove-native()
             background $archive-green
@@ -451,7 +465,7 @@ header.framed
             &[type="radio"]
                 border-radius 50%
                 &:focus
-                    box-shadow 0px 0px 0 0.25rem rgba($archive-inv, 0.2)
+                    box-shadow 0px 0px 0 .25rem rgba($archive-inv, 0.1)
                 &::before
                     border-radius 50%
                 &::after
@@ -511,10 +525,12 @@ header.framed
         &.visible
             max-height 1rem
             opacity 1
-    &.focused
-        border-color $archive-inv
     &.error
         border-color $archive-primary1
+    &.focused
+        border-color $archive-inv
+        > label
+            color $archive-inv
     .error
         font-weight 500
         color $archive-primary1

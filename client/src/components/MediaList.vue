@@ -24,7 +24,7 @@
                 <button v-else-if="posts.pageInfo.hasNextPage" @click="showMore" class="button">Show More</button>
             </div>
         </template>
-        <div v-else-if="$apollo.queries.posts.loading">
+        <div v-else-if="$apollo.queries.posts.loading" class="itemRow itemRow-center">
             <div class="indicator">
                 <Lottie :options="animOptions" />
             </div>

@@ -142,7 +142,7 @@ export default {
         p
             font-size 1.5rem
             font-weight 500
-        background $archive-primary
+        background $archive-primary1
     > svg
         position absolute
         z-index 1

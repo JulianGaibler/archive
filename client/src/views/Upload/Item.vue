@@ -121,6 +121,10 @@ export default {
         margin-right 2rem
         @media screen and (max-width: $archive-screen-large)
             margin-right 0
+    .previewWrapper
+        width 30%
+        @media screen and (max-width: $archive-screen-large)
+            width auto
     .preview
         border-radius $archive-radius2
         position relative
