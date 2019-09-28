@@ -16,8 +16,22 @@
                     <h3>Caption</h3>
                     <div class="caption indent">{{post.caption ? post.caption : $t('state.noCaption')}}</div>
                     <h3>Keywords</h3>
-                    <div v-if="post.keywords.length > 0" class="keywords indent">
-                        <div v-for="keyword in post.keywords" :key="keyword.id" class="keyword-chip">{{keyword.name}}</div>
+                    <div v-if="post.keywords.length > 0" class="chips indent">
+                        <div v-for="keyword in post.keywords" :key="keyword.id" class="chip chip-keyword">
+                            <IconCollection/><span>{{keyword.name}}</span>
+                        </div>
+                    </div>
+                    <div v-else class="indent">
+                        none
+                    </div>
+                    <h3>Collections</h3>
+                    <div v-if="post.collections.length > 0" class="chips indent">
+                        <div v-for="collection in post.collections" :key="collection.id" class="chip chip-collection">
+                            <IconCollection/><span>{{collection.title}}</span>
+                        </div>
+                    </div>
+                    <div v-else class="indent">
+                        none
                     </div>
                     <h3>Language</h3>
                     <div class="indent">{{ $t(`languages.${post.language.toLowerCase()}`) }}</div>
@@ -103,6 +117,7 @@ import InputSelect from '@/components/Input/InputSelect.vue'
 import IconMore from '@/assets/jw_icons/more.svg?inline'
 import IconTrash from '@/assets/jw_icons/trash.svg?inline'
 import IconEdit from '@/assets/jw_icons/edit.svg?inline'
+import IconCollection from '@/assets/jw_icons/collection.svg?inline'
 
 import EDIT_POST from '@/graphql/editPostMutation.gql'
 import DELETE_POST from '@/graphql/deletePostsMutation.gql'
@@ -133,6 +148,7 @@ export default {
         IconMore,
         IconTrash,
         IconEdit,
+        IconCollection,
         InputField,
         InputKeywords,
         InputSelect,
@@ -207,7 +223,7 @@ export default {
     .caption
         white-space pre
         line-height 1.4
-    .keywords > :not(:last-child)
+    .chips > :not(:last-child)
         margin-right .5rem
         margin-bottom .5rem
 
