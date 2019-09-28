@@ -76,7 +76,7 @@ class UploadManager {
                 title: '',
                 caption: '',
                 type: '',
-                language: '',
+                language: 'english',
             },
         })
     }
