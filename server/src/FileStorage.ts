@@ -327,7 +327,7 @@ export default class FileStorage {
             }
 
             const palette = await Vibrant.from(result.createdFiles.thumbnail.jpeg).getPalette()
-            postData.color = palette.LightVibrant.getHex()
+            postData.color = palette.Vibrant.getHex()
 
             const [newPost] = await Post.query().insertGraph([postData], {
                 relate: true,

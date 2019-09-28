@@ -1,0 +1,3 @@
+mutation addToCollection($id: ID!, $postIds: [ID!]!) {
+    addToCollection(id: $id, postIds: $postIds)
+}

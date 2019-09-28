@@ -359,7 +359,7 @@ header.framed
             background $archive-grey1
             border-bottom-right-radius $archive-radius1
 
-.miniSearch
+.search-slim
     background $archive-grey1
     display flex
     align-items center
@@ -438,7 +438,6 @@ header.framed
             &:not(:last-child)
                 margin-bottom 0
 
-// Old stuff, try to remove it
 
 .inputs
     .dist
@@ -817,22 +816,20 @@ code
                 height 24%
 
 
-.collectionItems
-    margin-top 1rem
-    .collectionItem
-        display flex
-        &:not(:last-child)
-            margin-bottom .5rem
-        .collectionPreview
-            height 2.35rem
-            width 2.35rem
-            margin-right .5rem
-        .desc
-            flex 1
-            padding-top .5rem
-            .top
-                font-size 1rem
-                line-height 1.2
-            .btm
-                font-size 0.75rem
-                line-height 1.2
+.collectionItem
+    display flex
+    &:not(:last-child)
+        margin-bottom .5rem
+    .collectionPreview
+        height 2.35rem
+        width 2.35rem
+        margin-right .5rem
+    .desc
+        flex 1
+        padding-top .25rem
+        .top
+            font-size 1rem
+            line-height 1.2
+        .btm
+            font-size 0.75rem
+            line-height 1.2

@@ -8,12 +8,16 @@
                 <a :href="filePaths.original" download="true" class="actionBar-component button button-withIcon"><IconDownload />Original</a>
                 <button class="actionBar-component button button-withIcon"><IconLink />Copy link to Post</button>
                 <span class="actionBar-spacer"></span>
-                <button class="actionBar-component button button-primary button-icon hoverParent">
-                    <IconCollectionAdd @click="toggleCollections(true)" />
-                    <div v-if="collectionAdd" v-click-outside="() => toggleCollections(false)" class="hoverBox hoverBox-right">
+
+                <div class="hoverParent">
+                    <button @click="collectionAdd = true" class="actionBar-component button button-primary button-icon">
+                        <IconCollectionAdd />
+                    </button>
+                    <div v-if="collectionAdd" v-click-outside="() => { collectionAdd = false }" class="hoverBox hoverBox-right">
                         <h2>Add to Collection</h2>
+                        <CollectionSearch @collection="addCollection" />
                     </div>
-                </button>
+                </div>
             </nav>
         </header>
 
@@ -41,6 +45,7 @@
 
 <script>
 import PostInfo from '@/components/PostInfo'
+import CollectionSearch from '@/components/CollectionSearch'
 
 import IconDownload from '@/assets/jw_icons/download.svg?inline'
 import IconLink from '@/assets/jw_icons/link.svg?inline'
@@ -55,6 +60,8 @@ const formats = {
 import POST_QUERY from '@/graphql/postQuery.gql'
 import RESOURCES_QUERY from '@/graphql/resourcesQuery.gql'
 
+import ADD_TO_COLLECTION from '@/graphql/addToCollectionQuery.gql'
+
 export default {
     name: 'Post',
     data() {
@@ -65,6 +72,7 @@ export default {
     },
     components: {
         PostInfo,
+        CollectionSearch,
         IconDownload,
         IconLink,
         IconCollectionAdd,
@@ -82,11 +90,6 @@ export default {
             query: RESOURCES_QUERY,
         },
     },
-    methods: {
-        toggleCollections(bool) {
-            this.collectionAdd = bool
-        },
-    },
     computed: {
         filePaths() {
             const types = formats[this.node.type]
@@ -97,6 +100,22 @@ export default {
                 download: `${rootPath}${this.node.compressedPath}.${types[2]}`,
                 original: `${rootPath}${this.node.originalPath}`,
             }
+        },
+    },
+    methods: {
+        addCollection(id) {
+            this.uploading = true
+            this.$apollo.mutate({
+                mutation: ADD_TO_COLLECTION,
+                variables: {
+                    id,
+                    postIds: [this.$route.params.id],
+                },
+            }).then((a) => {
+                console.log(a)
+            }).catch((a) => {
+                console.log(a)
+            })
         },
     },
 }
@@ -114,6 +133,4 @@ export default {
         line-height 0
         img, video
             width 100%
-    h2
-        margin-bottom .25rem
 </style>
