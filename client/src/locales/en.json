@@ -37,6 +37,7 @@
         "more": "more",
         "done": "Done",
         "okay": "Okay",
+        "create": "Create",
         "delete": "Delete",
         "cancel": "Cancel",
         "import": "import",
@@ -87,6 +88,11 @@
             "oldPassword": "old password",
             "newPassword": "new password",
             "newPassword_repeat": "repeat new password"
+        },
+        "collection": {
+            "title": "Title",
+            "description": "Description",
+            "keywords": "Keywords"
         },
         "upload": {
             "title": "Title",

@@ -5,7 +5,13 @@
 
             <nav class="actionBar">
                 <Search v-model="search" />
-                <button class="actionBar-component button button-primary" >{{$t('action.new_collection')}}</button>
+                <div class="hoverParent">
+                    <button @click="createCollection = true" class="actionBar-component button button-primary" >{{$t('action.new_collection')}}</button>
+                    <div v-if="createCollection" v-click-outside="() => { createCollection = false }" class="hoverBox hoverBox-right">
+                        <h2>Create Collection</h2>
+                        <CollectionCreate @cancel="createCollection = false" />
+                    </div>
+                </div>
             </nav>
         </header>
 
@@ -33,16 +39,17 @@
 import Search from '@/components/Search'
 import UserLink from '@/components/UserLink'
 import CollectionPreview from '@/components/CollectionPreview'
+import CollectionCreate from '@/components/CollectionCreate'
 
 import COLLECTIONS_QUERY from '@/graphql/collectionsQuery.gql'
 import RESOURCES_QUERY from '@/graphql/resourcesQuery.gql'
 
 export default {
     name: 'Collections',
-    components: { Search, UserLink, CollectionPreview },
+    components: { Search, UserLink, CollectionPreview, CollectionCreate },
     data() {
         return {
-            columns: 4,
+            createCollection: false,
             search: {
                 text: '',
             },
