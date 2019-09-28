@@ -6,7 +6,7 @@
                 <p v-if="messageB">{{ messageB }}</p>
             </div>
             <div class="actionsRow">
-                <button @click="cancel" class="button button-slim">{{ optionA }}</button>
+                <button @click="cancel" v-focus="true" class="button button-slim">{{ optionA }}</button>
                 <button
                     v-if="optionB"
                     @click="confirm"

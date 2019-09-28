@@ -141,6 +141,7 @@ export default {
         display grid
         padding-top 1rem
         padding-left 1rem
+        padding-right 1rem
         padding-bottom .5rem
         grid-gap 1rem
         grid-template-columns 1fr

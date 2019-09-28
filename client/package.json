@@ -14,6 +14,7 @@
         "apollo-upload-client": "^11.0.0",
         "core-js": "^3.2.1",
         "debounce": "^1.2.0",
+        "focus-visible": "^5.0.2",
         "lottie-web": "^5.5.7",
         "luxon": "^1.17.2",
         "ua-parser-js": "^0.7.20",

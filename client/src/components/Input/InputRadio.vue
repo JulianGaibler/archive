@@ -2,11 +2,12 @@
     <div class="inputField light" :class="{error: errors}">
         <label v-if="label" class="visible">{{label}}</label>
 
-        <div class="option" v-for="option in options" :key="option.value">
+        <div class="option" v-for="(option, i) in options" :key="option.value">
             <input
                 :type="type || 'radio'"
                 :id="rid+option.value"
                 :value="option.value"
+                v-focus="autofocus && i === 0"
                 v-model="content">
             <label :for="rid+option.value">
                 <div class="name">{{option.tName ? $t(option.tName) : option.name}}</div>
@@ -30,6 +31,10 @@ export default {
         value: [String, Array],
         label: String,
         errors: Array,
+        autofocus: {
+            type: Boolean,
+            default: false,
+        },
     },
     data() {
         return {

@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import vClickOutside from 'v-click-outside'
+import 'focus-visible'
 import App from './App.vue'
 import { createProvider } from './vue-apollo'
 
@@ -9,6 +10,13 @@ import router from './router'
 import i18n from './i18n'
 
 Vue.use(vClickOutside)
+Vue.directive('focus', {
+    inserted: function (el, binding) {
+        if (binding.value) {
+            el.focus()
+        }
+    },
+})
 Vue.config.productionTip = false
 
 new Vue({

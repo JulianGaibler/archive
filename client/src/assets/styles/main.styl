@@ -45,6 +45,16 @@ picture > img
     main
         flex 1
 
+body::-webkit-scrollbar
+    width .5rem
+
+body::-webkit-scrollbar-track
+    background $archive-grey1
+
+body::-webkit-scrollbar-thumb
+    background #E4E4E4
+
+
 input.hiddenInput
     width 0.1px
     height 0.1px
@@ -111,6 +121,8 @@ input.hiddenInput
     padding 0.2rem 0.6rem 0.2rem 0.3rem
     span
         line-height 0.5
+    svg
+        margin-right .1rem
     &.chip-keyword
         color $archive-black
         fill $archive-black
@@ -152,7 +164,7 @@ input.hiddenInput
     height 2.75rem
     flex-shrink 0
     border-radius $archive-radius2
-    &:focus
+    &:focus.focus-visible
         box-shadow 0px 0px 0 0.15rem rgba($archive-inv, 0.1)
     &.button-primary
         background $archive-inv
@@ -239,7 +251,7 @@ input.hiddenInput
     display flex
     align-items center
     border-radius $archive-radius2
-    &:focus
+    &:focus.focus-visible
         box-shadow $archive-hoverShadow1, 0px 0px 0 .15rem rgba($archive-inv, 0.1)
     &.actionBar-component-search
         flex 1
@@ -255,7 +267,7 @@ input.hiddenInput
             align-items center
             svg
                 opacity .5
-            &:focus
+            &:focus.focus-visible
                 background rgba($archive-inv, .05)
                 border-radius 50%
 
@@ -428,7 +440,7 @@ header.framed
             line-height 1
         &.active
             background $archive-grey1
-        button:focus, &.selected
+        button:focus.focus-visible, &.selected
             background $archive-grey2
     &.optionList-horizontal
         display flex
@@ -477,7 +489,7 @@ header.framed
             margin 0.5rem 0.5rem 0.5rem 0.1rem
             &[type="radio"]
                 border-radius 50%
-                &:focus
+                &:focus.focus-visible
                     box-shadow 0px 0px 0 .25rem rgba($archive-inv, 0.1)
                 &::before
                     border-radius 50%
@@ -569,10 +581,15 @@ header.framed
         align-items center
         .icon
             height 1rem
+            padding .1rem
             svg
                 height 100%
                 display block
                 width auto
+            &:focus.focus-visible
+                background $archive-inv
+                fill $archive-std
+                border-radius 50%
 
 .indicatorWrapper
     display flex

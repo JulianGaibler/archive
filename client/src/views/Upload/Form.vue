@@ -5,6 +5,7 @@
             <InputField
                 :label="$t('input.upload.title')"
                 :type="'text'"
+                :autofocus="true"
                 :errors="uploadItem.errors.title"
                 v-model="uploadItem.payload.title" />
             <InputField

@@ -48,6 +48,7 @@ class UploadManager {
         }
         this.locked = false
         this.working = false
+        window.removeEventListener('beforeunload', this.preventExit)
     }
 
     deleteItem(id) {
@@ -90,6 +91,14 @@ class UploadManager {
         this.items.forEach(item => {
             item.errors = []
         })
+    }
+
+    preventExit(e) {
+        e.preventDefault()
+        e.returnValue = ''
+    }
+    allowExit(e) {
+        delete e['returnValue']
     }
 
     startUpload() {
@@ -139,6 +148,7 @@ class UploadManager {
         // 3.1 Reset all values
         this.locked = true
         this.working = true
+        window.addEventListener('beforeunload', this.preventExit)
         this.current = 0
         this.errors = []
         this.items.forEach(item => {
@@ -192,6 +202,7 @@ class UploadManager {
                 this.current++
             }
             this.working = false
+            window.removeEventListener('beforeunload', this.preventExit)
         })()
     }
 }

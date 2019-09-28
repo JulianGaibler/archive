@@ -21,7 +21,11 @@
             <nav>
                 <ul>
                     <li>
-                        <router-link @click.native="toggle(false)" :to="{ name: 'Archive'}" exact><IconArchive/>Archive</router-link>
+                        <router-link
+                            @click.native="toggle(false)"
+                            v-focus="open"
+                            :to="{ name: 'Archive'}"
+                            exact><IconArchive/>Archive</router-link>
                     </li>
                     <li>
                         <router-link @click.native="toggle(false)" :to="{ name: 'Collections'}"><IconCollection/>Collections</router-link>
@@ -117,7 +121,7 @@ export default {
 
 .sidebar
     border-bottom-left-radius $archive-radius1
-    min-width 15rem
+    min-width 18rem
     height 100%
     box-sizing border-box
     display flex
@@ -160,7 +164,7 @@ export default {
                 border-radius $archive-radius3
                 svg
                     margin 0.625rem
-                &:focus
+                &:focus.focus-visible
                     box-shadow inset 0 0 0 0.15rem rgba($archive-primary1, .1)
                 &.router-link-active
                     background rgba($archive-primary1, .1)

@@ -78,7 +78,7 @@
         <div v-if="!editMode">
             <div class="hoverParent">
                 <button @click="toggleOptions(true)" class="button button-icon"><IconMore /></button>
-                <div class="hoverBox hoverBox-thin" v-if="showOptions" v-click-outside="() => toggleOptions(false)">
+                <div class="hoverBox hoverBox-right hoverBox-thin" v-if="showOptions" v-click-outside="() => toggleOptions(false)">
                     <ul class="optionList">
                         <li class="option itemRow">
                             <button class="option-withIcon" @click="toggleEditMode(true)"><IconEdit /><span class="itemRow-grow">Edit</span></button>

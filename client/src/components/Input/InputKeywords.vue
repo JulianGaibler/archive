@@ -19,7 +19,7 @@
                     </template>
                 </ApolloQuery>
 
-                <div class="icon" @click="removeItem(id)"><IconClose /></div>
+                <button class="icon" @click="removeItem(id)"><IconClose /></button>
             </div>
             <input
                 :placeholder="label"
@@ -31,6 +31,7 @@
                 @keydown.down="onArrowDown"
                 @keydown.up="onArrowUp"
                 @keydown.enter="onEnter"
+                v-focus="autofocus"
                 v-model="searchWord" />
             <div v-if="showResults" class="hoverBox hoverBox-thin">
                 <ul class="optionList">
@@ -67,7 +68,14 @@ export default {
     props: {
         value: Array,
         label: String,
-        disabled: Boolean,
+        disabled: {
+            type: Boolean,
+            default: false,
+        },
+        autofocus: {
+            type: Boolean,
+            default: false,
+        },
     },
     components: {
         IconClose,

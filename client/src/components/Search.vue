@@ -34,11 +34,11 @@
                         <button class="option-icon" @click="() => clearFilter('text')"><IconClose /></button>
                     </li>
                     <li
-                        v-for="label in givenFilters"
+                        v-for="(label, i) in givenFilters"
                         :key="label"
                         class="option"
                         :class="{active: showLabels.bool[label]}">
-                        <button @click="() => toggleFilters(label, true)">{{ $t(filterProperties[label].tName) }}</button>
+                        <button @click="() => toggleFilters(label, true)" v-focus="i===0">{{ $t(filterProperties[label].tName) }}</button>
                         <button class="option-icon" v-if="showLabels.bool[label]" @click="() => clearFilter(label)"><IconClose /></button>
                     </li>
                 </ul>
@@ -144,7 +144,7 @@ export default {
         },
         clearFilters() {
             let copy = { ...this.value }
-            this.possibleFilters.forEach(prop => {
+            this.givenFilters.forEach(prop => {
                 if (prop === 'language') copy[prop] = ''
                 else copy[prop] = []
             })

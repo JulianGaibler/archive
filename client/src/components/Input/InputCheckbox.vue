@@ -2,11 +2,12 @@
     <div class="inputField light" :class="{error: errors}">
         <label class="visible">{{label}}</label>
 
-        <div class="option" v-for="option in options" :key="option.value">
+        <div class="option" v-for="(option, i) in options" :key="option.value">
             <input
                 type="checkbox"
                 :id="rid+option.value"
                 :value="option.value"
+                v-focus="autofocus && i === 0"
                 v-model="content"
                 @input="updateInput_">
             <label :for="rid+option.value">
@@ -30,6 +31,10 @@ export default {
         value: Array,
         label: String,
         errors: Array,
+        autofocus: {
+            type: Boolean,
+            default: false,
+        },
     },
     data() {
         return {

@@ -8,6 +8,7 @@
             rows="1"
             :value="value"
             :placeholder="label"
+            v-focus="autofocus"
             :disabled="disabled"
             @focus="focused = true"
             @blur="focused = false"
@@ -20,6 +21,7 @@
             :type="type"
             :disabled="disabled"
             :placeholder="label"
+            v-focus="autofocus"
             @focus="focused = true"
             @blur="focused = false"
             @input="handleInput" />
@@ -45,6 +47,10 @@ export default {
         type: String,
         autocomplete: String,
         disabled: {
+            type: Boolean,
+            default: false,
+        },
+        autofocus: {
             type: Boolean,
             default: false,
         },

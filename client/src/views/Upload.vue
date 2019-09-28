@@ -127,6 +127,6 @@ export default {
         svg
             height 2rem
             width auto
-    input.uploadclick:focus + label.uploadclick
+    input.uploadclick:focus.focus-visible + label.uploadclick
         border-color $archive-primary1
 </style>

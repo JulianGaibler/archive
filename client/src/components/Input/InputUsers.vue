@@ -1,5 +1,5 @@
 <template>
-    <div class="inputField light">
+    <div class="inputField light" :class="{ focused, disabled }">
         <label :class="{ visible: showLabel }">{{label}}</label>
         <div class="autocomplete">
             <div v-for="id in value" :key="id" class="tag">
@@ -23,22 +23,24 @@
             </div>
             <input
                 :placeholder="label"
+                :disabled="disabled"
                 ref="tagInput"
                 @input="handleInput"
+                @focus="focused = true"
                 @blur="handleBlur"
                 @keydown.down="onArrowDown"
                 @keydown.up="onArrowUp"
                 @keydown.enter="onEnter"
+                v-focus="autofocus"
                 v-model="searchWord" />
             <div v-if="showResults" class="hoverBox hoverBox-thin">
                 <ul v-if="showResults" class="optionList">
                     <li
                         v-for="(edge, idx) in users.edges"
                         :key="edge.node.id"
-                        @click="addItem(edge.node)"
                         :class="{ selected: idx===currentSelect }"
                         class="option"
-                    >{{edge.node.username}}</li>
+                    ><button @click="addItem(edge.node)">{{edge.node.username}}</button></li>
                 </ul>
             </div>
         </div>
@@ -57,6 +59,14 @@ export default {
     props: {
         value: Array,
         label: String,
+        disabled: {
+            type: Boolean,
+            default: false,
+        },
+        autofocus: {
+            type: Boolean,
+            default: false,
+        },
     },
     components: {
         IconClose,
@@ -64,6 +74,7 @@ export default {
     data() {
         return {
             searchWord: '',
+            focused: false,
 
             showResults: false,
             currentSelect: -1,
@@ -89,6 +100,7 @@ export default {
             })
         }, 200),
         handleBlur: debounce(function() {
+            this.focused = false
             this.showResults = false
         }),
         addItem(item) {

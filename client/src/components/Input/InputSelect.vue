@@ -2,7 +2,11 @@
     <div class="inputField light" :class="{error: errors, focused}">
         <label v-if="label" :class="{ visible: showLabel }">{{label}}</label>
         <div class="selectFlex" :class="{ noItemSelected: !showLabel }">
-            <select @input="updateInput_" @focus="focused = true" @blur="focused = false">
+            <select
+                @input="updateInput_"
+                @focus="focused = true"
+                @blur="focused = false"
+                v-focus="autofocus">
                 <option value="" v-if="!showLabel" :selected="!showLabel">{{label}}</option>
                 <option
                     v-for="option in options"
@@ -35,6 +39,10 @@ export default {
         value: String,
         label: String,
         errors: Array,
+        autofocus: {
+            type: Boolean,
+            default: false,
+        },
     },
     computed: {
         showLabel() {
