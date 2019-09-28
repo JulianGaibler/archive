@@ -36,16 +36,14 @@
                     <li
                         v-for="(edge, idx) in keywords.edges"
                         :key="edge.node.id"
-                        @click="addItem(edge.node)"
                         :class="{ selected: idx===currentSelect }"
                         class="option"
-                    >{{edge.node.name}}</li>
+                    ><button @click="addItem(edge.node)">{{edge.node.name}}</button></li>
                     <li
                         v-if="showResults"
-                        @click="createItem()"
                         :class="{ selected: keywords.edges.length===currentSelect }"
-                        class="option create"
-                    >Create Keyword "{{searchWord}}"</li>
+                        class="option active"
+                    ><button @click="createItem()">Create Keyword "{{searchWord}}"</button></li>
 
                     <div v-if="createStatus.loading" class="info">Creating...</div>
                     <div v-if="createStatus.error" class="info error">{{createStatus.error}}</div>

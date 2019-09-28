@@ -24,19 +24,22 @@
         <div v-if="givenFilters.length > 1" class="hoverParent">
             <button @click="toggleFilterMenu(true)" class="button-filter"><IconTune /></button>
             <div v-if="showFilterMenu" v-click-outside="() => toggleFilterMenu(false)" class="hoverBox hoverBox-right">
-                <div class="itemRow">
+                <div class="itemRow hoverBox-header">
                     <h2 class="itemRow-grow">Add a Filter</h2>
                     <button @click="clearFilters" class="button button-chip">Reset</button>
                 </div>
-                <ul class="filterList">
-                    <li v-if="value.text.length > 0" class="itemRow selected"><span class="itemRow-grow">Text</span><IconClose @click="() => clearFilter('text')" /></li>
+                <ul class="optionList">
+                    <li v-if="value.text.length > 0" class="option selected">
+                        <button>Text</button>
+                        <button class="option-icon" @click="() => clearFilter('text')"><IconClose /></button>
+                    </li>
                     <li
                         v-for="label in givenFilters"
                         :key="label"
-                        class="itemRow"
-                        :class="{selected: showLabels.bool[label]}">
-                        <span class="itemRow-grow" @click="() => toggleFilters(label, true)">{{ $t(filterProperties[label].tName) }}</span>
-                        <IconClose v-if="showLabels.bool[label]" @click="() => clearFilter(label)" />
+                        class="option"
+                        :class="{active: showLabels.bool[label]}">
+                        <button @click="() => toggleFilters(label, true)">{{ $t(filterProperties[label].tName) }}</button>
+                        <button class="option-icon" v-if="showLabels.bool[label]" @click="() => clearFilter(label)"><IconClose /></button>
                     </li>
                 </ul>
             </div>

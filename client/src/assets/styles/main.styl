@@ -256,17 +256,6 @@ input.hiddenInput
             padding .5rem .6rem
             &.active
                 background $archive-green-selected
-        .filterList
-            > li
-                remove-native()
-                align-items center
-                span
-                    padding .75rem 0
-                    display inline-block
-                svg
-                    width 1rem
-                &.selected
-                    opacity .5
         > input
             flex 1
     &.actionBar-component-text
@@ -392,37 +381,50 @@ header.framed
         right 0
     &.hoverBox-thin
         padding .4rem
-    > :not(:last-child)
-        margin-bottom .5rem
-    h2
+    > h2, .hoverBox-header h2
         font-size 1.375rem
         font-weight 500
-    .optionList
-        .option
-            remove-native()
-            padding .6rem .6rem
-            line-height 1.1rem
-            border-radius .5rem
-            &:not(:last-child)
-                margin-bottom 0.3rem
-            &.option-withIcon
-                padding .4rem .4rem
-                span
-                    line-height 0
-                svg
-                    margin-right .4rem
-            &.create
-                background $archive-grey1
-            &:hover, &.selected
-                background $archive-grey2
-        &.optionList-horizontal
-            display flex
-            .option
-                flex 1
-                text-align center
-                &:not(:last-child)
-                    margin-bottom 0
+    .hoverBox-header, > h2, > p, .search-slim
+        margin-bottom .75rem
 
+.optionList
+    .option
+        remove-native()
+        line-height 1.1rem
+        border-radius .5rem
+        overflow hidden
+        display flex
+        justify-content center
+        > button, > .option-box
+            padding .6rem .6rem
+            flex 1
+            text-align left
+
+        &:not(:last-child)
+            margin-bottom 0.3rem
+        .option-withIcon
+            padding .4rem .4rem
+            display flex
+            justify-content center
+            svg
+                margin-right .4rem
+        .option-noPadding
+            padding 0
+        .option-icon
+            flex 0
+            padding 0 .6rem
+            line-height 1
+        &.active
+            background $archive-grey1
+        button:focus, &.selected
+            background $archive-grey2
+    &.optionList-horizontal
+        display flex
+        .option
+            flex 1
+            text-align center
+            &:not(:last-child)
+                margin-bottom 0
 
 // Old stuff, try to remove it
 

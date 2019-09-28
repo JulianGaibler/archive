@@ -66,8 +66,11 @@
                 <button @click="toggleOptions(true)" class="button button-icon"><IconMore /></button>
                 <div class="hoverBox hoverBox-thin" v-if="showOptions" v-click-outside="() => toggleOptions(false)">
                     <ul class="optionList">
-                        <li class="option option-withIcon itemRow" @click="toggleEditMode(true)"><IconEdit /><span class="itemRow-grow">Edit</span></li>
-                        <li class="option option-withIcon itemRow" @click="toggleDelete(true)"><IconTrash /><span class="itemRow-grow">Delete</span>
+                        <li class="option itemRow">
+                            <button class="option-withIcon" @click="toggleEditMode(true)"><IconEdit /><span class="itemRow-grow">Edit</span></button>
+                        </li>
+                        <li class="option itemRow">
+                            <button class="option-withIcon" @click="toggleDelete(true)"><IconTrash /><span class="itemRow-grow">Delete</span></button>
                         </li>
                     </ul>
                 </div>
