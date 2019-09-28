@@ -1,5 +1,5 @@
 <template>
-    <div class="inputField light" :class="{focused}">
+    <div class="inputField light" :class="{ focused, disabled }">
         <label :class="{ visible: showLabel }">{{label}}</label>
         <div class="autocomplete hoverParent">
             <div v-for="id in value" :key="id" class="tag">
@@ -23,6 +23,7 @@
             </div>
             <input
                 :placeholder="label"
+                :disabled="disabled"
                 ref="tagInput"
                 @input="handleInput"
                 @focus="focused = true"
@@ -66,6 +67,7 @@ export default {
     props: {
         value: Array,
         label: String,
+        disabled: Boolean,
     },
     components: {
         IconClose,

@@ -24,7 +24,7 @@
             @blur="focused = false"
             @input="handleInput" />
 
-        <ul v-if="errors" class="error">
+        <ul v-if="errors && errors.length > 0" class="error">
             <li v-for="error in errors" :key="error.message">{{error.messageT ? $t(error.messageT) : error.message}}</li>
         </ul>
     </div>
