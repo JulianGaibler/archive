@@ -10,6 +10,7 @@ import {
 import { connectionDefinitions } from 'graphql-relay'
 import PostModel from '../../models/Post'
 import { IContext } from '../../utils'
+import CollectionType from '../collection/CollectionType'
 import KeywordType from '../keyword/KeywordType'
 import { nodeInterface } from '../node'
 import { DateTime, Format, globalIdField, Language } from '../types'
@@ -29,6 +30,13 @@ const PostType = new GraphQLObjectType({
             ),
             resolve: async (post, args, ctx: IContext) =>
                 ctx.dataLoaders.keyword.getByPost.load(post.id),
+        },
+        collections: {
+            type: new GraphQLNonNull(
+                new GraphQLList(new GraphQLNonNull(CollectionType)),
+            ),
+            resolve: async (post, args, ctx: IContext) =>
+                ctx.dataLoaders.collection.getByPost.load(post.id),
         },
         color: { type: new GraphQLNonNull(GraphQLString) },
         language: {

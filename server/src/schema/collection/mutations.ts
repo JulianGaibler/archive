@@ -51,11 +51,15 @@ export const createCollection: GraphQLFieldConfig<any, any, any> = {
 
         data.creatorId = context.auth.userId
 
-        const [newCollection] = await CollectionModel.query().insertGraph([data], {
+        const [error, newCollections] = await to(CollectionModel.query().insertGraph([data], {
             relate: true,
-        })
+        }))
 
-        return context.dataLoaders.collection.getById.load(newCollection.id)
+        if (error) {
+            throw new InputError(error)
+        }
+
+        return context.dataLoaders.collection.getById.load(newCollections[0].id)
     },
 }
 
