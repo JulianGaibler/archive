@@ -4,7 +4,7 @@
             <h1>{{ $t('views.users') }}</h1>
 
             <nav class="actionBar">
-                <Search v-model="search" />
+                <Search class="actionBar-component" v-model="search" />
             </nav>
         </header>
 

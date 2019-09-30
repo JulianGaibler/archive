@@ -4,7 +4,7 @@
             <h1>{{ $t('views.queue') }}</h1>
 
             <nav class="actionBar">
-                <Search v-model="search" />
+                <Search class="actionBar-component" v-model="search" />
                 <button class="actionBar-component button button-icon"><IconReload /></button>
             </nav>
         </header>

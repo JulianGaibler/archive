@@ -4,7 +4,7 @@
             <h1>{{ $t('views.collections') }}</h1>
 
             <nav class="actionBar">
-                <Search v-model="search" />
+                <Search class="actionBar-component" v-model="search" />
                 <div class="hoverParent">
                     <button @click="createCollection = true" class="actionBar-component button button-primary" >{{$t('action.new_collection')}}</button>
                     <div v-if="createCollection" v-click-outside="() => { createCollection = false }" class="hoverBox hoverBox-right">

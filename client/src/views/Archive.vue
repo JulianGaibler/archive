@@ -3,7 +3,7 @@
         <header class="framed extended">
             <h1>{{ $t('views.archive') }}</h1>
             <nav class="actionBar">
-                <Search v-model="search" />
+                <Search class="actionBar-component" v-model="search" />
             </nav>
         </header>
 

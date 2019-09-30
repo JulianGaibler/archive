@@ -1,5 +1,5 @@
 <template>
-    <div class="actionBar-component actionBar-component-search">
+    <div class="search">
         <IconSearch />
 
         <div
@@ -19,7 +19,11 @@
             />
         </div>
 
-        <input v-model="value.text" type="text" placeholder="Search..." />
+        <input
+            v-model="value.text"
+            v-focus="autofocus"
+            type="text"
+            placeholder="Search..." />
 
         <div v-if="givenFilters.length > 1" class="hoverParent">
             <button @click="toggleFilterMenu(true)" class="button-filter"><IconTune /></button>
@@ -66,6 +70,10 @@ export default {
         value: {
             type: Object,
             required: true,
+        },
+        autofocus: {
+            type: Boolean,
+            default: false,
         },
     },
     components: { IconSearch, IconTune, IconClose, FilterPostType, FilterTaskType, FilterLanguage, FilterKeywords, FilterUsers },
