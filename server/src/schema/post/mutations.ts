@@ -62,15 +62,12 @@ const uploadPosts: GraphQLFieldConfig<any, any, any> = {
         delete fields.file
         fields.uploaderId = context.auth.userId
 
-        const [error, storeData] = await to(
-            context.fileStorage.checkFile(fields, file.createReadStream()),
-        )
+        const [error1, storeData] = await to(context.fileStorage.checkFile(fields, file.createReadStream()))
+        if (error1) { throw new InputError(error1) }
 
-        if (error) {
-            throw new InputError(error)
-        }
+        const [error2, taskId] = await to(context.fileStorage.storeFile(storeData))
+        if (error2) { throw new InputError(error2) }
 
-        const taskId = await context.fileStorage.storeFile(storeData)
         return context.dataLoaders.task.getById.load(taskId)
     },
 }

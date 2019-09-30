@@ -57,20 +57,14 @@ export default class FileProcessor {
         this.updateCallback = updateCallback
     }
 
-    async processImage(readStream, directory: string) {
+    async processImage(filePath: string, directory: string) {
         const compressed = jet.path(directory, 'image')
         const filePaths = {
             jpeg: `${compressed}.jpeg`,
             webp: `${compressed}.webp`,
         }
-        const [error, originalPath] = await to(
-            this.storeOriginal(readStream, directory),
-        )
-        if (error) {
-            throw error
-        }
 
-        const newRead = jet.createReadStream(originalPath)
+        const newRead = jet.createReadStream(filePath)
         const wsJpeg = jet.createWriteStream(filePaths.jpeg)
         const wsWebp = jet.createWriteStream(filePaths.webp)
 
@@ -107,10 +101,10 @@ export default class FileProcessor {
             throw err2
         }
 
-        const { height, width } = await sharp(originalPath).metadata()
+        const { height, width } = await sharp(filePath).metadata()
 
         const thumbnailPaths = await this.createThumbnail(
-            jet.createReadStream(originalPath),
+            jet.createReadStream(filePath),
             directory,
         )
         return {
@@ -118,12 +112,12 @@ export default class FileProcessor {
             createdFiles: {
                 compressed: filePaths,
                 thumbnail: thumbnailPaths,
-                original: originalPath,
+                original: filePath,
             },
         }
     }
 
-    async processVideo(readStream, directory: string, fileType: FileType) {
+    async processVideo(filePath: string, directory: string, fileType: FileType) {
         // TODO: Are the files really being removed from the temp file?
         const compressed = jet.path(directory, 'video')
         const filePaths = {
@@ -135,19 +129,13 @@ export default class FileProcessor {
             mp4: `${videoThumbnail}.mp4`,
             webm: `${videoThumbnail}.webm`,
         }
-        const [error, originalPath] = await to(
-            this.storeOriginal(readStream, directory),
-        )
-        if (error) {
-            throw error
-        }
 
         // Create temp dir for screenshot -_-
         const tmpDir = tmp.dirSync()
         const tmpFilename = 'thumb.png'
 
         await new Promise((resolve, reject) => {
-            ffmpeg(originalPath)
+            ffmpeg(filePath)
                 .screenshots({
                     timestamps: [1],
                     filename: tmpFilename,
@@ -245,7 +233,7 @@ export default class FileProcessor {
         const outputHeight = height > 720 ? 720 : height
         renderA = renderVideo(
             0,
-            originalPath,
+            filePath,
             filePaths.mp4,
             `?x${outputHeight}`,
             [
@@ -258,7 +246,7 @@ export default class FileProcessor {
         )
         renderB = renderVideo(
             1,
-            originalPath,
+            filePath,
             filePaths.webm,
             `?x${outputHeight}`,
             [
@@ -274,7 +262,7 @@ export default class FileProcessor {
             (filePaths as any).gif = `${compressed}.gif`
             renderC = renderVideo(
                 4,
-                originalPath,
+                filePath,
                 (filePaths as any).gif,
                 undefined,
                 ['-f gif'],
@@ -299,7 +287,7 @@ export default class FileProcessor {
         }
         renderA = renderVideo(
             2,
-            originalPath,
+            filePath,
             videoThumbnailPaths.mp4,
             `${outputThumbnailWidth}x?`,
             [
@@ -313,7 +301,7 @@ export default class FileProcessor {
         )
         renderB = renderVideo(
             3,
-            originalPath,
+            filePath,
             videoThumbnailPaths.webm,
             `${outputThumbnailWidth}x?`,
             [
@@ -334,28 +322,9 @@ export default class FileProcessor {
             createdFiles: {
                 compressed: filePaths,
                 thumbnail: { ...thumbnailPaths, ...videoThumbnailPaths },
-                original: originalPath,
+                original: filePath,
             },
         }
-    }
-
-    async storeOriginal(readStream, directory: string) {
-        const path = jet.path(directory, 'original')
-
-        await new Promise((resolve, reject) =>
-            readStream
-                .on('error', error => {
-                    if (readStream.truncated) {
-                        fs.unlinkSync(path)
-                    }
-                    reject(error)
-                })
-                .pipe(fs.createWriteStream(path))
-                .on('error', error => reject(error))
-                .on('finish', () => resolve()),
-        )
-
-        return path
     }
 
     private async createThumbnail(readStream, directory: string) {

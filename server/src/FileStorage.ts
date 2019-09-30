@@ -1,14 +1,19 @@
 import fileType from 'file-type'
+import fs from 'fs'
 import jet from 'fs-jetpack'
 import { PostgresPubSub } from 'graphql-postgres-subscriptions'
+import Vibrant from 'node-vibrant'
 import { raw } from 'objection'
 import sodium from 'sodium'
 import tmp from 'tmp'
-import Vibrant from 'node-vibrant'
 import Keyword from './models/Keyword'
 import Post from './models/Post'
 import Task from './models/Task'
 import User from './models/User'
+
+import stream from 'stream'
+import util from 'util'
+const pipeline = util.promisify(stream.pipeline)
 
 import { Mutex } from 'async-mutex'
 import FileProcessor from './FileStorage/FileProcessor'
@@ -36,7 +41,8 @@ export enum FileType {
 // Interfaces
 interface IStoreData {
     postData: any
-    typedStream: fileType.ReadableStreamWithFileType
+    typedStream: fileType.ReadableStreamWithFileType | null
+    filePath: string | null,
 
     type: {
         ext: string;
@@ -58,6 +64,7 @@ const options = {
         compressed: 'compressed',
         thumbnail: 'thumbnail',
         original: 'original',
+        queue: 'queue',
         profilePictures: 'upic',
     },
 }
@@ -99,6 +106,7 @@ export default class FileStorage {
         return {
             postData: data,
             typedStream,
+            filePath: null,
             type: {
                 ext: types.ext,
                 mime: types.mime,
@@ -111,6 +119,7 @@ export default class FileStorage {
      * Adds File in form of IStoreData to the queue
      */
     async storeFile(data: IStoreData) {
+
         const newTask = await Task.query().insert({
             title: data.postData.title,
             uploaderId: data.postData.uploaderId,
@@ -121,6 +130,15 @@ export default class FileStorage {
             kind: 'CREATED',
             task: newTask,
         })
+
+        const [error, filePath] = await to(this.streamToFile(data.typedStream, [options.dist, options.directories.queue, newTask.id.toString()]))
+        if (error) {
+            await newTask.$query().delete()
+            throw error
+        }
+
+        data.filePath = filePath
+        data.typedStream = null
 
         this.queue.push({
             taskObject: newTask,
@@ -269,7 +287,7 @@ export default class FileStorage {
         data,
         type: desiredType,
     }: IQueueItem) {
-        const { postData, typedStream, type } = data
+        const { postData, filePath, type } = data
         let processError
         let result
         let postCreated = false
@@ -299,7 +317,7 @@ export default class FileStorage {
             ) {
                 [processError, result] = await to(
                     processor.processVideo(
-                        typedStream,
+                        filePath,
                         tmpDir.name,
                         fileTypeEnum,
                     ),
@@ -307,7 +325,7 @@ export default class FileStorage {
             }
             if (fileTypeEnum === FileType.IMAGE) {
                 [processError, result] = await to(
-                    processor.processImage(typedStream, tmpDir.name),
+                    processor.processImage(filePath, tmpDir.name),
                 )
             }
 
@@ -380,6 +398,7 @@ export default class FileStorage {
             await newPost.$query().update(newPost)
 
             await update({ status: 'DONE', createdPostId: newPost.id })
+            jet.remove(filePath)
         } catch (e) {
             if (postCreated && postData.id) {
                 await Post.query().deleteById(postData.id)
@@ -390,6 +409,24 @@ export default class FileStorage {
             tmpDir.removeCallback()
             this.checkQueue() // TODO, this is recursive
         }
+
+    }
+
+    async streamToFile(readStream, path: string[]) {
+        const jetpath = jet.path(...path)
+
+        const [err] = await to(
+            pipeline(
+                readStream,
+                jet.createWriteStream(jetpath),
+            ),
+        )
+        if (err) {
+            fs.unlinkSync(jetpath)
+            throw err
+        }
+
+        return jetpath
     }
 
     /**
@@ -402,6 +439,7 @@ export default class FileStorage {
                 .select('id', 'ext')
                 .where({ status: 'QUEUED' })
                 .orWhere({ status: 'PROCESSING' })
+                result.forEach(({ id }) => jet.remove(jet.path(options.dist, options.directories.queue, id.toString())))
             await Task.query()
                 .update({
                     status: 'FAILED',
