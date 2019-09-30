@@ -65,16 +65,11 @@ const collections: GraphQLFieldConfig<any, any, any> = {
                 }
                 return id
             })
-            query.joinRaw(`
-                INNER JOIN
-                  (SELECT at.collection_id
-                   FROM "KeywordToCollection" AT
-                   INNER JOIN "Collection" "Collection" ON "Collection".id = at.collection_id
-                   WHERE at.keyword_id IN (${ids.join(',')})
-                   GROUP BY at.id) aa ON "Collection".id = aa.collection_id
-            `)
-            query.groupBy('Collection.id')
-            query.havingRaw(`Count("Collection".id) = ${ids.length}`)
+            query
+                .joinRelation('keywords')
+                .whereIn('keywords.id', ids)
+                .groupBy('Collection.id', 'keywords_join.addedAt')
+                .orderBy('keywords_join.addedAt', 'desc')
         }
 
         if (args.byContent) {
