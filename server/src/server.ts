@@ -33,7 +33,7 @@ import { getAuthData } from './utils'
 
 const corsOptions = {
     credentials: true,
-    origin: 'http://localhost:8080',
+    origin: process.env.ORIGIN || 'http://localhost:8080',
 }
 
 class Server {
@@ -47,7 +47,7 @@ class Server {
     dataLoaders: any
     options = {
         port: process.env.PORT || 4000,
-        endpoint: '/',
+        endpoint: process.env.ENDPOINT || '/',
     }
 
     constructor() {

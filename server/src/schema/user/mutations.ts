@@ -8,6 +8,7 @@ import { GraphQLUpload } from 'graphql-upload'
 import User from '../../models/User'
 import {
     AuthenticationError,
+    AuthorizationError,
     checkAndChangePassword,
     checkAndLogin,
     checkAndSignup,
@@ -36,6 +37,9 @@ const signup: GraphQLFieldConfig<any, any, any> = {
         },
     },
     resolve: async (parent, args, context: IContext) => {
+        if (process.env.CREATE_ACCOUNTS !== 'allowed') {
+            throw new AuthorizationError()
+        }
         await checkAndSignup(context, args)
         return true
     },

@@ -1,16 +1,12 @@
-//const parse = require('connection-string');
-//const connection = parse(process.env.DATABASE_URL);
-
-const connection = {path: []};
 
 const defaults = {
     client: 'pg',
     connection: {
-        user: connection.user || 'archive',
-        password: connection.password || 'archive',
-        host: connection.hosts && connection.hosts[0].name,
-        port: (connection.hosts && connection.hosts[0].port) || 5432,
-        database: 'archive',
+        user: process.env.DB_USER || 'archive',
+        password: process.env.DB_PASSWORD || 'archive',
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT || 5432,
+        database: process.env.DB_DATABASE || 'archive',
     },
     migrations: {
         directory: `${__dirname}/db/migrations`,
@@ -30,4 +26,4 @@ const environments = {
     },
 };
 
-module.exports = Object.assign(defaults, environments[process.env.NODE_ENV])
+module.exports = defaults

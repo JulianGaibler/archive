@@ -13,8 +13,8 @@ async function handleExit(options, err) {
         await Promise.all(promises)
         process.exit()
     }
-    // tslint:disable-next-line:no-console
     if (err) {
+        // tslint:disable-next-line:no-console
         console.error(err)
     }
     if (options.exit) {

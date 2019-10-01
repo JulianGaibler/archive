@@ -59,7 +59,7 @@ interface IQueueItem {
 
 // Options
 const options = {
-    dist: 'public',
+    dist: process.env.STORAGE_PATH || 'public',
     directories: {
         compressed: 'compressed',
         thumbnail: 'thumbnail',
@@ -438,17 +438,16 @@ export default class FileStorage {
             const result = await Task.query()
                 .select('id', 'ext')
                 .where({ status: 'QUEUED' })
-                .orWhere({ status: 'PROCESSING' })
                 result.forEach(({ id }) => jet.remove(jet.path(options.dist, options.directories.queue, id.toString())))
             await Task.query()
                 .update({
                     status: 'FAILED',
-                    notes:
-                        'Marked as failed and cleaned up after server restart',
+                    notes: 'Marked as failed and cleaned up after server restart',
                 })
                 .findByIds(result.map(({ id }) => id))
         } finally {
             release()
+            this.checkQueue()
         }
     }
 }
