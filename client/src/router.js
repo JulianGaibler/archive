@@ -1,23 +1,23 @@
 import Vue from 'vue'
 import Router from 'vue-router'
 
-import Login from './views/Login.vue'
-import Archive from './views/Archive.vue'
+import NProgress from 'nprogress'
+
 
 Vue.use(Router)
 
-export default new Router({
+const router = new Router({
     mode: 'history',
     routes: [
         {
             path: '/',
             name: 'Archive',
-            component: Archive,
+            component: () => import(/* webpackChunkName: "upload" */ './views/Archive.vue'),
         },
         {
             path: '/login',
             name: 'Login',
-            component: Login,
+            component: () => import(/* webpackChunkName: "upload" */ './views/Login.vue'),
         },
         {
             path: '/upload',
@@ -67,3 +67,18 @@ export default new Router({
         },
     ],
 })
+
+NProgress.configure({ showSpinner: false })
+
+router.beforeEach((to, from, next) => {
+    if (to.name) {
+        NProgress.start()
+    }
+    next()
+})
+
+router.afterEach(() => {
+    NProgress.done()
+})
+
+export default router

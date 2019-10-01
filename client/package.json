@@ -32,6 +32,7 @@
         "eslint": "^6.2.2",
         "eslint-plugin-vue": "^5.2.3",
         "graphql-tag": "^2.10.1",
+        "nprogress": "^0.2.0",
         "stylus": "^0.54.7",
         "stylus-loader": "^3.0.2",
         "vue-cli-plugin-apollo": "^0.21.0",

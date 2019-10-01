@@ -1,10 +1,11 @@
 import Vue from 'vue'
+import App from './App.vue'
+import './assets/styles/main.styl'
+
 import vClickOutside from 'v-click-outside'
 import 'focus-visible'
-import App from './App.vue'
 import { createProvider } from './vue-apollo'
 
-import './assets/styles/main.styl'
 
 import router from './router'
 import i18n from './i18n'

@@ -31,8 +31,6 @@
                 </picture>
                 <video
                     controls
-                    muted
-                    loop
                     v-else>
                     <source :src="filePaths.format1" type="video/webm">
                     <source :src="filePaths.format2" type="video/mp4">
