@@ -1,12 +1,13 @@
 {
   "compilerOptions": {
-    "target": "esnext",
-    "module": "commonjs",
-    "allowSyntheticDefaultImports": true,
+    "target": "ES2018",
+    "module": "CommonJS",
+    "outDir": "./dist",
     "esModuleInterop": true,
+    "removeComments": true,
+    "allowSyntheticDefaultImports": true,
     "noEmitOnError": true,
-    "sourceMap": true,
-    "lib": ["es2015", "es2017", "esnext.asynciterable"]
+    "lib": ["es2015", "es2017", "dom", "esnext.asynciterable"]
   },
   "include": [
     "src/**/*"

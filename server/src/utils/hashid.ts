@@ -1,4 +1,5 @@
-import Hashids from 'hashids'
+/* tslint:disable */
+const Hashids = require('hashids/cjs')
 import { InputError } from './index'
 import { ModelId } from './modelEnum'
 
@@ -17,7 +18,7 @@ export function decodeHashIdAndCheck(model: any, stringId: string) {
 }
 
 export function decodeHashId(id: string): { type: ModelId; id: number } {
-    const res = hashIds.decode(id)
+    const res = hashIds.decode(id) as number[]
     if (res.length < 2 || !(res[0] in ModelId)) {
         return {
             type: null,

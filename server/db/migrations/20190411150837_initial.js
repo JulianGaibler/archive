@@ -1,3 +1,6 @@
+// Has to be done by superuser:
+// CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 exports.up = async knex => {
     await knex.schema
             .createTable('User', table => {
@@ -84,7 +87,6 @@ exports.up = async knex => {
 
                 table.unique(['token'])
             });
-            await knex.raw('CREATE EXTENSION IF NOT EXISTS pg_trgm')
             await knex.raw(`
                 CREATE OR REPLACE FUNCTION gin_fts_fct(title text, caption text, language text)
                   RETURNS tsvector

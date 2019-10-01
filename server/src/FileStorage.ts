@@ -28,7 +28,6 @@ import {
     to,
 } from './utils'
 import { ModelId } from './utils/ModelEnum'
-import ReadStream = NodeJS.ReadStream
 
 // Enums
 
@@ -92,7 +91,7 @@ export default class FileStorage {
     /**
      * Quick validity check of given file and data
      */
-    async checkFile(data, readStream: ReadStream): Promise<IStoreData> {
+    async checkFile(data, readStream): Promise<IStoreData> {
         // validation
         Post.fromJson(data)
 
@@ -184,7 +183,7 @@ export default class FileStorage {
      */
     async setProfilePicture(
         iUserId: number,
-        readStream: ReadStream,
+        readStream: any,
     ): Promise<string> {
         const user = await User.query().findById(iUserId)
         if (!user) {

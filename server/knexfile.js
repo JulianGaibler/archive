@@ -1,3 +1,4 @@
+require('dotenv').config()
 
 const defaults = {
     client: 'pg',
