@@ -27,6 +27,7 @@
 
 <script>
 import { parseError } from '@/utils'
+import { removeFromCache } from '@/vue-apollo'
 
 import InputField from '@/components/Input/InputField.vue'
 import InputKeywords from '@/components/Input/InputKeywords.vue'
@@ -68,6 +69,7 @@ export default {
                 refetchQueries: [{ query: COLLECTION_QUERY }],
             }).then(({ data }) => {
                 this.working = false
+                removeFromCache('collections')
                 this.$router.push({ name: 'Collection', params: { id: data.createCollection.id } })
             }).catch((error) => {
                 const parsedError = parseError(error)

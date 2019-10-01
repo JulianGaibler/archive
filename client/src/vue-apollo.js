@@ -32,7 +32,6 @@ const defaultOptions = {
     wsEndpoint: process.env.VUE_APP_GRAPHQL_WS || 'ws://localhost:4000',
     // Enable Automatic Query persisting with Apollo Engine
     persisting: false,
-    // Use websockets for everything (no HTTP)
     // You need to pass a `wsEndpoint` for this to work
     // Is being rendered on the server?
     ssr: false,
@@ -55,7 +54,7 @@ export function createProvider() {
         defaultClient: apolloClient,
         defaultOptions: {
             $query: {
-                // fetchPolicy: 'cache-and-network',
+                fetchPolicy: 'cache-and-network',
             },
         },
     })
@@ -63,13 +62,50 @@ export function createProvider() {
     return apolloProvider
 }
 
-// Manually call this when user log in
-export async function resetStore() {
-    if (apolloClient.wsClient) restartWebsockets(apolloClient.wsClient)
+/**
+ * Resets the apollo store and forces a refetch
+ * @param  {Boolean} noWebsocket By default the websocket will be restarted aswell, this can be disabled.
+ */
+export async function resetStore(noWebsocket = false) {
+    if (apolloClient.wsClient && !noWebsocket) restartWebsockets(apolloClient.wsClient)
     try {
         await apolloClient.resetStore()
     } catch (e) {
         // eslint-disable-next-line no-console
         console.log('%cError on cache reset', 'color: orange;', e.message)
     }
+}
+
+/**
+ * Removes query results from the store.
+ * Caution: This does not force a refetch on active components. Use refetchQueries or resetStore for that.
+ * @param  {string} names Array of query names
+ */
+export function removeFromCache(names) {
+    if (names.constructor !== Array) { names = [names] }
+    try {
+        // Apollo 1.x
+        // let rootQuery = this.props.client.store.getState().apollo.data.ROOT_QUERY;
+        let rootQuery = cache.data.data.ROOT_QUERY
+        Object.keys(rootQuery)
+            .filter(query => !includesArray(query, names))
+            .forEach(query => {
+                delete rootQuery[query]
+            })
+    } catch (error) {
+        console.error(`deleteStoreQuery: ${error}`)
+    }
+}
+
+/**
+ * Helper function that extends String.include to arrays of strings.
+ * @param  {string} string  The values to search in.
+ * @param  {string[]} array The values to search for.
+ * @return {boolean}        true if one of the strings in array is found within the string
+ */
+function includesArray(string, array) {
+    for (let i = 0, max = array.length; i < max; i++) {
+        if (string.includes(array[i])) return true
+    }
+    return false
 }
