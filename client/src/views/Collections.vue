@@ -7,7 +7,7 @@
                 <Search class="actionBar-component" v-model="search" />
                 <div class="hoverParent">
                     <button @click="createCollection = true" class="actionBar-component button button-primary" >{{$t('action.new_collection')}}</button>
-                    <div v-if="createCollection" v-click-outside="() => { createCollection = false }" class="hoverBox hoverBox-right">
+                    <div v-if="createCollection" class="hoverBox hoverBox-right">
                         <h2>Create Collection</h2>
                         <CollectionCreate @cancel="createCollection = false" />
                     </div>
@@ -52,6 +52,8 @@ export default {
             createCollection: false,
             search: {
                 text: '',
+                keywords: [],
+                users: [],
             },
         }
     },
@@ -61,7 +63,9 @@ export default {
             query: COLLECTIONS_QUERY,
             variables() {
                 return {
-                    byUsername: this.search.text.length > 0 ? this.search.text : null,
+                    byContent: this.search.text.length > 0 ? this.search.text : null,
+                    byKeyword: this.search.keywords.length > 0 ? this.search.keywords : null,
+                    byUser: this.search.users.length > 0 ? this.search.users : null,
                 }
             },
             debounce: 500,

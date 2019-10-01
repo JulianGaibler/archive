@@ -113,6 +113,7 @@
         "none": "none"
     },
     "error": {
+        "generic_upload": "There are errors in one of your items.",
         "required_field": "This is a required field",
         "haveToMatch": "Password doesn't match.",
         "file_size_limit": "You can only upload 10 files at once, with a maximum file size of 100 MB.",

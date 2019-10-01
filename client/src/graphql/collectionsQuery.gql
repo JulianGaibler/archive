@@ -1,5 +1,5 @@
-query collections($after: String) {
-    collections(first: 10, after: $after) {
+query collections($after: String, $byKeyword: [ID!], $byContent: String, $byUser: [ID!]) {
+    collections(first: 10, after: $after byKeyword: $byKeyword, byContent: $byContent, byUser: $byUser) {
         edges {
             node {
                 id

@@ -13,8 +13,11 @@
                     <button @click="collectionAdd = true" class="actionBar-component button button-primary button-icon">
                         <IconCollectionAdd />
                     </button>
-                    <div v-if="collectionAdd" v-click-outside="() => { collectionAdd = false }" class="hoverBox hoverBox-right">
-                        <h2>Add to Collection</h2>
+                    <div v-if="collectionAdd" class="hoverBox hoverBox-right">
+                        <div class="itemRow hoverBox-header">
+                            <h2 class="itemRow-grow">Add to Collection</h2>
+                            <button @click="collectionAdd = false" class="button button-chip">Close</button>
+                        </div>
                         <CollectionSearch @collection="addCollection" />
                     </div>
                 </div>
@@ -44,6 +47,8 @@
 </template>
 
 <script>
+import { parseError } from '@/utils'
+
 import PostInfo from '@/components/PostInfo'
 import CollectionSearch from '@/components/CollectionSearch'
 
@@ -56,6 +61,8 @@ const formats = {
     VIDEO: ['webm', 'mp4', 'mp4'],
     GIF: ['webm', 'mp4', 'gif'],
 }
+
+import { resetStore } from '@/vue-apollo'
 
 import POST_QUERY from '@/graphql/postQuery.gql'
 import RESOURCES_QUERY from '@/graphql/resourcesQuery.gql'
@@ -111,10 +118,16 @@ export default {
                     id,
                     postIds: [this.$route.params.id],
                 },
+                refetchQueries: [{
+                    query: POST_QUERY,
+                    variables: { input: this.currentID },
+                }],
             }).then((a) => {
+                resetStore(true)
                 console.log(a)
-            }).catch((a) => {
-                console.log(a)
+            }).catch((rawError) => {
+                const error = parseError(rawError)
+                console.log(error)
             })
         },
     },
