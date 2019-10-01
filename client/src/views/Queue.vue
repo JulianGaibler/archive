@@ -92,6 +92,7 @@ export default {
     apollo: {
         tasks: {
             query: TASKS_QUERY,
+            fetchPolicy: 'network-only',
             variables() {
                 return {
                     byTitle: this.search.text.length > 0 ? this.search.text : undefined,
@@ -99,7 +100,7 @@ export default {
                     byUser: this.search.users.length > 0 ? this.search.users : undefined,
                 }
             },
-            debounce: 500,
+            // debounce: 500,
             subscribeToMore: {
                 document: TASKS_SUBSCRIPTION,
                 updateQuery: (currentData, { subscriptionData }) => {
@@ -155,6 +156,18 @@ export default {
                 },
             })
         },
+    },
+    beforeMount() {
+        if (window.history.state.search) {
+            this.search = window.history.state.search
+        }
+    },
+    beforeRouteLeave(to, from, next) {
+        history.replaceState({
+            ...window.history.state,
+            search: this.search,
+        }, '')
+        next()
     },
 }
 </script>

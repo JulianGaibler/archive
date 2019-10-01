@@ -87,6 +87,18 @@ export default {
             })
         },
     },
+    beforeMount() {
+        if (window.history.state.search) {
+            this.search = window.history.state.search
+        }
+    },
+    beforeRouteLeave(to, from, next) {
+        history.replaceState({
+            ...window.history.state,
+            search: this.search,
+        }, '')
+        next()
+    },
 }
 </script>
 
