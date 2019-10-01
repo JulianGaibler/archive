@@ -8,11 +8,11 @@
 
                 <div class="text">
                     <template v-if="node.description">
-                        <h3>Description</h3>
+                        <h3>{{ $t('attributes.description') }}</h3>
                         <div class="caption indent">{{node.description}}</div>
                     </template>
 
-                    <h3>Keywords</h3>
+                    <h3>{{ $t('attributes.keywords') }}</h3>
                     <div v-if="node.keywords.length > 0" class="keywords indent">
                         <div v-for="keyword in node.keywords" :key="keyword.id" class="chip chip-keyword">
                             <IconTag /><span>{{keyword.name}}</span>
@@ -23,17 +23,17 @@
             <template v-else>
                 <InputField
                     class="titleInput"
-                    :label="$t('input.upload.title')"
+                    :label="$t('attributes.title')"
                     :type="'text'"
                     v-model="payload.title" />
 
                 <InputField
-                    :label="$t('input.upload.description')"
+                    :label="$t('attributes.description')"
                     :type="'textarea'"
                     v-model="payload.description" />
 
                 <InputKeywords
-                    :label="$t('input.upload.keywords')"
+                    :label="$t('attributes.keywords')"
                     v-model="payload.keywords" />
 
                 <div v-if="editMode" class="actionsRow">
@@ -52,10 +52,10 @@
                     v-click-outside="() => { showOptions = false }">
                     <ul class="optionList">
                         <li class="option itemRow">
-                            <button class="option-withIcon" @click="toggleEditMode(true)"><IconEdit /><span class="itemRow-grow">Edit</span></button>
+                            <button class="option-withIcon" @click="toggleEditMode(true)"><IconEdit /><span class="itemRow-grow">{{ $t('action.edit') }}</span></button>
                         </li>
                         <li class="option itemRow">
-                            <button class="option-withIcon" @click="toggleDelete(true)"><IconTrash /><span class="itemRow-grow">Delete</span></button>
+                            <button class="option-withIcon" @click="toggleDelete(true)"><IconTrash /><span class="itemRow-grow">{{ $t('action.delete') }}</span></button>
                         </li>
                     </ul>
                 </div>

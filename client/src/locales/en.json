@@ -23,6 +23,11 @@
         "cannot_undo": "You can’t undo this action.",
         "no_right": "Something was not right..."
     },
+    "post": {
+        "compressed": "Compressed",
+        "original": "Original",
+        "thumbnail": "Thumbnail"
+    },
     "items": {
         "item": "0 Items | 1 Item | {n} Items",
         "post": "0 Posts | 1 Post | {n} Posts",
@@ -35,15 +40,26 @@
         "add": "Add",
         "remove": "Remove",
         "search": "Search",
-        "more": "more",
+        "more": "More",
+        "reset": "Reset",
         "done": "Done",
+        "close": "Close",
         "okay": "Okay",
+        "login": "Login",
+        "logout": "Logout",
         "create": "Create",
+        "edit": "Edit",
+        "revoke_session": "Revoke Session",
+        "create_collection": "Create Collection",
+        "add_to_collection": "Add to Collection",
+        "add_a_filter": "Add a Filter",
         "delete": "Delete",
         "cancel": "Cancel",
-        "import": "import",
-        "export": "export",
+        "import": "Import",
+        "export": "Export",
+        "copy_link": "Copy link",
         "show_post": "Show Post",
+        "show_more": "Show Post",
         "tryagain": "try again",
         "changePassword": "Change Password",
         "changeName": "Change Name",
@@ -57,14 +73,17 @@
             "select_more_files": "Select even more"
         }
     },
+    "sessions": {
+        "last_seen": "Last seen",
+        "browser_on_os": "{b} on {o}",
+        "signed_in": "Signed in",
+        "ip_at_datetime": "{i} on {t}",
+        "device": "Device"
+    },
     "mediaType": {
         "image": "Image",
         "video": "Video",
         "gif": "GIF"
-    },
-    "attribute": {
-        "createdBy": "created by",
-        "createdAt": "created at"
     },
     "state": {
         "loading": "Loading",
@@ -74,7 +93,7 @@
         "queued": "queued",
         "processing": "processing",
         "uploading": "uploading",
-        "noCaption": "No caption",
+        "none": "none",
         "done": "done",
         "failed": "failed",
         "upload": {
@@ -82,25 +101,31 @@
             "x_of_y": "{x} of {y}"
         }
     },
+    "attributes": {
+        "title": "Title",
+        "name": "name",
+        "description": "Description",
+        "keywords": "Keywords",
+        "caption": "Caption",
+        "language": "Language",
+        "keywords": "Keywords",
+        "collections": "Collections",
+        "by": "by",
+        "createdBy": "created by",
+        "createdAt": "created at"
+    },
     "input": {
         "keyword": "Enter keyword",
         "settings": {
-            "name": "name",
             "oldPassword": "old password",
             "newPassword": "new password",
             "newPassword_repeat": "repeat new password"
         },
-        "collection": {
-            "title": "Title",
-            "description": "Description",
-            "keywords": "Keywords"
+        "login": {
+            "username": "Username",
+            "password": "Password"
         },
         "upload": {
-            "title": "Title",
-            "caption": "Caption",
-            "description": "Description",
-            "language": "Language",
-            "keywords": "Keywords",
             "treatas": "Treat file as",
             "treatas_default_name": "Default",
             "treatas_default_tip": "processes file according to its type",
@@ -111,7 +136,7 @@
         }
     },
     "result": {
-        "noresults_headline": "no results.",
+        "nothing_here": "Nothing here...",
         "none": "none"
     },
     "error": {
@@ -132,6 +157,7 @@
         "turkish": "Turkish"
     },
     "filters": {
+        "text": "Text",
         "type": "Type",
         "type_filterBy": "Filter by Type",
         "type_description": "Limits the search to any of these types. (or)",

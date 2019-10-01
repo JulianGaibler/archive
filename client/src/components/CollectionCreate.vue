@@ -2,19 +2,19 @@
     <div>
         <div v-if="error" class="errorBox">{{ error }}</div>
         <InputField
-            :label="$t('input.collection.title')"
+            :label="$t('attributes.title')"
             :type="'text'"
             :errors="errors.title"
             :disabled="working"
             v-model="title" />
         <InputField
-            :label="$t('input.collection.description')"
+            :label="$t('attributes.description')"
             :type="'textarea'"
             :errors="errors.description"
             :disabled="working"
             v-model="description" />
         <InputKeywords
-            :label="$t('input.collection.keywords')"
+            :label="$t('attributes.keywords')"
             :errors="errors.keywords"
             :disabled="working"
             v-model="keywords" />

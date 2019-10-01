@@ -3,18 +3,18 @@
         <div v-if="uploadItem.errors.general" class="errorBox">{{uploadItem.errors.general}}</div>
         <div class="inputs">
             <InputField
-                :label="$t('input.upload.title')"
+                :label="$t('attributes.title')"
                 :type="'text'"
                 :autofocus="true"
                 :errors="uploadItem.errors.title"
                 v-model="uploadItem.payload.title" />
             <InputField
-                :label="$t('input.upload.caption')"
+                :label="$t('attributes.caption')"
                 :type="'textarea'"
                 :errors="uploadItem.errors.caption"
                 v-model="uploadItem.payload.caption" />
             <InputSelect
-                :label="$t('input.upload.language')"
+                :label="$t('attributes.language')"
                 :options="[
                     { value:'english',name:'English' },
                     { value:'german',name:'German' },
@@ -28,7 +28,7 @@
                 :errors="uploadItem.errors.language"
                 v-model="uploadItem.payload.language" />
             <InputKeywords
-                :label="$t('input.upload.keywords')"
+                :label="$t('attributes.keywords')"
                 :errors="uploadItem.errors.keywords"
                 v-model="uploadItem.payload.keywords" />
             <InputRadio

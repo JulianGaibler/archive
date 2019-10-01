@@ -7,33 +7,29 @@
 
             <template v-if="!editMode">
                 <h2>{{post.title}}</h2>
-                <div class="info">{{ $t('attribute.createdBy') }}
+                <div class="info">{{ $t('attributes.createdBy') }}
                     <UserLink :username="post.uploader.username" :profilePicture="post.uploader.profilePicture" />
-                    <span class="spacerPipe">|</span>{{ $t('attribute.createdAt') }} {{ parseDate(post.createdAt) }}
+                    <span class="spacerPipe">|</span>{{ $t('attributes.createdAt') }} {{ parseDate(post.createdAt) }}
                 </div>
 
                 <div class="text">
-                    <h3>Caption</h3>
-                    <div class="caption indent">{{post.caption ? post.caption : $t('state.noCaption')}}</div>
-                    <h3>Keywords</h3>
+                    <h3>{{ $t('attributes.caption') }}</h3>
+                    <div class="caption indent">{{post.caption ? post.caption : $t('state.none')}}</div>
+                    <h3>{{ $t('attributes.keywords') }}</h3>
                     <div v-if="post.keywords.length > 0" class="chips indent">
                         <div v-for="keyword in post.keywords" :key="keyword.id" class="chip chip-keyword">
                             <IconTag/><span>{{keyword.name}}</span>
                         </div>
                     </div>
-                    <div v-else class="indent">
-                        none
-                    </div>
-                    <h3>Collections</h3>
+                    <div v-else class="indent">{{ $t('state.none') }}</div>
+                    <h3>{{ $t('attributes.collections') }}</h3>
                     <div v-if="post.collections.length > 0" class="chips indent">
                         <div v-for="collection in post.collections" :key="collection.id" class="chip chip-collection">
                             <IconCollection/><span>{{collection.title}}</span>
                         </div>
                     </div>
-                    <div v-else class="indent">
-                        none
-                    </div>
-                    <h3>Language</h3>
+                    <div v-else class="indent">{{ $t('state.none') }}</div>
+                    <h3>{{ $t('attributes.language') }}</h3>
                     <div class="indent">{{ $t(`languages.${post.language.toLowerCase()}`) }}</div>
                 </div>
 
@@ -42,21 +38,21 @@
             <template v-else>
                 <InputField
                     class="titleInput"
-                    :label="$t('input.upload.title')"
+                    :label="$t('attributes.title')"
                     :type="'text'"
                     v-model="payload.title" />
 
                 <InputField
-                    :label="$t('input.upload.caption')"
+                    :label="$t('attributes.caption')"
                     :type="'textarea'"
                     v-model="payload.caption" />
 
                 <InputKeywords
-                    :label="$t('input.upload.keywords')"
+                    :label="$t('attributes.keywords')"
                     v-model="payload.keywords" />
 
                 <InputSelect
-                    :label="$t('input.upload.language')"
+                    :label="$t('attributes.language')"
                     :options="[
                         { value:'ENGLISH',name:'English' },
                         { value:'GERMAN',name:'German' },
@@ -86,10 +82,10 @@
                     v-click-outside="() => toggleOptions(false)">
                     <ul class="optionList">
                         <li class="option itemRow">
-                            <button class="option-withIcon" @click="toggleEditMode(true)"><IconEdit /><span class="itemRow-grow">Edit</span></button>
+                            <button class="option-withIcon" @click="toggleEditMode(true)"><IconEdit /><span class="itemRow-grow">{{ $t('action.edit') }}</span></button>
                         </li>
                         <li class="option itemRow">
-                            <button class="option-withIcon" @click="toggleDelete(true)"><IconTrash /><span class="itemRow-grow">Delete</span></button>
+                            <button class="option-withIcon" @click="toggleDelete(true)"><IconTrash /><span class="itemRow-grow">{{ $t('action.delete') }}</span></button>
                         </li>
                     </ul>
                 </div>

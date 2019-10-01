@@ -8,7 +8,7 @@
                 <div class="hoverParent">
                     <button @click="createCollection = true" class="actionBar-component button button-primary" >{{$t('action.new_collection')}}</button>
                     <div v-if="createCollection" v-hoverFix class="hoverBox">
-                        <h2>Create Collection</h2>
+                        <h2>{{ $t('action.create_collection') }}</h2>
                         <CollectionCreate @cancel="createCollection = false" />
                     </div>
                 </div>
@@ -30,7 +30,7 @@
                     </div>
                 </router-link>
             </div>
-            <button v-if="collections && collections.pageInfo.hasNextPage" @click="showMore" class="button">Show More</button>
+            <button v-if="collections && collections.pageInfo.hasNextPage" @click="showMore" class="button">{{ $t('action.show_more') }}</button>
         </div>
     </div>
 </template>

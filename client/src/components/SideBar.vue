@@ -25,29 +25,29 @@
                             @click.native="toggle(false)"
                             v-focus="open"
                             :to="{ name: 'Archive'}"
-                            exact><IconArchive/>Archive</router-link>
+                            exact><IconArchive/>{{ $t('views.archive') }}</router-link>
                     </li>
                     <li>
-                        <router-link @click.native="toggle(false)" :to="{ name: 'Collections'}"><IconCollection/>Collections</router-link>
+                        <router-link @click.native="toggle(false)" :to="{ name: 'Collections'}"><IconCollection/>{{ $t('views.collections') }}</router-link>
                     </li>
                     <li>
-                        <router-link @click.native="toggle(false)" :to="{ name: 'Users'}"><IconUser />Users</router-link>
-                    </li>
-                </ul>
-                <ul>
-                    <li>
-                        <router-link @click.native="toggle(false)" :to="{ name: 'Upload'}"><IconUpload />Upload</router-link>
-                    </li>
-                    <li>
-                        <router-link @click.native="toggle(false)" :to="{ name: 'Queue'}"><IconQueue />Queue</router-link>
+                        <router-link @click.native="toggle(false)" :to="{ name: 'Users'}"><IconUser />{{ $t('views.users') }}</router-link>
                     </li>
                 </ul>
                 <ul>
                     <li>
-                        <router-link @click.native="toggle(false)" :to="{ name: 'Settings'}"><IconSettings />Settings</router-link>
+                        <router-link @click.native="toggle(false)" :to="{ name: 'Upload'}"><IconUpload />{{ $t('views.upload') }}</router-link>
                     </li>
                     <li>
-                        <button @click.native="toggle(false)" @click="logout"><IconLogout/>Logout</button>
+                        <router-link @click.native="toggle(false)" :to="{ name: 'Queue'}"><IconQueue />{{ $t('views.queue') }}</router-link>
+                    </li>
+                </ul>
+                <ul>
+                    <li>
+                        <router-link @click.native="toggle(false)" :to="{ name: 'Settings'}"><IconSettings />{{ $t('views.settings') }}</router-link>
+                    </li>
+                    <li>
+                        <button @click.native="toggle(false)" @click="logout"><IconLogout/>{{ $t('action.logout') }}</button>
                     </li>
                 </ul>
             </nav>

@@ -16,14 +16,14 @@
             </div>
             <div class="info">
                 <h4>{{s.latestIP}}</h4>
-                <p>Last seen: {{s.updatedAt}}</p>
-                <h4>Device</h4>
-                <p>{{s.browser.name}} on {{s.os.name}}</p>
-                <h4>Signed in:</h4>
-                <p>{{s.firstIP}} at {{s.createdAt}}</p>
+                <p>{{ $t('sessions.last_seen') }}: {{s.updatedAt}}</p>
+                <h4>{{ $t('sessions.device') }}</h4>
+                <p>{{ $t('sessions.browser_on_os', { b: s.browser.name, o: s.os.name }) }}</p>
+                <h4>{{ $t('sessions.signed_in') }}</h4>
+                <p>{{ $t('sessions.ip_at_datetime', { i: s.firstIP, t: s.createdAt }) }}</p>
             </div>
             <div class="interaction">
-                <button @click="revokeSession(s.id)" class="button">Revoke Session</button>
+                <button @click="revokeSession(s.id)" class="button">{{ $t('action.revoke_session') }}</button>
             </div>
         </div>
     </div>

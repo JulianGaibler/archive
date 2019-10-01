@@ -31,7 +31,7 @@
                     </div>
                 </router-link>
             </div>
-            <button v-if="users && users.pageInfo.hasNextPage" @click="showMore" class="button">Show More</button>
+            <button v-if="users && users.pageInfo.hasNextPage" @click="showMore" class="button">{{ $t('action.show_more') }}</button>
         </div>
     </div>
 </template>

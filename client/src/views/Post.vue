@@ -4,9 +4,8 @@
             <h1>{{ $t('views.post') }}</h1>
 
             <nav class="actionBar">
-                <a :href="filePaths.download" download="true" class="actionBar-component button button-withIcon"><IconDownload />Compressed</a>
-                <a :href="filePaths.original" download="true" class="actionBar-component button button-withIcon"><IconDownload />Original</a>
-                <button class="actionBar-component button button-withIcon"><IconLink />Copy link to Post</button>
+                <a :href="filePaths.download" download="true" class="actionBar-component button button-withIcon"><IconDownload />{{ $t('post.compressed') }}</a>
+                <a :href="filePaths.original" download="true" class="actionBar-component button button-withIcon"><IconDownload />{{ $t('post.original') }}</a>
                 <span class="actionBar-spacer"></span>
 
                 <div class="hoverParent">
@@ -15,8 +14,8 @@
                     </button>
                     <div v-if="collectionAdd" class="hoverBox" v-hoverFix>
                         <div class="itemRow hoverBox-header">
-                            <h2 class="itemRow-grow">Add to Collection</h2>
-                            <button @click="collectionAdd = false" class="button button-chip">Close</button>
+                            <h2 class="itemRow-grow">{{ $t('action.add_to_collection') }}</h2>
+                            <button @click="collectionAdd = false" class="button button-chip">{{ $t('action.close') }}</button>
                         </div>
                         <CollectionSearch @collection="addCollection" />
                     </div>
@@ -53,7 +52,6 @@ import PostInfo from '@/components/PostInfo'
 import CollectionSearch from '@/components/CollectionSearch'
 
 import IconDownload from '@/assets/jw_icons/download.svg?inline'
-import IconLink from '@/assets/jw_icons/link.svg?inline'
 import IconCollectionAdd from '@/assets/jw_icons/collection_add.svg?inline'
 
 const formats = {
@@ -86,7 +84,6 @@ export default {
         PostInfo,
         CollectionSearch,
         IconDownload,
-        IconLink,
         IconCollectionAdd,
     },
     apollo: {

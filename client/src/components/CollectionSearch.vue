@@ -9,7 +9,7 @@
                         <CollectionPreview class="collectionPreview-mini" :onlyColor="true" :items="node.posts.edges" />
                         <div class="desc">
                             <p class="top">{{node.title}}</p>
-                            <p class="btm">by {{node.creator.username}}</p>
+                            <p class="btm">{{ $t('attributes.by') }} {{node.creator.username}}</p>
                         </div>
                     </button>
                 </li>
@@ -18,7 +18,7 @@
                 <Lottie class="animationIcon" :options="animOptions" />
             </li>
             <li class="option" v-else-if="collections && collections.pageInfo.hasNextPage">
-                <button @click="showMore" >Show More</button>
+                <button @click="showMore" >{{ $t('action.show_more') }}</button>
             </li>
         </ul>
     </div>

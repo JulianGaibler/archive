@@ -33,12 +33,12 @@
                 class="hoverBox"
                 v-hoverFix>
                 <div class="itemRow hoverBox-header">
-                    <h2 class="itemRow-grow">Add a Filter</h2>
-                    <button @click="clearFilters" class="button button-chip">Reset</button>
+                    <h2 class="itemRow-grow">{{ $t('action.add_a_filter') }}</h2>
+                    <button @click="clearFilters" class="button button-chip">{{ $t('action.reset') }}</button>
                 </div>
                 <ul class="optionList">
                     <li v-if="value.text.length > 0" class="option selected">
-                        <button>Text</button>
+                        <button>{{ $t('filters.text') }}</button>
                         <button class="option-icon" @click="() => clearFilter('text')"><IconClose /></button>
                     </li>
                     <li

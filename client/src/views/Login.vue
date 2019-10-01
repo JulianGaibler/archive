@@ -30,21 +30,21 @@
                     :type="'text'"
                     :disabled="formLoading"
                     :autocomplete="'username'"
-                    :label="'Username'"
+                    :label="$t('input.login.username')"
                 />
                 <InputField
                     v-model="password"
                     :type="'password'"
                     :disabled="formLoading"
                     :autocomplete="'current-password'"
-                    :label="'Password'"
+                    :label="$t('input.login.password')"
                 />
                 <button
                     type="submit"
                     :disabled="formLoading"
                     class="button"
                     data-id="login"
-                >Login</button>
+                >{{ $t('action.login') }}</button>
             </form>
             <div class="logoWrapper">
                 <img alt="Archive Box-Logo" src="@/assets/wels-logo.svg">

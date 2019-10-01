@@ -3,7 +3,7 @@
         <template v-if="posts">
             <div v-if="this.posts.edges < 1" class="pictogram">
                 <img src="@/assets/pictograms/empty.svg">
-                <h2>Nothing here</h2>
+                <h2>{{ $t('result.nothing_here') }}</h2>
             </div>
             <div v-else class="mediaList">
                 <div v-for="(column, i) in sortedPosts" :key="i" class="column">
@@ -21,7 +21,7 @@
                 <div class="indicator" v-if="$apollo.queries.posts.loading">
                     <Lottie :options="animOptions" />
                 </div>
-                <button v-else-if="posts.pageInfo.hasNextPage" @click="showMore" class="button">Show More</button>
+                <button v-else-if="posts.pageInfo.hasNextPage" @click="showMore" class="button">{{ $t('action.show_more') }}</button>
             </div>
         </template>
         <div v-else-if="$apollo.queries.posts.loading" class="itemRow itemRow-center">

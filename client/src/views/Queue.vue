@@ -51,7 +51,7 @@
                 <div class="indicator" v-if="$apollo.queries.tasks.loading">
                     <Lottie :options="loadingAnimationOptions" />
                 </div>
-                <button v-else-if="tasks.pageInfo.hasNextPage" @click="showMore" class="button">Show More</button>
+                <button v-else-if="tasks.pageInfo.hasNextPage" @click="showMore" class="button">{{ $t('action.show_more') }}</button>
             </div>
         </div>
     </div>

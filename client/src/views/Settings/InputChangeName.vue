@@ -7,7 +7,7 @@
             <InputField
                 class="itemRow-grow"
                 v-model="name"
-                :label="$t('input.settings.name')"
+                :label="$t('attributes.name')"
                 :disabled="loading"
                 :type="'text'"
                 :errors="fieldError" />
