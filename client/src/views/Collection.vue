@@ -58,7 +58,6 @@ export default {
     data() {
         return {
             columns: 4,
-            currentID: this.$route.params.id,
             search: {
                 text: '',
                 postType: [],
@@ -67,12 +66,18 @@ export default {
             },
         }
     },
+    props: {
+        id: {
+            type: String,
+            required: true,
+        },
+    },
     apollo: {
         node: {
             query: COLLECTION_QUERY,
             variables() {
                 return {
-                    input: this.currentID,
+                    input: this.id,
                 }
             },
         },

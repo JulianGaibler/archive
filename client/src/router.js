@@ -34,6 +34,7 @@ export default new Router({
         {
             path: '/c/:id',
             name: 'Collection',
+            props: true,
             component: () => import(/* webpackChunkName: "collection" */ './views/Collection.vue'),
         },
         {
@@ -44,6 +45,7 @@ export default new Router({
         {
             path: '/u/:username',
             name: 'User',
+            props: true,
             component: () => import(/* webpackChunkName: "user" */ './views/User.vue'),
         },
         {
@@ -59,6 +61,7 @@ export default new Router({
         {
             path: '/:id',
             name: 'Post',
+            props: true,
             component: () => import(/* webpackChunkName: "post" */ './views/Post.vue'),
         },
     ],

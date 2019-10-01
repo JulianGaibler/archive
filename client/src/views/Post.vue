@@ -73,9 +73,14 @@ export default {
     name: 'Post',
     data() {
         return {
-            currentID: this.$route.params.id,
             collectionAdd: false,
         }
+    },
+    props: {
+        id: {
+            type: String,
+            required: true,
+        },
     },
     components: {
         PostInfo,
@@ -89,7 +94,7 @@ export default {
             query: POST_QUERY,
             variables() {
                 return {
-                    input: this.currentID,
+                    input: this.id,
                 }
             },
         },
@@ -116,11 +121,11 @@ export default {
                 mutation: ADD_TO_COLLECTION,
                 variables: {
                     id,
-                    postIds: [this.$route.params.id],
+                    postIds: [this.id],
                 },
                 refetchQueries: [{
                     query: POST_QUERY,
-                    variables: { input: this.currentID },
+                    variables: { input: this.id },
                 }],
             }).then((a) => {
                 resetStore(true)

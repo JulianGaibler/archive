@@ -43,9 +43,14 @@ export default {
         Search,
         MediaList,
     },
+    props: {
+        username: {
+            type: String,
+            required: true,
+        },
+    },
     data() {
         return {
-            columns: 4,
             search: {
                 text: '',
                 postType: [],
@@ -59,11 +64,12 @@ export default {
             query: USER_QUERY,
             variables() {
                 return {
-                    input: this.$route.params.username,
+                    input: this.username,
                 }
             },
             result({ data }) {
-                if (this.$route.params.username !== data.user.username) {
+                if (!data) return
+                if (this.username !== data.user.username) {
                     this.$router.replace({ name: 'User', params: { username: data.user.username } })
                 }
             },
