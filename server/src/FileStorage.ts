@@ -27,7 +27,7 @@ import {
     FileStorageError,
     to,
 } from './utils'
-import { ModelId } from './utils/ModelEnum'
+import { ModelId } from './utils/modelEnum'
 
 // Enums
 
