@@ -16,7 +16,7 @@ const cache = new InMemoryCache({
 const httpEndpoint = process.env.VUE_APP_GRAPHQL_HTTP || 'http://localhost:4000'
 
 const link = createUploadLink({
-    uri: 'http://localhost:4000',
+    uri: process.env.VUE_APP_GRAPHQL_HTTP || 'http://localhost:4000',
     fetch: customFetch,
     credentials: 'include', // same-origin include
 })

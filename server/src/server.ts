@@ -193,6 +193,7 @@ class Server {
             },
             {
                 server: combinedServer,
+                path: this.options.endpoint,
             },
         )
     }
