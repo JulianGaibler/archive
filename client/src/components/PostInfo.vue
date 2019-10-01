@@ -206,7 +206,7 @@ export default {
                     title: this.payload.title,
                     keywords: this.payload.keywords,
                     language: this.payload.language,
-                    caption: this.payload.caption,
+                    caption: this.payload.caption.length > 0 ? this.payload.caption : null,
                 },
             }).then((data) => {
                 console.log(data)
