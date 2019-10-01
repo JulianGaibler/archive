@@ -5,7 +5,8 @@
 
             <nav class="actionBar">
                 <div class="actionBar-component actionBar-component-text actionBar-grower">
-                    {{ $t('state.upload.files_count', { count: upload.items.length, max: 30 }) }}
+                    <span class="error" v-if="upload.anyErrors">{{ $t('error.generic_upload') }}</span>
+                    <span v-else>{{ $t('state.upload.files_count', { count: upload.items.length, max: 30 }) }}</span>
                 </div>
                 <button v-if="upload.locked" class="actionBar-component button button-primary" @click="upload.stopUpload()">{{$t(upload.working ? 'action.upload.cancel_upload' : 'action.upload.new_upload')}}</button>
                 <template v-else>
@@ -99,6 +100,9 @@ export default {
 
 <style scoped lang="stylus">
 @import "~@/assets/styles/palette.styl"
+
+span.error
+    color $archive-primary1
 
 .upload
     display flex

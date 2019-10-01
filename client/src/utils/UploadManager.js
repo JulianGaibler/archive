@@ -10,6 +10,7 @@ class UploadManager {
         this.working = false
         this.current = 0
         this.counter = 0
+        this.anyErrors = false
         this.errors = []
         this.items = []
     }
@@ -21,6 +22,7 @@ class UploadManager {
     }
 
     addErrors({ local, global, fromServer }) {
+        this.anyErrors = true
         if (fromServer) {
             Object.keys(fromServer.errors).forEach(key => {
                 this.items[fromServer.index].errors[key] = fromServer.errors[key]
@@ -82,11 +84,13 @@ class UploadManager {
         })
     }
     clearAllItems() {
+        this.resetErrors()
         if (this.locked) return
         this.items = []
     }
 
     resetErrors() {
+        this.anyErrors = false
         this.errors = []
         this.items.forEach(item => {
             item.errors = []
@@ -194,7 +198,11 @@ class UploadManager {
                     this.updateItemUpload(index, 'status', 3)
                     const parsedError = parseError(e)
                     if (parsedError.code === 'InputError') {
-                        this.addErrors({ fromServer: { index, errors: parsedError.additionalInfo } })
+                        if (parsedError.additionalInfo) {
+                            this.addErrors({ fromServer: { index, errors: parsedError.additionalInfo } })
+                        } else {
+                            this.addErrors({ fromServer: { index, errors: { general: parsedError.message } } })
+                        }
                     } else {
                         this.addErrors({ global: { code: parsedError.code, message: parsedError.message } })
                     }
