@@ -33,7 +33,7 @@
                 @keydown.enter="onEnter"
                 v-focus="autofocus"
                 v-model="searchWord" />
-            <div v-if="showResults" class="hoverBox hoverBox-thin">
+            <div v-if="showResults" class="hoverBox hoverBox-thin" v-hoverFix>
                 <ul v-if="showResults" class="optionList">
                     <li
                         v-for="(edge, idx) in users.edges"

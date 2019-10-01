@@ -27,7 +27,11 @@
 
         <div v-if="givenFilters.length > 1" class="hoverParent">
             <button @click="toggleFilterMenu(true)" class="button-filter"><IconTune /></button>
-            <div v-if="showFilterMenu" v-click-outside="() => toggleFilterMenu(false)" class="hoverBox hoverBox-right">
+            <div
+                v-if="showFilterMenu"
+                v-click-outside="() => toggleFilterMenu(false)"
+                class="hoverBox"
+                v-hoverFix>
                 <div class="itemRow hoverBox-header">
                     <h2 class="itemRow-grow">Add a Filter</h2>
                     <button @click="clearFilters" class="button button-chip">Reset</button>

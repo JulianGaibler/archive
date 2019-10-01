@@ -13,7 +13,7 @@
                     <button @click="collectionAdd = true" class="actionBar-component button button-primary button-icon">
                         <IconCollectionAdd />
                     </button>
-                    <div v-if="collectionAdd" class="hoverBox hoverBox-right">
+                    <div v-if="collectionAdd" class="hoverBox" v-hoverFix>
                         <div class="itemRow hoverBox-header">
                             <h2 class="itemRow-grow">Add to Collection</h2>
                             <button @click="collectionAdd = false" class="button button-chip">Close</button>

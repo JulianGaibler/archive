@@ -17,6 +17,18 @@ Vue.directive('focus', {
         }
     },
 })
+Vue.directive('hoverFix', {
+    inserted: function (el) {
+        const bodyRect = document.body.getBoundingClientRect()
+        const elRect = el.getBoundingClientRect()
+        const diff = bodyRect.width - (elRect.x + elRect.width)
+
+        if (diff < 0) {
+            el.style.transform = `translateX(${diff-20}px)`
+        }
+    },
+})
+
 Vue.config.productionTip = false
 
 new Vue({

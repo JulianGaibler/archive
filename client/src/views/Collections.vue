@@ -7,7 +7,7 @@
                 <Search class="actionBar-component" v-model="search" />
                 <div class="hoverParent">
                     <button @click="createCollection = true" class="actionBar-component button button-primary" >{{$t('action.new_collection')}}</button>
-                    <div v-if="createCollection" class="hoverBox hoverBox-right">
+                    <div v-if="createCollection" v-hoverFix class="hoverBox">
                         <h2>Create Collection</h2>
                         <CollectionCreate @cancel="createCollection = false" />
                     </div>

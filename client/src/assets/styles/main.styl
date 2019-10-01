@@ -232,7 +232,6 @@ input.hiddenInput
 .actionBar
     display flex
     flex-wrap wrap
-    justify-content flex-end
     > .actionBar-grower
         flex 1
     > :not(:last-child)
@@ -399,15 +398,14 @@ header.framed
     left 0
     min-width 15rem
     max-width 20rem
+    max-height 80vh
+    overflow auto
     background $archive-std
     color $archive-inv
     font-weight 400
     box-shadow $archive-hoverShadow3
     border-radius $archive-radius2
     padding 1rem
-    &.hoverBox-right
-        left initial
-        right 0
     &.hoverBox-thin
         padding .4rem
     > h2, .hoverBox-header h2
