@@ -416,6 +416,9 @@ header.framed
     .hoverBox-header, > h2, > p, .search
         margin-bottom .75rem
 
+.animationIcon
+    height 1.5rem
+
 .optionList
     .option
         remove-native()
@@ -431,6 +434,9 @@ header.framed
 
         &:not(:last-child)
             margin-bottom 0.3rem
+        &.options-moreMargin
+            &:not(:last-child)
+                margin-bottom .75rem
         .option-withIcon
             padding .4rem .4rem
             display flex
@@ -641,22 +647,6 @@ header.framed
     &.showDropzone
         visibility initial
 
-.users
-    .itemList .item
-        > picture
-            background $archive-grey1
-            border-radius $archive-radius-profile
-            overflow hidden
-            width 10rem
-            height 10rem
-            margin-right 2rem
-            @media screen and (max-width: $archive-screen-small)
-                width 5rem
-                height 5rem
-                margin-right 1rem
-        > .info > .top
-            font-size 1.2rem
-
 .infoBox
     h2
         font-size 1.3
@@ -674,18 +664,6 @@ header.framed
             margin-left .75rem
         font-size 0.875
         margin-top 1rem
-
-.collections
-    .itemList .item
-        > .collectionPreview
-            margin-right 2rem
-            @media screen and (max-width: $archive-screen-small)
-                width 5rem
-                height 5rem
-                margin-right 1rem
-        > .info > .top
-            font-size 1.4rem
-            font-weight 700
 
 code
     background $archive-std
@@ -848,7 +826,7 @@ code
         margin-right .5rem
     .desc
         flex 1
-        padding-top .25rem
+        padding-top .1rem
         .top
             font-size 1rem
             line-height 1.2

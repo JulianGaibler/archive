@@ -89,3 +89,19 @@ export default {
     },
 }
 </script>
+
+<style scoped lang="stylus">
+@import "~@/assets/styles/palette.styl"
+
+.collections
+    .itemList .item
+        > .collectionPreview
+            margin-right 2rem
+            @media screen and (max-width: $archive-screen-small)
+                width 5rem
+                height 5rem
+                margin-right 1rem
+        > .info > .top
+            font-size 1.4rem
+            font-weight 700
+</style>
