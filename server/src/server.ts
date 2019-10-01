@@ -26,11 +26,11 @@ import graphqlHTTP from 'express-graphql'
 import expressPlayground from 'graphql-playground-middleware-express'
 import { graphqlUploadExpress } from 'graphql-upload'
 
+import knexfile from '../knexfile'
 import db from './database'
 import FileStorage from './FileStorage'
 import schema from './schema'
 import { getAuthData } from './utils'
-import knexfile from '../knexfile'
 
 const corsOptions = {
     credentials: true,
@@ -82,10 +82,10 @@ class Server {
         if (process.env.NODE_ENV === 'development') {
             this.app.use('/content', express.static('public'))
             this.app.use(
-                '/playground',
+                `${this.options.endpoint}/playground`,
                 expressPlayground({
-                    endpoint: '/',
-                    subscriptionEndpoint: 'ws://localhost:4000/', // TODO
+                    endpoint: this.options.endpoint,
+                    subscriptionEndpoint: 'ws://localhost:4000/',
                 }),
             )
         }
