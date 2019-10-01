@@ -30,6 +30,7 @@ import db from './database'
 import FileStorage from './FileStorage'
 import schema from './schema'
 import { getAuthData } from './utils'
+import knexfile from '../knexfile'
 
 const corsOptions = {
     credentials: true,
@@ -53,13 +54,11 @@ class Server {
     constructor() {
         this.app = express()
         this.cookieParserInstance = cookieParser()
-        this.pubSub = new PostgresPubSub({
-            user: 'archive',
-            password: 'archive',
-            // host: connection.hosts && connection.hosts[0].name,
-            port: 5432,
-            database: 'archive',
-        })
+        try {
+            this.pubSub = new PostgresPubSub(knexfile.connection)
+        } catch(e) {
+            throw new Error('Was not able to connect to database (PostgresPubSub)')
+        }
 
         this.dataLoaders = () => ({
             user: User.getLoaders(),
