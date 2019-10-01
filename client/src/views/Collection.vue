@@ -18,7 +18,7 @@
                         <h3>Keywords</h3>
                         <div v-if="node.keywords.length > 0" class="keywords indent">
                             <div v-for="keyword in node.keywords" :key="keyword.id" class="chip chip-keyword">
-                                <IconCollection /><span>{{keyword.name}}</span>
+                                <IconTag /><span>{{keyword.name}}</span>
                             </div>
                         </div>
                     </div>
@@ -26,7 +26,7 @@
             </section>
 
             <nav class="actionBar">
-                <Search v-model="search" />
+                <Search class="actionBar-component" v-model="search" />
             </nav>
         </header>
 
@@ -41,7 +41,7 @@ import MediaList from '@/components/MediaList'
 import CollectionPreview from '@/components/CollectionPreview'
 import UserLink from '@/components/UserLink'
 
-import IconCollection from '@/assets/jw_icons/collection.svg?inline'
+import IconTag from '@/assets/jw_icons/tag.svg?inline'
 
 import COLLECTION_QUERY from '@/graphql/collectionQuery.gql'
 import RESOURCES_QUERY from '@/graphql/resourcesQuery.gql'
@@ -53,7 +53,7 @@ export default {
         MediaList,
         CollectionPreview,
         UserLink,
-        IconCollection,
+        IconTag,
     },
     data() {
         return {

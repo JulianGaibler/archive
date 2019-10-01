@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <path d="M24,24H0V0H24Z" style="fill: none"/>
+  <g>
+    <circle cx="15" cy="9" r="1"/>
+    <polygon points="4.064 13.437 12.5 5.001 18.256 5.883 18.999 11.5 10.563 19.936 4.064 13.437" style="fill: none;stroke: #000;stroke-linecap: round;stroke-linejoin: round;stroke-width: 2px"/>
+  </g>
+</svg>

@@ -18,7 +18,7 @@
                     <h3>Keywords</h3>
                     <div v-if="post.keywords.length > 0" class="chips indent">
                         <div v-for="keyword in post.keywords" :key="keyword.id" class="chip chip-keyword">
-                            <IconCollection/><span>{{keyword.name}}</span>
+                            <IconTag/><span>{{keyword.name}}</span>
                         </div>
                     </div>
                     <div v-else class="indent">
@@ -41,6 +41,7 @@
 
             <template v-else>
                 <InputField
+                    class="titleInput"
                     :label="$t('input.upload.title')"
                     :type="'text'"
                     v-model="payload.title" />
@@ -117,6 +118,7 @@ import InputSelect from '@/components/Input/InputSelect.vue'
 import IconMore from '@/assets/jw_icons/more.svg?inline'
 import IconTrash from '@/assets/jw_icons/trash.svg?inline'
 import IconEdit from '@/assets/jw_icons/edit.svg?inline'
+import IconTag from '@/assets/jw_icons/tag.svg?inline'
 import IconCollection from '@/assets/jw_icons/collection.svg?inline'
 
 import EDIT_POST from '@/graphql/editPostMutation.gql'
@@ -149,6 +151,7 @@ export default {
         IconTrash,
         IconEdit,
         IconCollection,
+        IconTag,
         InputField,
         InputKeywords,
         InputSelect,
@@ -226,5 +229,7 @@ export default {
     .chips > :not(:last-child)
         margin-right .5rem
         margin-bottom .5rem
+    .titleInput >>> input
+        font-size 1.6rem
 
 </style>
