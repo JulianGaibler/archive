@@ -121,7 +121,9 @@ export default {
             this.showResults = false
             this.value.push(item.id)
             this.$emit('input', [...this.value])
-            this.$refs.tagInput.focus()
+            this.$nextTick(() => {
+                this.$refs.tagInput.focus()
+            })
             this.searchWord = ''
         },
         removeItem(id) {

@@ -9,7 +9,7 @@
                 <div class="text">
                     <template v-if="node.description">
                         <h3>{{ $t('attributes.description') }}</h3>
-                        <div class="caption indent">{{node.description}}</div>
+                        <div class="preText indent">{{node.description}}</div>
                     </template>
 
                     <h3>{{ $t('attributes.keywords') }}</h3>

@@ -14,7 +14,7 @@
 
                 <div class="text">
                     <h3>{{ $t('attributes.caption') }}</h3>
-                    <div class="caption indent">{{post.caption ? post.caption : $t('state.none')}}</div>
+                    <div class="preText indent">{{post.caption ? post.caption : $t('state.none')}}</div>
                     <h3>{{ $t('attributes.keywords') }}</h3>
                     <div v-if="post.keywords.length > 0" class="chips indent">
                         <div v-for="keyword in post.keywords" :key="keyword.id" class="chip chip-keyword">
@@ -43,6 +43,7 @@
                     v-model="payload.title" />
 
                 <InputField
+                    class="captionInput"
                     :label="$t('attributes.caption')"
                     :type="'textarea'"
                     v-model="payload.caption" />
@@ -223,13 +224,14 @@ export default {
 
 .post-info
     margin-top 2rem
-    .caption
-        white-space pre
-        line-height 1.4
     .chips > :not(:last-child)
         margin-right .5rem
         margin-bottom .5rem
     .titleInput >>> input
         font-size 1.6rem
+    .captionInput >>> textarea
+        font-size 1rem
+        font-weight 400
+        line-height 1.4
 
 </style>

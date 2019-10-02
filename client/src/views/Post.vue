@@ -4,8 +4,8 @@
             <h1>{{ $t('views.post') }}</h1>
 
             <nav class="actionBar">
-                <a :href="filePaths.download" download="true" class="actionBar-component button button-withIcon"><IconDownload />{{ $t('post.compressed') }}</a>
-                <a :href="filePaths.original" download="true" class="actionBar-component button button-withIcon"><IconDownload />{{ $t('post.original') }}</a>
+                <a :href="filePaths.download" :download="`archive-${node.id}`" class="actionBar-component button button-withIcon"><IconDownload />{{ $t('post.compressed') }}</a>
+                <a :href="filePaths.original" :download="`archive-${node.id}`" class="actionBar-component button button-withIcon"><IconDownload />{{ $t('post.original') }}</a>
                 <span class="actionBar-spacer"></span>
 
                 <div class="hoverParent">

@@ -83,7 +83,7 @@ export async function checkAndLogin(
         throw new RequestError(`You are already logged in.`)
     }
 
-    const user = await User.query().findOne({ username })
+    const user = await User.query().whereRaw('LOWER(username) = ?', username.toLowerCase()).first()
     if (!user) {
         throw new AuthenticationError(
             `No user found by that name.`,

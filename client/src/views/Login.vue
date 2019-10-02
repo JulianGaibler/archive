@@ -47,7 +47,7 @@
                 >{{ $t('action.login') }}</button>
             </form>
             <div class="logoWrapper">
-                <img alt="Archive Box-Logo" src="@/assets/wels-logo.svg">
+                <img alt="JulianWels Logo" src="@/assets/wels-logo.svg">
             </div>
             <YellowPolygon />
         </div>

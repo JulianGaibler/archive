@@ -3,7 +3,7 @@
         <div @click="toggle()" class="menu-button button button-icon">
             <IconMenu />
         </div>
-        <div v-if="open" @click="toggle(false)" class="blocker"></div>
+        <div v-if="open" @click="toggle(false)" class="sidebar-blocker"></div>
         <div class="sidebar" :class="{ 'sidebar-open': open }">
             <div class="sidebar-header">
                 <div class="sidebar-pic">
@@ -182,14 +182,14 @@ export default {
         transition transform .3s ease
         &.sidebar-open
             transform translateX(0)
-    .blocker
-        position fixed
-        left 0
-        right 0
-        top 0
-        bottom 0
-        z-index 299
-        background rgba($archive-inv, 0)
+.sidebar-blocker
+    position fixed
+    left 0
+    right 0
+    top 0
+    bottom 0
+    z-index 299
+    background rgba($archive-inv, 0)
 
 </style>
 

@@ -84,6 +84,9 @@ input.hiddenInput
     > :nth-child(2)
         flex 1
         padding-top 1rem
+    @media screen and (max-width: $archive-screen-small)
+        flex-direction column
+        align-items stretch
 
 .itemRow
     display flex
@@ -409,8 +412,6 @@ header.framed
     left 0
     min-width 15rem
     max-width 20rem
-    max-height 80vh
-    overflow auto
     background $archive-std
     color $archive-inv
     font-weight 400
@@ -428,7 +429,13 @@ header.framed
 .animationIcon
     height 1.5rem
 
+.preText
+    white-space pre-wrap
+    line-height 1.4
+
 .optionList
+    max-height 50vh
+    overflow auto
     .option
         remove-native()
         line-height 1.1rem
@@ -661,7 +668,7 @@ header.framed
         font-size 1.3
         font-weight 700
     .info
-        font-size 0.875
+        line-height 1.4
     .text
         h3
             font-size 0.875rem
@@ -824,6 +831,9 @@ code
                 width 24%
                 height 24%
 
+
+main > div
+    margin-bottom 4.5rem
 
 .collectionItem
     display flex

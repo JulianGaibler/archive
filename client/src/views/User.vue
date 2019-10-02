@@ -25,7 +25,7 @@
                 <Search class="actionBar-component" v-model="search" />
             </nav>
         </header>
-        <MediaList class="frame framed" v-if="user" :search="search" />
+        <MediaList class="frame framed" v-if="user" :search="fullSearch" />
 
     </div>
 </template>
