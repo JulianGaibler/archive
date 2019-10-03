@@ -25,7 +25,7 @@ Vue.directive('hoverFix', {
         const diff = bodyRect.width - (elRect.x + elRect.width)
 
         if (diff < 0) {
-            el.style.transform = `translateX(${diff-20}px)`
+            el.style.left = `${diff-20}px`
         }
     },
 })

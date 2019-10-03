@@ -1,19 +1,21 @@
 <template>
     <div class="inputField light" :class="{error: errors && errors.length > 0, disabled, focused}">
         <label :class="{ visible: showLabel }">{{label}}</label>
-        <textarea
-            v-if="type==='textarea'"
-            ref="textarea"
-            class="dynamicInput"
-            rows="1"
-            :value="value"
-            :placeholder="label"
-            v-focus="autofocus"
-            :disabled="disabled"
-            @focus="focused = true"
-            @blur="focused = false"
-            @input="updateInputArea"
-        />
+        <div v-if="type==='textarea'" class="itemRow">
+            <textarea
+                ref="textarea"
+                class="dynamicInput itemRow-grow"
+                rows="1"
+                :value="value"
+                :placeholder="label"
+                v-focus="autofocus"
+                :disabled="disabled"
+                @focus="focused = true"
+                @blur="focused = false"
+                @input="updateInputArea"
+            />
+            <div ref="areaGrow"></div>
+        </div>
         <input
             v-else
             :value="value"
@@ -66,8 +68,11 @@ export default {
         updateInputArea: function(e) {
             this.$emit('input', e.target.value)
             if (!this.$refs.textarea) return
+
+            this.$refs.areaGrow.style.height = this.$refs.textarea.style.height
             this.$refs.textarea.style.height = ''
             this.$refs.textarea.style.height = this.$refs.textarea.scrollHeight+'px'
+            this.$refs.areaGrow.style.height = ''
         },
     },
     computed: {

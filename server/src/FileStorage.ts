@@ -456,6 +456,7 @@ function getKind(mimeType: string): string {
     if (mimeType === 'image/gif') {
         return 'video'
     }
+    if (mimeType === 'application/vnd.ms-asf') { return 'video' }
     switch (mimeType.split('/')[0]) {
         case 'image':
             return 'image'

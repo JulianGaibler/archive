@@ -109,4 +109,25 @@ export default {
             margin-bottom .75rem
         h4, p
             font-size 1rem
+    @media screen and (max-width: $archive-screen-large)
+        .item
+            display grid
+            padding-top 1rem
+            padding-left 1rem
+            padding-right 1rem
+            padding-bottom .5rem
+            grid-gap 1rem
+            grid-template-columns auto 1fr
+            grid-template-rows 1fr auto
+            .previewWrapper
+                grid-row 1
+                grid-column 1 / 3
+                .preview
+                    margin 0
+            .data
+                grid-row 2
+                grid-column 1
+            .interaction
+                grid-row 2
+                grid-column 2
 </style>
