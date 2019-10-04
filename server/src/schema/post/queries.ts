@@ -100,21 +100,14 @@ const posts: GraphQLFieldConfig<any, any, any> = {
             query
                 .joinRelation('collections')
                 .whereIn('collections.id', ids)
-                .groupBy('Post.id', 'collections_join.addedAt')
+                .groupBy('b.search')
                 .orderBy('collections_join.addedAt', 'desc')
         }
         if (args.byContent) {
-            const lang = args.byLanguage ? args.byLanguage : 'english'
-            query.where(qB => {
-                qB.where(raw('title ILIKE ?', `%${args.byContent}%`))
-                    .orWhere(raw('caption ILIKE ?', `%${args.byContent}%`))
-                    .orWhere(
-                        raw(
-                            `to_tsvector(title || '. ' || COALESCE(caption, '')) @@ plainto_tsquery(?, ?)`,
-                            [lang, args.byContent],
-                        ),
-                    )
-            })
+            query
+                .joinRaw('INNER JOIN ( SELECT id, SEARCH FROM post_search_view WHERE SEARCH @@ plainto_tsquery(?)) b ON b.id = "Post".id', args.byContent)
+                .groupBy('Post.id', 'b.search')
+                .orderByRaw('ts_rank(b.search, plainto_tsquery(?)) desc', args.byContent)
         }
 
         const [data, totalSearchCount, totalCount] = await Promise.all([
@@ -131,15 +124,17 @@ const posts: GraphQLFieldConfig<any, any, any> = {
                     return rows
                 }),
             query
-                .count()
+                .count('Post.id')
                 .execute()
-                .then(x => (x as any).reduce((acc, val) => acc + parseInt(val.count), 0)),
+                .then(x => (x as any).reduce((acc, val) => acc + parseInt(val.count, 10), 0)),
             PostModel
                 .query()
                 .count()
                 .then(x => (x[0] as any).count),
         ])
-
+        console.log('1\n1\n1\n')
+        console.log({data, totalSearchCount, totalCount})
+        console.log('1\n1\n1\n')
         return {
             ...connectionFromArraySlice(data, args, {
                 sliceStart: offset,

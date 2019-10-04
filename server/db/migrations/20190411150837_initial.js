@@ -26,6 +26,7 @@ exports.up = async knex => {
                 table.string('relHeight');
                 table.integer('uploaderId').references('User.id').onDelete('SET NULL');
                 table.text('caption');
+                table.text('description');
                 table.bigInteger('updatedAt').notNullable();
                 table.bigInteger('createdAt').notNullable();
             })
@@ -88,14 +89,34 @@ exports.up = async knex => {
                 table.unique(['token'])
             });
             await knex.raw(`
-                CREATE OR REPLACE FUNCTION gin_fts_fct(title text, caption text, language text)
-                  RETURNS tsvector
-                AS
-                $BODY$
-                    SELECT setweight(to_tsvector($3::regconfig, $1), 'A') || setweight(to_tsvector($3::regconfig, $1), 'B');
-                $BODY$
-                LANGUAGE sql
-                IMMUTABLE;
+                CREATE MATERIALIZED VIEW post_search_view AS
+                SELECT p.id,
+                    to_tsvector(concat(
+                        p.title, ' ',
+                        p.type, ' ',
+                        p.language, ' ',
+                        coalesce(p.caption, ''), ' ',
+                        coalesce(p.description, ''), ' ',
+                        coalesce((string_agg(k.name, ' ')), '')
+                        )) AS SEARCH
+                FROM "Post" p
+                JOIN "KeywordToPost" kp ON p.id = kp.post_id
+                JOIN "Keyword" k ON k.id = kp.keyword_id
+                GROUP BY p.id
+
+                CREATE index idx_search ON post_search_view USING GIN(search);
+
+                CREATE OR REPLACE FUNCTION refresh_post_search_view() RETURNS trigger AS $function$
+                BEGIN
+                  REFRESH MATERIALIZED VIEW post_search_view;
+                  RETURN NULL;
+                END;
+                $function$ LANGUAGE plpgsql;
+
+                CREATE TRIGGER refresh_post_search_view
+                AFTER INSERT OR UPDATE OR DELETE ON "Post"
+                FOR EACH STATEMENT
+                EXECUTE PROCEDURE refresh_post_search_view();
 
                 CREATE INDEX idx_fts_post ON "Post" USING gin(gin_fts_fct(title, caption, language));
                 CREATE INDEX post_title_trgmidx ON "Post" USING gin(title gin_trgm_ops);
@@ -107,8 +128,9 @@ exports.up = async knex => {
 }
 
 exports.down = async knex => {
-    await knex.raw('DROP INDEX IF EXISTS idx_fts_post')
-    await knex.raw('DROP FUNCTION IF EXISTS gin_fts_fct')
+    await knex.raw('DROP TRIGGER IF EXISTS refresh_post_search_view')
+    await knex.raw('DROP FUNCTION IF EXISTS refresh_post_search_view()')
+    await knex.raw('DROP MATERIALIZED VIEW IF EXISTS post_search_view')
     await knex.schema
         .dropTableIfExists('Session')
         .dropTableIfExists('CollectionToPost')
