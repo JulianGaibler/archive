@@ -50,7 +50,7 @@
                     <button v-else @click="linkAccount" class="button button-confirm">{{ $t('action.link_accounts') }}</button>
                 </div>
                 <div v-else>
-                    <TelegramLogin @callback="accountData" :telegramLogin="'ArnoldBot'" />
+                    <TelegramLogin @callback="accountData" :telegramLogin="'ArnoldsBot'" />
                 </div>
             </template>
         </div>
