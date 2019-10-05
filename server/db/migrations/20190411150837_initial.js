@@ -9,6 +9,7 @@ exports.up = async knex => {
                 table.string('name', 64).notNullable();
                 table.string('password', 96).notNullable();
                 table.string('profilePicture');
+                table.string('telegramid', 20);
                 table.bigInteger('updatedAt').notNullable();
                 table.bigInteger('createdAt').notNullable();
 

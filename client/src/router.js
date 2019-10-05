@@ -60,6 +60,11 @@ const router = new Router({
             component: () => import(/* webpackChunkName: "settings" */ './views/Settings.vue'),
         },
         {
+            path: '/arnoldbot',
+            name: 'ArnoldBot',
+            component: () => import(/* webpackChunkName: "arnoldbot" */ './views/ArnoldBot.vue'),
+        },
+        {
             path: '/:id',
             name: 'Post',
             props: true,

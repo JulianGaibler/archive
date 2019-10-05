@@ -1,4 +1,4 @@
-import { GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
+import { GraphQLBoolean, GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
 import {
     connectionArgs,
     connectionDefinitions,
@@ -29,6 +29,13 @@ const UserType = new GraphQLObjectType({
         profilePicture: {
             description: `Name of the user's profile picture.`,
             type: GraphQLString,
+        },
+        linkedTelegram: {
+            description: `Shows if the user has a connected Telegram Account.`,
+            type: GraphQLBoolean,
+            resolve: user => {
+                return user.telegramid !== null
+            },
         },
         posts: {
             type: postConnection,

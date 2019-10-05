@@ -22,6 +22,8 @@ export default class User extends UniqueModel {
     name!: string
     password!: string
 
+    telegramid: string
+
     posts!: Post[]
     collections!: Collection[]
 

@@ -39,6 +39,7 @@
     "sharp": "^0.23.1",
     "sodium": "^3.0.2",
     "subscriptions-transport-ws": "^0.9.16",
+    "telegraf": "^3.32.0",
     "tmp": "^0.1.0"
   },
   "devDependencies": {

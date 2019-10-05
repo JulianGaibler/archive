@@ -1,3 +1,4 @@
+import './bot'
 import Database from './database'
 import Server from './server'
 

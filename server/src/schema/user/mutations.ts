@@ -6,6 +6,7 @@ import {
 } from 'graphql'
 import { GraphQLUpload } from 'graphql-upload'
 import User from '../../models/User'
+import Bot from '../../bot'
 import {
     AuthenticationError,
     AuthorizationError,
@@ -70,6 +71,65 @@ const logout: GraphQLFieldConfig<any, any, any> = {
     resolve: async (parent, args, context: IContext) => {
         isAuthenticated(context)
         await performLogout(context)
+        return true
+    },
+}
+
+const linkTelegram: GraphQLFieldConfig<any, any, any> = {
+    description: `Associates the Telegram ID of a user with their Archive Profil.`,
+    type: new GraphQLNonNull(GraphQLBoolean),
+    args: {
+        id: {
+            description: `Unique id of Telegram user.`,
+            type: new GraphQLNonNull(GraphQLString),
+        },
+        first_name: {
+            description: `First Name of Telegram user.`,
+            type: new GraphQLNonNull(GraphQLString),
+        },
+        last_name: {
+            description: `Last name of Telegram user.`,
+            type: new GraphQLNonNull(GraphQLString),
+        },
+        username: {
+            description: `Username of Telegram user.`,
+            type: new GraphQLNonNull(GraphQLString),
+        },
+        photo_url: {
+            description: `Profile photo url of Telegram user.`,
+            type: new GraphQLNonNull(GraphQLString),
+        },
+        auth_date: {
+            description: `Authentication date from telegram request.`,
+            type: new GraphQLNonNull(GraphQLString),
+        },
+        hash: {
+            description: `Validation hash from telegram request.`,
+            type: new GraphQLNonNull(GraphQLString),
+        },
+    },
+    resolve: async (parent, args, context: IContext) => {
+        isAuthenticated(context)
+        const telegramid = Bot.validateAuth(args)
+        const user = await User.query().findById(context.auth.userId)
+        if (!user) {
+            throw new AuthenticationError(`This should not have happened.`)
+        }
+        await user.$query().patch({ telegramid })
+        return true
+    },
+}
+
+const unlinkTelegram: GraphQLFieldConfig<any, any, any> = {
+    description: `Removed Telegram ID from Archive profile.`,
+    type: new GraphQLNonNull(GraphQLBoolean),
+    resolve: async (parent, args, context: IContext) => {
+        isAuthenticated(context)
+        const user = await User.query().findById(context.auth.userId)
+        if (!user) {
+            throw new AuthenticationError(`This should not have happened.`)
+        }
+        await user.$query().patch({ telegramid: null })
         return true
     },
 }
@@ -152,6 +212,8 @@ export default {
     signup,
     login,
     logout,
+    linkTelegram,
+    unlinkTelegram,
     uploadProfilePicture,
     clearProfilePicture,
     changeName,

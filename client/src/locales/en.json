@@ -9,10 +9,12 @@
         "user": "User",
         "queue": "Queue",
         "sessions": "Sessions",
-        "settings": "Settings"
+        "settings": "Settings",
+        "arnoldbot": "Arnold Bot"
     },
     "settings": {
         "profile": "Profile",
+        "linked_accounts": "Linked Accounts",
         "security": "Security",
         "security_changePassword": "Change Password",
         "security_sessions": "Sessions"
@@ -49,6 +51,8 @@
         "logout": "Logout",
         "create": "Create",
         "edit": "Edit",
+        "link_accounts": "Link Accounts",
+        "unlink_accounts": "Unlink Accounts",
         "revoke_session": "Revoke Session",
         "create_collection": "Create Collection",
         "add_to_collection": "Add to Collection",
@@ -96,6 +100,10 @@
         "none": "none",
         "done": "done",
         "failed": "failed",
+        "account_linked": "Accounts linked",
+        "account_linked_long": "Your Telegram Account is linked to Archive",
+        "account_unlinked": "Accounts not linked",
+        "account_unlinked_long": "Your Telegram Account is not linked to Archive",
         "upload": {
             "files_count": "{count} of {max} files",
             "x_of_y": "{x} of {y}"
@@ -115,6 +123,8 @@
         "createdAt": "created at"
     },
     "input": {
+        "link_accounts": "Link Accounts",
+        "link_accounts_explain": "Linking your Account means that Archive will save your unique Telegram ID to make sure bot requests are made by you.",
         "keyword": "Enter keyword",
         "settings": {
             "oldPassword": "old password",

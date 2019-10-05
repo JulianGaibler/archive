@@ -1,0 +1,8 @@
+{
+    me {
+        name
+        username
+        profilePicture
+        linkedTelegram
+    }
+}

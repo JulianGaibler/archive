@@ -9,6 +9,8 @@
                 <h2>{{ $t('settings.profile') }}</h2>
                 <InputProfilePicture />
                 <InputChangeName />
+                <h3>{{ $t('settings.linked_accounts') }}</h3>
+                <InputArnoldBot />
             </section>
             <section>
                 <h2>{{ $t('settings.security') }}</h2>
@@ -25,11 +27,12 @@
 import InputProfilePicture from './Settings/InputProfilePicture'
 import InputChangePassword from './Settings/InputChangePassword'
 import InputChangeName from './Settings/InputChangeName'
+import InputArnoldBot from './Settings/InputArnoldBot'
 import SessionManager from './Settings/SessionManager'
 
 export default {
     name: 'Settings',
-    components: { InputProfilePicture, InputChangePassword, InputChangeName, SessionManager },
+    components: { InputProfilePicture, InputChangePassword, InputChangeName, InputArnoldBot, SessionManager },
 }
 </script>
 
