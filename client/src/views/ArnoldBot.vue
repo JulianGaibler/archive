@@ -114,7 +114,7 @@ export default {
             this.uploading = true
             this.$apollo.mutate({
                 mutation: LINK_MUTATION,
-                variables: this.telegramData,
+                variables: JSON.parse(JSON.stringify(this.telegramData)),
                 refetchQueries: [{ query: ME_QUERY }],
             }).then(() => {
                 this.uploading = false
