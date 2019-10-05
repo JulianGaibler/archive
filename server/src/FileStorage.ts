@@ -436,7 +436,7 @@ export default class FileStorage {
         try {
             const result = await Task.query()
                 .select('id', 'ext')
-                .where({ status: 'QUEUED' })
+                .where({ status: 'PROCESSING' })
                 result.forEach(({ id }) => jet.remove(jet.path(options.dist, options.directories.queue, id.toString())))
             await Task.query()
                 .update({
