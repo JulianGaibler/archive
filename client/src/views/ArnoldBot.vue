@@ -101,7 +101,7 @@ export default {
         accountData(user) {
             const keys = ['id', 'first_name', 'last_name', 'username', 'photo_url', 'auth_date', 'hash']
             keys.forEach(key => {
-                this.telegramData[key] = user[key]
+                this.telegramData[key] = String(user[key])
             })
             this.receivedData = true
         },
@@ -114,7 +114,7 @@ export default {
             this.uploading = true
             this.$apollo.mutate({
                 mutation: LINK_MUTATION,
-                variables: JSON.parse(JSON.stringify(this.telegramData)),
+                variables: this.telegramData,
                 refetchQueries: [{ query: ME_QUERY }],
             }).then(() => {
                 this.uploading = false
