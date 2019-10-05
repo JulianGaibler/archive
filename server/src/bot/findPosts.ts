@@ -18,6 +18,8 @@ export default async function(message: string, cursor: string) {
     const limit = 10
     const offset = (cursor && cursorToOffset(cursor)) || 0
 
+    if (message.trim().length < 1) { return [[], ''] };
+
     const tsQuery = message.split(' ').map(k => (`${k.replace(/[;/\\]/g, '')}:*`)).join(' & ')
     const query = PostModel
         .query()

@@ -100,10 +100,10 @@ const posts: GraphQLFieldConfig<any, any, any> = {
             query
                 .joinRelation('collections')
                 .whereIn('collections.id', ids)
-                .groupBy('b.search')
+                .groupBy('Post.id', 'collections_join.addedAt')
                 .orderBy('collections_join.addedAt', 'desc')
         }
-        if (args.byContent) {
+        if (args.byContent && args.byContent.trim().length > 0) {
             const tsQuery = args.byContent.split(' ').map(k => (`${k.replace(/[;/\\]/g, '')}:*`)).join(' & ')
             query
                 .joinRaw('INNER JOIN ( SELECT id, SEARCH FROM post_search_view WHERE SEARCH @@ to_tsquery(?)) b ON b.id = "Post".id', tsQuery)
