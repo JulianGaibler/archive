@@ -101,7 +101,7 @@ export default {
         accountData(user) {
             const keys = ['id', 'first_name', 'last_name', 'username', 'photo_url', 'auth_date', 'hash']
             keys.forEach(key => {
-                this.telegramData[key] = String(user[key])
+                this.telegramData[key] = user[key] && String(user[key])
             })
             this.receivedData = true
         },
