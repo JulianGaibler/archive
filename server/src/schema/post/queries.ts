@@ -104,10 +104,11 @@ const posts: GraphQLFieldConfig<any, any, any> = {
                 .orderBy('collections_join.addedAt', 'desc')
         }
         if (args.byContent) {
+            const tsQuery = args.byContent.split(' ').map(k => (`${k.replace(/[;/\\]/g, '')}:*`)).join(' & ')
             query
-                .joinRaw('INNER JOIN ( SELECT id, SEARCH FROM post_search_view WHERE SEARCH @@ plainto_tsquery(?)) b ON b.id = "Post".id', args.byContent)
+                .joinRaw('INNER JOIN ( SELECT id, SEARCH FROM post_search_view WHERE SEARCH @@ to_tsquery(?)) b ON b.id = "Post".id', tsQuery)
                 .groupBy('Post.id', 'b.search')
-                .orderByRaw('ts_rank(b.search, plainto_tsquery(?)) desc', args.byContent)
+                .orderByRaw('ts_rank(b.search, to_tsquery(?)) desc', tsQuery)
         }
 
         const [data, totalSearchCount, totalCount] = await Promise.all([

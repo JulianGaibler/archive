@@ -33,6 +33,10 @@ const uploadPosts: GraphQLFieldConfig<any, any, any> = {
             description: `Optional caption of what is written or said in the post.`,
             type: GraphQLString,
         },
+        description: {
+            description: `Optional description of the post.`,
+            type: GraphQLString,
+        },
         language: {
             description: `Language in which title and caption are written in.`,
             type: new GraphQLNonNull(Language),

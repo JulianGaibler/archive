@@ -18,12 +18,12 @@ export default async function(message: string, cursor: string) {
     const limit = 10
     const offset = (cursor && cursorToOffset(cursor)) || 0
 
-
+    const tsQuery = message.split(' ').map(k => (`${k.replace(/[;/\\]/g, '')}:*`)).join(' & ')
     const query = PostModel
         .query()
-        .joinRaw('INNER JOIN ( SELECT id, SEARCH FROM post_search_view WHERE SEARCH @@ plainto_tsquery(?)) b ON b.id = "Post".id', message)
+        .joinRaw('INNER JOIN ( SELECT id, SEARCH FROM post_search_view WHERE SEARCH @@ to_tsquery(?)) b ON b.id = "Post".id', tsQuery)
         .groupBy('Post.id', 'b.search')
-        .orderByRaw('ts_rank(b.search, plainto_tsquery(?)) desc', message)
+        .orderByRaw('ts_rank(b.search, to_tsquery(?)) desc', tsQuery)
 
 
         const [data, totalSearchCount] = await Promise.all([

@@ -3,8 +3,8 @@ import { Model, RelationMappings } from 'objection'
 import { ModelId } from '../utils/modelEnum'
 import UniqueModel from './UniqueModel'
 
-import Post from './Post'
 import Collection from './Collection'
+import Post from './Post'
 
 export default class Keyword extends UniqueModel {
     static tableName = 'Keyword'

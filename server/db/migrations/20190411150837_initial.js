@@ -101,8 +101,8 @@ exports.up = async knex => {
                         coalesce((string_agg(k.name, ' ')), '')
                         )) AS SEARCH
                 FROM "Post" p
-                JOIN "KeywordToPost" kp ON p.id = kp.post_id
-                JOIN "Keyword" k ON k.id = kp.keyword_id
+                LEFT JOIN "KeywordToPost" kp ON p.id = kp.post_id
+                LEFT JOIN "Keyword" k ON k.id = kp.keyword_id
                 GROUP BY p.id
 
                 CREATE index idx_search ON post_search_view USING GIN(search);
