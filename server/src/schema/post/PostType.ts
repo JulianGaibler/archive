@@ -67,6 +67,9 @@ const PostType = new GraphQLObjectType({
         caption: {
             type: GraphQLString,
         },
+        description: {
+            type: GraphQLString,
+        },
         updatedAt: {
             description: `Identifies the date and time when the object was last updated.`,
             type: new GraphQLNonNull(DateTime),

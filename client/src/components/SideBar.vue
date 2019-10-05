@@ -97,7 +97,6 @@ export default {
         IconUser,
     },
     apollo: {
-        // Simple query that will update the 'hello' vue property
         me: ME_QUERY,
         resources: RESOURCES_QUERY,
     },

@@ -78,6 +78,7 @@ class UploadManager {
                 keywords: [],
                 title: '',
                 caption: '',
+                description: '',
                 type: '',
                 language: 'english',
             },
@@ -123,6 +124,7 @@ class UploadManager {
                 language: payload.language.toUpperCase(),
                 type: payload.type.length > 0 ? payload.type.toUpperCase() : undefined,
                 caption: payload.caption.length > 0 ? payload.caption : undefined,
+                description: payload.description.length > 0 ? payload.description : undefined,
             }
         })
         // 4. Check for basic mistakes

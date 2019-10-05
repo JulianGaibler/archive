@@ -13,6 +13,8 @@
                 </div>
 
                 <div class="text">
+                    <h3>{{ $t('attributes.description') }}</h3>
+                    <div class="preText indent">{{post.description ? post.description : $t('state.none')}}</div>
                     <h3>{{ $t('attributes.caption') }}</h3>
                     <div class="preText indent">{{post.caption ? post.caption : $t('state.none')}}</div>
                     <h3>{{ $t('attributes.keywords') }}</h3>

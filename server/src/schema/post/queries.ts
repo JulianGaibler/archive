@@ -132,9 +132,6 @@ const posts: GraphQLFieldConfig<any, any, any> = {
                 .count()
                 .then(x => (x[0] as any).count),
         ])
-        console.log('1\n1\n1\n')
-        console.log({data, totalSearchCount, totalCount})
-        console.log('1\n1\n1\n')
         return {
             ...connectionFromArraySlice(data, args, {
                 sliceStart: offset,

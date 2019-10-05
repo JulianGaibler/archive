@@ -1,5 +1,5 @@
-mutation uploadPosts($title: String!, $caption: String, $language: Language!, $type: Format, $keywords: [ID!], $file: Upload!) {
-    uploadPosts(title: $title, caption: $caption, language: $language, type: $type, keywords: $keywords, file: $file) {
+mutation uploadPosts($title: String!, $caption: String, $description: String, $language: Language!, $type: Format, $keywords: [ID!], $file: Upload!) {
+    uploadPosts(title: $title, caption: $caption, description: $description, language: $language, type: $type, keywords: $keywords, file: $file) {
         title
         uploader {
             username

@@ -9,6 +9,11 @@
                 :errors="uploadItem.errors.title"
                 v-model="uploadItem.payload.title" />
             <InputField
+                :label="$t('attributes.description')"
+                :type="'textarea'"
+                :errors="uploadItem.errors.description"
+                v-model="uploadItem.payload.description" />
+            <InputField
                 :label="$t('attributes.caption')"
                 :type="'textarea'"
                 :errors="uploadItem.errors.caption"

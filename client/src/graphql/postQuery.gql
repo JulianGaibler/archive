@@ -9,6 +9,7 @@ query getNode($input: ID!) {
             language
             createdAt
             caption
+            description
             keywords {
                     id
                     name
