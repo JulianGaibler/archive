@@ -85,19 +85,19 @@ const linkTelegram: GraphQLFieldConfig<any, any, any> = {
         },
         first_name: {
             description: `First Name of Telegram user.`,
-            type: new GraphQLNonNull(GraphQLString),
+            type: GraphQLString,
         },
         last_name: {
             description: `Last name of Telegram user.`,
-            type: new GraphQLNonNull(GraphQLString),
+            type: GraphQLString,
         },
         username: {
             description: `Username of Telegram user.`,
-            type: new GraphQLNonNull(GraphQLString),
+            type: GraphQLString,
         },
         photo_url: {
             description: `Profile photo url of Telegram user.`,
-            type: new GraphQLNonNull(GraphQLString),
+            type: GraphQLString,
         },
         auth_date: {
             description: `Authentication date from telegram request.`,

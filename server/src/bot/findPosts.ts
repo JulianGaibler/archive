@@ -72,7 +72,7 @@ function convertToInlineQueryResult(posts: PostModel[]) {
                 ...base,
                 type: 'mpeg4_gif',
                 mpeg4_url: `${origin}${post.compressedPath}.mp4`,
-                thumb_url: `${origin}${post.compressedPath}.gif`,
+                thumb_url: `${origin}${post.thumbnailPath}.jpeg`,
             }
         }
     })

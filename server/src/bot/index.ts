@@ -6,11 +6,13 @@ import { getAuthData, isAuthenticated, RequestError } from '../utils'
 import findPosts from './findPosts'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
-const SECRET = createHash('sha256').update(BOT_TOKEN).digest()
+const SECRET = BOT_TOKEN ? createHash('sha256').update(BOT_TOKEN).digest() : ''
 
 class Bot {
     bot
     constructor() {
+        if (BOT_TOKEN === undefined) { return }
+
         this.bot = new Telegraf(BOT_TOKEN)
 
         // Inline Responses

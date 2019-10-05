@@ -26,8 +26,8 @@
                                 <img :src="telegramData.photo_url">
                             </div>
                             <div class="name">
-                                <p>{{ telegramData.first_name }} {{ telegramData.last_name }}</p>
-                                <p>{{ telegramData.username }}</p>
+                                <p>{{ telegramData.first_name || '' }} {{ telegramData.last_name || '' }}</p>
+                                <p v-if="telegramData.username">{{ telegramData.username }}</p>
                             </div>
                         </div>
                         <div class="connector"></div>
