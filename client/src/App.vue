@@ -1,7 +1,9 @@
 <template>
     <div id="app">
         <main>
-            <router-view />
+            <keep-alive :include="['Archive']">
+                <router-view />
+            </keep-alive>
         </main>
         <SideBar v-if="$router.currentRoute.name !== 'Login'" />
     </div>

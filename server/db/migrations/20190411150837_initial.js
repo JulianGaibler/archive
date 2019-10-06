@@ -52,6 +52,7 @@ exports.up = async knex => {
                 table.string('title').notNullable();
                 table.string('ext', 10).notNullable();
                 table.text('notes').notNullable();
+                table.text('postjson').notNullable();
                 table.enu('status', ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'], { useNative: true, enumName: 'TaskStatus' }).notNullable();
                 table.integer('uploaderId').references('User.id').onDelete('SET NULL');
                 table.specificType('progress', 'smallint');

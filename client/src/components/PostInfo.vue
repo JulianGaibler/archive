@@ -14,7 +14,9 @@
 
                 <div class="text">
                     <h3>{{ $t('attributes.description') }}</h3>
-                    <div class="preText indent">{{post.description ? post.description : $t('state.none')}}</div>
+                    <div v-if="post.description" class="indent markdown" v-html="compiledMarkdownDescription">{{post.description ? compiledMarkdownDescription : $t('state.none')}}</div>
+                    <div v-else class="indent">{{$t('state.none')}}</div>
+
                     <h3>{{ $t('attributes.caption') }}</h3>
                     <div class="preText indent">{{post.caption ? post.caption : $t('state.none')}}</div>
                     <h3>{{ $t('attributes.keywords') }}</h3>
@@ -115,11 +117,12 @@
 </template>
 
 <script>
+import marked from 'marked'
+import { parseDate, parseError } from '@/utils'
+
 import Modal from '@/components/Modal'
 import UserLink from '@/components/UserLink'
-import { parseDate, parseError } from '@/utils'
 import { resetStore } from '@/vue-apollo'
-
 import InputField from '@/components/Input/InputField.vue'
 import InputKeywords from '@/components/Input/InputKeywords.vue'
 import InputSelect from '@/components/Input/InputSelect.vue'
@@ -148,6 +151,7 @@ export default {
             payload: {
                 title: '',
                 keywords: [],
+                description: '',
                 caption: '',
                 language: '',
             },
@@ -178,6 +182,7 @@ export default {
             if (bool) {
                 this.payload.title = this.post.title
                 this.payload.keywords = this.post.keywords.map(o => o.id)
+                this.payload.description = this.post.description || ''
                 this.payload.caption = this.post.caption || ''
                 this.payload.language = this.post.language || ''
             }
@@ -222,6 +227,12 @@ export default {
                 this.error = parsedError.message
                 this.working = false
             })
+        },
+    },
+    computed: {
+        compiledMarkdownDescription() {
+            if (!(this.post && this.post.description)) { return '' }
+            return marked(this.post.description, { sanitize: true })
         },
     },
 }

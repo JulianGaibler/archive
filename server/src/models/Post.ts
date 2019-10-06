@@ -1,5 +1,6 @@
 import DataLoader from 'dataloader'
 import { Model, RelationMappings } from 'objection'
+import stripHtml from 'string-strip-html'
 import { ModelId } from '../utils/modelEnum'
 import BaseModel from './BaseModel'
 
@@ -29,6 +30,18 @@ export default class Post extends BaseModel {
     keywords: Keyword[]
     collections: Collection[]
     caption?: string
+    description?: string
+
+    async $beforeInsert(queryContext) {
+        await super.$beforeInsert(queryContext)
+        this.description = stripHtml(this.description)
+        this.caption = stripHtml(this.caption)
+    }
+    async $beforeUpdate(opt, queryContext) {
+        await super.$beforeUpdate(opt, queryContext)
+        this.description = stripHtml(this.description)
+        this.caption = stripHtml(this.caption)
+    }
 
     static async postsByIds(postIds: number[]): Promise<Post[]> {
         const posts = await Post.query().findByIds(postIds)
