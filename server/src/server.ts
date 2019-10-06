@@ -74,6 +74,7 @@ class Server {
     }
 
     middleware() {
+        this.app.set('trust proxy', 'loopback')
         this.app.use(
             logger(process.env.NODE_ENV === 'development' ? 'dev' : 'tiny'),
         )

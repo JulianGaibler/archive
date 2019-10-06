@@ -46,6 +46,12 @@
 
                 <InputField
                     class="captionInput"
+                    :label="$t('attributes.description')"
+                    :type="'textarea'"
+                    v-model="payload.description" />
+
+                <InputField
+                    class="captionInput"
                     :label="$t('attributes.caption')"
                     :type="'textarea'"
                     v-model="payload.caption" />
@@ -205,10 +211,10 @@ export default {
                     title: this.payload.title,
                     keywords: this.payload.keywords,
                     language: this.payload.language,
+                    description: this.payload.description.length > 0 ? this.payload.description : null,
                     caption: this.payload.caption.length > 0 ? this.payload.caption : null,
                 },
-            }).then((data) => {
-                console.log(data)
+            }).then(() => {
                 this.editMode = false
                 this.working = false
             }).catch((error) => {

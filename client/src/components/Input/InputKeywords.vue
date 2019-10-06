@@ -116,7 +116,7 @@ export default {
         handleBlur: debounce(function() {
             this.focused = false
             this.showResults = false
-        }),
+        }, 100),
         addItem(item) {
             this.showResults = false
             this.value.push(item.id)

@@ -93,6 +93,9 @@ const editPost: GraphQLFieldConfig<any, any, any> = {
         language: {
             type: Language,
         },
+        description: {
+            type: GraphQLString,
+        },
         caption: {
             type: GraphQLString,
         },

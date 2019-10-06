@@ -96,10 +96,10 @@ export default {
             })
         },
         windowResized() {
-            if (this.$el.clientWidth < 300) { this.columns = 1 }
-            else if (this.$el.clientWidth < 500) { this.columns = 2 }
-            else if (this.$el.clientWidth < 700) { this.columns = 3 }
-            else if (this.$el.clientWidth < 900) { this.columns = 4 }
+            if (this.$el.clientWidth < 400) { this.columns = 1 }
+            else if (this.$el.clientWidth < 600) { this.columns = 2 }
+            else if (this.$el.clientWidth < 800) { this.columns = 3 }
+            else if (this.$el.clientWidth < 1000) { this.columns = 4 }
             else { this.columns = 5 }
         },
     },

@@ -121,6 +121,7 @@ export default class Post extends BaseModel {
                 minLength: 2,
                 maxLength: 64,
             },
+            description: { type: ['string', 'null'], minLength: 4 },
             caption: { type: ['string', 'null'], minLength: 4 },
         },
     }
