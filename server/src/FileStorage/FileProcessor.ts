@@ -211,6 +211,7 @@ export default class FileProcessor {
             '-tune film',
             '-g 60',
             '-x264opts no-scenecut',
+            '-max_muxing_queue_size 1024',
             '-f mp4',
         ]
         const mp4AudioOptions = ['-acodec aac', '-ac 2', '-ar 44100']
@@ -221,6 +222,7 @@ export default class FileProcessor {
             '-vsync 1',
             '-c:v libvpx-vp9',
             '-cpu-used 2',
+            '-max_muxing_queue_size 1024',
             '-f webm',
         ]
         const webmAudioOptions = ['-c:a libopus']

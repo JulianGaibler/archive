@@ -40,8 +40,6 @@ export enum FileType {
 // Interfaces
 interface IStoreData {
     postData: any
-    typedStream: fileType.ReadableStreamWithFileType | null
-    filePath: string | null,
 
     type: {
         ext: string;
@@ -53,7 +51,6 @@ interface IStoreData {
 interface IQueueItem {
     taskObject: Task
     data: IStoreData
-    type: string | null
 }
 
 // Options
@@ -72,13 +69,11 @@ const options = {
  * Keeps track of queue and saves files in directories
  */
 export default class FileStorage {
-    private queue: IQueueItem[]
     private taskMutex: Mutex
     pubSub: PostgresPubSub
 
     constructor(pubSub: PostgresPubSub) {
         this.pubSub = pubSub
-        this.queue = []
         this.taskMutex = new Mutex()
         this.performCleanup()
 
@@ -91,7 +86,7 @@ export default class FileStorage {
     /**
      * Quick validity check of given file and data
      */
-    async checkFile(data, readStream): Promise<IStoreData> {
+    async checkFile(data, readStream): Promise<[IStoreData, fileType.ReadableStreamWithFileType]> {
         // validation
         Post.fromJson(data)
 
@@ -102,48 +97,44 @@ export default class FileStorage {
         }
         const kind = getKind(types.mime)
 
-        return {
-            postData: data,
-            typedStream,
-            filePath: null,
-            type: {
-                ext: types.ext,
-                mime: types.mime,
-                kind,
+        return [
+            {
+                postData: data,
+                type: {
+                    ext: types.ext,
+                    mime: types.mime,
+                    kind,
+                },
             },
-        }
+            typedStream,
+        ]
     }
 
     /**
      * Adds File in form of IStoreData to the queue
      */
-    async storeFile(data: IStoreData) {
+    async storeFile(data: IStoreData, typedStream: fileType.ReadableStreamWithFileType) {
 
         const newTask = await Task.query().insert({
             title: data.postData.title,
             uploaderId: data.postData.uploaderId,
             ext: data.type.ext,
         })
+
+        const [error] = await to(this.streamToFile(typedStream, [options.dist, options.directories.queue, newTask.id.toString()]))
+        if (error) {
+            await newTask.$query().delete()
+            throw error
+        }
+
+        await newTask.$query().patch({ postjson: JSON.stringify(data) })
+
         this.pubSub.publish('taskUpdates', {
             id: newTask.id,
             kind: 'CREATED',
             task: newTask,
         })
 
-        const [error, filePath] = await to(this.streamToFile(data.typedStream, [options.dist, options.directories.queue, newTask.id.toString()]))
-        if (error) {
-            await newTask.$query().delete()
-            throw error
-        }
-
-        data.filePath = filePath
-        data.typedStream = null
-
-        this.queue.push({
-            taskObject: newTask,
-            data,
-            type: data.postData.type,
-        })
         this.checkQueue()
 
         return newTask.id
@@ -240,22 +231,28 @@ export default class FileStorage {
      * Checks if there queue has items and if there are other active tasks
      */
     private async checkQueue() {
-        if (this.queue.length < 1) {
-            return
-        }
-
         const release = await this.taskMutex.acquire()
-        try {
-            const activeTasks = (await Task.query()
-                .where({ status: 'PROCESSING' })
-                .count()) as any
-            if (parseInt(activeTasks[0].count, 10) > 0) {
-                return
-            }
 
-            const item = this.queue.shift()
-            await item.taskObject.$query().update({ status: 'PROCESSING' })
-            this.processItem(item)
+        try {
+            const activeTasks = await Task
+                .query()
+                .where({ status: 'PROCESSING' })
+                .count()
+                .then(x => (x[0] as any).count)
+            if (activeTasks > 0) { return }
+
+            const nextTask = await Task
+                .query()
+                .findOne({ status: 'QUEUED' })
+                .orderBy('createdAt', 'asc')
+
+            if (nextTask === undefined) { return }
+
+
+            const item = JSON.parse(nextTask.postjson)
+            await nextTask.$query().update({ status: 'PROCESSING' })
+            this.processItem(item, nextTask)
+
         } finally {
             release()
         }
@@ -281,31 +278,29 @@ export default class FileStorage {
     /**
      * Processes an Item from the Queue
      */
-    private async processItem({
-        taskObject,
-        data,
-        type: desiredType,
-    }: IQueueItem) {
-        const { postData, filePath, type } = data
+    private async processItem(storeData: IStoreData, taskObject: Task) {
+
+        const { postData, type } = storeData
         let processError
         let result
         let postCreated = false
 
+        const filePath = jet.path(options.dist, options.directories.queue, taskObject.id.toString())
         const update = changes => this.updateTask(taskObject, changes)
 
         const tmpDir = tmp.dirSync()
         const processor = new FileProcessor(update)
 
         let fileTypeEnum: FileType =
-            data.type.mime === 'image/gif'
+            type.mime === 'image/gif'
                 ? FileType.GIF
-                : data.type.kind === 'video'
+                : type.kind === 'video'
                 ? FileType.VIDEO
                 : FileType.IMAGE
 
-        if (desiredType === 'VIDEO' && fileTypeEnum === FileType.GIF) {
+        if (postData.type === 'VIDEO' && fileTypeEnum === FileType.GIF) {
             fileTypeEnum = FileType.VIDEO
-        } else if (desiredType === 'GIF' && fileTypeEnum === FileType.VIDEO) {
+        } else if (postData.type === 'GIF' && fileTypeEnum === FileType.VIDEO) {
             fileTypeEnum = FileType.GIF
         }
 

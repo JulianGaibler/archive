@@ -17,6 +17,8 @@ export default class Task extends BaseModel {
     ext!: string
     progress?: number
 
+    postjson?: string
+
     uploaderId?: number
     createdPostId?: number
 
