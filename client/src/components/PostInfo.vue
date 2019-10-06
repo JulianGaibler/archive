@@ -232,7 +232,7 @@ export default {
     computed: {
         compiledMarkdownDescription() {
             if (!(this.post && this.post.description)) { return '' }
-            return marked(this.post.description, { sanitize: true })
+            return marked(this.post.description)
         },
     },
 }

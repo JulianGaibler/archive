@@ -34,13 +34,13 @@ export default class Post extends BaseModel {
 
     async $beforeInsert(queryContext) {
         await super.$beforeInsert(queryContext)
-        this.description = stripHtml(this.description)
-        this.caption = stripHtml(this.caption)
+        this.description = this.description && stripHtml(this.description)
+        this.caption = this.caption && stripHtml(this.caption)
     }
     async $beforeUpdate(opt, queryContext) {
         await super.$beforeUpdate(opt, queryContext)
-        this.description = stripHtml(this.description)
-        this.caption = stripHtml(this.caption)
+        this.description = this.description && stripHtml(this.description)
+        this.caption = this.caption && stripHtml(this.caption)
     }
 
     static async postsByIds(postIds: number[]): Promise<Post[]> {
