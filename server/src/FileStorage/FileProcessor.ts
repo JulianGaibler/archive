@@ -69,6 +69,7 @@ export default class FileProcessor {
         const wsWebp = jet.createWriteStream(filePaths.webp)
 
         const transform = sharp()
+            .rotate()
             .removeAlpha()
             .resize(900, 900, {
                 fit: sharp.fit.inside,
@@ -341,6 +342,7 @@ export default class FileProcessor {
         const wsWebp = jet.createWriteStream(filePaths.webp)
 
         const transform = sharp()
+            .rotate()
             .removeAlpha()
             .resize(400, 400, {
                 fit: sharp.fit.inside,
@@ -377,7 +379,7 @@ export default class FileProcessor {
         path: string[],
         filename: string,
     ) {
-        const tf0 = sharp().removeAlpha()
+        const tf0 = sharp().removeAlpha().rotate()
         await asyncForEach(profilePictureOptions, async sizeObj => {
             const tf1 = tf0.clone().resize(sizeObj.size, sizeObj.size, {
                 fit: sharp.fit.cover,
