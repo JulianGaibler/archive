@@ -52,7 +52,7 @@ exports.up = async knex => {
                 table.string('title').notNullable();
                 table.string('ext', 10).notNullable();
                 table.text('notes').notNullable();
-                table.text('postjson').notNullable();
+                table.text('postjson');
                 table.enu('status', ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'], { useNative: true, enumName: 'TaskStatus' }).notNullable();
                 table.integer('uploaderId').references('User.id').onDelete('SET NULL');
                 table.specificType('progress', 'smallint');
@@ -104,7 +104,7 @@ exports.up = async knex => {
                 FROM "Post" p
                 LEFT JOIN "KeywordToPost" kp ON p.id = kp.post_id
                 LEFT JOIN "Keyword" k ON k.id = kp.keyword_id
-                GROUP BY p.id
+                GROUP BY p.id;
 
                 CREATE index idx_search ON post_search_view USING GIN(search);
 
@@ -130,7 +130,7 @@ exports.up = async knex => {
 }
 
 exports.down = async knex => {
-    await knex.raw('DROP TRIGGER IF EXISTS refresh_post_search_view')
+    await knex.raw('DROP TRIGGER IF EXISTS refresh_post_search_view ON "Post"')
     await knex.raw('DROP FUNCTION IF EXISTS refresh_post_search_view()')
     await knex.raw('DROP MATERIALIZED VIEW IF EXISTS post_search_view')
     await knex.schema
