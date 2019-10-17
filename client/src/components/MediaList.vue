@@ -96,6 +96,7 @@ export default {
             })
         },
         windowResized() {
+            if (this.$el.clientWidth === 0) return
             if (this.$el.clientWidth < 400) { this.columns = 1 }
             else if (this.$el.clientWidth < 600) { this.columns = 2 }
             else if (this.$el.clientWidth < 800) { this.columns = 3 }
