@@ -24,7 +24,7 @@
         </header>
 
         <div class="frame framed">
-            <section class="media">
+            <section class="mediaWrapper">
                 <picture v-if="node.type === 'IMAGE'">
                     <source :srcset="filePaths.format1" type="image/webp">
                     <img :src="filePaths.format2">
@@ -138,12 +138,19 @@ export default {
 @import "~@/assets/styles/palette.styl"
 
 .post
-    .media
-        width 100%
+    .mediaWrapper
+        text-align center
+    img, video
+        position relative
+        background black
+        width auto
+        max-width 100%
         border-radius $archive-radius2
         overflow hidden
         -webkit-mask-image -webkit-radial-gradient(white, black)
         line-height 0
-        img, video
-            width 100%
+        max-height calc(100vh - 169px)
+        margin 0 auto
+        picture
+            display inline-block
 </style>
