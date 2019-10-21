@@ -28,7 +28,7 @@
     "graphql-subscriptions": "^1.1.0",
     "graphql-upload": "^8.0.7",
     "hashids": "^2.0.1",
-    "knex": "^0.19.4",
+    "knex": "^0.19.5",
     "morgan": "^1.9.1",
     "node-vibrant": "^3.1.4",
     "objection": "^1.6.11",
