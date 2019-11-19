@@ -2,6 +2,12 @@
 @import "./mixins"
 @import "./palette"
 
+[data-theme^="light"]
+    varinject($light)
+
+[data-theme^="dark"]
+    varinject($dark)
+
 * {
     -webkit-font-smoothing antialiased
     -moz-osx-font-smoothing grayscale
@@ -12,6 +18,9 @@ html, body, #app
 
 body
     overflow-y scroll
+    c color archive-inv
+    c fill archive-inv
+    c background archive-std
     font-family 'Heebo', sans-serif
 
 input, button, textarea, select, a
@@ -23,6 +32,7 @@ input, button, textarea, select, a
     font-weight inherit
     font-size inherit
     outline none
+    c fill archive-inv
 
 h1
     font-size 3.3rem
@@ -49,7 +59,7 @@ picture > img
 #nprogress
     pointer-events none
     .bar
-        background $archive-grey3
+        c background archive-grey3
         position fixed
         z-index 1031
         top 0
@@ -61,10 +71,10 @@ body::-webkit-scrollbar
     width .5rem
 
 body::-webkit-scrollbar-track
-    background $archive-grey1
+    c background archive-grey1
 
 body::-webkit-scrollbar-thumb
-    background #E4E4E4
+    c background archive-grey3
 
 
 input.hiddenInput
@@ -116,8 +126,8 @@ input.hiddenInput
     line-height 0
 
 .errorBox
-    background $archive-grey1
-    color $archive-primary1
+    c background archive-grey1
+    c color archive-primary1
     padding 1rem
     border-radius $archive-radius2
     margin-bottom 1rem
@@ -141,16 +151,16 @@ input.hiddenInput
     &.chip-keyword
         color $archive-black
         fill $archive-black
-        background $archive-primary2
+        c background archive-primary2
     &.chip-collection
-        color $archive-white
-        fill $archive-white
-        background $archive-primary1
+        c color archive-white
+        c fill archive-white
+        c background archive-primary1
 
 .modalWrapper
     position fixed
     z-index 400
-    background rgba($archive-std, 0.5)
+    c background archive-std
     display flex
     justify-content center
     align-items center
@@ -160,7 +170,7 @@ input.hiddenInput
     bottom 0
     > .modal
         padding 1rem
-        background $archive-std
+        c background archive-std
         border-radius $archive-radius3
         box-shadow $archive-hoverShadow3
         .message
@@ -173,27 +183,27 @@ input.hiddenInput
 
 .button
     remove-native()
-    background $archive-grey1
+    c background archive-grey1
     font-weight 500
     padding 0 1.5rem
     height 2.75rem
     flex-shrink 0
     border-radius $archive-radius2
     &:focus.focus-visible
-        box-shadow 0px 0px 0 0.15rem rgba($archive-inv, 0.1)
+        box-shadow 0px 0px 0 0.15rem rgba($archive-black, 0.1)
     &.button-primary
-        background $archive-inv
+        c background archive-inv
         font-weight 700
-        color white
+        c color archive-std
         > svg
-            fill white
+            c fill archive-std
     &.button-light
-        background $archive-std
+        c background archive-std
     &.button-confirm
-        color $archive-white
-        background $archive-green
+        c color archive-white
+        c background archive-green
     &.button-dangerous
-        background $archive-primary1
+        c background archive-primary1
         font-weight 700
         color white
         fill white
@@ -214,9 +224,9 @@ input.hiddenInput
             margin-right 0.4rem
     &.button-chip
         text-transform uppercase
-        background $archive-inv
+        c background archive-inv
         height initial
-        color $archive-std
+        c color archive-std
         font-weight 700
         font-size 0.75rem
         padding 0.25rem 0.75rem
@@ -235,8 +245,8 @@ input.hiddenInput
     z-index 299
     width 3rem
     height 3rem
-    background $archive-primary1
-    fill $archive-white
+    c background archive-primary1
+    c fill archive-white
     box-shadow $archive-hoverShadow3
     svg
         width 1.75rem
@@ -263,13 +273,13 @@ input.hiddenInput
         flex 1
 
 .actionBar-component
-    background $archive-std
-    box-shadow $archive-hoverShadow1
+    c background archive-std
+    box-shadow $archive-hoverShadow2
     display flex
     align-items center
     border-radius $archive-radius2
     &:focus.focus-visible
-        box-shadow $archive-hoverShadow1, 0px 0px 0 .15rem rgba($archive-inv, 0.1)
+        box-shadow $archive-hoverShadow1, 0px 0px 0 .15rem rgba($archive-black, 0.1)
     &.actionBar-component-text
         font-weight 500
         padding $archive-radius2
@@ -298,7 +308,7 @@ input.hiddenInput
         svg
             opacity .5
         &:focus.focus-visible
-            background rgba($archive-inv, .05)
+            background rgba($archive-black, .05)
             border-radius 50%
 
     .filterChip
@@ -319,7 +329,7 @@ input.hiddenInput
     > :not(:last-child)
         margin-right 0.625rem
     &.search-slim
-        background $archive-grey1
+        c background archive-grey1
         border-radius $archive-radius1
         > *:not(.hoverParent)
             height 2rem
@@ -339,22 +349,24 @@ input.hiddenInput
     .name
         font-weight 700
         font-size 1em
-        color: $archive-inv
+        c color archive-inv
         margin-right .25em
     .username
         font-weight 400
         font-size .66em
-        color: transparentify($archive-inv, 0.75)
+        c color archive-inv
+        opacity 0.75
     &.nameCombo-small
         .name
             font-weight 400
             font-size 1em
-            color: $archive-inv
+            c color archive-inv
             margin-right .25em
         .username
             font-weight 400
             font-size .9em
-            color: transparentify($archive-inv, 0.75)
+            c color archive-inv
+            opacity 0.75
     &.nameCombo-inline
         .name
             font-weight 400
@@ -364,7 +376,8 @@ input.hiddenInput
         .username
             font-weight 400
             font-size 1em
-            color: transparentify($archive-inv, 0.75)
+            c color archive-inv
+            opacity 0.75
 
 
 
@@ -383,7 +396,7 @@ input.hiddenInput
         padding-right 2rem
 
 header.framed
-    background $archive-grey1
+    c background archive-grey1
     position relative
     padding-top 2.75rem
     padding-bottom 1rem
@@ -404,7 +417,7 @@ header.framed
             left 0
             width 100%
             height 3rem
-            background $archive-grey1
+            c background archive-grey1
             border-bottom-right-radius $archive-radius1
 
 .hoverParent
@@ -417,8 +430,8 @@ header.framed
     left 0
     min-width 15rem
     max-width 20rem
-    background $archive-std
-    color $archive-inv
+    c background archive-std
+    c color archive-inv
     font-weight 400
     box-shadow $archive-hoverShadow3
     border-radius $archive-radius2
@@ -471,9 +484,9 @@ header.framed
             padding 0 .6rem
             line-height 1
         &.active
-            background $archive-grey1
+            c background archive-grey1
         button:focus.focus-visible, &.selected
-            background $archive-grey2
+            c background archive-grey2
     &.optionList-horizontal
         display flex
         .option
@@ -488,7 +501,8 @@ header.framed
         margin-top 1rem
 
 .inputField
-    border-left 2px solid rgba($archive-inv, .25)
+    border-left 2px solid
+    c border-color archive-inv
     display flex
     flex-direction column
     padding-left .5rem
@@ -504,7 +518,7 @@ header.framed
         font-size 1.1em
         padding 0
     input::placeholder, textarea::placeholder
-        color rgba($archive-inv, .4)
+        c color archive-inv-a04
     > .option
         display flex
         flex-direction row
@@ -522,7 +536,7 @@ header.framed
             &[type="radio"]
                 border-radius 50%
                 &:focus.focus-visible
-                    box-shadow 0px 0px 0 .25rem rgba($archive-inv, 0.1)
+                    box-shadow 0px 0px 0 .25rem rgba($archive-black, 0.1)
                 &::before
                     border-radius 50%
                 &::after
@@ -535,13 +549,13 @@ header.framed
                     opacity 0
                     transition opacity .1s
                     position absolute
-                    background $archive-inv
+                    c background archive-inv
                 &:active::after
                     opacity .1
             &::before
                 content ''
                 display block
-                background $archive-inv
+                c background archive-inv
                 width 100%
                 height 100%
                 transition transform 0.25s
@@ -570,7 +584,7 @@ header.framed
     textarea
         resize none
     > label
-        color $archive-grey3
+        c color archive-grey3
         text-transform uppercase
         font-weight 500
         margin .4em .4em 0 0
@@ -583,14 +597,14 @@ header.framed
             max-height 1rem
             opacity 1
     &.error
-        border-color $archive-primary1
+        c border-color archive-primary1
     &.focused
-        border-color $archive-inv
+        c border-color archive-inv
         > label
-            color $archive-inv
+            c color archive-inv
     .error
         font-weight 500
-        color $archive-primary1
+        c color archive-primary1
         text-transform uppercase
         font-size .8em
         padding-left 1rem
@@ -619,8 +633,8 @@ header.framed
                 display block
                 width auto
             &:focus.focus-visible
-                background $archive-inv
-                fill $archive-std
+                c background archive-inv
+                c fill archive-std
                 border-radius 50%
 
 .indicatorWrapper
@@ -639,14 +653,16 @@ header.framed
 .indicator
     display inline-block
     padding 0.5rem
-    background $archive-std
-    fill $archive-inv
+    c background archive-std
+    c fill archive-inv
     line-height 0
     border-radius $archive-radius2
     > *
         width 1.5rem
+    svg path
+        fill inherit
     &.indicator-shadow
-        box-shadow 0 0 2rem rgba($archive-inv, 0.2)
+        box-shadow 0 0 2rem rgba($archive-black, 0.2)
 
 .dropzone
     position absolute
@@ -656,7 +672,8 @@ header.framed
     top 0
     bottom 0
     z-index 200
-    background rgba($archive-std, .25)
+    c background archive-std
+    opacity 0.25
     padding 1rem
     &::before
         content ''
@@ -664,7 +681,8 @@ header.framed
         height 100%
         width 100%
         display block
-        border .25rem dashed rgba($archive-inv, .25)
+        border .25rem dashed
+        c border-color archive-inv
     &.showDropzone
         visibility initial
 
@@ -680,14 +698,14 @@ header.framed
             margin-top .75rem
             margin-bottom .25rem
             text-transform uppercase
-            color $archive-grey3
+            c color archive-grey3
         .indent
             margin-left .75rem
         font-size 0.875
         margin-top 1rem
 
 code
-    background $archive-std
+    c background archive-std
     padding .5rem .75rem
     display block
     border-radius $archive-radius3
@@ -709,7 +727,7 @@ code
             flex 1
             > .error
                 font-weight 500
-                color $archive-primary1
+                c color archive-primary1
                 text-transform uppercase
         .info
             display flex
@@ -729,7 +747,7 @@ code
             justify-content flex-end
             flex-direction column
     &.itemList-progress .item
-        background $archive-grey1
+        c background archive-grey1
         margin-bottom 1rem
         .interaction
             align-items flex-end
@@ -744,14 +762,14 @@ code
                     margin-right .5rem
             .label
                 text-transform uppercase
-                background $archive-std
+                c background archive-std
                 justify-self flex-start
                 font-weight 500
                 font-size .75rem
                 padding .25rem .5rem
                 border-radius $archive-radius2
             .button
-                background $archive-primary1
+                c background archive-primary1
                 justify-self flex-end
                 color white
                 font-size 0.8rem
@@ -779,11 +797,11 @@ code
 
 .progress
     height 0.25rem
-    background rgba($archive-primary1, 0.2)
+    c background archive-primary1-a025
     border-radius $archive-radius3
     overflow hidden
     .progress-bar
-        background $archive-primary1
+        c background archive-primary1
         transition .25s width cubic-bezier(0.45, 0.05, 0.55, 0.95)
         height 100%
 
@@ -804,7 +822,8 @@ code
         top 0
         bottom 0
         &:nth-child(2), &:nth-child(3)
-            border 4px solid $archive-std
+            border 4px solid
+            c border-color archive-std
             overflow hidden
             border-radius 50%
         &:nth-child(2)
@@ -859,12 +878,13 @@ main > div
             line-height 1.2
 
 .markdown
-    color $archive-inv
+    c color archive-inv
     font-weight 400
     line-height 1.4
     hr
         border none
-        border-top 1px solid $archive-grey2
+        border-top 1px solid
+        c border-color archive-grey2
     h1, h2, h3, h4, h5, p, ul
         margin-bottom .5rem
     h1, h2, h3, h4, h5, h6

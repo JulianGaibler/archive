@@ -37,6 +37,10 @@ const UserType = new GraphQLObjectType({
                 return user.telegramid !== null
             },
         },
+        darkmode: {
+            description: `If the user prefers dark-mode.`,
+            type: GraphQLBoolean,
+        },
         posts: {
             type: postConnection,
             description: `All Posts associated with this user.`,

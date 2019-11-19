@@ -142,7 +142,7 @@ export default {
         p
             font-size 1.5rem
             font-weight 500
-        background $archive-primary1
+        background #D4213A
     > svg
         position absolute
         z-index 1
@@ -172,4 +172,11 @@ export default {
         bottom 0
         width 100%
         height 100%
+
+[data-theme^="dark"]
+    .mainWrapper
+        > svg
+            display none
+        .logoWrapper
+            filter invert(100%)
 </style>

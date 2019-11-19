@@ -126,6 +126,7 @@ export default {
     display flex
     flex-direction column
     padding .75rem 2rem 1.5rem 2rem
+    c background archive-std
     hr
         border none
         border-top 1px solid rgba(0, 0, 0, 0.03)
@@ -133,7 +134,7 @@ export default {
     .sidebar-pic
         border-radius $archive-radius-profile
         overflow hidden
-        background $archive-grey2
+        c background archive-grey2
         picture
             width 100%
         line-height 0
@@ -164,11 +165,11 @@ export default {
                 svg
                     margin 0.625rem
                 &:focus.focus-visible
-                    box-shadow inset 0 0 0 0.15rem rgba($archive-primary1, .1)
+                    box-shadow inset 0 0 0 0.15rem $archive-primary1
                 &.router-link-active
-                    background rgba($archive-primary1, .1)
-                    color $archive-primary1
-                    fill $archive-primary1
+                    c background archive-primary1-a01
+                    c color archive-primary1
+                    c fill archive-primary1
     @media screen and (max-width: $archive-screen-mid)
         position fixed
         background $archive-std
@@ -188,7 +189,7 @@ export default {
     top 0
     bottom 0
     z-index 299
-    background rgba($archive-inv, 0)
+    background transparent
 
 </style>
 

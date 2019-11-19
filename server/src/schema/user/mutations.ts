@@ -5,8 +5,8 @@ import {
     GraphQLString,
 } from 'graphql'
 import { GraphQLUpload } from 'graphql-upload'
-import User from '../../models/User'
 import Bot from '../../bot'
+import User from '../../models/User'
 import {
     AuthenticationError,
     AuthorizationError,
@@ -190,6 +190,27 @@ const changeName: GraphQLFieldConfig<any, any, any> = {
     },
 }
 
+const setDarkMode: GraphQLFieldConfig<any, any, any> = {
+    description: `Sets the user's dark-mode preference.`,
+    args: {
+        enabled: {
+            description: `Boolean if the user wants dark mode enabled.`,
+            type: new GraphQLNonNull(GraphQLBoolean),
+        },
+    },
+    type: new GraphQLNonNull(GraphQLBoolean),
+    resolve: async (parent, args, context: IContext) => {
+        isAuthenticated(context)
+
+        const user = await User.query().findById(context.auth.userId)
+        if (!user) {
+            throw new AuthenticationError(`This should not have happened.`)
+        }
+        await user.$query().patch({ darkmode: args.enabled })
+        return true
+    },
+}
+
 const changePassword: GraphQLFieldConfig<any, any, any> = {
     description: `Changes the password of the current user.`,
     type: new GraphQLNonNull(GraphQLBoolean),
@@ -217,5 +238,6 @@ export default {
     uploadProfilePicture,
     clearProfilePicture,
     changeName,
+    setDarkMode,
     changePassword,
 }

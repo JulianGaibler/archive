@@ -100,7 +100,7 @@ export default {
 .sessionManager
     position relative
     > .indicatorWrapper
-        background rgba($archive-std, 0.5)
+        c background archive-std
     .item .info
         h4
             font-weight 500

@@ -14,6 +14,7 @@
     },
     "settings": {
         "profile": "Profile",
+        "darkmode": "Dark Mode",
         "linked_accounts": "Linked Accounts",
         "security": "Security",
         "security_changePassword": "Change Password",
@@ -92,6 +93,8 @@
     "state": {
         "loading": "Loading",
         "added": "Added",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
         "removed": "Removed",
         "optional": "optional",
         "queued": "queued",

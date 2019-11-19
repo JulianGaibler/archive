@@ -3,5 +3,6 @@
         name
         username
         profilePicture
+        darkmode
     }
 }

@@ -18,3 +18,9 @@ remove-native()
     -webkit-user-select none
     outline none
     user-select none
+
+varinject($obj)
+    $ddash = \-+\-
+    for val in $obj
+        $key = $ddash+val
+        {$key} $obj[val]
