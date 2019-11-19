@@ -97,7 +97,13 @@ export default {
         IconUser,
     },
     apollo: {
-        me: ME_QUERY,
+        me: {
+            query: ME_QUERY,
+            result(result, key) {
+                localStorage.user_theme = result.data[key].darkmode ? 'dark' : 'light'
+                window.__setTheme()
+            },
+        },
         resources: RESOURCES_QUERY,
     },
     methods: {
