@@ -9,6 +9,7 @@
                 :value="option.value"
                 v-focus="autofocus && i === 0"
                 v-model="content"
+                :disabled="disabled"
                 @input="updateInput_">
             <label :for="rid+option.value">
                 <div class="name">{{option.name}}</div>
@@ -31,6 +32,10 @@ export default {
         value: Array,
         label: String,
         errors: Array,
+        disabled: {
+            type: Boolean,
+            default: false,
+        },
         autofocus: {
             type: Boolean,
             default: false,

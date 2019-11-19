@@ -6,9 +6,11 @@
             <input
                 :type="type || 'radio'"
                 :id="rid+option.value"
-                :value="option.value"
                 v-focus="autofocus && i === 0"
-                v-model="content">
+                :value="option.value"
+                :checked="option.value === value"
+                :disabled="disabled"
+                @change="updateInput_">
             <label :for="rid+option.value">
                 <div class="name">{{option.tName ? $t(option.tName) : option.name}}</div>
                 <div v-if="option.tip" class="desc">{{option.tTip ? $t(option.tTip) : option.tip}}</div>
@@ -28,9 +30,13 @@ export default {
     props: {
         options: Array,
         type: String,
-        value: [String, Array],
+        value: [String, Array, Boolean],
         label: String,
         errors: Array,
+        disabled: {
+            type: Boolean,
+            default: false,
+        },
         autofocus: {
             type: Boolean,
             default: false,
@@ -42,12 +48,10 @@ export default {
             rid: this.randomId_(),
         }
     },
-    watch: {
-        content(val) {
-            this.$emit('input', val)
-        },
-    },
     methods: {
+        updateInput_(event) {
+            this.$emit('input', event.srcElement.value)
+        },
         // We need this to have unique label IDs
         randomId_: function() {
             return btoa(Math.random()).slice(0,5)
