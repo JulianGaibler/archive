@@ -1,7 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <title>Artboard 1</title>
   <path d="M24,24H0V0H24Z" style="fill: none"/>
-  <g>
-    <circle cx="15" cy="9" r="1"/>
-    <polygon points="4.064 13.437 12.5 5.001 18.256 5.883 18.999 11.5 10.563 19.936 4.064 13.437" style="fill: none;stroke: #000;stroke-linecap: round;stroke-linejoin: round;stroke-width: 2px"/>
-  </g>
+  <circle cx="15" cy="9" r="1"/>
+  <path d="M19.247,5.751a1,1,0,0,0-.84-.856l-5.756-.882a1,1,0,0,0-.858.281L3.357,12.729a1,1,0,0,0,0,1.415l6.5,6.5a1,1,0,0,0,1.414,0l8.436-8.436a1,1,0,0,0,.284-.838Zm-8.684,12.77L5.478,13.437l7.371-7.371,4.514.692.58,4.384Z"/>
 </svg>
