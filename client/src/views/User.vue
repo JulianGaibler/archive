@@ -38,7 +38,7 @@ import USER_QUERY from '@/graphql/userQuery.gql'
 import RESOURCES_QUERY from '@/graphql/resourcesQuery.gql'
 
 export default {
-    name: 'Users',
+    name: 'User',
     components: {
         Search,
         MediaList,
@@ -103,6 +103,18 @@ export default {
                 users: [this.user.id],
             }
         },
+    },
+    beforeMount() {
+        if (window.history.state.search) {
+            this.search = window.history.state.search
+        }
+    },
+    beforeRouteLeave(to, from, next) {
+        history.replaceState({
+            ...window.history.state,
+            search: this.search,
+        }, '')
+        next()
     },
 }
 </script>
