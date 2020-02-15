@@ -104,11 +104,10 @@ export default {
             }).catch((error) => {
                 this.formLoading = false
                 const e = parseError(error)
-                this.errorMessage = e.message
                 EventBus.$emit('pushPrompt', {
                     messageAT: 'prompts.not_right',
-                    messageB: 'errorMessage',
-                    optionAT: 'action.okay',
+                    messageB: e.message,
+                    actionAT: 'action.okay',
                 })
             })
         },
