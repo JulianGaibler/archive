@@ -1,6 +1,10 @@
 # Changelog
 # Labels: [Added], [Fixed], [Improved]
 
+"1.0.1" = [
+    '[Fixed] Color inconsistencies with dark-mode - #4',
+]
+
 "1.0.0" = [
     '[Added] Dark Mode',
     '[Fixed] Missing tag-icon',

@@ -82,6 +82,8 @@ export default {
         .icon
             width 1.5rem
             margin-right 1rem
+            >>> svg path
+                c stroke archive-inv
     .btm
         margin-top 1rem
         display flex

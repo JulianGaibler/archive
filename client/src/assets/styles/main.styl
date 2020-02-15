@@ -246,7 +246,7 @@ input.hiddenInput
     width 3rem
     height 3rem
     c background archive-primary1
-    c fill archive-white
+    fill $archive-white
     box-shadow $archive-hoverShadow3
     svg
         width 1.75rem
@@ -663,6 +663,8 @@ header.framed
         fill inherit
     &.indicator-shadow
         box-shadow 0 0 2rem rgba($archive-black, 0.2)
+    &.color-stroke svg path
+        c stroke archive-inv
 
 .dropzone
     position absolute

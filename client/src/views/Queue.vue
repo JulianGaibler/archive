@@ -13,9 +13,9 @@
             <div v-if="tasks" class="itemList itemList-progress">
                 <div v-for="{ node: { id, title, status, uploader, progress, ext, createdPost, notes } } in tasks.edges" :key="id" class="item">
                     <div class="indicatorWrapper">
-                        <div class="indicator">
+                        <div class="indicator" :class="{ 'color-stroke': status === 'PROCESSING' }">
                             <IconQueue v-if="status === 'QUEUED'" />
-                            <Lottie v-else-if="status === 'PROCESSING'" :options="processingAnimationOptions" />
+                            <Lottie class="animated" v-else-if="status === 'PROCESSING'" :options="processingAnimationOptions" />
                             <IconDone v-else-if="status === 'DONE'" />
                             <IconClose v-else-if="status === 'FAILED'" />
                         </div>
