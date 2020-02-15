@@ -20,6 +20,10 @@
                 <h3>{{ $t('settings.security_sessions') }}</h3>
                 <SessionManager />
             </section>
+            <section class="clientinfo">
+                <h2>{{ $t('settings.client_information') }}</h2>
+                <p>Archive Client v{{clientVersion}}-{{node_env}}</p>
+            </section>
         </div>
     </div>
 </template>
@@ -32,9 +36,18 @@ import ToggleDarkmode from './Settings/ToggleDarkmode'
 import InputArnoldBot from './Settings/InputArnoldBot'
 import SessionManager from './Settings/SessionManager'
 
+const clientVersion = process.env.VUE_APP_VERSION
+const node_env = process.env.NODE_ENV
+
 export default {
     name: 'Settings',
     components: { InputProfilePicture, InputChangePassword, InputChangeName, ToggleDarkmode, InputArnoldBot, SessionManager },
+    data() {
+        return {
+            clientVersion,
+            node_env,
+        }
+    },
 }
 </script>
 
@@ -42,8 +55,11 @@ export default {
 @import "~@/assets/styles/palette.styl"
 
 .settings
-    > section > .itemRow > :not(:last-child)
-        margin-right 2rem
+    section
+        &.clientinfo
+            margin-top 4rem
+        > .itemRow > :not(:last-child)
+            margin-right 2rem
     > div > section
         > h2, > h3
             margin-top 1.5rem

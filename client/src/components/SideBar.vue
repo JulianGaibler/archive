@@ -52,7 +52,7 @@
                 </ul>
                 <ul>
                     <li>
-                        <router-link @click="toggle(false)" :to="{ name: 'Release Notes'}"><IconChangelog />{{ $t('views.releasenotes') }}</router-link>
+                        <router-link class="flex-link" @click="toggle(false)" :to="{ name: 'Release Notes'}"><IconChangelog /><span>{{ $t('views.releasenotes') }}</span><span v-if="showVersionLabel" class="tag">1.0.0</span></router-link>
                     </li>
                 </ul>
             </nav>
@@ -82,12 +82,15 @@ import ME_QUERY from '@/graphql/meQuery.gql'
 import RESOURCES_QUERY from '@/graphql/resourcesQuery.gql'
 import LOGOUT_MUTATION from '@/graphql/logoutMutation.gql'
 
+const clientVersion = process.env.VUE_APP_VERSION
+
 export default {
     name: 'SideBar',
     data() {
         return {
             open: false,
             uploadManager,
+            showVersionLabel: false,
         }
     },
     components: {
@@ -112,6 +115,11 @@ export default {
             },
         },
         resources: RESOURCES_QUERY,
+    },
+    mounted() {
+        const oldClientVersion = localStorage.getItem('client_version')
+        localStorage.setItem('client_version', clientVersion)
+        if (clientVersion !== oldClientVersion) this.showVersionLabel = true
     },
     methods: {
         toggle(bool) {
@@ -184,6 +192,18 @@ export default {
                     c background archive-primary1-a01
                     c color archive-primary1
                     c fill archive-primary1
+                &.flex-link
+                    display inline-flex
+                    span
+                        flex 1
+                span.tag
+                    c background archive-primary1-a01
+                    c color archive-primary1
+                    padding .25rem .4rem
+                    border-radius .4rem
+                    flex 0
+                    margin 0.625rem
+
     @media screen and (max-width: $archive-screen-mid)
         position fixed
         background $archive-std
