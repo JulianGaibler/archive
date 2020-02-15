@@ -22,32 +22,37 @@
                 <ul>
                     <li>
                         <router-link
-                            @click.native="toggle(false)"
+                            @click="toggle(false)"
                             v-focus="open"
                             :to="{ name: 'Archive'}"
                             exact><IconArchive/>{{ $t('views.archive') }}</router-link>
                     </li>
                     <li>
-                        <router-link @click.native="toggle(false)" :to="{ name: 'Collections'}"><IconCollection/>{{ $t('views.collections') }}</router-link>
+                        <router-link @click="toggle(false)" :to="{ name: 'Collections'}"><IconCollection/>{{ $t('views.collections') }}</router-link>
                     </li>
                     <li>
-                        <router-link @click.native="toggle(false)" :to="{ name: 'Users'}"><IconUser />{{ $t('views.users') }}</router-link>
-                    </li>
-                </ul>
-                <ul>
-                    <li>
-                        <router-link @click.native="toggle(false)" :to="{ name: 'Upload'}"><IconUpload />{{ $t('views.upload') }}</router-link>
-                    </li>
-                    <li>
-                        <router-link @click.native="toggle(false)" :to="{ name: 'Queue'}"><IconQueue />{{ $t('views.queue') }}</router-link>
+                        <router-link @click="toggle(false)" :to="{ name: 'Users'}"><IconUser />{{ $t('views.users') }}</router-link>
                     </li>
                 </ul>
                 <ul>
                     <li>
-                        <router-link @click.native="toggle(false)" :to="{ name: 'Settings'}"><IconSettings />{{ $t('views.settings') }}</router-link>
+                        <router-link @click="toggle(false)" :to="{ name: 'Upload'}"><IconUpload />{{ $t('views.upload') }}</router-link>
                     </li>
                     <li>
-                        <button @click.native="toggle(false)" @click="logout"><IconLogout/>{{ $t('action.logout') }}</button>
+                        <router-link @click="toggle(false)" :to="{ name: 'Queue'}"><IconQueue />{{ $t('views.queue') }}</router-link>
+                    </li>
+                </ul>
+                <ul>
+                    <li>
+                        <router-link @click="toggle(false)" :to="{ name: 'Settings'}"><IconSettings />{{ $t('views.settings') }}</router-link>
+                    </li>
+                    <li>
+                        <button @click="logout" ><IconLogout/>{{ $t('action.logout') }}</button>
+                    </li>
+                </ul>
+                <ul>
+                    <li>
+                        <router-link @click="toggle(false)" :to="{ name: 'Release Notes'}"><IconChangelog />{{ $t('views.releasenotes') }}</router-link>
                     </li>
                 </ul>
             </nav>
@@ -63,10 +68,11 @@ import uploadManager from '../utils/UploadManager'
 import { resetStore } from '@/vue-apollo.js'
 import UploadBox from './SideBar/UploadBox'
 
-import IconMenu from '@/assets/jw_icons/menu.svg?inline'
 import IconArchive from '@/assets/jw_icons/archive.svg?inline'
+import IconChangelog from '@/assets/jw_icons/new_release.svg?inline'
 import IconCollection from '@/assets/jw_icons/collection.svg?inline'
 import IconLogout from '@/assets/jw_icons/logout.svg?inline'
+import IconMenu from '@/assets/jw_icons/menu.svg?inline'
 import IconQueue from '@/assets/jw_icons/queue.svg?inline'
 import IconSettings from '@/assets/jw_icons/settings.svg?inline'
 import IconUpload from '@/assets/jw_icons/upload.svg?inline'
@@ -87,10 +93,11 @@ export default {
     components: {
         UploadBox,
 
-        IconMenu,
         IconArchive,
+        IconChangelog,
         IconCollection,
         IconLogout,
+        IconMenu,
         IconQueue,
         IconSettings,
         IconUpload,
@@ -112,6 +119,7 @@ export default {
             else { this.open = !this.open }
         },
         async logout() {
+            this.toggle(false)
             await this.$apollo.mutate({
                 mutation: LOGOUT_MUTATION,
             })

@@ -67,6 +67,11 @@ const router = new Router({
             component: () => import(/* webpackChunkName: "settings" */ './views/Settings.vue'),
         },
         {
+            path: '/ReleaseNotes',
+            name: 'Release Notes',
+            component: () => import(/* webpackChunkName: "releasenotes" */ './views/ReleaseNotes.vue'),
+        },
+        {
             path: '/arnoldbot',
             name: 'ArnoldBot',
             component: () => import(/* webpackChunkName: "arnoldbot" */ './views/ArnoldBot.vue'),

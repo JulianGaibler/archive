@@ -10,7 +10,8 @@
         "queue": "Queue",
         "sessions": "Sessions",
         "settings": "Settings",
-        "arnoldbot": "Arnold Bot"
+        "arnoldbot": "Arnold Bot",
+        "releasenotes": "Release Notes"
     },
     "settings": {
         "profile": "Profile",
