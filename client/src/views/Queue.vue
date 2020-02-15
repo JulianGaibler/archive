@@ -173,6 +173,8 @@ export default {
 </script>
 
 <style scoped lang="stylus">
+@import "~@/assets/styles/palette.styl"
+
 .queue
     @media screen and (max-width: $archive-screen-small)
         .itemList > .item

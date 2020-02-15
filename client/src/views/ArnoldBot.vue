@@ -146,7 +146,7 @@ export default {
 @import "~@/assets/styles/palette.styl"
     header
         color $archive-white
-        background $archive-primary1
+        c background archive-primary1
 
     .frame
         text-align center

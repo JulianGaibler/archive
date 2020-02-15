@@ -3,6 +3,7 @@
 
 "1.0.1" = [
     '[Fixed] Color inconsistencies with dark-mode - #4',
+    '[Fixed] Queue has horizontal overflow on small screens - #5',
 ]
 
 "1.0.0" = [
