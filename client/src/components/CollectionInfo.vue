@@ -59,30 +59,19 @@
                         </li>
                     </ul>
                 </div>
-
-                <Modal
-                    v-if="showDelete"
-                    @cancel="toggleDelete(false)"
-                    @confirm="deleteCollection"
-                    :important="true"
-                    :messageA="$t('prompts.sure_delete_collection')"
-                    :messageB="$t('prompts.cannot_undo')"
-                    :optionA="$t('action.cancel')"
-                    :optionB="$t('action.delete')"
-                />
             </div>
         </div>
     </div>
 </template>
 
 <script>
+import EventBus from '@/EventBus'
 import { parseError } from '@/utils'
 import { resetStore } from '@/vue-apollo'
 
 import UserLink from '@/components/UserLink'
-import Modal from '@/components/Modal'
-import InputField from '@/components/Input/InputField.vue'
-import InputKeywords from '@/components/Input/InputKeywords.vue'
+import InputField from '@/components/Input/InputField'
+import InputKeywords from '@/components/Input/InputKeywords'
 
 import IconTag from '@/assets/jw_icons/tag.svg?inline'
 import IconMore from '@/assets/jw_icons/more.svg?inline'
@@ -96,7 +85,6 @@ export default {
     name: 'CollectionInfo',
     components: {
         UserLink,
-        Modal,
         InputField,
         InputKeywords,
         IconTag,
@@ -108,7 +96,6 @@ export default {
         return {
             editMode: false,
             showOptions: false,
-            showDelete: false,
             working: false,
             error: null,
             payload: {
@@ -126,7 +113,14 @@ export default {
     },
     methods: {
         toggleDelete(bool) {
-            this.showDelete = bool
+            EventBus.$emit('pushPrompt', {
+                important: true,
+                messageAT: 'prompts.sure_delete_collection',
+                messageBT: 'prompts.cannot_undo',
+                actionAT: 'action.cancel',
+                actionBT: 'action.delete',
+                confirm: () => this.deleteCollection,
+            })
             if (bool) this.showOptions = false
         },
         toggleEditMode(bool) {

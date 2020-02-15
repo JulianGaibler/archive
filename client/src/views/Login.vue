@@ -18,13 +18,6 @@
                 class="content form"
                 @submit.prevent="login()"
             >
-                <Modal
-                    v-if="errorMessage"
-                    @cancel="() => { errorMessage = null }"
-                    :messageA="$t('prompts.no_right')"
-                    :messageB="errorMessage"
-                    :optionA="$t('action.okay')"
-                />
                 <InputField
                     v-model="username"
                     :type="'text'"
@@ -58,10 +51,10 @@
 import { resetStore } from '@/vue-apollo.js'
 import { parseError } from '@/utils'
 import InputField from '@/components/Input/InputField.vue'
-import Modal from '@/components/Modal'
 import Lottie from '@/components/Lottie'
 
 import * as uploadingAnimation from '@/assets/animations/loading.json'
+import EventBus from '@/EventBus'
 
 import RedTriangle from '@/assets/shapes/red-triangle.svg?inline'
 import YellowPolygon from '@/assets/shapes/yellow-polygon.svg?inline'
@@ -74,12 +67,11 @@ export default {
     props: {
         msg: String,
     },
-    components: { InputField, RedTriangle, YellowPolygon, Lottie, Modal },
+    components: { InputField, RedTriangle, YellowPolygon, Lottie },
     data() {
         return {
             checkLogin: true,
             formLoading: false,
-            errorMessage: null,
             username: '',
             password: '',
             animOptions: {
@@ -113,6 +105,11 @@ export default {
                 this.formLoading = false
                 const e = parseError(error)
                 this.errorMessage = e.message
+                EventBus.$emit('pushPrompt', {
+                    messageAT: 'prompts.not_right',
+                    messageB: 'errorMessage',
+                    optionAT: 'action.okay',
+                })
             })
         },
     },

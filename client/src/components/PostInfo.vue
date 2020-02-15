@@ -100,17 +100,6 @@
                         </li>
                     </ul>
                 </div>
-
-                <Modal
-                    v-if="showDelete"
-                    @cancel="toggleDelete(false)"
-                    @confirm="deletePost"
-                    :important="true"
-                    :messageA="$t('prompts.sure_delete_post')"
-                    :messageB="$t('prompts.cannot_undo')"
-                    :optionA="$t('action.cancel')"
-                    :optionB="$t('action.delete')"
-                />
             </div>
         </div>
     </div>
@@ -118,14 +107,14 @@
 
 <script>
 import marked from 'marked'
+import EventBus from '@/EventBus'
 import { parseDate, parseError } from '@/utils'
 
-import Modal from '@/components/Modal'
 import UserLink from '@/components/UserLink'
 import { resetStore } from '@/vue-apollo'
-import InputField from '@/components/Input/InputField.vue'
-import InputKeywords from '@/components/Input/InputKeywords.vue'
-import InputSelect from '@/components/Input/InputSelect.vue'
+import InputField from '@/components/Input/InputField'
+import InputKeywords from '@/components/Input/InputKeywords'
+import InputSelect from '@/components/Input/InputSelect'
 
 import IconMore from '@/assets/jw_icons/more.svg?inline'
 import IconTrash from '@/assets/jw_icons/trash.svg?inline'
@@ -145,7 +134,6 @@ export default {
         return {
             editMode: false,
             showOptions: false,
-            showDelete: false,
             working: false,
             error: null,
             payload: {
@@ -158,16 +146,15 @@ export default {
         }
     },
     components: {
-        Modal,
-        UserLink,
-        IconMore,
-        IconTrash,
-        IconEdit,
         IconCollection,
+        IconEdit,
+        IconMore,
         IconTag,
+        IconTrash,
         InputField,
         InputKeywords,
         InputSelect,
+        UserLink,
     },
     methods: {
         parseDate,
@@ -175,7 +162,14 @@ export default {
             this.showOptions = bool
         },
         toggleDelete(bool) {
-            this.showDelete = bool
+            EventBus.$emit('pushPrompt', {
+                important: true,
+                messageAT: 'prompts.sure_delete_post',
+                messageBT: 'prompts.cannot_undo',
+                actionAT: 'action.cancel',
+                actionBT: 'action.delete',
+                confirm: this.deletePost,
+            })
             if (bool) this.showOptions = false
         },
         toggleEditMode(bool) {

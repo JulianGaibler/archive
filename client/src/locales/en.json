@@ -25,7 +25,7 @@
         "sure_delete_post": "Are you sure you want to permanently delete this post?",
         "sure_delete_collection": "Are you sure you want to permanently delete this collection?",
         "cannot_undo": "You can’t undo this action.",
-        "no_right": "Something was not right..."
+        "not_right": "Something was not right..."
     },
     "post": {
         "compressed": "Compressed",
