@@ -34,7 +34,7 @@ class Bot {
             ctx.telegram.answerInlineQuery(id, result, {
                 is_personal: true,
                 next_offset: newCursor,
-            })
+            }).catch(console.error)
         })
 
         this.bot.command('status', this.checkStatus)

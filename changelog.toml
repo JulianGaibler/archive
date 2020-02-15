@@ -6,6 +6,7 @@
     '[Fixed] Color inconsistencies with dark-mode - #4',
     '[Fixed] Queue has horizontal overflow on small screens - #5',
     '[Fixed] Search on user- and collection-views does not save scroll state - #8',
+    '[Fixed] Telegram-Bot search does not show all search results - #11',
     '[Improved] Added more error user-facing error messages in upload view',
     '[Improved] More keyboard accessibilty and better dark-mode contrast',
 ]

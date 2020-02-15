@@ -75,12 +75,10 @@ class Server {
 
     middleware() {
         this.app.set('trust proxy', 'loopback')
-        this.app.use(
-            logger(process.env.NODE_ENV === 'development' ? 'dev' : 'tiny'),
-        )
         this.app.use(this.cookieParserInstance)
         this.app.use(cors(corsOptions))
         if (process.env.NODE_ENV === 'development') {
+            this.app.use(logger('dev'))
             this.app.use('/content', express.static('public'))
             this.app.use(
                 `${this.options.endpoint}/playground`,

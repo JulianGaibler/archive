@@ -18,32 +18,32 @@ export default async function(message: string, cursor: string) {
     const limit = 10
     const offset = (cursor && cursorToOffset(cursor)) || 0
 
-    if (message.trim().length < 1) { return [[], ''] };
+    if (message.trim().length < 1) { return [[], ''] }
 
     const tsQuery = message.split(' ').map(k => (`${k.replace(/[;/\\]/g, '')}:*`)).join(' & ')
-    const query = PostModel
-        .query()
+    const query = PostModel.query()
         .joinRaw('INNER JOIN ( SELECT id, SEARCH FROM post_search_view WHERE SEARCH @@ to_tsquery(?)) b ON b.id = "Post".id', tsQuery)
         .groupBy('Post.id', 'b.search')
         .orderByRaw('ts_rank(b.search, to_tsquery(?)) desc', tsQuery)
 
-
-        const [data, totalSearchCount] = await Promise.all([
-            query
-                .clone()
-                .orderBy('createdAt', 'desc')
-                .limit(limit)
-                .offset(offset)
-                .execute(),
-            query
-                .count('Post.id')
-                .execute()
-                .then(x => (x as any).reduce((acc, val) => acc + parseInt(val.count, 10), 0)),
+    const [data, totalSearchCount] = await Promise.all([
+        query
+            .clone()
+            .orderBy('createdAt', 'desc')
+            .limit(limit)
+            .offset(offset)
+            .execute(),
+        query
+            .count('Post.id')
+            .execute()
+            .then(x => (x as any).reduce((acc, val) => acc + parseInt(val.count, 10), 0)),
         ])
-        return [
+
+        const rs = [
             convertToInlineQueryResult(data),
             data.length+10 < totalSearchCount ? '' : offsetToCursor(offset + 10),
         ]
+        return rs
 }
 
 function convertToInlineQueryResult(posts: PostModel[]) {
