@@ -1,0 +1,9 @@
+# Changelog
+# Labels: [Added], [Fixed], [Improved]
+
+"1.0.0" = [
+    '[Added] Dark Mode',
+    '[Fixed] Missing tag-icon',
+    '[Fixed] Radio buttons and checkboxes not being updated after reload',
+    '[Improved] GIFs start playing automatically and loop',
+]
