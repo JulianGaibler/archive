@@ -5,6 +5,7 @@
     '[Added] Release notes view',
     '[Fixed] Color inconsistencies with dark-mode - #4',
     '[Fixed] Queue has horizontal overflow on small screens - #5',
+    '[Improved] Added more error user-facing error messages in upload view',
 ]
 
 "1.0.0" = [

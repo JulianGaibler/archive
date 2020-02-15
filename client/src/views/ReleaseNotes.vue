@@ -29,10 +29,6 @@
 <script>
 import changelog from '../../../changelog.toml'
 
-if (changelog) {
-    console.log(changelog)
-}
-
 export default {
     name: 'ReleaseNotes',
     data() {

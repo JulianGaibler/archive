@@ -64,11 +64,11 @@ class UploadManager {
     }
 
     addItem(file) {
-        if (this.locked) return
+        if (this.locked) return 1
         this.resetErrors()
-        if (this.items.length >= 30) return
+        if (this.items.length >= 30) return 2
         const type = file.type.split('/')[0]
-        if (type !== 'image' && type !== 'video') return
+        if (type !== 'image' && type !== 'video') return 3
         this.items.push({
             id: ++this.counter,
             errors: [],
@@ -83,6 +83,7 @@ class UploadManager {
                 language: 'english',
             },
         })
+        return 0
     }
     clearAllItems() {
         this.resetErrors()

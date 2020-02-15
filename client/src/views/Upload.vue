@@ -10,7 +10,7 @@
                 </div>
                 <button v-if="upload.locked" class="actionBar-component button button-primary" @click="upload.stopUpload()">{{$t(upload.working ? 'action.upload.cancel_upload' : 'action.upload.new_upload')}}</button>
                 <template v-else>
-                    <button class="actionBar-component button button-icon" @click="upload.clearAllItems()"><IconTrash /></button>
+                    <button class="actionBar-component button button-icon" @click="clearAllItems()"><IconTrash /></button>
                     <button class="actionBar-component button button-primary" @click="upload.startUpload()">{{$t('action.upload.upload_files')}}</button>
                 </template>
             </nav>
@@ -45,6 +45,7 @@
 </template>
 
 <script>
+import EventBus from '@/EventBus'
 import uploadManager from '../utils/UploadManager'
 
 import Item from './Upload/Item.vue'
@@ -61,9 +62,9 @@ export default {
         }
     },
     components: {
-        Item,
-        IconUp,
         IconTrash,
+        IconUp,
+        Item,
     },
     mounted() {
         const frame = this.$refs.frame
@@ -74,7 +75,7 @@ export default {
         }
         // 1
         frame.addEventListener('dragenter', () => {
-            this.showDropzone = true
+            if (!this.upload.locked) this.showDropzone = true
         })
         // 2
         dropzone.addEventListener('dragenter', allowDrag)
@@ -86,13 +87,34 @@ export default {
         // 4
         dropzone.addEventListener('drop', (e) => {
             e.preventDefault()
-            Array.from(e.dataTransfer.files).forEach(f => this.upload.addItem(f))
+            Array.from(e.dataTransfer.files).forEach(f => this.addFileHandler(f))
             this.showDropzone = false
         })
     },
     methods: {
         handleFileEvent(e) {
-            Array.from(e.target.files).forEach(f => this.upload.addItem(f))
+            Array.from(e.target.files).forEach(f => this.addFileHandler(f))
+        },
+        addFileHandler(f) {
+            const rv = this.upload.addItem(f)
+            if (rv === 0) return
+
+            const messageT = rv === 2 ? 'error.reached_upload_limit' : (rv === 3 ? 'error.file_type_not_supported' : 'prompts.not_right')
+            EventBus.$emit('pushPrompt', {
+                messageAT: messageT,
+                actionAT: 'action.okay',
+                confirm: () => { this.upload.clearAllItems() },
+            })
+        },
+        clearAllItems() {
+            EventBus.$emit('pushPrompt', {
+                important: true,
+                messageAT: 'prompts.sure_remove_from_list',
+                messageBT: 'prompts.cannot_undo',
+                actionAT: 'action.cancel',
+                actionBT: 'action.delete',
+                confirm: () => { this.upload.clearAllItems() },
+            })
         },
     },
 }

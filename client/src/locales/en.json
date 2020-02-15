@@ -23,6 +23,7 @@
     },
     "prompts": {
         "sure_delete_post": "Are you sure you want to permanently delete this post?",
+        "sure_remove_from_list": "Are you sure you want remove all files from the the list?",
         "sure_delete_collection": "Are you sure you want to permanently delete this collection?",
         "cannot_undo": "You can’t undo this action.",
         "not_right": "Something was not right..."
@@ -155,7 +156,9 @@
     },
     "error": {
         "generic_upload": "There are errors in one of your items.",
-        "required_field": "This is a required field",
+        "required_field": "This is a required field.",
+        "file_type_not_supported": "This file-type is not supported.",
+        "reached_upload_limit": "You have reached the limit of how many files can be uploaded at once.",
         "haveToMatch": "Password doesn't match.",
         "file_size_limit": "You can only upload 10 files at once, with a maximum file size of 100 MB.",
         "at_least_one_file": "You have to select at least one file."
