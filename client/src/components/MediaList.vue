@@ -12,6 +12,7 @@
                         :to="{ name: 'Post', params: { id: post.node.id }}"
                         class="item"
                         v-for="post in column"
+                        :aria-label="post.node.title"
                         :key="post.node.id">
                         <Preview :item="post.node" />
                     </router-link>
@@ -140,6 +141,16 @@ export default {
             text-align center
             border-radius $archive-radius2
             background $archive-grey1
+            position relative
+            &:focus.focus-visible::after
+                content ''
+                position absolute
+                border-radius $archive-radius2
+                c box-shadow archive-primary1 inset 0 0 0 0.2rem
+                top 0
+                left 0
+                right 0
+                bottom 0
             &:not(:last-child)
                 margin-bottom 1rem
 

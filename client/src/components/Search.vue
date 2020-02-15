@@ -26,7 +26,7 @@
             placeholder="Search..." />
 
         <div v-if="givenFilters.length > 1" class="hoverParent">
-            <button @click="toggleFilterMenu(true)" class="button-filter"><IconTune /></button>
+            <button aria-label="Open Filter Options" @click="toggleFilterMenu(true)" class="button-filter"><IconTune /></button>
             <div
                 v-if="showFilterMenu"
                 v-click-outside="() => toggleFilterMenu(false)"

@@ -6,6 +6,7 @@
     '[Fixed] Color inconsistencies with dark-mode - #4',
     '[Fixed] Queue has horizontal overflow on small screens - #5',
     '[Improved] Added more error user-facing error messages in upload view',
+    '[Improved] More keyboard accessibilty and better dark-mode contrast',
 ]
 
 "1.0.0" = [

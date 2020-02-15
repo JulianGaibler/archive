@@ -187,7 +187,7 @@ export default {
                 svg
                     margin 0.625rem
                 &:focus.focus-visible
-                    box-shadow inset 0 0 0 0.15rem $archive-primary1
+                    c box-shadow archive-primary1 inset 0 0 0 0.15rem
                 &.router-link-active
                     c background archive-primary1-a01
                     c color archive-primary1

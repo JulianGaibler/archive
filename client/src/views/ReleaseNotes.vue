@@ -86,6 +86,7 @@ export default {
                     flex 0 0 4rem
                     font-size .7rem
                     font-weight 600
+                    margin-top 0.05rem
                     margin-right .5rem
                     padding 0.25rem 0.4rem
                     text-transform uppercase

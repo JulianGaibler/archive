@@ -68,4 +68,7 @@ export default {
                 font-size inherit
             :not(:last-child)
                 margin-bottom .5rem
+
+[data-theme^="dark"] .hoverBox
+        border 0.15rem solid #313131
 </style>
