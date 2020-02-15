@@ -52,7 +52,7 @@
                 </ul>
                 <ul>
                     <li>
-                        <router-link class="flex-link" @click="toggle(false)" :to="{ name: 'Release Notes'}"><IconChangelog /><span>{{ $t('views.releasenotes') }}</span><span v-if="showVersionLabel" class="tag">1.0.0</span></router-link>
+                        <router-link class="flex-link" @click="toggle(false)" :to="{ name: 'Release Notes'}"><IconChangelog /><span>{{ $t('views.releasenotes') }}</span><span v-if="showVersionLabel" class="tag">{{showVersionLabel}}</span></router-link>
                     </li>
                 </ul>
             </nav>
@@ -119,7 +119,7 @@ export default {
     mounted() {
         const oldClientVersion = localStorage.getItem('client_version')
         localStorage.setItem('client_version', clientVersion)
-        if (clientVersion !== oldClientVersion) this.showVersionLabel = true
+        if (clientVersion !== oldClientVersion) this.showVersionLabel = clientVersion
     },
     methods: {
         toggle(bool) {
