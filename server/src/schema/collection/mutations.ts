@@ -104,11 +104,12 @@ const editCollection: GraphQLFieldConfig<any, any, any> = {
             }),
         )
         if (err) {
-            if (err.code === '23503') {
+            const unwrappedErr = err.nativeError || err
+            if (unwrappedErr.code === '23503') {
                 throw new InputError('One of the Keywords does not exist.')
             }
-            if (err.name === 'ValidationError') {
-                throw new InputError(err)
+            if (unwrappedErr.name === 'ValidationError') {
+                throw new InputError(unwrappedErr)
             }
             throw new InputError('Error unknown.')
         }
@@ -142,15 +143,16 @@ const addToCollection: GraphQLFieldConfig<any, any, any> = {
 
         const iPostIds = postIds.map(stringId => decodeHashIdAndCheck(PostModel, stringId))
 
-        const [err, result] = await to(
+        const [err] = await to(
             collection.$relatedQuery('posts').relate(iPostIds),
         )
         if (err) {
-            if (err.code === '23503') {
+            const unwrappedErr = err.nativeError || err
+            if (unwrappedErr.code === '23503') {
                 throw new InputError('One of the Posts does not exist.')
             }
-            if (err.name === 'ValidationError') {
-                throw new InputError(err)
+            if (unwrappedErr.name === 'ValidationError') {
+                throw new InputError(unwrappedErr)
             }
             throw new InputError('Error unknown.')
         }
@@ -188,11 +190,12 @@ const removeFromCollection: GraphQLFieldConfig<any, any, any> = {
             collection.$relatedQuery('posts').unrelate().whereIn('Post.id', iPostIds),
         )
         if (err) {
-            if (err.code === '23503') {
+            const unwrappedErr = err.nativeError || err
+            if (unwrappedErr.code === '23503') {
                 throw new InputError('One of the Posts does not exist.')
             }
-            if (err.name === 'ValidationError') {
-                throw new InputError(err)
+            if (unwrappedErr.name === 'ValidationError') {
+                throw new InputError(unwrappedErr)
             }
             throw new InputError('Error unknown.')
         }
