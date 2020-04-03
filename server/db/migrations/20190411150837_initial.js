@@ -1,6 +1,3 @@
-// Has to be done by superuser:
-// CREATE EXTENSION IF NOT EXISTS pg_trgm;
-
 exports.up = async knex => {
     await knex.schema
             .createTable('User', table => {
@@ -120,7 +117,8 @@ exports.up = async knex => {
                 FOR EACH STATEMENT
                 EXECUTE PROCEDURE refresh_post_search_view();
 
-                CREATE INDEX idx_fts_post ON "Post" USING gin(gin_fts_fct(title, caption, language));
+                CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
                 CREATE INDEX post_title_trgmidx ON "Post" USING gin(title gin_trgm_ops);
                 CREATE INDEX post_caption_trgmidx ON "Post" USING gin(caption gin_trgm_ops);
                 CREATE INDEX keyword_name_trgmidx ON "Keyword" USING gin(name gin_trgm_ops);
