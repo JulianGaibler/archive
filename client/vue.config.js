@@ -13,7 +13,7 @@ module.exports = {
         config.resolveLoader.alias.set('changelog-loader', './webpack/changelog-loader.js')
         config.module
             .rule('changelog')
-            .test(/changelog.toml/)
+            .test(/changelog.yaml/)
             .use('changelog-loader')
             .loader('changelog-loader')
             .end()
