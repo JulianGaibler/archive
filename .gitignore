@@ -1,6 +1,7 @@
 # Normal stuff
 
 .DS_Store
-server/.env
+.env
+*/.env
 .idea/
 server/public/
