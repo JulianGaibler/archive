@@ -14,7 +14,6 @@ services:
       - ./server:/server/app:z
       # Data mount dependencies
       - /server/node_modules
-    restart: always
 
   postgres:
     image: postgres:10.3
@@ -25,6 +24,8 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
+      - ./scripts:/docker-entrypoint-initdb.d
       - postgres:/var/lib/postgresql/data
+
 volumes:
   postgres:
