@@ -81,7 +81,7 @@ class Server {
             this.app.use(logger('dev'))
             this.app.use('/content', express.static('public'))
             this.app.use(
-                `${this.options.endpoint}/playground`,
+                `${this.options.endpoint.replace(/^\/+/, '')}/playground`,
                 expressPlayground({
                     endpoint: this.options.endpoint,
                     subscriptionEndpoint: 'ws://localhost:4000/',
