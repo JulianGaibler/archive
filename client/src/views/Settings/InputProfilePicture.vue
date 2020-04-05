@@ -3,28 +3,30 @@
         <div v-if="errors" class="errorBox">
             <p v-for="(error, i) in errors" :key="i">{{error.message}}</p>
         </div>
-        <div class="profilePic" ref="profilePic">
-            <div class="dropzone" :class="{showDropzone}" ref="dropzone"></div>
-            <div v-if="uploading" class="indicatorWrapper indicatorWrapper-absolute indicatorWrapper-center">
-                <div class="indicator indicator-shadow">
-                    <Lottie :options="animOptions" />
+        <div class="profilePicContainer">
+            <div class="profilePic" ref="profilePic">
+                <div class="dropzone" :class="{showDropzone}" ref="dropzone"></div>
+                <div v-if="uploading" class="indicatorWrapper indicatorWrapper-absolute indicatorWrapper-center">
+                    <div class="indicator indicator-shadow">
+                        <Lottie :options="animOptions" />
+                    </div>
                 </div>
+                <picture v-if="me && me.profilePicture && resources">
+                    <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}upic/${me.profilePicture}-256.webp`">
+                    <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${me.profilePicture}-256.jpeg`">
+                </picture>
             </div>
-            <picture v-if="me && me.profilePicture && resources">
-                <source type="image/webp" :srcset="`//${resources.resourceDomain}/${resources.resourcePath}upic/${me.profilePicture}-256.webp`">
-                <img :src="`//${resources.resourceDomain}/${resources.resourcePath}upic/${me.profilePicture}-256.jpeg`">
-            </picture>
-        </div>
 
-        <div class="itemRow itemRow-center">
-            <input
-                v-if="uploadReady"
-                name="selectfile"
-                id="selectfile"
-                @change="uploadPicture"
-                type="file">
-            <label class="button button-icon" for="selectfile"><UploadEdit /></label>
-            <button class="button button-icon" @click="deletePicture"><TrashEdit /></button>
+            <div class="itemRow itemRow-center">
+                <input
+                    v-if="uploadReady"
+                    name="selectfile"
+                    id="selectfile"
+                    @change="uploadPicture"
+                    type="file">
+                <label class="button button-icon" for="selectfile"><UploadEdit /></label>
+                <button class="button button-icon" @click="deletePicture"><TrashEdit /></button>
+            </div>
         </div>
     </div>
 </template>
@@ -138,8 +140,10 @@ export default {
         overflow hidden
         position absolute
         z-index -1
-    .profilePic
+    .profilePicContainer
         width 10rem
+        margin 0 auto
+    .profilePic
         height 10rem
         margin 0 auto
         background $archive-grey2

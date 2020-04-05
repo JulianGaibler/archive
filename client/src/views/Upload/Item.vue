@@ -12,7 +12,7 @@
                 <div class="indicatorWrapper indicatorWrapper-absolute indicatorWrapper-center" v-if="uploadManager.locked">
                     <div class="indicator indicator-shadow">
                         <IconQueue v-if="status.queued" />
-                        <Lottie v-else-if="status.uploading" :options="animOptions" />
+                        <Lottie class="animated" v-else-if="status.uploading" :options="animOptions" />
                         <IconDone v-else-if="status.done" />
                         <IconClose v-else-if="status.failed" />
                     </div>

@@ -1,12 +1,12 @@
 const spawn = require('cross-spawn')
-const toml = require('toml')
+const YAML = require('yaml')
 const { DateTime } = require('luxon')
 
 const captureRegex = /\[(.*?)\]\s(.*?)(?:\s-\s#(.*?))?$/
 
 module.exports = function(source) {
     this.cacheable && this.cacheable()
-    let value = toml.parse(source)
+    let value = YAML.parse(source)
 
     const tagsWithDate = getGitTagsWithDate()
 

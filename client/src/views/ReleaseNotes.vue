@@ -27,7 +27,7 @@
 </template>
 
 <script>
-import changelog from '../../../changelog.toml'
+import changelog from '../../../changelog.yaml'
 
 export default {
     name: 'ReleaseNotes',
@@ -46,7 +46,10 @@ export default {
     .badge
         color rgba(255,255,255,0.85)
         border-radius 0.2rem
-
+    .frame.framed
+        display flex
+        flex-direction column
+        align-items center
     section
         position relative
         padding 2.5rem 1rem
@@ -59,7 +62,7 @@ export default {
                 c background archive-primary1
                 width 4rem
                 font-weight 600
-                padding 0.35rem
+                padding 0.5rem 0.3rem
                 text-align center
                 display inline-block
                 margin-right .5rem
@@ -88,7 +91,7 @@ export default {
                     font-weight 600
                     margin-top 0.05rem
                     margin-right .5rem
-                    padding 0.25rem 0.4rem
+                    padding 0.4rem 0.4rem
                     text-transform uppercase
                     text-align center
                     &.added
