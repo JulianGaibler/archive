@@ -1,5 +1,5 @@
 import Knex from 'knex'
-import { Model } from 'objection'
+import { Model, knexSnakeCaseMappers } from 'objection'
 import knexfile from '../knexfile'
 import { to } from './utils'
 
@@ -12,7 +12,10 @@ class Database {
             return
         }
         this.config = knexfile
-        this.knexInstance = Knex(this.config)
+        this.knexInstance = Knex({
+            ...this.config,
+            ...knexSnakeCaseMappers(),
+        })
         Model.knex(this.knexInstance)
     }
 
