@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "dotenv -- nodemon -e ts,graphql -x ts-node src/index.ts",
     "dockerized": "npm run knex migrate:latest && nodemon -e ts,graphql -x ts-node src/index.ts",
+    "production": "npm run knex migrate:latest && node dist/index.js",
     "debug": "dotenv -- nodemon -e ts,graphql -x ts-node --inspect src/index.ts",
     "build": "rimraf dist && tsc",
     "doc": "graphdoc -e http://localhost:4000/ -o ./doc/schema",

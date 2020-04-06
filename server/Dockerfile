@@ -1,5 +1,4 @@
 # alpine images for small container size
-# build server application with transpiling
 FROM node:lts-alpine as build-server-stage
 
 # install dependencies to be able to build the needed binaries
@@ -10,6 +9,7 @@ RUN apk add autoconf
 RUN apk add automake
 RUN apk add python3
 
+# build server application with transpiling
 COPY ./package*.json ./
 RUN npm install
 COPY ./ ./
@@ -22,5 +22,11 @@ ENV PORT 80
 COPY --from=build-server-stage dist/ ./dist
 COPY --from=build-server-stage knexfile.js ./knexfile.js
 COPY --from=build-server-stage node_modules/ ./node_modules/
+
+# for the migrations
+COPY ./package*.json ./
+COPY ./db/migrations/ ./db/migrations
+
+# run the thing
 EXPOSE 80
-CMD ["node", "dist/index.js"]
+CMD ["npm", "run", "production"]
