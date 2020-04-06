@@ -15,7 +15,6 @@ RUN npm install
 # Bundle app source
 COPY . .
 
-# Exports
-ENV PORT=3000
-EXPOSE 3000
+# Exports (not used if docker network in host mode)
+EXPOSE 4000
 CMD [ "npm", "run", "dockerized" ]
