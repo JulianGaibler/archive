@@ -5,3 +5,4 @@
 */.env
 .idea/
 server/public/
+.vscode

@@ -1,0 +1,45 @@
+# Production
+
+version: "3.7"
+services:
+  postgres:
+    image: postgres:10.3
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./scripts:/docker-entrypoint-initdb.d
+      - postgres:/var/lib/postgresql/data
+    restart: always
+
+  server:
+    container_name: server
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    ports:
+      - 4000:4000
+    volumes:
+      - ./web:/web:z
+    restart: always
+
+  client:
+    container_name: client
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    # depends_on:
+    #   - server
+    ports:
+      - 80:80
+    volumes:
+      - "/client/node_modules"
+
+volumes:
+  postgres:
