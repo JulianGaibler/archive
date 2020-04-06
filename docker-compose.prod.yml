@@ -24,9 +24,7 @@ services:
     env_file:
       - .env
     ports:
-      - 4000:4000
-    volumes:
-      - ./web:/web:z
+      - "4000" # only docker-internally
     restart: always
 
   client:
@@ -34,12 +32,29 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
-    # depends_on:
-    #   - server
+    environment: 
+      VUE_APP_GRAPHQL_HTTP: ${VUE_APP_GRAPHQL_HTTP}
+      VUE_APP_GRAPHQL_WS: ${VUE_APP_GRAPHQL_WS}
+    depends_on:
+      - server
+    ports:
+      - "80" # only docker-internally 
+
+  proxy:
+    image: nginx:1.16.0-alpine
+    container_name: reverse_proxy
+    depends_on: 
+      - server
+      - client
+    volumes:
+      - ./proxy/nginx.conf:/etc/nginx/nginx.conf
+      - ./proxy/error.log:/etc/nginx/error_log.log
+      - ./proxy/cache/:/etc/nginx/cache
+      - ./proxy/cert/:/etc/cert/
+      - ./proxy/ssl-key-pwd.lock/:/etc/keys/ssl-key-pwd
     ports:
       - 80:80
-    volumes:
-      - "/client/node_modules"
+      - 443:443
 
 volumes:
   postgres:
