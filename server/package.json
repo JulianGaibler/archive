@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@2fd/graphdoc": "^2.4.0",
-    "apollo-server-express": "^2.15.0",
+    "apollo-server-express": "^2.14.2",
     "async-mutex": "^0.1.4",
     "bcryptjs": "2.4.3",
     "cookie-parser": "^1.4.5",
