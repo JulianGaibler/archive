@@ -1,6 +1,9 @@
 # Changelog
 # Labels: [Added], [Fixed], [Improved]
 
+1.0.2:
+  - '[Fixed] Prompts not showing correct words or having empty buttons'
+  - '[Fixed] Multiple styling issues'
 1.0.1:
   - '[Added] Release notes view'
   - '[Fixed] Color inconsistencies with dark-mode - #4'
