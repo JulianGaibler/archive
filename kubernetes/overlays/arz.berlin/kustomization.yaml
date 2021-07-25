@@ -6,3 +6,10 @@ bases:
 
 patchesStrategicMerge:
 - client-ing.yaml
+- server-ing.yaml
+
+
+images:
+- name: arceo99/archive-client
+  newName: arceo99/archive-client
+  newTag: 1.0.2-1

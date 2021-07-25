@@ -7,5 +7,15 @@ spec:
   tls:
   - hosts:
     - archive.jwels.berlin
+    secretName: archive-tls
   rules:
   - host: archive.jwels.berlin
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: client
+            port:
+              number: 80

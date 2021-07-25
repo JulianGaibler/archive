@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: client
+  name: server
   namespace: archive
 spec:
   tls:
@@ -12,10 +12,10 @@ spec:
   - host: archive.arz.berlin
     http:
       paths:
-      - path: /
+      - path: /api
         pathType: Prefix
         backend:
           service:
-            name: client
+            name: server
             port:
               number: 80

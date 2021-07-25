@@ -10,6 +10,7 @@ resources:
   - postgres-svc.yaml
   # Server
   - server-deploy.yaml
+  - server-ing.yaml
   - server-svc.yaml
   - archive-data-pvc.yaml
   # Client

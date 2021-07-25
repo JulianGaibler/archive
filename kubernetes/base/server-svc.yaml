@@ -7,8 +7,7 @@ metadata:
   namespace: archive
 spec:
   ports:
-    - name: "4000"
-      port: 4000
+    - port: 80
       targetPort: 4000
   selector:
     app: server

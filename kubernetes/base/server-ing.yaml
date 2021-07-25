@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: client
+  name: server
   namespace: archive
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
@@ -15,10 +15,10 @@ spec:
   - host: archive.awesomium.de # Example domain
     http:
       paths:
-      - path: /
+      - path: /api
         pathType: Prefix
         backend:
           service:
-            name: client
+            name: server
             port:
               number: 80
