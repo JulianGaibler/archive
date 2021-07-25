@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # Namespaces
+  - archive-ns.yaml
+  # Postgres
+  - postgres-deploy.yaml
+  - postgres-pvc.yaml
+  - postgres-svc.yaml
+  # Server
+  - server-deploy.yaml
+  - server-svc.yaml
+  - archive-data-pvc.yaml
+  # Client
+  - client-deploy.yaml
+  - client-ing.yaml
+  - client-svc.yaml

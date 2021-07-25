@@ -9,10 +9,10 @@ metadata:
 spec:
   tls:
   - hosts:
-    - archive.arz.berlin
+    - archive.awesomium.de # Example domain
     secretName: express-tls
   rules:
-  - host: archive.arz.berlin
+  - host: archive.awesomium.de # Example domain
     http:
       paths:
       - path: /
