@@ -1,13 +1,13 @@
-# kustomize build . | kubectl apply -f -
+# kustomize build . | kubectl apply -f --
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: archive
+namespace: tadoo-archive
 bases:
   - ../../base
 
 resources:
-  - archive-ns.yaml
+- tadoo-archive-ns.yaml
 
 patches:
 - target:
@@ -26,4 +26,5 @@ patches:
 images:
 - name: arceo99/archive-client
   newName: arceo99/archive-client
-  newTag: 1.0.2-1
+  newTag: 1.0.2-2
+
