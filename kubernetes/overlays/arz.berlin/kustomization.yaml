@@ -9,8 +9,9 @@ patchesStrategicMerge:
 - server-ing.yaml
 - adminer-ing.yaml
 
-
 images:
 - name: arceo99/archive-client
   newName: arceo99/archive-client
   newTag: 1.0.2-1
+
+namespace: archive
