@@ -1,21 +1,21 @@
-# build environment
-FROM node:12.2.0-alpine as build
-RUN apk add --no-cache git
+# Build environment
+FROM node:16 as build
 
-WORKDIR /app
-ENV PATH /app/node_modules/.bin:$PATH
-COPY package.json /app/package.json
-RUN npm install --silent
+WORKDIR /usr/src/app
+# Install dependencies
+ENV PATH /usr/src/app/node_modules/.bin:$PATH
+COPY ./ ./
+RUN npm ci
 RUN npm install @vue/cli@3.7.0 -g
-COPY . /app
+# Build source
 RUN npm run build
 
-# production environment: serving static files with NGINX
+# Production environment: serving static files with NGINX
 FROM nginx:1.16.0-alpine
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /usr/src/app/dist /usr/share/nginx/html
 
-# Copy NGINX configuration
+# copy NGINX configuration
 RUN rm /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/conf.d
-EXPOSE 80
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]
