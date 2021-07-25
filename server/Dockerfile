@@ -11,7 +11,8 @@ RUN apk add python3
 
 # build server application with transpiling
 COPY ./ ./
-RUN npm install
+# npm ci: https://docs.npmjs.com/cli/v7/commands/npm-ci
+RUN npm ci
 RUN npm run build
 
 # create Docker image for production use
