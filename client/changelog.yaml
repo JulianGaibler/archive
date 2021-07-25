@@ -1,0 +1,19 @@
+# Changelog
+# Labels: [Added], [Fixed], [Improved]
+
+1.0.2:
+  - '[Fixed] Prompts not showing correct words or having empty buttons'
+  - '[Fixed] Multiple styling issues'
+1.0.1:
+  - '[Added] Release notes view'
+  - '[Fixed] Color inconsistencies with dark-mode - #4'
+  - '[Fixed] Queue has horizontal overflow on small screens - #5'
+  - '[Fixed] Search on user- and collection-views does not save scroll state - #8'
+  - '[Fixed] Telegram-Bot search does not show all search results - #11'
+  - '[Improved] Added more user-facing error messages in upload view'
+  - '[Improved] More keyboard accessibilty and better dark-mode contrast'
+1.0.0:
+  - '[Added] Dark Mode'
+  - '[Fixed] Missing tag-icon'
+  - '[Fixed] Radio buttons and checkboxes not being updated after reload'
+  - '[Improved] GIFs start playing automatically and loop'
