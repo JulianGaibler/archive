@@ -35,7 +35,10 @@ spec:
           name: server
           ports:
             - containerPort: 4000
-          resources: {}
+          resources: 
+            limits:
+                memory: "2Gi"
+                cpu: "2"
           volumeMounts:
             - mountPath: /usr/src/app/archive-data
               name: archive-data
