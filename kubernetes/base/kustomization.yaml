@@ -17,3 +17,7 @@ resources:
   - client-deploy.yaml
   - client-ing.yaml
   - client-svc.yaml
+  # Adminer
+  - adminer-deploy.yaml
+  - adminer-ing.yaml
+  - adminer-svc.yaml

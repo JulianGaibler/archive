@@ -7,6 +7,7 @@ bases:
 patchesStrategicMerge:
 - client-ing.yaml
 - server-ing.yaml
+- adminer-ing.yaml
 
 
 images:
