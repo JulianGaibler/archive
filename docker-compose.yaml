@@ -5,54 +5,35 @@ services:
     ports:
       - 5432:5432
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: archive
+      POSTGRES_PASSWORD: archive
     volumes:
-      - ./scripts:/docker-entrypoint-initdb.d
       - postgres:/var/lib/postgresql/data
     restart: always
-
   server:
-    container_name: server
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: ./server/
     depends_on:
       - postgres
-    env_file:
-      - .env
     ports:
-      - "4000" # only docker-internally
+      - 4000:4000
+    environment:
+      DB_USER: archive
+      DB_PASSWORD: archive
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: archive
+      STORAGE_PATH: archive-data
+    volumes:
+      - archive-data:/usr/src/app/archive-data
     restart: always
-
   client:
-    container_name: client
     build:
-      context: ./client
-      dockerfile: Dockerfile
-    environment: 
-      VUE_APP_GRAPHQL_HTTP: ${VUE_APP_GRAPHQL_HTTP}
-      VUE_APP_GRAPHQL_WS: ${VUE_APP_GRAPHQL_WS}
+      context: ./client/
     depends_on:
       - server
     ports:
-      - "80" # only docker-internally 
-
-  proxy:
-    image: nginx:1.16.0-alpine
-    container_name: reverse_proxy
-    depends_on: 
-      - server
-      - client
-    volumes:
-      - ./proxy/nginx.conf:/etc/nginx/nginx.conf
-      - ./proxy/error.log:/etc/nginx/error_log.log
-      - ./proxy/cache/:/etc/nginx/cache
-      - ./proxy/cert/:/etc/cert/
-      - ./proxy/ssl-key-pwd.lock/:/etc/keys/ssl-key-pwd
-    ports:
-      - 80:80
-      - 443:443
-
+      - "8080:8080"
 volumes:
   postgres:
+  archive-data:
