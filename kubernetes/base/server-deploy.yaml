@@ -17,6 +17,19 @@ spec:
       labels:
         app: server
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+              - key: kubernetes.io/arch
+                operator: NotIn
+                values:
+                - arm64
       containers:
         - env:
             - name: DB_DATABASE

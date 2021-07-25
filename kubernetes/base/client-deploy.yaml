@@ -16,6 +16,19 @@ spec:
       labels:
         app: client
     spec:
+      affinity:
+        nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: kubernetes.io/arch
+                  operator: In
+                  values:
+                  - amd64
+                - key: kubernetes.io/arch
+                  operator: NotIn
+                  values:
+                  - arm64
       containers:
         - env:
             - name: VUE_APP_GRAPHQL_HTTP
