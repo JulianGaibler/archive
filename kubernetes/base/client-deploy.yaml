@@ -30,12 +30,7 @@ spec:
                   values:
                   - arm64
       containers:
-        - env:
-            - name: VUE_APP_GRAPHQL_HTTP
-              value: https://archive.arz.berlin/api
-            - name: VUE_APP_GRAPHQL_WS
-              value: wss://archive.arz.berlin/api
-          image: arceo99/archive-client:1.0.2
+        - image: arceo99/archive-client:1.0.2
           name: client
           ports:
             - containerPort: 8080
