@@ -31,19 +31,9 @@ spec:
                 values:
                 - arm64
       containers:
-        - env:
-            - name: DB_DATABASE
-              value: archive
-            - name: DB_HOST
-              value: postgres
-            - name: DB_PASSWORD
-              value: archive
-            - name: DB_PORT
-              value: "5432"
-            - name: DB_USER
-              value: archive
-            - name: STORAGE_PATH
-              value: archive-data
+        - envFrom:
+            - configMapRef:
+                name: server
           image: arceo99/archive-server:1.0.2
           name: server
           ports:

@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: server
+  namespace: archive
+data:
+  # CREATE_ACCOUNTS: allowed
+  DB_DATABASE: archive
+  DB_HOST: postgres
+  DB_PART: "5432"
+  DB_PASSWORD: archive
+  DB_USER: archive
+  DEBUG: knex:query,knex:bindings
+  ENDPOINT: /
+  NODE_ENV: production
+  # ORIGIN: ""
+  PORT: "4000"
+  STORAGE_CLASS: archive-data
+  STORAGE_URL: files/
+  # TELEGRAM_BOT_TOKEN: ""
