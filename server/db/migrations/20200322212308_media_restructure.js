@@ -127,9 +127,11 @@ exports.up = async knex => {
         .createTable('task', table => {
             table.increments('id');
             table.string('ext', 10).notNullable();
+            table.string('mime_type', 255).notNullable();
             table.text('notes').notNullable();
+            table.text('serialized_item');
             table.enu('status', ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'], { useNative: true, enumName: 'task_status' }).notNullable();
-            table.integer('uploader_id').references('User.id').onDelete('SET NULL');
+            table.integer('uploader_id').references('user.id').onDelete('SET NULL');
             table.specificType('progress', 'smallint');
             table.integer('add_to_post_id').references('post.id').onDelete('SET NULL');
             table.integer('created_item_id').references('post.id').onDelete('SET NULL');
@@ -138,7 +140,7 @@ exports.up = async knex => {
         });
 
             await knex.raw(`
-                CREATE MATERIALIZED VIEW post_search_view AS
+                CREATE MATERIALIZED VIEW item_search_view AS
                 SELECT i.id AS item_id,
                   i.position,
                   p.id AS post_id,
@@ -154,24 +156,24 @@ exports.up = async knex => {
                 LEFT JOIN "keyword" k ON k.id = kp.keyword_id
                 GROUP BY i.id, p.id, i.caption, i.description;
 
-                CREATE index idx_search ON post_search_view USING GIN(search);
+                CREATE index idx_search ON item_search_view USING GIN(search);
 
-                CREATE OR REPLACE FUNCTION refresh_post_search_view_fn() RETURNS trigger AS $function$
+                CREATE OR REPLACE FUNCTION refresh_item_search_view_fn() RETURNS trigger AS $function$
                 BEGIN
-                  REFRESH MATERIALIZED VIEW post_search_view;
+                  REFRESH MATERIALIZED VIEW item_search_view;
                   RETURN NULL;
                 END;
                 $function$ LANGUAGE plpgsql;
 
-                CREATE TRIGGER refresh_post_search_view_trigger
+                CREATE TRIGGER refresh_item_search_view_trigger
                 AFTER INSERT OR UPDATE OR DELETE ON "post"
                 FOR EACH STATEMENT
-                EXECUTE PROCEDURE refresh_post_search_view_fn();
+                EXECUTE PROCEDURE refresh_item_search_view_fn();
 
                 CREATE TRIGGER refresh_item_search_view_trigger
                 AFTER INSERT OR UPDATE OR DELETE ON "item"
                 FOR EACH STATEMENT
-                EXECUTE PROCEDURE refresh_post_search_view_fn();
+                EXECUTE PROCEDURE refresh_item_search_view_fn();
 
                 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 

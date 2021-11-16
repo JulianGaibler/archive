@@ -1,0 +1,53 @@
+import { GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
+import { connectionDefinitions } from 'graphql-relay'
+import SessionModel from 'db/models/SessionModel'
+import Context from 'Context'
+import { HashIdTypes } from '../../HashId'
+import { nodeInterface } from '../node'
+import { DateTime, globalIdField } from '../types'
+import UserType from '../user/UserType'
+
+import UserActions from 'actions/UserActions'
+
+const SessionType = new GraphQLObjectType({
+    name: 'Session',
+    description: 'Represents a Session object of an user.',
+    interfaces: [nodeInterface],
+    fields: () => ({
+        id: globalIdField(SessionModel),
+        user: {
+            description: 'User associated with that session',
+            type: UserType,
+            resolve: async (session, args, ctx: Context) =>
+                UserActions.qUser(ctx, { userId: session.userId }),
+        },
+        userAgent: {
+            description: 'Last known User-Agent string of this session.',
+            type: new GraphQLNonNull(GraphQLString),
+        },
+        firstIp: {
+            description: 'IP with which the session was created.',
+            type: new GraphQLNonNull(GraphQLString),
+        },
+        latestIp: {
+            description: 'Last IP that used this session.',
+            type: new GraphQLNonNull(GraphQLString),
+        },
+        createdAt: {
+            description: 'Identifies the date and time when the session was created.',
+            type: new GraphQLNonNull(DateTime),
+        },
+        updatedAt: {
+            description: 'Identifies the date and time when the session was last used.',
+            type: new GraphQLNonNull(DateTime),
+        },
+    }),
+})
+
+export default SessionType
+
+export const sessionHashType = HashIdTypes.SESSION
+
+export const { connectionType: sessionConnection } = connectionDefinitions({
+    nodeType: SessionType,
+})
