@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: postgres
+  name: postgres
+  namespace: archive
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - env:
+            - name: POSTGRES_PASSWORD
+              value: archive
+            - name: POSTGRES_USER
+              value: archive
+          image: postgres:10.3
+          name: postgres
+          ports:
+            - containerPort: 5432
+          resources: 
+            limits:
+                memory: "1Gi"
+                cpu: "1"  
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgres
+              subPath: postgres
+      restartPolicy: Always
+      volumes:
+        - name: postgres
+          persistentVolumeClaim:
+            claimName: postgres
+status: {}

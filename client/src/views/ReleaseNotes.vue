@@ -27,7 +27,7 @@
 </template>
 
 <script>
-import changelog from '../../../changelog.yaml'
+import changelog from '../../changelog.yaml'
 
 export default {
     name: 'ReleaseNotes',

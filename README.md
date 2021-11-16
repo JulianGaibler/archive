@@ -25,7 +25,7 @@ If you want to change the server configuration, copy the `example.env` file, ren
 
 In order to run the server, you need a development PostgreSQL. To make the setup easier, there is a docker-compose file. To install the database you can simply run this from the root directory:
 ```bash
-docker-compose up -d
+docker-compose up -d postgres
 ```
 
 When you've got the database set up, you can run the following command in the `server/` directory to initialize it:
@@ -45,6 +45,15 @@ npm run dev
 # Build client
 npm run build
 ```
+
+### Deploying the app
+
+The app can be deployed by running: 
+``` bash
+docker-compose up
+```
+This will build the docker images for the client and the server and start both along with a postgres database. The server can then be accessed on port 4000, the client on port 8080. 
+The postgres data as well as the uploaded data to the server are persisted using named docker volumes between deploys. 
 
 ## Contribution and Commits
 

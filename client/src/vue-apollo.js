@@ -13,10 +13,16 @@ const cache = new InMemoryCache({
 })
 
 // Http endpoint
-const httpEndpoint = process.env.VUE_APP_GRAPHQL_HTTP || 'http://localhost:4000'
+const httpEndpoint = process.env.NODE_ENV == 'production'
+    ? process.env.VUE_APP_GRAPHQL_HTTP || `https://${location.host}/api`
+    : process.env.VUE_APP_GRAPHQL_HTTP || 'http://localhost:4000'
+// WS endpoint
+const wsEndpoint = process.env.NODE_ENV == 'production'
+    ? process.env.VUE_APP_GRAPHQL_WS || `wss://${location.host}/api`
+    : process.env.VUE_APP_GRAPHQL_WS || 'ws://localhost:4000' 
 
 const link = createUploadLink({
-    uri: process.env.VUE_APP_GRAPHQL_HTTP || 'http://localhost:4000',
+    uri: httpEndpoint,
     fetch: customFetch,
     credentials: 'include', // same-origin include
 })
@@ -24,7 +30,7 @@ const link = createUploadLink({
 // Config
 const defaultOptions = {
     httpEndpoint,
-    wsEndpoint: process.env.VUE_APP_GRAPHQL_WS || 'ws://localhost:4000',
+    wsEndpoint,
     // Enable Automatic Query persisting with Apollo Engine
     persisting: false,
     // You need to pass a `wsEndpoint` for this to work

@@ -1,14 +1,39 @@
-version: '3'
+version: "3.7"
 services:
   postgres:
     image: postgres:10.3
     ports:
       - 5432:5432
-    restart: always
     environment:
       POSTGRES_USER: archive
       POSTGRES_PASSWORD: archive
     volumes:
       - postgres:/var/lib/postgresql/data
+    restart: always
+  server:
+    build:
+      context: ./server/
+    depends_on:
+      - postgres
+    ports:
+      - 4000:4000
+    environment:
+      DB_USER: archive
+      DB_PASSWORD: archive
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: archive
+      STORAGE_PATH: archive-data
+    volumes:
+      - archive-data:/usr/src/app/archive-data
+    restart: always
+  client:
+    build:
+      context: ./client/
+    depends_on:
+      - server
+    ports:
+      - "8080:8080"
 volumes:
   postgres:
+  archive-data:
