@@ -16,7 +16,7 @@
         "debounce": "^1.2.0",
         "focus-visible": "^5.0.2",
         "lottie-web": "^5.6.6",
-        "marked": "^0.8.1",
+        "marked": "^4.0.10",
         "ua-parser-js": "^0.7.21",
         "v-click-outside": "^3.0.1",
         "vue": "^2.6.11",
