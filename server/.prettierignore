@@ -1,0 +1,12 @@
+.dist
+node-modules
+.eslintrc.js
+.prettierrc.js
+.vscode
+public
+package.json
+package-lock.json
+.editorconfig
+.env
+dist/
+example.env

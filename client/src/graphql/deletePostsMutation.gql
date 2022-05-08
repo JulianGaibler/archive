@@ -1,3 +1,0 @@
-mutation deletePosts($ids: [ID!]!) {
-    deletePosts(ids: $ids)
-}

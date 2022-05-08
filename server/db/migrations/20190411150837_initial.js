@@ -1,93 +1,137 @@
-exports.up = async knex => {
-    await knex.schema
-            .createTable('User', table => {
-                table.increments('id');
-                table.string('username', 64).notNullable();
-                table.string('name', 64).notNullable();
-                table.string('password', 96).notNullable();
-                table.string('profilePicture');
-                table.string('telegramid', 20);
-                table.bigInteger('updatedAt').notNullable();
-                table.bigInteger('createdAt').notNullable();
+exports.up = async (knex) => {
+  await knex.schema
+    .createTable('User', (table) => {
+      table.increments('id')
+      table.string('username', 64).notNullable()
+      table.string('name', 64).notNullable()
+      table.string('password', 96).notNullable()
+      table.string('profilePicture')
+      table.string('telegramid', 20)
+      table.bigInteger('updatedAt').notNullable()
+      table.bigInteger('createdAt').notNullable()
 
-                table.unique(['username'])
-            })
-            .createTable('Post', table => {
-                table.increments('id');
-                table.string('title').notNullable();
-                table.enu('type', ['VIDEO', 'IMAGE', 'GIF'], { useNative: true, enumName: 'Format' }).notNullable();
-                table.string('language', 32).notNullable();
-                table.string('color', 7);
-                table.string('originalPath');
-                table.string('compressedPath');
-                table.string('thumbnailPath');
-                table.string('relHeight');
-                table.integer('uploaderId').references('User.id').onDelete('SET NULL');
-                table.text('caption');
-                table.text('description');
-                table.bigInteger('updatedAt').notNullable();
-                table.bigInteger('createdAt').notNullable();
-            })
-            .createTable('Keyword', table => {
-                table.increments('id');
-                table.string('name', 64).notNullable();
-                table.bigInteger('updatedAt').notNullable();
-                table.bigInteger('createdAt').notNullable();
+      table.unique(['username'])
+    })
+    .createTable('Post', (table) => {
+      table.increments('id')
+      table.string('title').notNullable()
+      table
+        .enu('type', ['VIDEO', 'IMAGE', 'GIF'], {
+          useNative: true,
+          enumName: 'Format',
+        })
+        .notNullable()
+      table.string('language', 32).notNullable()
+      table.string('color', 7)
+      table.string('originalPath')
+      table.string('compressedPath')
+      table.string('thumbnailPath')
+      table.string('relHeight')
+      table.integer('uploaderId').references('User.id').onDelete('SET NULL')
+      table.text('caption')
+      table.text('description')
+      table.bigInteger('updatedAt').notNullable()
+      table.bigInteger('createdAt').notNullable()
+    })
+    .createTable('Keyword', (table) => {
+      table.increments('id')
+      table.string('name', 64).notNullable()
+      table.bigInteger('updatedAt').notNullable()
+      table.bigInteger('createdAt').notNullable()
 
-                table.unique(['name'])
-            })
-            .createTable('Collection', table => {
-                table.increments('id');
-                table.string('title').notNullable();
-                table.text('description');
-                table.integer('creatorId').references('User.id').onDelete('SET NULL');
-                table.bigInteger('updatedAt').notNullable();
-                table.bigInteger('createdAt').notNullable();
-            })
-            .createTable('Task', table => {
-                table.increments('id');
-                table.string('title').notNullable();
-                table.string('ext', 10).notNullable();
-                table.text('notes').notNullable();
-                table.text('postjson');
-                table.enu('status', ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'], { useNative: true, enumName: 'TaskStatus' }).notNullable();
-                table.integer('uploaderId').references('User.id').onDelete('SET NULL');
-                table.specificType('progress', 'smallint');
-                table.integer('createdPostId').references('Post.id').onDelete('CASCADE');
-                table.bigInteger('updatedAt').notNullable();
-                table.bigInteger('createdAt').notNullable();
-            })
-            .createTable('KeywordToPost', table => {
-                table.integer('keyword_id').references('Keyword.id').onDelete('CASCADE').notNullable();
-                table.integer('post_id').references('Post.id').onDelete('CASCADE').notNullable();
-                table.primary(['keyword_id', 'post_id'],'KeywordToPost_primary_pair');
-                table.bigInteger('addedAt').notNullable();
-            })
-            .createTable('KeywordToCollection', table => {
-                table.integer('keyword_id').references('Keyword.id').onDelete('CASCADE').notNullable();
-                table.integer('collection_id').references('Collection.id').onDelete('CASCADE').notNullable();
-                table.primary(['keyword_id', 'collection_id'],'KeywordToCollection_primary_pair');
-                table.bigInteger('addedAt').notNullable();
-            })
-            .createTable('CollectionToPost', table => {
-                table.integer('collection_id').references('Collection.id').onDelete('CASCADE').notNullable();
-                table.integer('post_id').references('Post.id').onDelete('CASCADE').notNullable();
-                table.primary(['collection_id', 'post_id'],'CollectionToPost_primary_pair');
-                table.bigInteger('addedAt').notNullable();
-            })
-            .createTable('Session', table => {
-                table.increments('id');
-                table.string('token', 44).notNullable();
-                table.integer('userId').references('User.id').onDelete('CASCADE').notNullable();
-                table.string('userAgent', 512);
-                table.string('firstIP', 45).notNullable();
-                table.string('latestIP', 45).notNullable();
-                table.bigInteger('updatedAt').notNullable();
-                table.bigInteger('createdAt').notNullable();
+      table.unique(['name'])
+    })
+    .createTable('Collection', (table) => {
+      table.increments('id')
+      table.string('title').notNullable()
+      table.text('description')
+      table.integer('creatorId').references('User.id').onDelete('SET NULL')
+      table.bigInteger('updatedAt').notNullable()
+      table.bigInteger('createdAt').notNullable()
+    })
+    .createTable('Task', (table) => {
+      table.increments('id')
+      table.string('title').notNullable()
+      table.string('ext', 10).notNullable()
+      table.text('notes').notNullable()
+      table.text('postjson')
+      table
+        .enu('status', ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'], {
+          useNative: true,
+          enumName: 'TaskStatus',
+        })
+        .notNullable()
+      table.integer('uploaderId').references('User.id').onDelete('SET NULL')
+      table.specificType('progress', 'smallint')
+      table.integer('createdPostId').references('Post.id').onDelete('CASCADE')
+      table.bigInteger('updatedAt').notNullable()
+      table.bigInteger('createdAt').notNullable()
+    })
+    .createTable('KeywordToPost', (table) => {
+      table
+        .integer('keyword_id')
+        .references('Keyword.id')
+        .onDelete('CASCADE')
+        .notNullable()
+      table
+        .integer('post_id')
+        .references('Post.id')
+        .onDelete('CASCADE')
+        .notNullable()
+      table.primary(['keyword_id', 'post_id'], 'KeywordToPost_primary_pair')
+      table.bigInteger('addedAt').notNullable()
+    })
+    .createTable('KeywordToCollection', (table) => {
+      table
+        .integer('keyword_id')
+        .references('Keyword.id')
+        .onDelete('CASCADE')
+        .notNullable()
+      table
+        .integer('collection_id')
+        .references('Collection.id')
+        .onDelete('CASCADE')
+        .notNullable()
+      table.primary(
+        ['keyword_id', 'collection_id'],
+        'KeywordToCollection_primary_pair',
+      )
+      table.bigInteger('addedAt').notNullable()
+    })
+    .createTable('CollectionToPost', (table) => {
+      table
+        .integer('collection_id')
+        .references('Collection.id')
+        .onDelete('CASCADE')
+        .notNullable()
+      table
+        .integer('post_id')
+        .references('Post.id')
+        .onDelete('CASCADE')
+        .notNullable()
+      table.primary(
+        ['collection_id', 'post_id'],
+        'CollectionToPost_primary_pair',
+      )
+      table.bigInteger('addedAt').notNullable()
+    })
+    .createTable('Session', (table) => {
+      table.increments('id')
+      table.string('token', 44).notNullable()
+      table
+        .integer('userId')
+        .references('User.id')
+        .onDelete('CASCADE')
+        .notNullable()
+      table.string('userAgent', 512)
+      table.string('firstIP', 45).notNullable()
+      table.string('latestIP', 45).notNullable()
+      table.bigInteger('updatedAt').notNullable()
+      table.bigInteger('createdAt').notNullable()
 
-                table.unique(['token'])
-            });
-            await knex.raw(`
+      table.unique(['token'])
+    })
+  await knex.raw(`
                 CREATE MATERIALIZED VIEW post_search_view AS
                 SELECT p.id,
                     to_tsvector(concat(
@@ -127,20 +171,20 @@ exports.up = async knex => {
             `)
 }
 
-exports.down = async knex => {
-    await knex.raw('DROP TRIGGER IF EXISTS refresh_post_search_view ON "Post"')
-    await knex.raw('DROP FUNCTION IF EXISTS refresh_post_search_view()')
-    await knex.raw('DROP MATERIALIZED VIEW IF EXISTS post_search_view')
-    await knex.schema
-        .dropTableIfExists('Session')
-        .dropTableIfExists('CollectionToPost')
-        .dropTableIfExists('KeywordToCollection')
-        .dropTableIfExists('KeywordToPost')
-        .dropTableIfExists('Task')
-        .dropTableIfExists('Collection')
-        .dropTableIfExists('Keyword')
-        .dropTableIfExists('Post')
-        .dropTableIfExists('User');
-    await knex.raw('DROP TYPE "Format"')
-    await knex.raw('DROP TYPE "TaskStatus"')
+exports.down = async (knex) => {
+  await knex.raw('DROP TRIGGER IF EXISTS refresh_post_search_view ON "Post"')
+  await knex.raw('DROP FUNCTION IF EXISTS refresh_post_search_view()')
+  await knex.raw('DROP MATERIALIZED VIEW IF EXISTS post_search_view')
+  await knex.schema
+    .dropTableIfExists('Session')
+    .dropTableIfExists('CollectionToPost')
+    .dropTableIfExists('KeywordToCollection')
+    .dropTableIfExists('KeywordToPost')
+    .dropTableIfExists('Task')
+    .dropTableIfExists('Collection')
+    .dropTableIfExists('Keyword')
+    .dropTableIfExists('Post')
+    .dropTableIfExists('User')
+  await knex.raw('DROP TYPE "Format"')
+  await knex.raw('DROP TYPE "TaskStatus"')
 }

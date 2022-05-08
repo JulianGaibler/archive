@@ -1,129 +1,100 @@
-import express from 'express'
+import express, { Request, Response } from 'express'
 import expressPlayground from 'graphql-playground-middleware-express'
-import { SubscriptionServer, ConnectionContext } from 'subscriptions-transport-ws'
-import { graphqlUploadExpress } from 'graphql-upload'
-import graphqlHTTP from 'express-graphql'
-import {
-    execute,
-    subscribe,
-} from 'graphql'
-
+import { ApolloServer } from 'apollo-server-express'
+import { Server as HttpServer } from 'http'
 import schema from './schema'
 import AuthCookieUtils from './AuthCookieUtils'
-import SessionActions from 'actions/SessionActions'
+import SessionActions from '@src/actions/SessionActions'
+import { makeExecutableSchema } from '@graphql-tools/schema'
+import { GraphQLError } from 'graphql'
+import Context from '@src/Context'
+import {
+  ApolloServerPluginDrainHttpServer,
+  ApolloServerPluginLandingPageDisabled,
+} from 'apollo-server-core'
+import { ValidationError } from 'objection'
+import { ValidationInputError } from '@src/errors'
 
-import Context from '../../Context'
-
+/**
+ * This class is responsible for handling all GraphQL requests.
+ *
+ * @class GraphQLApi
+ */
 export default class {
+  async init(app: express.Application, server: HttpServer, options: any) {
+    // If server is in development mode, provide GraphQL Playground
+    if (process.env.NODE_ENV === 'development') {
+      app.use(
+        `${options.endpoint.replace(/^\/+/, '')}/playground`,
+        expressPlayground({
+          endpoint: options.endpoint,
+        }),
+      )
+    }
 
-    subscriptionServer: SubscriptionServer | null
-    options: any
-
-    constructor(app: express.Application, options) {
-        this.options = options
-        if (process.env.NODE_ENV === 'development') {
-            app.use(
-                `${this.options.endpoint.replace(/^\/+/, '')}/playground`,
-                expressPlayground({
-                    endpoint: this.options.endpoint,
-                    subscriptionEndpoint: `ws://localhost:${this.options.port}/`,
-                }),
-            )
+    const apollo = new ApolloServer({
+      schema: makeExecutableSchema({
+        typeDefs: schema,
+      }),
+      context: async ({ req, res }) =>
+        await this.createContext(req as any, res as any),
+      formatError: (err) => {
+        if (err.originalError instanceof ValidationError) {
+          const newErr = new ValidationInputError(err.originalError)
+          return new GraphQLError(
+            newErr.message,
+            err.nodes,
+            err.source,
+            err.positions,
+            err.path,
+            newErr,
+            newErr.extensions,
+          )
         }
-        app.use(
-            this.options.endpoint,
-            graphqlUploadExpress({
-                maxFileSize: 100000000, // 100000000 = 100 MB
-                maxFiles: 10,
-            }),
-            graphqlHTTP(async (req, res) => ({
-                schema,
-                context: await this.createContext(req, res),
-                customFormatErrorFn:
-                    process.env.NODE_ENV === 'development'
-                        ? this.debugErrorHandler
-                        : this.productionErrorHandler,
-                graphiql: false,
-            })),
-        )
-    }
 
-    private async createContext(req, res) {
-        const token = AuthCookieUtils.getAuthCookie(req)
-        let userIId = null
-        if (token) {
-            const userAgent = req.headers['user-agent']
-                ? req.headers['user-agent']
-                : ''
-            userIId = await SessionActions.qVerify({
-                token,
-                userAgent,
-                latestIp: req.ip,
-            })
+        if (process.env.NODE_ENV !== 'development') {
+          delete err.extensions.exception
         }
-        const ctx = new Context(req, res, userIId)
-        ctx.tmp.token = token
-        return ctx
-    }
 
-    createSubscriptionServer(combinedServer, cookieParserInstance) {
-        this.subscriptionServer = SubscriptionServer.create(
-            {
-                schema,
-                execute,
-                subscribe,
-                onConnect: async (connectionParams, webSocket, context: ConnectionContext) => ({
-                    ...connectionParams,
-                }),
-                onOperation: async (message, params, webSocket) => {
-                    await new Promise((resolve, reject) => {
-                        cookieParserInstance(
-                            webSocket.upgradeReq,
-                            null,
-                            error => {
-                                if (error) {
-                                    reject(error)
-                                } else {
-                                    resolve()
-                                }
-                            },
-                        )
-                    })
-                    return {
-                        ...params,
-                        context: await this.createContext(webSocket.upgradeReq, null),
-                    }
-                },
-            },
-            {
-                server: combinedServer,
-                path: this.options.endpoint,
-            },
-        )
-    }
+        return err
+      },
+      plugins: [
+        ApolloServerPluginDrainHttpServer({ httpServer: server }),
+        ApolloServerPluginLandingPageDisabled(),
+      ],
+    })
+    await apollo.start()
+    apollo.applyMiddleware({
+      app,
+      path: options.endpoint,
+      cors: options.corsOptions,
+    })
+  }
 
-    private debugErrorHandler(error) {
-        return {
-            name: error.name,
-            code:
-                error.originalError &&
-                (error.originalError.code || error.originalError.name),
-            message: error.message,
-            locations: error.locations,
-            path: error.path,
-            additionalInfo: error.originalError && error.originalError.fields,
-            stack: error.stack ? error.stack.split('\n') : [],
-        }
-    }
+  /**
+   * Creates a context object for the GraphQL request. With a context object,
+   * you can check if a user is authenticated, and have access to the dataloaders.
+   *
+   * @param req The Express request object.
+   * @param res The Express response object.
+   * @returns A promise that resolves to the context object.
+   */
+  private async createContext(req: Request, res: Response) {
+    const token = AuthCookieUtils.getAuthCookie(req)
+    let userIId = null
+    if (token) {
+      const userAgent = req.headers['user-agent']
+        ? req.headers['user-agent']
+        : ''
 
-    private productionErrorHandler(error) {
-        return {
-            name: error.name,
-            code: error.originalError && error.originalError.code,
-            message: error.message,
-            locations: error.locations,
-            path: error.path,
-            additionalInfo: error.originalError && error.originalError.fields,
-        }
+      userIId = await SessionActions.qVerify({
+        token,
+        userAgent,
+        latestIp: req.ip,
+      })
     }
+    const ctx = new Context(req, res, userIId)
+    ctx.tmp.token = token
+    return ctx
+  }
 }

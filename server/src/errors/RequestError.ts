@@ -1,8 +1,7 @@
-export default class RequestError extends Error {
-    code: string
-    constructor(defaultMsg: string, specificMsg?: string) {
-        const msg = specificMsg ? `${defaultMsg} | ${specificMsg}` : defaultMsg
-        super(msg)
-        this.code = this.constructor.name
-    }
+import { ApolloError } from 'apollo-server-core'
+
+export default class RequestError extends ApolloError {
+  constructor(message: string) {
+    super(message, 'REQUEST_ERROR')
+  }
 }

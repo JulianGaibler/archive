@@ -1,11 +1,7 @@
-import RequestError from './RequestError'
+import { ApolloError } from 'apollo-server-core'
 
-export default class InputError extends RequestError {
-    fields
-    constructor(fieldErrors) {
-        super(fieldErrors ? fieldErrors.message : 'There were errors in your request.')
-        if (fieldErrors && fieldErrors.type === 'ModelValidation') {
-            this.fields = fieldErrors.data
-        }
-    }
+export default class InputError extends ApolloError {
+  constructor(message: string) {
+    super(message, 'INPUT_ERROR')
+  }
 }

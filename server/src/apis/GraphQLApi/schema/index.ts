@@ -18,32 +18,32 @@ import userMutations from './user/mutations'
 import taskSubscriptions from './task/subscriptions'
 
 export default new GraphQLSchema({
-    query: new GraphQLObjectType({
-        name: 'Query',
-        fields: {
-            node: nodeField,
-            nodes: nodesField,
-            ...keywordQueries,
-            ...postQueries,
-            ...resourceQueries,
-            ...sessionQueries,
-            ...taskQueries,
-            ...userQueries,
-        },
-    }),
-    mutation: new GraphQLObjectType({
-        name: 'Mutation',
-        fields: {
-            ...keywordMutations,
-            ...postMutations,
-            ...sessionMutations,
-            ...userMutations,
-        },
-    }),
-    subscription: new GraphQLObjectType({
-        name: 'Subscription',
-        fields: {
-            ...taskSubscriptions,
-        },
-    }),
+  query: new GraphQLObjectType({
+    name: 'Query',
+    fields: {
+      node: nodeField,
+      nodes: nodesField,
+      ...keywordQueries,
+      ...postQueries,
+      ...resourceQueries,
+      ...sessionQueries,
+      ...taskQueries,
+      ...userQueries,
+    },
+  }),
+  mutation: new GraphQLObjectType({
+    name: 'Mutation',
+    fields: {
+      ...keywordMutations,
+      ...postMutations,
+      ...sessionMutations,
+      ...userMutations,
+    },
+  }),
+  subscription: new GraphQLObjectType({
+    name: 'Subscription',
+    fields: {
+      ...taskSubscriptions,
+    },
+  }),
 })

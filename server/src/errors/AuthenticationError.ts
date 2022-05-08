@@ -1,7 +1,10 @@
-import RequestError from './RequestError'
+import { ApolloError } from 'apollo-server-core'
 
-export default class AuthenticationError extends RequestError {
-    constructor(msg: string = 'You can only do this while logged-in.') {
-        super('Authentication Error', msg)
-    }
+export default class AuthenticationError extends ApolloError {
+  constructor(msg?: string) {
+    super(
+      msg || 'You can only do this while logged-in.',
+      'AUTHENTICATION_ERROR',
+    )
+  }
 }
