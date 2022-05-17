@@ -57,9 +57,8 @@ export default class KeywordModel extends UniqueModel {
   ): Promise<KeywordModel[][]> {
     const posts = await PostModel.query()
       .findByIds(postIds as number[])
-      .select('post.id', 'keywords')
+      .select('post.id')
       .withGraphFetched('keywords')
-
     const postMap: { [key: string]: any } = {}
     posts.forEach((post) => {
       postMap[post.id] = post
@@ -72,7 +71,7 @@ export default class KeywordModel extends UniqueModel {
   static relationMappings: RelationMappings = {
     posts: {
       relation: Model.ManyToManyRelation,
-      modelClass: 'Post',
+      modelClass: 'PostModel',
       join: {
         from: 'keyword.id',
         through: {

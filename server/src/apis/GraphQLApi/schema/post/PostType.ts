@@ -9,9 +9,9 @@ import {
 } from 'graphql'
 import { HashIdTypes } from '../../HashId'
 import KeywordType from '../keyword/KeywordType'
-import ItemType from '../item/ItemType'
+import ItemType, { itemConnection } from '../item/ItemType'
 import UserType from '../user/UserType'
-import { connectionDefinitions } from 'graphql-relay'
+import { connectionArgs, connectionDefinitions, connectionFromArray } from 'graphql-relay'
 import { DateTime, globalIdField, Language } from '../types'
 import { nodeInterface } from '../node'
 import Context from '@src/Context'
@@ -44,9 +44,16 @@ const PostType: GraphQLObjectType<any, Context> = new GraphQLObjectType({
         KeywordActions.qKeywordsByPost(ctx, { postId: post.id }),
     },
     items: {
-      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ItemType))),
-      resolve: async (post, args, ctx: Context) =>
-        ItemActions.qItemsByPost(ctx, { postId: post.id }),
+      type: itemConnection,
+      description: 'Items in this post.',
+      args: connectionArgs,
+      resolve: async (post, args, ctx: Context) => {
+        const items = await ItemActions.qItemsByPost(ctx, { postId: post.id })
+        return {
+          ...connectionFromArray(items, args),
+          totalCount: items.length,
+        }
+      },
     },
     updatedAt: {
       description:

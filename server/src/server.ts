@@ -7,7 +7,7 @@ import GraphQLApi from './apis/GraphQLApi'
 
 const corsOptions: cors.CorsOptions = {
   credentials: true,
-  origin: process.env.ORIGIN || `http://localhost:5000`,
+  origin: process.env.ORIGIN || `http://localhost:3000`,
 }
 
 const OPTIONS = {

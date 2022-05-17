@@ -100,7 +100,7 @@ exports.up = async (knex) => {
     })
     await knex('item')
       .where('id', '=', item.id)
-      .update({ post_id: post_ids[0] })
+      .update({ post_id: post_ids[0].id })
   }
   // Move keywords from keyword_to_item to keyword_to_post
   const kti_relations = await knex.select().table('keyword_to_item')
