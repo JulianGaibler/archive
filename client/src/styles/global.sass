@@ -1,0 +1,28 @@
+@use '@src/styles/variables.sass'
+@use '@src/styles/fonts.sass'
+
+ul, ol, li, button, input, textarea, select
+  margin: 0
+  padding: 0
+
+li
+  text-indent: 0
+  list-style-type: none
+
+button, input, textarea, select
+  color: inherit
+  font: inherit
+  background: unset
+  border: none
+  border-radius: 0
+
+body, html, #app-root
+  height: 100%
+
+body
+  font-family: "HK Grotesk"
+  color: var(--text-primary)
+  font-weight: 500
+  font-size: 14px
+  margin: 0
+  background: var(--layer-base)

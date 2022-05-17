@@ -1,0 +1,19 @@
+mutation linkTelegram(
+    $id: String!
+    $first_name: String
+    $last_name: String
+    $username: String
+    $photo_url: String
+    $auth_date: String!
+    $hash: String!
+) {
+    linkTelegram(
+        id: $id
+        first_name: $first_name
+        last_name: $last_name
+        username: $username
+        photo_url: $photo_url
+        auth_date: $auth_date
+        hash: $hash
+    )
+}

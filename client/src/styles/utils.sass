@@ -1,0 +1,58 @@
+@mixin effect-focus
+  &:focus
+    outline: 2px solid var(--text-action)
+    outline-offset: 2px
+  // As of writing Safari doesn't support :focus-visible yet,
+  // and just ignores all rules that contain :focus-visible
+  &:focus-visible, &:focus
+    outline: none
+  &:focus-visible
+    outline: 2px solid var(--text-action)
+    outline-offset: 2px
+
+@mixin text-style-title
+  font-size: 24px
+  font-weight: bold
+
+@mixin text-style-body-s
+  font-size: 12px
+  font-weight: 500
+
+@mixin text-style-body-bold
+  font-size: 14px
+  font-weight: bold
+
+@mixin text-style-action
+  font-size: 14px
+  font-weight: bold
+  letter-spacing: 1px
+  text-transform: uppercase
+
+@mixin content-position
+  margin-inline: auto
+  padding-inline: $size-small
+  max-width: $screen-maxwidth
+
+$radius-preview: 8px
+$radius-menu: 12px
+$radius-button: 32px
+$radius-input: 12px
+$radius-checkbox: 12px
+$radius-profilepicture: 35%
+
+$button-height: 32px
+$input-height: 48px
+
+$screen-maxwidth: 928px
+
+// Spacing and sizing
+$size-xxxxsmall: 4px
+$size-xxxsmall: 8px
+$size-xxsmall: 12px
+$size-xsmall: 16px
+$size-small: 24px
+$size-medium: 32px
+$size-large: 40px
+$size-xlarge: 48px
+$size-xxlarge: 64px
+$size-huge: 80px

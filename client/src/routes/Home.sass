@@ -1,0 +1,22 @@
+.archive--tintbar
+  color: var(--text-tintbar)
+  background: var(--layer-tintbar)
+  padding-block: archive.$size-xxsmall
+.archive--home
+  @include archive.content-position
+  margin-block-start: archive.$size-xsmall
+.archive--tintbar--inner
+  @include archive.content-position
+  display: flex
+  gap: archive.$size-xsmall
+  input
+    border-radius: archive.$radius-input
+    display: block
+    flex-grow: 1
+    padding-inline: archive.$size-xxsmall
+    &::placeholder
+      color: var(--text-tintbar)
+      opacity: .5
+    &:focus
+      outline: none
+      background: var(--action-secondary-hover)

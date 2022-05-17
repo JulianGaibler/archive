@@ -1,0 +1,3 @@
+mutation revokeSession($id: ID!){
+    revokeSession(id: $id)
+}

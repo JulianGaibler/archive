@@ -1,0 +1,35 @@
+.archive--textfield
+  > .archive--textfield--box
+    position: relative
+    height: archive.$input-height
+    input
+      @include archive.effect-focus
+      box-sizing: border-box
+      border-radius: archive.$radius-input
+      background: var(--layer-neutral)
+      width: 100%
+      height: 100%
+      margin: 0
+      padding: (archive.$size-xxsmall + 7px) archive.$size-xxsmall (archive.$size-xxsmall - 7px) archive.$size-xxsmall
+    label
+      @include archive.text-style-body-s
+      position: absolute
+      left: archive.$size-xxsmall
+      right: initial
+      top: 50%
+      transform: translateY(-55%) scale(1.166)
+      transform-origin: left top
+      transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1),color 150ms
+      pointer-events: none
+    input:focus + label, input.filled + label
+      transform: translateY(-106%) scale(1.0)
+  > .archive--helper-message
+    @include archive.text-style-body-s
+    padding: 0 archive.$size-xxsmall
+    padding-top: archive.$size-xxxxsmall
+
+  &.error
+    > .archive--textfield--box input
+      background-color: var(--layer-error)
+    > .archive--helper-message, > .archive--textfield--box label
+      color: var(--text-error)

@@ -1,0 +1,3 @@
+mutation setDarkMode($enabled: Boolean!) {
+    setDarkMode(enabled: $enabled)
+}

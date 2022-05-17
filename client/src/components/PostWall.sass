@@ -1,0 +1,56 @@
+.archive--postwall
+  display: flex
+  gap: archive.$size-xsmall
+.archive--postwall--column
+  flex: 1
+
+.archive--postwall--post
+  user-select: none
+  display: block
+  border-radius: archive.$radius-preview
+  overflow: hidden
+  background: var(--layer-tintbar)
+  position: relative
+  margin-bottom: archive.$size-xsmall
+  .info
+    opacity: 0
+    transition: opacity .1s ease-in-out .1s
+    position: absolute
+    display: flex
+    align-items: center
+    border-radius: 8px
+    gap: archive.$size-xxxsmall
+    padding: archive.$size-xxxsmall
+    left: 0
+    right: 0
+    bottom: 0
+    padding-top: archive.$size-xxlarge
+    padding-inline-start: archive.$size-xxsmall
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, #000000 100%)
+    color: white
+    .title
+      flex: 1
+      text-overflow: ellipsis
+      white-space: nowrap
+      overflow: hidden
+    .items, .creator
+      width: archive.$size-small
+      height: archive.$size-small
+      overflow: hidden
+      border-radius: 6px
+    .items
+      background: white
+      color: black
+      display: flex
+      justify-content: center
+      align-items: center
+    .creator img
+      width: 100%
+      height: 100%
+  &:hover .info
+    opacity: 1
+  .image
+    position: absolute
+    left: 0
+    width: 100%
+    top: 0

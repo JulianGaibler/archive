@@ -1,0 +1,24 @@
+query Posts {
+  posts(first: 40) {
+    edges {
+      node {
+        id
+        title
+				creator {
+          profilePicture
+        }
+        items(first: 1) {
+          totalCount
+          edges {
+            node {
+              id
+              type
+              thumbnailPath
+              relativeHeight
+            }
+          }
+        }
+      }
+    }
+  }
+}
