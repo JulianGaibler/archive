@@ -6,11 +6,11 @@ import {
 } from 'graphql'
 import { GraphQLUpload } from 'graphql-upload'
 
-import AuthCookieUtils from '../../AuthCookieUtils'
+import AuthCookieUtils from '@gql/AuthCookieUtils'
 
 import Context from '@src/Context'
-import UserActions from '@src/actions/UserActions'
-import SessionActions from '@src/actions/SessionActions'
+import UserActions from '@actions/UserActions'
+import SessionActions from '@actions/SessionActions'
 
 const signup: GraphQLFieldConfig<any, any, any> = {
   description: 'Creates a new user and performs a login.',

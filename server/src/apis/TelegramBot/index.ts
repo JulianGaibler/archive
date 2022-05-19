@@ -5,10 +5,10 @@ import Telegraf from 'telegraf'
 
 import { RequestError } from '@src/errors'
 
-import ItemModel from '@src/models/ItemModel'
+import { ItemModel } from '@src/models'
 
-import UserActions from '@src/actions/UserActions'
-import ItemActions from '@src/actions/ItemActions'
+import UserActions from '@actions/UserActions'
+import ItemActions from '@actions/ItemActions'
 import Context from '@src/Context'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN

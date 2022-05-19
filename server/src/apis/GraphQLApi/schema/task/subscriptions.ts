@@ -5,11 +5,11 @@ import {
   GraphQLString,
 } from 'graphql'
 import { withFilter } from 'graphql-subscriptions'
-import HashId from '../../HashId'
+import HashId from '@gql/HashId'
 import Context from '@src/Context'
 import { TaskUpdate, taskHashType } from './TaskType'
 
-import TaskActions from '@src/actions/TaskActions'
+import TaskActions from '@actions/TaskActions'
 
 const taskUpdates: GraphQLFieldConfig<any, any, any> = {
   description: 'Returns updates from tasks.',
@@ -29,7 +29,6 @@ const taskUpdates: GraphQLFieldConfig<any, any, any> = {
     // const { asyncIteratorFn, filterFn } = TaskActions.sTasks(ctx, {
     //   taskIds,
     // })
-
     // return withFilter(asyncIteratorFn, filterFn)()
   },
 }

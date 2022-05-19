@@ -11,15 +11,15 @@ import {
   forwardConnectionArgs,
 } from 'graphql-relay'
 import { raw } from 'objection'
-import { Format, Language } from '../types'
+import { Format, Language } from '@gql/schema/types'
 import { postConnection } from './PostType'
-import { userHashType } from '../user/UserType'
-import { keywordHashType } from '../keyword/KeywordType'
+import { userHashType } from '@gql/schema/user/UserType'
+import { tagHashType } from '@gql/schema/tag/TagType'
 
-import HashId from '../../HashId'
+import HashId from '@gql/HashId'
 import Context from '@src/Context'
 
-import PostActions from '@src/actions/PostActions'
+import PostActions from '@actions/PostActions'
 
 const posts: GraphQLFieldConfig<any, any, any> = {
   type: postConnection,
@@ -30,8 +30,8 @@ const posts: GraphQLFieldConfig<any, any, any> = {
       description: 'Limits the search of posts to one of these users.',
       type: new GraphQLList(new GraphQLNonNull(GraphQLID)),
     },
-    byKeywords: {
-      description: 'Limits the search of posts to all of these keywords.',
+    byTags: {
+      description: 'Limits the search of posts to all of these tags.',
       type: new GraphQLList(new GraphQLNonNull(GraphQLID)),
     },
     byTypes: {
@@ -58,10 +58,10 @@ const posts: GraphQLFieldConfig<any, any, any> = {
         HashId.decode(userHashType, globalId),
       )
     }
-    let byKeywords
-    if (args.byKeywords && args.byKeywords.length > 0) {
-      byKeywords = args.byKeywords.map((globalId: string) =>
-        HashId.decode(keywordHashType, globalId),
+    let byTags
+    if (args.byTags && args.byTags.length > 0) {
+      byTags = args.byTags.map((globalId: string) =>
+        HashId.decode(tagHashType, globalId),
       )
     }
     const { byTypes, byLanguage, byContent } = args
@@ -72,7 +72,7 @@ const posts: GraphQLFieldConfig<any, any, any> = {
         limit,
         offset,
         byUsers,
-        byKeywords,
+        byTags,
         byTypes,
         byLanguage,
         byContent,

@@ -5,7 +5,10 @@
     "moduleResolution": "node",
     "baseUrl": ".",
     "paths": {
-      "@src/*": ["src/*"]
+      "@src/*": ["src/*"],
+      "@actions/*": ["src/actions/*"],
+      "@gql/*": ["src/apis/GraphQLApi/*"],
+      "@telegram/*": ["src/apis/TelegramBot/*"]
     },
     "outDir": "./dist",
     "esModuleInterop": true,

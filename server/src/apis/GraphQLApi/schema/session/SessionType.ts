@@ -2,14 +2,14 @@ import { GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
 import { connectionDefinitions } from 'graphql-relay'
 import SessionModel from '@src/models/SessionModel'
 import Context from '@src/Context'
-import { HashIdTypes } from '../../HashId'
-import { nodeInterface } from '../node'
-import { DateTime, globalIdField } from '../types'
-import UserType from '../user/UserType'
+import { HashIdTypes } from '@gql/HashId'
+import { nodeInterface } from '@gql/schema/node'
+import { DateTime, globalIdField } from '@gql/schema/types'
+import UserType from '@gql/schema/user/UserType'
 
-import UserActions from '@src/actions/UserActions'
+import UserActions from '@actions/UserActions'
 
-const SessionType = new GraphQLObjectType({
+const SessionType = new GraphQLObjectType<SessionModel, Context>({
   name: 'Session',
   description: 'Represents a Session object of an user.',
   interfaces: [nodeInterface],
@@ -18,7 +18,7 @@ const SessionType = new GraphQLObjectType({
     user: {
       description: 'User associated with that session',
       type: UserType,
-      resolve: async (session, args, ctx: Context) =>
+      resolve: async (session, args, ctx) =>
         UserActions.qUser(ctx, { userId: session.userId }),
     },
     userAgent: {

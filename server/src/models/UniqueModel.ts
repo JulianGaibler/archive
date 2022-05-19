@@ -19,7 +19,7 @@ export default class UniqueModel extends BaseModel {
   }
 
   async $beforeUpdate(queryOptions: ModelOptions, queryContext: QueryContext) {
-    const parent = await super.$beforeUpdate(queryOptions, queryContext);
+    const parent = await super.$beforeUpdate(queryOptions, queryContext)
 
     this.checkSettings(this.$unique)
 

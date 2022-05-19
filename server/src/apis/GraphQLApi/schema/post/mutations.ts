@@ -6,13 +6,13 @@ import {
   GraphQLNonNull,
   GraphQLString,
 } from 'graphql'
-import KeywordType, { keywordHashType } from '../keyword/KeywordType'
+import TagType, { tagHashType } from '@gql/schema/tag/TagType'
 import PostType, { postHashType } from './PostType'
-import { Format, Language } from '../types'
+import { Format, Language } from '@gql/schema/types'
 import Context from '@src/Context'
 
-import HashId from '../../HashId'
-import PostActions from '@src/actions/PostActions'
+import HashId from '@gql/HashId'
+import PostActions from '@actions/PostActions'
 
 const createPost: GraphQLFieldConfig<any, any, any> = {
   description: 'Creates a new Post',
@@ -26,21 +26,21 @@ const createPost: GraphQLFieldConfig<any, any, any> = {
       description: 'Language in which title and caption are written in.',
       type: new GraphQLNonNull(Language),
     },
-    keywords: {
-      description: 'Optional keyword-IDs to be associated with that post.',
+    tags: {
+      description: 'Optional tag-IDs to be associated with that post.',
       type: new GraphQLList(new GraphQLNonNull(GraphQLID)),
     },
   },
   resolve: (parent, args, ctx: Context) => {
-    let keywords
-    if (args.keywords && args.keywords.length > 0) {
-      keywords = args.keywords.map((globalId: string) =>
-        HashId.decode(keywordHashType, globalId),
+    let tags
+    if (args.tags && args.tags.length > 0) {
+      tags = args.tags.map((globalId: string) =>
+        HashId.decode(tagHashType, globalId),
       )
     }
     const { title, language } = args
 
-    return PostActions.mCreate(ctx, { title, language, keywords })
+    return PostActions.mCreate(ctx, { title, language, tags })
   },
 }
 
@@ -55,7 +55,7 @@ const editPost: GraphQLFieldConfig<any, any, any> = {
     title: {
       type: GraphQLString,
     },
-    keywords: {
+    tags: {
       type: new GraphQLList(new GraphQLNonNull(GraphQLID)),
     },
     language: {
@@ -63,16 +63,16 @@ const editPost: GraphQLFieldConfig<any, any, any> = {
     },
   },
   resolve: async (parent, args, ctx: Context) => {
-    let keywords
-    if (args.keywords && args.keywords.length > 0) {
-      keywords = args.keywords.map((hashId: string) =>
-        HashId.decode(keywordHashType, hashId),
+    let tags
+    if (args.tags && args.tags.length > 0) {
+      tags = args.tags.map((hashId: string) =>
+        HashId.decode(tagHashType, hashId),
       )
     }
     const postId = HashId.decode(postHashType, args.id)
     const { title, language } = args
 
-    return PostActions.mEdit(ctx, { postId, title, language, keywords })
+    return PostActions.mEdit(ctx, { postId, title, language, tags })
   },
 }
 

@@ -7,16 +7,20 @@ import {
   GraphQLObjectType,
   GraphQLString,
 } from 'graphql'
-import { HashIdTypes } from '../../HashId'
-import PostType from '../post/PostType'
+import { HashIdTypes } from '@gql/HashId'
+import PostType from '@gql/schema/post/PostType'
 import { connectionDefinitions } from 'graphql-relay'
-import { DateTime, Format, globalIdField } from '../types'
-import { nodeInterface } from '../node'
+import { DateTime, Format, globalIdField } from '@gql/schema/types'
+import { nodeInterface } from '@gql/schema/node'
 import Context from '@src/Context'
 
-import PostActions from '@src/actions/PostActions'
+import PostActions from '@actions/PostActions'
+import UserActions from '@actions/UserActions'
+import { resolvePath, ResourceType } from '@gql/resourcePath'
+import UserType from '@gql/schema/user/UserType'
+import { ItemModel } from '@src/models'
 
-const ItemType = new GraphQLObjectType({
+const ItemType = new GraphQLObjectType<ItemModel, Context>({
   name: 'Item',
   description: 'An item belonging to a post.',
   interfaces: [nodeInterface],
@@ -25,20 +29,42 @@ const ItemType = new GraphQLObjectType({
     type: {
       type: new GraphQLNonNull(Format),
     },
+    creator: {
+      type: UserType,
+      resolve: (item, _args, ctx: Context) =>
+        UserActions.qUser(ctx, { userId: item.creatorId }),
+    },
+    lastEditBy: {
+      type: UserType,
+      resolve: (item, _args, ctx: Context) =>
+        UserActions.qUser(ctx, { userId: item.lastEditorId }),
+    },
     originalPath: {
       description:
         'Path where the original file is located. (with file-extension)',
       type: GraphQLString,
+      resolve: (item, _args, _ctx: Context) =>
+        item.originalPath
+          ? resolvePath(ResourceType.ORIGINAL, item.originalPath)
+          : null,
     },
     compressedPath: {
       description:
         'Path where the compressed files are located without file-extension.',
       type: GraphQLString,
+      resolve: (item, _args, _ctx: Context) =>
+        item.compressedPath
+          ? resolvePath(ResourceType.COMPRESSED, item.compressedPath)
+          : null,
     },
     thumbnailPath: {
       description:
         'Path where the thumbnails are located without file-extension.',
       type: GraphQLString,
+      resolve: (item, _args, _ctx: Context) =>
+        item.thumbnailPath
+          ? resolvePath(ResourceType.THUMBNAIL, item.thumbnailPath)
+          : null,
     },
     relativeHeight: {
       description: 'Height, relative to the width in percent.',
@@ -48,7 +74,7 @@ const ItemType = new GraphQLObjectType({
       description: 'Post to which this item belongs.',
       type: PostType,
       resolve: (item, args, ctx: Context) =>
-        PostActions.qPost(ctx, item.postId),
+        item.postId ? PostActions.qPost(ctx, { postId: item.postId }) : null,
     },
     position: {
       description:

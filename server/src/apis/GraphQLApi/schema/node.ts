@@ -3,12 +3,12 @@ import { nodeDefinitions } from 'graphql-relay'
 import Context from '@src/Context'
 import HashId, { HashIdTypes } from '../HashId'
 
-import PostActions from '@src/actions/PostActions'
-import SessionActions from '@src/actions/SessionActions'
-import TaskActions from '@src/actions/TaskActions'
-import KeywordActions from '@src/actions/KeywordActions'
-import UserActions from '@src/actions/UserActions'
-import ItemActions from '@src/actions/ItemActions'
+import PostActions from '@actions/PostActions'
+import SessionActions from '@actions/SessionActions'
+import TaskActions from '@actions/TaskActions'
+import TagActions from '@actions/TagActions'
+import UserActions from '@actions/UserActions'
+import ItemActions from '@actions/ItemActions'
 
 export const { nodeInterface, nodeField, nodesField } = nodeDefinitions(
   (stringId, ctx: Context) => {
@@ -21,7 +21,7 @@ export const { nodeInterface, nodeField, nodesField } = nodeDefinitions(
       case HashIdTypes.TASK:
         return TaskActions.qTask(ctx, { taskId: id })
       case HashIdTypes.KEYWORD:
-        return KeywordActions.qKeyword(ctx, { keywordId: id })
+        return TagActions.qTag(ctx, { tagId: id })
       case HashIdTypes.USER:
         return UserActions.qUser(ctx, { userId: id })
       case HashIdTypes.ITEM:
@@ -32,18 +32,18 @@ export const { nodeInterface, nodeField, nodesField } = nodeDefinitions(
   },
   (obj) => {
     switch (obj.constructor.name) {
-      case 'User':
-        return require('./user/UserType').default
-      case 'Keyword':
-        return require('./keyword/KeywordType').default
-      case 'Post':
-        return require('./post/PostType').default
-      case 'Session':
-        return require('./session/SessionType').default
-      case 'Task':
-        return require('./task/TaskType').default
-      case 'Collection':
-        return require('./collection/CollectionType').default
+      case 'UserModel':
+        return require('./user/UserType').default.name
+      case 'TagModel':
+        return require('./tag/TagType').default.name
+      case 'PostModel':
+        return require('./post/PostType').default.name
+      case 'ItemModel':
+        return require('./post/ItemType').default.name
+      case 'SessionModel':
+        return require('./session/SessionType').default.name
+      case 'TaskModel':
+        return require('./task/TaskType').default.name
       default:
         return null
     }

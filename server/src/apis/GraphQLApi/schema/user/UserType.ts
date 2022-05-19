@@ -9,15 +9,17 @@ import {
   connectionDefinitions,
   connectionFromArray,
 } from 'graphql-relay'
-import { HashIdTypes } from '../../HashId'
+import { HashIdTypes } from '@gql/HashId'
 import Context from '@src/Context'
-import { nodeInterface } from '../node'
-import { globalIdField } from '../types'
+import { nodeInterface } from '@gql/schema/node'
+import { globalIdField } from '@gql/schema/types'
 
-import { postConnection } from '../post/PostType'
-import PostActions from '@src/actions/PostActions'
+import { postConnection } from '@gql/schema/post/PostType'
+import PostActions from '@actions/PostActions'
+import { resolvePath, ResourceType } from '@gql/resourcePath'
+import { UserModel } from '@src/models'
 
-const UserType = new GraphQLObjectType({
+const UserType = new GraphQLObjectType<UserModel, Context>({
   name: 'User',
   description: 'A user is an account that can make new content.',
   interfaces: [nodeInterface],
@@ -34,12 +36,16 @@ const UserType = new GraphQLObjectType({
     profilePicture: {
       description: "Name of the user's profile picture.",
       type: GraphQLString,
+      resolve: (user, _args, _ctx) =>
+        user.profilePicture
+          ? resolvePath(ResourceType.PROFILE_PICTURE, user.profilePicture)
+          : null,
     },
     linkedTelegram: {
       description: 'Shows if the user has a connected Telegram Account.',
       type: GraphQLBoolean,
       resolve: (user) => {
-        return user.telegramid !== null
+        return user.telegramId !== null
       },
     },
     darkMode: {
@@ -50,7 +56,7 @@ const UserType = new GraphQLObjectType({
       type: postConnection,
       description: 'All Posts associated with this user.',
       args: connectionArgs,
-      resolve: async (user, args, ctx: Context) => {
+      resolve: async (user, args, ctx) => {
         const data = await PostActions.qPostsByUser(ctx, {
           userId: user.id,
         })

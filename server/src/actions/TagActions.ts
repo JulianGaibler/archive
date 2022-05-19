@@ -1,27 +1,27 @@
-import KeywordModel from '@src/models/KeywordModel'
+import TagModel from '@src/models/TagModel'
 import Context from '@src/Context'
 import ActionUtils from './ActionUtils'
 
 export default class {
   /// Queries
-  static async qKeyword(ctx: Context, fields: { keywordId: number }) {
+  static async qTag(ctx: Context, fields: { tagId: number }) {
     ctx.isAuthenticated()
-    return ctx.dataLoaders.keyword.getById.load(fields.keywordId)
+    return ctx.dataLoaders.tag.getById.load(fields.tagId)
   }
 
-  static async qKeywordsByPost(ctx: Context, fields: { postId: number }) {
+  static async qTagsByPost(ctx: Context, fields: { postId: number }) {
     ctx.isAuthenticated()
-    return ctx.dataLoaders.keyword.getByPost.load(fields.postId)
+    return ctx.dataLoaders.tag.getByPost.load(fields.postId)
   }
 
-  static async qKeywords(
+  static async qTags(
     ctx: Context,
     fields: { limit?: number; offset?: number; byName?: string },
   ) {
     ctx.isAuthenticated()
     const { limit, offset } = ActionUtils.getLimitOffset(fields)
 
-    const query = KeywordModel.query()
+    const query = TagModel.query()
 
     if (fields.byName) {
       query.whereRaw('name ILIKE ?', `%${fields.byName}%`)
@@ -35,7 +35,7 @@ export default class {
         .offset(offset)
         .execute()
         .then((rows) => {
-          rows.forEach((x) => ctx.dataLoaders.keyword.getById.prime(x.id, x))
+          rows.forEach((x) => ctx.dataLoaders.tag.getById.prime(x.id, x))
           return rows
         }),
       query.count().then((x) => (x[0] as any).count),
@@ -46,13 +46,13 @@ export default class {
   /// Mutations
   static async mCreate(ctx: Context, fields: { name: string }) {
     ctx.isAuthenticated()
-    const keyword = await KeywordModel.query().insert({ name: fields.name })
-    return ctx.dataLoaders.keyword.getById.load(keyword.id)
+    const tag = await TagModel.query().insert({ name: fields.name })
+    return ctx.dataLoaders.tag.getById.load(tag.id)
   }
 
-  static async mDelete(ctx: Context, fields: { keywordId: number }) {
+  static async mDelete(ctx: Context, fields: { tagId: number }) {
     ctx.isAuthenticated()
-    const deletedRows = await KeywordModel.query().deleteById(fields.keywordId)
+    const deletedRows = await TagModel.query().deleteById(fields.tagId)
     return deletedRows > 0
   }
 }

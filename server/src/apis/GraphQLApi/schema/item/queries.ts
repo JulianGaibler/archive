@@ -11,7 +11,7 @@ import {
   forwardConnectionArgs,
 } from 'graphql-relay'
 import { raw } from 'objection'
-import { Format, Language } from '../types'
+import { Format, Language } from '@gql/schema/types'
 import { itemConnection } from './ItemType'
 
 import Context from '@src/Context'

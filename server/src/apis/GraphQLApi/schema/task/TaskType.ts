@@ -5,21 +5,22 @@ import {
   GraphQLObjectType,
   GraphQLString,
 } from 'graphql'
-import { HashIdTypes } from '../../HashId'
+import { HashIdTypes } from '@gql/HashId'
 import { connectionDefinitions } from 'graphql-relay'
-import { nodeInterface } from '../node'
-import PostType from '../post/PostType'
-import ItemType from '../item/ItemType'
-import { DateTime, globalIdField, UpdateKind } from '../types'
-import UserType from '../user/UserType'
+import { nodeInterface } from '@gql/schema/node'
+import PostType from '@gql/schema/post/PostType'
+import ItemType from '@gql/schema/item/ItemType'
+import { DateTime, globalIdField, UpdateKind } from '@gql/schema/types'
+import UserType from '@gql/schema/user/UserType'
 
 import Context from '@src/Context'
 
-import UserActions from '@src/actions/UserActions'
-import PostActions from '@src/actions/PostActions'
-import ItemActions from '@src/actions/ItemActions'
+import UserActions from '@actions/UserActions'
+import PostActions from '@actions/PostActions'
+import ItemActions from '@actions/ItemActions'
+import { TaskModel } from '@src/models'
 
-const TaskType = new GraphQLObjectType({
+const TaskType = new GraphQLObjectType<TaskModel, Context>({
   name: 'Task',
   description: 'A task for an uploaded item.',
   interfaces: [nodeInterface],
@@ -44,22 +45,22 @@ const TaskType = new GraphQLObjectType({
     },
     uploader: {
       type: UserType,
-      resolve: (task, args, ctx: Context) =>
+      resolve: (task, args, ctx) =>
         task.uploaderId
           ? UserActions.qUser(ctx, { userId: task.uploaderId })
           : null,
     },
-    addToPost: {
-      type: PostType,
-      resolve: (task, args, ctx: Context) =>
-        task.createdPostId
-          ? PostActions.qPost(ctx, { postId: task.addToPostId })
-          : null,
-    },
+    // addToPost: {
+    //   type: PostType,
+    //   resolve: (task, args, ctx) =>
+    //     task.createdPostId
+    //       ? PostActions.qPost(ctx, { postId: task.addToPostId })
+    //       : null,
+    // },
     createdItem: {
       type: ItemType,
-      resolve: (task, args, ctx: Context) =>
-        task.createdPostId
+      resolve: (task, args, ctx) =>
+        task.createdItemId
           ? ItemActions.qItem(ctx, { itemId: task.createdItemId })
           : null,
     },

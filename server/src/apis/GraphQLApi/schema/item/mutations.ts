@@ -7,15 +7,15 @@ import {
   GraphQLString,
 } from 'graphql'
 import { GraphQLUpload } from 'graphql-upload'
-import KeywordType from '../keyword/KeywordType'
-import TaskType from '../task/TaskType'
+import TagType from '@gql/schema/tag/TagType'
+import TaskType from '@gql/schema/task/TaskType'
 import ItemType from './ItemType'
-import HashId from '../../HashId'
+import HashId from '@gql/HashId'
 import Context from '@src/Context'
-import { Format, Language } from '../types'
-import { postHashType } from '../post/PostType'
+import { Format, Language } from '@gql/schema/types'
+import { postHashType } from '@gql/schema/post/PostType'
 
-import ItemActions from '@src/actions/ItemActions'
+import ItemActions from '@actions/ItemActions'
 
 const uploadItems: GraphQLFieldConfig<any, any, any> = {
   description: 'Creates a new Item',
@@ -40,7 +40,6 @@ const uploadItems: GraphQLFieldConfig<any, any, any> = {
     },
     file: {
       description: 'The file.',
-      // @ts-ignore
       type: new GraphQLNonNull(GraphQLUpload),
     },
   },

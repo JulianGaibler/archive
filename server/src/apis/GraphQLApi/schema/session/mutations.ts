@@ -7,8 +7,8 @@ import {
 import Context from '@src/Context'
 import { sessionHashType } from './SessionType'
 
-import HashId from '../../HashId'
-import SessionActions from '@src/actions/SessionActions'
+import HashId from '@gql/HashId'
+import SessionActions from '@actions/SessionActions'
 
 const revokeSession: GraphQLFieldConfig<any, any, any> = {
   description: 'Revokes the session of a user.',

@@ -4,9 +4,9 @@ import UniqueModel from './UniqueModel'
 
 import PostModel from './PostModel'
 
-export default class KeywordModel extends UniqueModel {
+export default class TagModel extends UniqueModel {
   /// Config
-  static tableName = 'keyword'
+  static tableName = 'tag'
 
   $unique = {
     fields: ['name'],
@@ -31,40 +31,38 @@ export default class KeywordModel extends UniqueModel {
 
   /// Loaders
   static getLoaders() {
-    const getById = new DataLoader<number, KeywordModel>(this.keywordsByIds)
-    const getByPost = new DataLoader<number, KeywordModel[]>(
-      this.keywordsByPost,
-    )
+    const getById = new DataLoader<number, TagModel>(this.tagsByIds)
+    const getByPost = new DataLoader<number, TagModel[]>(this.tagsByPost)
 
     return { getById, getByPost }
   }
 
-  private static async keywordsByIds(
-    keywordIds: readonly number[],
-  ): Promise<KeywordModel[]> {
-    const keyword = await KeywordModel.query().findByIds(keywordIds as number[])
+  private static async tagsByIds(
+    tagIds: readonly number[],
+  ): Promise<TagModel[]> {
+    const tag = await TagModel.query().findByIds(tagIds as number[])
 
-    const keywordMap: { [key: string]: KeywordModel } = {}
-    keyword.forEach((kw) => {
-      keywordMap[kw.id] = kw
+    const tagMap: { [key: string]: TagModel } = {}
+    tag.forEach((kw) => {
+      tagMap[kw.id] = kw
     })
 
-    return keywordIds.map((id) => keywordMap[id])
+    return tagIds.map((id) => tagMap[id])
   }
 
-  private static async keywordsByPost(
+  private static async tagsByPost(
     postIds: readonly number[],
-  ): Promise<KeywordModel[][]> {
+  ): Promise<TagModel[][]> {
     const posts = await PostModel.query()
       .findByIds(postIds as number[])
       .select('post.id')
-      .withGraphFetched('keywords')
+      .withGraphFetched('tags')
     const postMap: { [key: string]: any } = {}
     posts.forEach((post) => {
       postMap[post.id] = post
     })
 
-    return postIds.map((id) => (postMap[id] ? postMap[id].keywords : []))
+    return postIds.map((id) => (postMap[id] ? postMap[id].tags : []))
   }
 
   /// Relations
@@ -73,10 +71,10 @@ export default class KeywordModel extends UniqueModel {
       relation: Model.ManyToManyRelation,
       modelClass: 'PostModel',
       join: {
-        from: 'keyword.id',
+        from: 'tag.id',
         through: {
-          from: 'KeywordToPost.keywordId',
-          to: 'KeywordToPost.postId',
+          from: 'TagToPost.tagId',
+          to: 'TagToPost.postId',
           beforeInsert(model) {
             model.addedAt = new Date().getTime()
           },

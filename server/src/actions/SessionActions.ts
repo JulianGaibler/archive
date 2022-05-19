@@ -1,4 +1,4 @@
-import SessionModel from '@src/models/SessionModel'
+import { SessionModel } from '@src/models'
 import Context from '@src/Context'
 import { AuthenticationError, InputError, NotFoundError } from '@src/errors'
 import { randomBytes } from 'crypto'

@@ -12,12 +12,12 @@ import {
 } from 'graphql-relay'
 import { raw } from 'objection'
 import { taskConnection, TaskStatus } from './TaskType'
-import { userHashType } from '../user/UserType'
+import { userHashType } from '@gql/schema/user/UserType'
 
-import HashId from '../../HashId'
+import HashId from '@gql/HashId'
 import Context from '@src/Context'
 
-import TaskActions from '@src/actions/TaskActions'
+import TaskActions from '@actions/TaskActions'
 
 const tasks: GraphQLFieldConfig<any, any, any> = {
   type: taskConnection,

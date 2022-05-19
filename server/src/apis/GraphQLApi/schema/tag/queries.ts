@@ -6,16 +6,16 @@ import {
 } from 'graphql-relay'
 
 import Context from '@src/Context'
-import KeywordActions from '@src/actions/KeywordActions'
-import { keywordConnection } from './KeywordType'
+import TagActions from '@actions/TagActions'
+import { tagConnection } from './TagType'
 
-const keywords: GraphQLFieldConfig<any, any, any> = {
-  type: keywordConnection,
-  description: 'Returns a list of keywords.',
+const tags: GraphQLFieldConfig<any, any, any> = {
+  type: tagConnection,
+  description: 'Returns a list of tags.',
   args: {
     ...forwardConnectionArgs,
     byName: {
-      description: 'Returns all keywords containing this string.',
+      description: 'Returns all tags containing this string.',
       type: GraphQLString,
     },
   },
@@ -23,7 +23,7 @@ const keywords: GraphQLFieldConfig<any, any, any> = {
     const limit = args.first
     const offset = args.after ? cursorToOffset(args.after) + 1 : 0
 
-    const { data, totalCount } = await KeywordActions.qKeywords(ctx, {
+    const { data, totalCount } = await TagActions.qTags(ctx, {
       limit,
       offset,
       byName: args.byName,
@@ -39,5 +39,5 @@ const keywords: GraphQLFieldConfig<any, any, any> = {
 }
 
 export default {
-  keywords,
+  tags,
 }

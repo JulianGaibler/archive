@@ -7,20 +7,25 @@ import {
   GraphQLObjectType,
   GraphQLString,
 } from 'graphql'
-import { HashIdTypes } from '../../HashId'
-import KeywordType from '../keyword/KeywordType'
-import ItemType, { itemConnection } from '../item/ItemType'
-import UserType from '../user/UserType'
-import { connectionArgs, connectionDefinitions, connectionFromArray } from 'graphql-relay'
-import { DateTime, globalIdField, Language } from '../types'
-import { nodeInterface } from '../node'
+import { HashIdTypes } from '@gql/HashId'
+import TagType from '@gql/schema/tag/TagType'
+import ItemType, { itemConnection } from '@gql/schema/item/ItemType'
+import UserType from '@gql/schema/user/UserType'
+import {
+  connectionArgs,
+  connectionDefinitions,
+  connectionFromArray,
+} from 'graphql-relay'
+import { DateTime, globalIdField, Language } from '@gql/schema/types'
+import { nodeInterface } from '@gql/schema/node'
 import Context from '@src/Context'
 
-import UserActions from '@src/actions/UserActions'
-import ItemActions from '@src/actions/ItemActions'
-import KeywordActions from '@src/actions/KeywordActions'
+import UserActions from '@actions/UserActions'
+import ItemActions from '@actions/ItemActions'
+import TagActions from '@actions/TagActions'
+import { PostModel } from '@src/models'
 
-const PostType: GraphQLObjectType<any, Context> = new GraphQLObjectType({
+const PostType: GraphQLObjectType<PostModel, Context> = new GraphQLObjectType({
   name: 'Post',
   description: 'A post.',
   interfaces: [nodeInterface],
@@ -36,12 +41,15 @@ const PostType: GraphQLObjectType<any, Context> = new GraphQLObjectType({
       resolve: (post, args, ctx: Context) =>
         UserActions.qUser(ctx, { userId: post.creatorId }),
     },
-    keywords: {
-      type: new GraphQLNonNull(
-        new GraphQLList(new GraphQLNonNull(KeywordType)),
-      ),
+    lastEditBy: {
+      type: UserType,
+      resolve: (post, args, ctx: Context) =>
+        UserActions.qUser(ctx, { userId: post.lastEditorId }),
+    },
+    tags: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(TagType))),
       resolve: async (post, args, ctx: Context) =>
-        KeywordActions.qKeywordsByPost(ctx, { postId: post.id }),
+        TagActions.qTagsByPost(ctx, { postId: post.id }),
     },
     items: {
       type: itemConnection,

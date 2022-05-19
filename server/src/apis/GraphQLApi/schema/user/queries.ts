@@ -6,7 +6,7 @@ import {
 } from 'graphql-relay'
 
 import Context from '@src/Context'
-import UserActions from '@src/actions/UserActions'
+import UserActions from '@actions/UserActions'
 
 import UserType, { userConnection } from './UserType'
 

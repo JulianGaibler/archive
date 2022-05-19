@@ -2,7 +2,7 @@ import DataLoader from 'dataloader'
 import { Model, RelationMappings } from 'objection'
 import BaseModel from './BaseModel'
 
-import KeywordModel from './KeywordModel'
+import TagModel from './TagModel'
 import UserModel from './UserModel'
 
 export default class PostModel extends BaseModel {
@@ -14,9 +14,11 @@ export default class PostModel extends BaseModel {
   title!: string
   language?: string
   creatorId?: number
+  lastEditorId?: number
 
   creator?: UserModel
-  keywords?: KeywordModel[]
+  lastEditor?: UserModel
+  tags?: TagModel[]
 
   /// Schema
   static jsonSchema = {
@@ -35,11 +37,9 @@ export default class PostModel extends BaseModel {
   static getLoaders() {
     const getById = new DataLoader<number, PostModel>(this.postsByIds)
     const getByUser = new DataLoader<number, PostModel[]>(this.postsByUsers)
-    const getByKeyword = new DataLoader<number, PostModel[]>(
-      this.postsByKeywords,
-    )
+    const getByTag = new DataLoader<number, PostModel[]>(this.postsByTags)
 
-    return { getById, getByUser, getByKeyword }
+    return { getById, getByUser, getByTag }
   }
 
   private static async postsByIds(
@@ -66,20 +66,20 @@ export default class PostModel extends BaseModel {
     return userIds.map((id) => users.filter((x) => x.creatorId === id))
   }
 
-  private static async postsByKeywords(
-    keywordIds: readonly number[],
+  private static async postsByTags(
+    tagIds: readonly number[],
   ): Promise<PostModel[][]> {
-    const keywords = await KeywordModel.query()
-    .findByIds(keywordIds as number[])
-    .select('Keyword.id', 'posts')
-    .withGraphFetched('posts')
+    const tags = await TagModel.query()
+      .findByIds(tagIds as number[])
+      .select('Tag.id', 'posts')
+      .withGraphFetched('posts')
 
-    const keywordMap: { [key: string]: any } = {}
-    keywords.forEach((keyword) => {
-      keywordMap[keyword.id] = keyword
+    const tagMap: { [key: string]: any } = {}
+    tags.forEach((tag) => {
+      tagMap[tag.id] = tag
     })
 
-    return keywordIds.map((id) => (keywordMap[id] ? keywordMap[id].posts : []))
+    return tagIds.map((id) => (tagMap[id] ? tagMap[id].posts : []))
   }
 
   /// Relations
@@ -92,20 +92,20 @@ export default class PostModel extends BaseModel {
         to: 'user.id',
       },
     },
-    keywords: {
+    tags: {
       relation: Model.ManyToManyRelation,
-      modelClass: 'KeywordModel',
+      modelClass: 'TagModel',
       join: {
         from: 'post.id',
         through: {
-          from: 'KeywordToPost.postId',
-          to: 'KeywordToPost.keywordId',
+          from: 'TagToPost.postId',
+          to: 'TagToPost.tagId',
           beforeInsert(model) {
             model.addedAt = new Date().getTime()
           },
           extra: ['addedAt'],
         },
-        to: 'keyword.id',
+        to: 'tag.id',
       },
     },
   }

@@ -2,7 +2,7 @@ import { GraphQLFieldConfig, GraphQLList, GraphQLNonNull } from 'graphql'
 import Context from '@src/Context'
 
 import SessionType from './SessionType'
-import SessionActions from '@src/actions/SessionActions'
+import SessionActions from '@actions/SessionActions'
 
 const userSessions: GraphQLFieldConfig<any, any, any> = {
   description:

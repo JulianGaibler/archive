@@ -3,7 +3,7 @@ import { AuthenticationError } from './errors'
 
 import {
   ItemModel,
-  KeywordModel,
+  TagModel,
   PostModel,
   SessionModel,
   TaskModel,
@@ -30,7 +30,7 @@ export default class Context {
 
   dataLoaders = {
     item: ItemModel.getLoaders(),
-    keyword: KeywordModel.getLoaders(),
+    tag: TagModel.getLoaders(),
     post: PostModel.getLoaders(),
     session: SessionModel.getLoaders(),
     task: TaskModel.getLoaders(),

@@ -10,7 +10,7 @@ import {
   AuthorizationError,
 } from '../errors'
 
-import SessionActions from '@src/actions/SessionActions'
+import SessionActions from '@actions/SessionActions'
 
 export default class {
   /// Queries
@@ -24,14 +24,14 @@ export default class {
     fields: { username?: string; userId?: number; telegramId?: string },
   ) {
     ctx.isAuthenticated()
-    if (fields.username !== undefined) {
+    if (fields.username) {
       return ctx.dataLoaders.user.getByUsername.load(fields.username)
-    } else if (fields.userId !== undefined) {
+    } else if (fields.userId) {
       return ctx.dataLoaders.user.getById.load(fields.userId)
-    } else if (fields.telegramId !== undefined) {
+    } else if (fields.telegramId) {
       return ctx.dataLoaders.user.getByTelegramId.load(fields.telegramId)
     }
-    throw new Error('username or userId need to be defined')
+    return null
   }
 
   static async qUsers(

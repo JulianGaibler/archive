@@ -1,4 +1,4 @@
-import PostModel from '@src/models/PostModel'
+import { PostModel } from '@src/models'
 import Context from '@src/Context'
 import ActionUtils from './ActionUtils'
 
@@ -9,9 +9,9 @@ export default class {
     return ctx.dataLoaders.post.getById.load(fields.postId)
   }
 
-  static async qPostsByKeyword(ctx: Context, fields: { keywordId: number }) {
+  static async qPostsByTag(ctx: Context, fields: { tagId: number }) {
     ctx.isAuthenticated()
-    return ctx.dataLoaders.post.getByKeyword.load(fields.keywordId)
+    return ctx.dataLoaders.post.getByTag.load(fields.tagId)
   }
 
   static async qPostsByUser(ctx: Context, fields: { userId: number }) {
@@ -25,7 +25,7 @@ export default class {
       limit?: number
       offset?: number
       byUsers?: number[]
-      byKeywords?: number[]
+      byTags?: number[]
       byTypes?: string[]
       byLanguage?: string
       byContent?: string
@@ -45,12 +45,12 @@ export default class {
     if (fields.byUsers && fields.byUsers.length > 0) {
       query.whereIn('uploaderId', fields.byUsers)
     }
-    if (fields.byKeywords && fields.byKeywords.length > 0) {
+    if (fields.byTags && fields.byTags.length > 0) {
       query
-        .joinRelated('keywords')
-        .whereIn('keywords.id', fields.byKeywords)
-        .groupBy('Post.id', 'keywords_join.addedAt')
-        .orderBy('keywords_join.addedAt', 'desc')
+        .joinRelated('tags')
+        .whereIn('tags.id', fields.byTags)
+        .groupBy('Post.id', 'tags_join.addedAt')
+        .orderBy('tags_join.addedAt', 'desc')
     }
     if (fields.byContent && fields.byContent.trim().length > 0) {
       const tsQuery = fields.byContent
@@ -97,14 +97,14 @@ export default class {
   /// Mutations
   static async mCreate(
     ctx: Context,
-    fields: { title: string; language: string; keywords?: number[] },
+    fields: { title: string; language: string; tags?: number[] },
   ) {
     const creatorId = ctx.isAuthenticated()
     const postData = {
       title: fields.title,
       language: fields.language,
       creatorId,
-      keywords: fields.keywords ? fields.keywords.map((id) => ({ id })) : [],
+      tags: fields.tags ? fields.tags.map((id) => ({ id })) : [],
     }
     const [newPost] = await PostModel.query().insertGraph([postData], {
       relate: true,
@@ -119,7 +119,7 @@ export default class {
       postId: number
       title?: string
       language?: string
-      keywords?: number[]
+      tags?: number[]
     },
   ) {
     ctx.isAuthenticated()
@@ -127,9 +127,7 @@ export default class {
       id: fields.postId,
       title: fields.title || undefined,
       language: fields.language || undefined,
-      keywords: fields.keywords
-        ? fields.keywords.map((id) => ({ id }))
-        : undefined,
+      tags: fields.tags ? fields.tags.map((id) => ({ id })) : undefined,
     }
     const [updatedPost] = await PostModel.query().upsertGraphAndFetch(
       [postData],

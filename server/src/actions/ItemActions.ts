@@ -1,9 +1,9 @@
 import { FileUpload } from 'graphql-upload'
-import ItemModel from '@src/models/ItemModel'
+import { ItemModel } from '@src/models'
 import Context from '@src/Context'
 import { AuthorizationError } from '@src/errors'
 import ActionUtils from './ActionUtils'
-import TaskActions from '@src/actions/TaskActions'
+import TaskActions from '@actions/TaskActions'
 
 export default class {
   /// Queries
@@ -23,7 +23,7 @@ export default class {
       limit?: number
       offset?: number
       byUsers?: number[]
-      byKeywords?: number[]
+      byTags?: number[]
       byTypes?: string[]
       byLanguage?: string
       byContent?: string
@@ -43,12 +43,12 @@ export default class {
     if (fields.byUsers && fields.byUsers.length > 0) {
       query.whereIn('post.creatorId', fields.byUsers)
     }
-    if (fields.byKeywords && fields.byKeywords.length > 0) {
+    if (fields.byTags && fields.byTags.length > 0) {
       query
-        .joinRelated('post.keywords')
-        .whereIn('post.keywords.id', fields.byKeywords)
-        .groupBy('post.id', 'post.keywords.added_at')
-        .orderBy('post.keywords.addedAt', 'desc')
+        .joinRelated('post.tags')
+        .whereIn('post.tags.id', fields.byTags)
+        .groupBy('post.id', 'post.tags.added_at')
+        .orderBy('post.tags.addedAt', 'desc')
     }
     if (fields.byContent && fields.byContent.trim().length > 0) {
       const tsQuery = fields.byContent
@@ -79,7 +79,10 @@ export default class {
         .count('Post.id')
         .execute()
         .then((x) =>
-          (x as any).reduce((acc: number, val: any) => acc + parseInt(val.count, 10), 0),
+          (x as any).reduce(
+            (acc: number, val: any) => acc + parseInt(val.count, 10),
+            0,
+          ),
         ),
       ItemModel.query()
         .count()
