@@ -1,4 +1,4 @@
-import { Post, Item, usePostQuery } from '@src/generated/graphql'
+import { Item, usePostQuery } from '@src/generated/graphql'
 import React from 'react'
 import { useParams } from 'react-router-dom'
 import { default as ItemComponent } from '@src/components/Item'

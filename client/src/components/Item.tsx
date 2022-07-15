@@ -1,5 +1,5 @@
 import Button, { ButtonKind } from '@src/components/Button'
-import { Item } from '@src/generated/graphql'
+import { Item as GqlItem } from '@src/generated/graphql'
 import React from 'react'
 import './Item.sass'
 
@@ -7,7 +7,7 @@ import IconDownload from '@src/assets/icons/download.svg'
 import format from 'date-fns/format'
 import UserInfo from './UserInfo'
 
-const Item = (props: { item: Item }) => {
+const Item = (props: { item: GqlItem }) => {
   return (
     <article className="archive--item">
       <Media item={props.item} />
@@ -37,7 +37,7 @@ const Item = (props: { item: Item }) => {
 
 export default Item
 
-const Media = (props: { item: Item }) => {
+const Media = (props: { item: GqlItem }) => {
   return (
     <div className="item--media">
       <video controls>

@@ -1,5 +1,5 @@
 import React from 'react'
-import ReactDOM from 'react-dom'
+import { createRoot } from 'react-dom/client'
 import {
   ApolloClient,
   InMemoryCache,
@@ -26,11 +26,13 @@ const client = new ApolloClient({
   cache,
 })
 
-ReactDOM.render(
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+const root = createRoot(document.getElementById('app-root')!)
+
+root.render(
   <ApolloProvider client={client}>
     <BrowserRouter>
       <App />
     </BrowserRouter>
   </ApolloProvider>,
-  document.getElementById('app-root'),
 )
