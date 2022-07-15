@@ -36,7 +36,7 @@
     "pg": "^8.7.3",
     "pg-escape": "^0.2.0",
     "pg-ipc": "^1.0.5",
-    "sharp": "^0.30.4",
+    "sharp": "^0.30.5",
     "string-strip-html": "^8.3.0",
     "telegraf": "^4.8.1",
     "tmp": "^0.2.1"
