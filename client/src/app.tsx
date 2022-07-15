@@ -1,5 +1,5 @@
 import React from 'react'
-import './app.sass'
+// import s from './app.module.sass'
 import ArchiveHeader from '@src/components/ArchiveHeader'
 import { Routes, Route } from 'react-router-dom'
 import Login from '@src/routes/Login'

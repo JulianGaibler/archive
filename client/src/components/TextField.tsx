@@ -1,6 +1,6 @@
 import { useUniqueId } from '@src/hooks/useUniqueId'
 import React from 'react'
-import './TextField.sass'
+import s from './TextField.module.sass'
 
 interface Props extends React.InputHTMLAttributes<HTMLInputElement> {
   className?: string
@@ -33,8 +33,8 @@ const TextField = React.forwardRef<HTMLInputElement, Props>((props, ref) => {
   )
 
   return (
-    <div className={`archive--textfield ${error ? 'error' : ''} ${className}`}>
-      <div className="archive--textfield--box">
+    <div className={`${error ? s.error : ''} ${className}`}>
+      <div className={s.box}>
         <input
           id={id}
           ref={ref}
@@ -42,13 +42,13 @@ const TextField = React.forwardRef<HTMLInputElement, Props>((props, ref) => {
           onChange={handleChange}
           aria-invalid={error ? 'true' : undefined}
           aria-describedby={helperText || error ? helperId : undefined}
-          className={value?.length > 0 ? 'filled' : ''}
+          className={value?.length > 0 ? s.filled : ''}
           {...other}
         />
         <label htmlFor={id}>{label}</label>
       </div>
       {(helperText || error) && (
-        <div id={helperId} className="archive--helper-message">
+        <div id={helperId} className={s.helper_message}>
           {error || helperText}
         </div>
       )}

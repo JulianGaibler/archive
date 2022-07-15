@@ -1,0 +1,53 @@
+.button
+  @include archive.text-style-action
+  @include archive.effect-focus
+  user-select: none
+  display: flex
+  justify-content: center
+  align-items: center
+  gap: 4px
+  border-radius: archive.$radius-button
+  height: archive.$button-height
+  padding: 0 archive.$size-xsmall
+  text-decoration: none
+
+.large
+  border-radius: archive.$radius-input
+  height: archive.$input-height
+  padding: 0 archive.$size-small
+  gap: 8px
+.icon
+  padding: 0
+  width: archive.$button-height
+  &.large
+    width: archive.$input-height
+
+.primary
+  color: var(--text-inverted)
+  background: var(--action-primary)
+  &:hover
+    background: var(--action-primary-hover)
+  &:active
+    background: var(--action-primary-active)
+.secondary
+  color: var(--text-tintbar)
+  background: var(--action-secondary)
+  &:hover
+    background: var(--action-secondary-hover)
+  &:active
+    background: var(--action-secondary-active)
+.secondary_tintbar
+  color: var(--text-primary)
+  background: var(--action-secondary-tintbar)
+  &:hover
+    background: var(--active-secondary-tintbar-hover)
+  &:active
+    background: var(--active-secondary-tintbar-active)
+.destructive
+  color: var(--text-inverted)
+  background: var(--action-destructive)
+  &:hover
+    background: var(--active-destructive-hover)
+  &:active
+    background: var(--active-destructive-active)
+

@@ -1,11 +1,11 @@
 import React from 'react'
 import { Link, To } from 'react-router-dom'
-import './Button.sass'
+import s from './Button.module.sass'
 
 export enum ButtonKind {
   PRIMARY = 'primary',
   SECONDARY = 'secondary',
-  SECONDARY_TINTBAR = 'secondary-tintbar',
+  SECONDARY_TINTBAR = 'secondary_tintbar',
   DESTRUCTIVE = 'destructive',
 }
 
@@ -23,7 +23,6 @@ const defaultValues = {
   large: false,
   to: null,
 }
-
 const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
   (props, ref) => {
     const { kind, large, children, icon, className, to, ...other } = {
@@ -36,9 +35,9 @@ const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
         ref={ref as unknown as React.Ref<HTMLAnchorElement>}
         to={to}
         {...other}
-        className={`archive--button archive--button--${kind} ${
-          large ? 'archive--button--large' : ''
-        } ${icon && !children ? 'archive--button--icon' : ''} ${className}`}
+        className={`${s.button} ${s[kind]} ${large ? s.large : ''} ${
+          icon && !children ? s.icon : ''
+        } ${className}`}
       >
         {icon && icon}
         {children && children}
@@ -47,9 +46,9 @@ const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
       <button
         ref={ref as unknown as React.Ref<HTMLButtonElement>}
         {...other}
-        className={`archive--button archive--button--${kind} ${
-          large ? 'archive--button--large' : ''
-        } ${icon && !children ? 'archive--button--icon' : ''} ${className}`}
+        className={`${s.button} ${s[kind]} ${large ? s.large : ''} ${
+          icon && !children ? s.icon : ''
+        } ${className}`}
       >
         {icon && icon}
         {children && children}

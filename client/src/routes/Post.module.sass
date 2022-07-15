@@ -1,12 +1,12 @@
-.archive--post
-  .post--bar
+.post
+  .bar
     margin-block-start: archive.$size-medium
     margin-block-end: archive.$size-xsmall
     gap: archive.$size-xxxsmall
-  .post--title
+  .title
     @include archive.text-style-title
     margin: 0
-  .post--tags
+  .tags
     display: flex
     gap: archive.$size-xxxxsmall
     .tag
@@ -17,5 +17,5 @@
       padding-inline: archive.$size-xxxsmall
       height: archive.$size-small
       @include archive.text-style-body-s
-  .post--content
+  .content
     @include archive.content-position

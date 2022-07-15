@@ -7,8 +7,8 @@
   "scripts": {
     "dev": "vite serve",
     "bundle": "vite build --emptyOutDir",
-    "lint": "eslint -c .eslintrc.js src/",
-    "prettier": "prettier --config .prettierrc.js --write --check .",
+    "lint": "eslint -c .eslintrc.cjs src/",
+    "prettier": "prettier --config .prettierrc.cjs --write --check .",
     "generate": "graphql-codegen --config codegen.yml"
   },
   "author": "",

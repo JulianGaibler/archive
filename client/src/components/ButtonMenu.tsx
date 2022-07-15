@@ -1,4 +1,4 @@
-import './ButtonMenu.sass'
+import s from './ButtonMenu.module.sass'
 import React from 'react'
 import ReactDOM from 'react-dom'
 
@@ -95,15 +95,12 @@ export const ButtonMenu = (props: ButtonMenuProps): JSX.Element => {
   // create portal with child in it
   return ReactDOM.createPortal(
     <>
-      <div
-        onClick={() => props.ctx.hide()}
-        className="archive--button-menu-overlay"
-      ></div>
+      <div onClick={() => props.ctx.hide()} className={s.overlay}></div>
       <div
         ref={setMenuRef}
         role="menu"
         tabIndex={-1}
-        className={`archive--button-menu ${props.className || ''}`}
+        className={`${s.menu} ${props.className || ''}`}
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,

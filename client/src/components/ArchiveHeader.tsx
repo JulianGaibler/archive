@@ -1,5 +1,5 @@
 import React from 'react'
-import './ArchiveHeader.sass'
+import s from './ArchiveHeader.module.sass'
 import Button, { ButtonKind } from '@src/components/Button'
 import { useMeQuery } from '@src/generated/graphql'
 import { ButtonMenu, useContextMenu } from './ButtonMenu'
@@ -41,7 +41,7 @@ const ArchiveHeader = () => {
   const ctx = useContextMenu()
 
   return (
-    <header>
+    <header className={s.header}>
       <h1>Archive</h1>
       {error && <Button to="/login">Log in</Button>}
       {data && (
@@ -56,7 +56,7 @@ const ArchiveHeader = () => {
               background: `url(${data?.me?.profilePicture}-32.jpeg)`,
             }}
           ></button>
-          <ButtonMenu ctx={ctx} className="archive--header--menu">
+          <ButtonMenu ctx={ctx} className={s.menu}>
             {navigation.map((item, i) =>
               item ? (
                 <Button

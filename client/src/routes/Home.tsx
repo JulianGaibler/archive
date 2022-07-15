@@ -1,7 +1,7 @@
 import Button, { ButtonKind } from '@src/components/Button'
 import PostWall from '@src/components/PostWall'
 import React from 'react'
-import './Home.sass'
+import s from './Home.module.sass'
 
 const Home = () => {
   return (
@@ -14,7 +14,7 @@ const Home = () => {
           </Button>
         </div>
       </nav>
-      <main className="archive--home">
+      <main className={s.home}>
         <PostWall />
       </main>
     </>

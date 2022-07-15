@@ -2,7 +2,7 @@ import Button, { ButtonKind } from '@src/components/Button'
 import TextField from '@src/components/TextField'
 import { useLoginMutation } from '@src/generated/graphql'
 import React from 'react'
-import './Login.sass'
+// import s from './Login.module.sass'
 
 const Login = () => {
   const [username, setUsername] = React.useState('')

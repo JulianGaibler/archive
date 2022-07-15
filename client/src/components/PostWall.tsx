@@ -1,5 +1,5 @@
 import React from 'react'
-import './PostWall.sass'
+import s from './PostWall.module.sass'
 import { Post, usePostsQuery } from '@src/generated/graphql'
 import { Link } from 'react-router-dom'
 
@@ -29,10 +29,10 @@ const PostWall = () => {
   }, [columns, data])
 
   return (
-    <div className="archive--postwall">
+    <div className={s.postwall}>
       {sortedPosts.map((posts, i) => {
         return (
-          <div key={i} className="archive--postwall--column">
+          <div key={i} className={s.column}>
             {posts.map((post) => {
               return <PostItem key={post.id} post={post} />
             })}
@@ -47,7 +47,7 @@ const PostItem = (props: { post: Post }) => {
   return (
     <Link
       to={`/${props.post.id}`}
-      className="archive--postwall--post"
+      className={s.post}
       style={{
         paddingBottom: `${
           props.post.items?.edges?.[0]?.node?.relativeHeight ?? 128
@@ -57,17 +57,17 @@ const PostItem = (props: { post: Post }) => {
       {
         <img
           loading="lazy"
-          className="image"
+          className={s.image}
           src={`${props.post.items?.edges?.[0]?.node?.thumbnailPath}.jpeg`}
         />
       }
 
-      <div className="info">
-        <div className="title">{props.post.title}</div>
-        <div className="creator">
+      <div className={s.info}>
+        <div className={s.title}>{props.post.title}</div>
+        <div className={s.creator}>
           <img src={`${props.post.creator?.profilePicture}-32.jpeg`} />
         </div>
-        <div className="items">{props.post.items?.totalCount ?? 0}</div>
+        <div className={s.items}>{props.post.items?.totalCount ?? 0}</div>
       </div>
     </Link>
   )
