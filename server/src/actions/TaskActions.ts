@@ -1,6 +1,6 @@
 import { raw } from 'objection'
 
-import TaskModel from '@src/models/TaskModel'
+import { TaskModel } from '@src/models'
 import Context from '@src/Context'
 import ActionUtils from './ActionUtils'
 

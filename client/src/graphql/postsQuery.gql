@@ -4,7 +4,7 @@ query Posts {
       node {
         id
         title
-				creator {
+        creator {
           profilePicture
         }
         items(first: 1) {

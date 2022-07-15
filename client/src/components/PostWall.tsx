@@ -1,12 +1,11 @@
 import React from 'react'
 import './PostWall.sass'
 import { Post, usePostsQuery } from '@src/generated/graphql'
-import useResources from '@src/hooks/useResources'
 import { Link } from 'react-router-dom'
 
 const PostWall = () => {
-  const { loading, error, data } = usePostsQuery()
-  const [columns, setColumns] = React.useState(4)
+  const { data } = usePostsQuery()
+  const [columns] = React.useState(4)
 
   const sortedPosts = React.useMemo(() => {
     if (!data || !data.posts) return []
@@ -45,11 +44,9 @@ const PostWall = () => {
 }
 
 const PostItem = (props: { post: Post }) => {
-  const resourceURL = useResources()
-
   return (
     <Link
-      to={`/post/${props.post.id}`}
+      to={`/${props.post.id}`}
       className="archive--postwall--post"
       style={{
         paddingBottom: `${
@@ -57,22 +54,20 @@ const PostItem = (props: { post: Post }) => {
         }%`,
       }}
     >
-      {resourceURL && (
+      {
         <img
           loading="lazy"
           className="image"
-          src={`${resourceURL}${props.post.items?.edges?.[0]?.node?.thumbnailPath}.jpeg`}
+          src={`${props.post.items?.edges?.[0]?.node?.thumbnailPath}.jpeg`}
         />
-      )}
+      }
 
       <div className="info">
         <div className="title">{props.post.title}</div>
-        <div className="items">{props.post.items?.edges?.length ?? 0}</div>
         <div className="creator">
-          <img
-            src={`${resourceURL}upic/${props.post.creator?.profilePicture}-32.jpeg`}
-          />
+          <img src={`${props.post.creator?.profilePicture}-32.jpeg`} />
         </div>
+        <div className="items">{props.post.items?.totalCount ?? 0}</div>
       </div>
     </Link>
   )

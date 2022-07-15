@@ -1,4 +1,4 @@
-import TagModel from '@src/models/TagModel'
+import { TagModel } from '@src/models'
 import Context from '@src/Context'
 import ActionUtils from './ActionUtils'
 

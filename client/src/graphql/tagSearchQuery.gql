@@ -1,0 +1,10 @@
+query tagSearch($input: String) {
+  tags(byName: $input) {
+    edges {
+      node {
+        id
+        name
+      }
+    }
+  }
+}

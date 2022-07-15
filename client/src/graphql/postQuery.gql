@@ -1,0 +1,38 @@
+query Post($id: ID!) {
+  node(id: $id) {
+    id
+    ... on Post {
+      title
+      language
+      createdAt
+      tags {
+        id
+        name
+      }
+      creator {
+        id
+        name
+        username
+        profilePicture
+      }
+      items {
+        edges {
+          node {
+            id
+            type
+            createdAt
+            creator {
+              id
+              name
+              username
+              profilePicture
+            }
+            description
+            caption
+            compressedPath
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,10 @@
 @use '@src/styles/variables.sass'
 @use '@src/styles/fonts.sass'
 
+*
+  margin: 0
+  padding: 0
+
 ul, ol, li, button, input, textarea, select
   margin: 0
   padding: 0
@@ -22,7 +26,48 @@ body, html, #app-root
 body
   font-family: "HK Grotesk"
   color: var(--text-primary)
-  font-weight: 500
+  font-weight: 400
   font-size: 14px
   margin: 0
   background: var(--layer-base)
+
+.flex-grow
+  flex-grow: 1
+
+.archive--tintbar
+  color: var(--text-tintbar)
+  background: var(--layer-tintbar)
+  padding-block: archive.$size-xxsmall
+  position: relative
+  > ::after
+    top: 0
+    left: 0
+    right: 0
+    z-index: -1
+    content: ""
+    position: absolute
+    background: var(--layer-tintbar)
+    bottom: 0
+  &.extended > ::after
+    bottom: -256px
+
+.archive--home
+  @include archive.content-position
+  margin-block-start: archive.$size-xsmall
+.archive--tintbar--inner
+  @include archive.content-position
+  display: flex
+  gap: archive.$size-xsmall
+  &.vertical
+    flex-direction: column
+  input
+    border-radius: archive.$radius-input
+    display: block
+    flex-grow: 1
+    padding-inline: archive.$size-xxsmall
+    &::placeholder
+      color: var(--text-tintbar)
+      opacity: .5
+    &:focus
+      outline: none
+      background: var(--action-secondary-hover)

@@ -19,7 +19,7 @@ type MenuContext = {
 
 /** Menu hook */
 export const useContextMenu = (): MenuContext => {
-  const [show, setShow] = React.useState<boolean>(true)
+  const [show, setShow] = React.useState<boolean>(false)
   const anchorRef = React.useRef<HTMLElement | null>(null)
   const focusElement = React.useRef<HTMLElement | null>(null)
 
@@ -134,7 +134,7 @@ function calculatePosition(parentItemRect: DOMRect, menuRect: DOMRect) {
     coords.x =
       window.innerWidth -
       menuRect.width -
-      parentItemRect.width -
+      parentItemRect.width / 2 -
       WINDOW_PADDING +
       1
   }

@@ -32,14 +32,16 @@ module.exports = {
       {
         test: /\.svg$/i,
         issuer: /\.[jt]sx?$/,
-        use: [{
-          loader: '@svgr/webpack',
-          options: {
-            svgo: false,
-            prettier: false,
-            ref: true,
+        use: [
+          {
+            loader: '@svgr/webpack',
+            options: {
+              svgo: false,
+              prettier: false,
+              ref: true,
+            },
           },
-        }],
+        ],
       },
       {
         test: /\.(ts|tsx)$/,

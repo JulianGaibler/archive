@@ -1,5 +1,6 @@
 @mixin effect-focus
   &:focus
+    z-index: 1
     outline: 2px solid var(--text-action)
     outline-offset: 2px
   // As of writing Safari doesn't support :focus-visible yet,
@@ -7,6 +8,7 @@
   &:focus-visible, &:focus
     outline: none
   &:focus-visible
+    z-index: 1
     outline: 2px solid var(--text-action)
     outline-offset: 2px
 

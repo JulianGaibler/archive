@@ -1,3 +1,13 @@
+/**
+ * NOTE: THIS IS AN AUTO-GENERATED FILE!
+ * DO NOT MODIFY IT DIRECTLY!
+ *
+ * Use `npm run generate` while the server is running to generate
+ * this file again.
+ */
+
+/* eslint-disable */
+
 import { gql } from '@apollo/client';
 import * as Apollo from '@apollo/client';
 export type Maybe<T> = T | null;
@@ -42,10 +52,12 @@ export type Item = Node & {
   compressedPath?: Maybe<Scalars['String']>;
   /** Identifies the date and time when the object was created. */
   createdAt: Scalars['DateTime'];
+  creator?: Maybe<User>;
   /** Text describing the item. */
   description?: Maybe<Scalars['String']>;
   /** The ID of an object */
   id: Scalars['ID'];
+  lastEditBy?: Maybe<User>;
   /** Path where the original file is located. (with file-extension) */
   originalPath?: Maybe<Scalars['String']>;
   /** Items are ordered within a post. This denotes the unique position. */
@@ -80,44 +92,6 @@ export type ItemEdge = {
   node?: Maybe<Item>;
 };
 
-/** A keyword for categorizing Posts. */
-export type Keyword = Node & {
-  __typename?: 'Keyword';
-  /** The ID of an object */
-  id: Scalars['ID'];
-  /** Identifies the keyword name. */
-  name: Scalars['String'];
-  /** All Posts associated with this keyword. */
-  posts?: Maybe<PostConnection>;
-};
-
-
-/** A keyword for categorizing Posts. */
-export type KeywordPostsArgs = {
-  after?: InputMaybe<Scalars['String']>;
-  before?: InputMaybe<Scalars['String']>;
-  first?: InputMaybe<Scalars['Int']>;
-  last?: InputMaybe<Scalars['Int']>;
-};
-
-/** A connection to a list of items. */
-export type KeywordConnection = {
-  __typename?: 'KeywordConnection';
-  /** A list of edges. */
-  edges?: Maybe<Array<Maybe<KeywordEdge>>>;
-  /** Information to aid in pagination. */
-  pageInfo: PageInfo;
-};
-
-/** An edge in a connection. */
-export type KeywordEdge = {
-  __typename?: 'KeywordEdge';
-  /** A cursor for use in pagination */
-  cursor: Scalars['String'];
-  /** The item at the end of the edge */
-  node?: Maybe<Keyword>;
-};
-
 /** Possible languages that an object can have. */
 export enum Language {
   /** The English language. */
@@ -146,14 +120,14 @@ export type Mutation = {
   changePassword: Scalars['Boolean'];
   /** Deletes the profile picture of the current user. */
   clearProfilePicture: Scalars['Boolean'];
-  /** Creates a new keyword. */
-  createKeyword: Keyword;
   /** Creates a new Post */
   createPost: Post;
-  /** Deleted a keyword. */
-  deleteKeyword: Scalars['Boolean'];
+  /** Creates a new tag. */
+  createTag: Tag;
   /** Deletes list of posts and returns list of the ones that were actually deleted. */
   deletePosts: Array<Scalars['ID']>;
+  /** Deleted a tag. */
+  deleteTag: Scalars['Boolean'];
   /** Edits a post. */
   editPost: Post;
   /** Associates the Telegram ID of a user with their Archive Profil. */
@@ -186,20 +160,15 @@ export type MutationChangePasswordArgs = {
 };
 
 
-export type MutationCreateKeywordArgs = {
-  name: Scalars['String'];
-};
-
-
 export type MutationCreatePostArgs = {
-  keywords?: InputMaybe<Array<Scalars['ID']>>;
   language: Language;
+  tags?: InputMaybe<Array<Scalars['ID']>>;
   title: Scalars['String'];
 };
 
 
-export type MutationDeleteKeywordArgs = {
-  id: Scalars['String'];
+export type MutationCreateTagArgs = {
+  name: Scalars['String'];
 };
 
 
@@ -208,10 +177,15 @@ export type MutationDeletePostsArgs = {
 };
 
 
+export type MutationDeleteTagArgs = {
+  id: Scalars['String'];
+};
+
+
 export type MutationEditPostArgs = {
   id: Scalars['ID'];
-  keywords?: InputMaybe<Array<Scalars['ID']>>;
   language?: InputMaybe<Language>;
+  tags?: InputMaybe<Array<Scalars['ID']>>;
   title?: InputMaybe<Scalars['String']>;
 };
 
@@ -283,9 +257,10 @@ export type Post = Node & {
   id: Scalars['ID'];
   /** Items in this post. */
   items?: Maybe<ItemConnection>;
-  keywords: Array<Keyword>;
   /** Language in which caption and title are written. */
   language?: Maybe<Language>;
+  lastEditBy?: Maybe<User>;
+  tags: Array<Tag>;
   title: Scalars['String'];
   /** Identifies the date and time when the object was last updated. */
   updatedAt: Scalars['DateTime'];
@@ -321,8 +296,6 @@ export type PostEdge = {
 
 export type Query = {
   __typename?: 'Query';
-  /** Returns a list of keywords. */
-  keywords?: Maybe<KeywordConnection>;
   /** Returns the currently authenticated user. */
   me?: Maybe<User>;
   /** Fetches an object given its ID */
@@ -331,8 +304,8 @@ export type Query = {
   nodes: Array<Maybe<Node>>;
   /** Returns a list of posts. */
   posts?: Maybe<PostConnection>;
-  /** Returns information about the location of the actual files. */
-  resources?: Maybe<Resources>;
+  /** Returns a list of tags. */
+  tags?: Maybe<TagConnection>;
   /** Returns a list of tasks. */
   tasks?: Maybe<TaskConnection>;
   /** Returns user based on username */
@@ -341,13 +314,6 @@ export type Query = {
   userSessions: Array<Session>;
   /** Returns a list of users. */
   users?: Maybe<UserConnection>;
-};
-
-
-export type QueryKeywordsArgs = {
-  after?: InputMaybe<Scalars['String']>;
-  byName?: InputMaybe<Scalars['String']>;
-  first?: InputMaybe<Scalars['Int']>;
 };
 
 
@@ -364,10 +330,17 @@ export type QueryNodesArgs = {
 export type QueryPostsArgs = {
   after?: InputMaybe<Scalars['String']>;
   byContent?: InputMaybe<Scalars['String']>;
-  byKeywords?: InputMaybe<Array<Scalars['ID']>>;
   byLanguage?: InputMaybe<Language>;
+  byTags?: InputMaybe<Array<Scalars['ID']>>;
   byTypes?: InputMaybe<Array<Format>>;
   byUsers?: InputMaybe<Array<Scalars['ID']>>;
+  first?: InputMaybe<Scalars['Int']>;
+};
+
+
+export type QueryTagsArgs = {
+  after?: InputMaybe<Scalars['String']>;
+  byName?: InputMaybe<Scalars['String']>;
   first?: InputMaybe<Scalars['Int']>;
 };
 
@@ -389,15 +362,6 @@ export type QueryUsersArgs = {
   after?: InputMaybe<Scalars['String']>;
   byUsername?: InputMaybe<Scalars['String']>;
   first?: InputMaybe<Scalars['Int']>;
-};
-
-/** A keyword for categorizing Posts. */
-export type Resources = {
-  __typename?: 'Resources';
-  /** The domain on which the resources are stored */
-  resourceDomain: Scalars['String'];
-  /** The path that leads to the resources. */
-  resourcePath: Scalars['String'];
 };
 
 /** Represents a Session object of an user. */
@@ -430,10 +394,47 @@ export type SubscriptionTaskUpdatesArgs = {
   ids?: InputMaybe<Array<Scalars['String']>>;
 };
 
+/** A tag for categorizing Posts. */
+export type Tag = Node & {
+  __typename?: 'Tag';
+  /** The ID of an object */
+  id: Scalars['ID'];
+  /** Identifies the tag name. */
+  name: Scalars['String'];
+  /** All Posts associated with this tag. */
+  posts?: Maybe<PostConnection>;
+};
+
+
+/** A tag for categorizing Posts. */
+export type TagPostsArgs = {
+  after?: InputMaybe<Scalars['String']>;
+  before?: InputMaybe<Scalars['String']>;
+  first?: InputMaybe<Scalars['Int']>;
+  last?: InputMaybe<Scalars['Int']>;
+};
+
+/** A connection to a list of items. */
+export type TagConnection = {
+  __typename?: 'TagConnection';
+  /** A list of edges. */
+  edges?: Maybe<Array<Maybe<TagEdge>>>;
+  /** Information to aid in pagination. */
+  pageInfo: PageInfo;
+};
+
+/** An edge in a connection. */
+export type TagEdge = {
+  __typename?: 'TagEdge';
+  /** A cursor for use in pagination */
+  cursor: Scalars['String'];
+  /** The item at the end of the edge */
+  node?: Maybe<Tag>;
+};
+
 /** A task for an uploaded item. */
 export type Task = Node & {
   __typename?: 'Task';
-  addToPost?: Maybe<Post>;
   /** Identifies the date and time when the object was created. */
   createdAt: Scalars['DateTime'];
   createdItem?: Maybe<Item>;
@@ -569,13 +570,6 @@ export type ClearProfilePictureMutationVariables = Exact<{ [key: string]: never;
 
 export type ClearProfilePictureMutation = { __typename?: 'Mutation', clearProfilePicture: boolean };
 
-export type KeywordSearchQueryVariables = Exact<{
-  input?: InputMaybe<Scalars['String']>;
-}>;
-
-
-export type KeywordSearchQuery = { __typename?: 'Query', keywords?: { __typename?: 'KeywordConnection', edges?: Array<{ __typename?: 'KeywordEdge', node?: { __typename?: 'Keyword', id: string, name: string } | null } | null> | null } | null };
-
 export type LinkTelegramMutationVariables = Exact<{
   id: Scalars['String'];
   first_name?: InputMaybe<Scalars['String']>;
@@ -607,15 +601,17 @@ export type MeQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type MeQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, darkMode?: boolean | null } | null };
 
+export type PostQueryVariables = Exact<{
+  id: Scalars['ID'];
+}>;
+
+
+export type PostQuery = { __typename?: 'Query', node?: { __typename?: 'Item', id: string } | { __typename?: 'Post', title: string, language?: Language | null, createdAt: any, id: string, tags: Array<{ __typename?: 'Tag', id: string, name: string }>, creator?: { __typename?: 'User', id: string, name: string, username: string, profilePicture?: string | null } | null, items?: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node?: { __typename?: 'Item', id: string, type: Format, createdAt: any, description?: string | null, caption?: string | null, compressedPath?: string | null, creator?: { __typename?: 'User', id: string, name: string, username: string, profilePicture?: string | null } | null } | null } | null> | null } | null } | { __typename?: 'Session', id: string } | { __typename?: 'Tag', id: string } | { __typename?: 'Task', id: string } | { __typename?: 'User', id: string } | null };
+
 export type PostsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type PostsQuery = { __typename?: 'Query', posts?: { __typename?: 'PostConnection', edges?: Array<{ __typename?: 'PostEdge', node?: { __typename?: 'Post', id: string, title: string, creator?: { __typename?: 'User', profilePicture?: string | null } | null, items?: { __typename?: 'ItemConnection', totalCount: number, edges?: Array<{ __typename?: 'ItemEdge', node?: { __typename?: 'Item', id: string, type: Format, thumbnailPath?: string | null, relativeHeight?: number | null } | null } | null> | null } | null } | null } | null> | null } | null };
-
-export type ResourcesQueryVariables = Exact<{ [key: string]: never; }>;
-
-
-export type ResourcesQuery = { __typename?: 'Query', resources?: { __typename?: 'Resources', resourceDomain: string, resourcePath: string } | null };
 
 export type RevokeSessionMutationVariables = Exact<{
   id: Scalars['ID'];
@@ -630,6 +626,13 @@ export type SetDarkModeMutationVariables = Exact<{
 
 
 export type SetDarkModeMutation = { __typename?: 'Mutation', setDarkMode: boolean };
+
+export type TagSearchQueryVariables = Exact<{
+  input?: InputMaybe<Scalars['String']>;
+}>;
+
+
+export type TagSearchQuery = { __typename?: 'Query', tags?: { __typename?: 'TagConnection', edges?: Array<{ __typename?: 'TagEdge', node?: { __typename?: 'Tag', id: string, name: string } | null } | null> | null } | null };
 
 export type UnlinkTelegramMutationVariables = Exact<{ [key: string]: never; }>;
 
@@ -730,46 +733,6 @@ export function useClearProfilePictureMutation(baseOptions?: Apollo.MutationHook
 export type ClearProfilePictureMutationHookResult = ReturnType<typeof useClearProfilePictureMutation>;
 export type ClearProfilePictureMutationResult = Apollo.MutationResult<ClearProfilePictureMutation>;
 export type ClearProfilePictureMutationOptions = Apollo.BaseMutationOptions<ClearProfilePictureMutation, ClearProfilePictureMutationVariables>;
-export const KeywordSearchDocument = gql`
-    query keywordSearch($input: String) {
-  keywords(byName: $input) {
-    edges {
-      node {
-        id
-        name
-      }
-    }
-  }
-}
-    `;
-
-/**
- * __useKeywordSearchQuery__
- *
- * To run a query within a React component, call `useKeywordSearchQuery` and pass it any options that fit your needs.
- * When your component renders, `useKeywordSearchQuery` returns an object from Apollo Client that contains loading, error, and data properties
- * you can use to render your UI.
- *
- * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
- *
- * @example
- * const { data, loading, error } = useKeywordSearchQuery({
- *   variables: {
- *      input: // value for 'input'
- *   },
- * });
- */
-export function useKeywordSearchQuery(baseOptions?: Apollo.QueryHookOptions<KeywordSearchQuery, KeywordSearchQueryVariables>) {
-        const options = {...defaultOptions, ...baseOptions}
-        return Apollo.useQuery<KeywordSearchQuery, KeywordSearchQueryVariables>(KeywordSearchDocument, options);
-      }
-export function useKeywordSearchLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<KeywordSearchQuery, KeywordSearchQueryVariables>) {
-          const options = {...defaultOptions, ...baseOptions}
-          return Apollo.useLazyQuery<KeywordSearchQuery, KeywordSearchQueryVariables>(KeywordSearchDocument, options);
-        }
-export type KeywordSearchQueryHookResult = ReturnType<typeof useKeywordSearchQuery>;
-export type KeywordSearchLazyQueryHookResult = ReturnType<typeof useKeywordSearchLazyQuery>;
-export type KeywordSearchQueryResult = Apollo.QueryResult<KeywordSearchQuery, KeywordSearchQueryVariables>;
 export const LinkTelegramDocument = gql`
     mutation linkTelegram($id: String!, $first_name: String, $last_name: String, $username: String, $photo_url: String, $auth_date: String!, $hash: String!) {
   linkTelegram(
@@ -914,6 +877,74 @@ export function useMeLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<MeQuery
 export type MeQueryHookResult = ReturnType<typeof useMeQuery>;
 export type MeLazyQueryHookResult = ReturnType<typeof useMeLazyQuery>;
 export type MeQueryResult = Apollo.QueryResult<MeQuery, MeQueryVariables>;
+export const PostDocument = gql`
+    query Post($id: ID!) {
+  node(id: $id) {
+    id
+    ... on Post {
+      title
+      language
+      createdAt
+      tags {
+        id
+        name
+      }
+      creator {
+        id
+        name
+        username
+        profilePicture
+      }
+      items {
+        edges {
+          node {
+            id
+            type
+            createdAt
+            creator {
+              id
+              name
+              username
+              profilePicture
+            }
+            description
+            caption
+            compressedPath
+          }
+        }
+      }
+    }
+  }
+}
+    `;
+
+/**
+ * __usePostQuery__
+ *
+ * To run a query within a React component, call `usePostQuery` and pass it any options that fit your needs.
+ * When your component renders, `usePostQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = usePostQuery({
+ *   variables: {
+ *      id: // value for 'id'
+ *   },
+ * });
+ */
+export function usePostQuery(baseOptions: Apollo.QueryHookOptions<PostQuery, PostQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<PostQuery, PostQueryVariables>(PostDocument, options);
+      }
+export function usePostLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<PostQuery, PostQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<PostQuery, PostQueryVariables>(PostDocument, options);
+        }
+export type PostQueryHookResult = ReturnType<typeof usePostQuery>;
+export type PostLazyQueryHookResult = ReturnType<typeof usePostLazyQuery>;
+export type PostQueryResult = Apollo.QueryResult<PostQuery, PostQueryVariables>;
 export const PostsDocument = gql`
     query Posts {
   posts(first: 40) {
@@ -967,41 +998,6 @@ export function usePostsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<Post
 export type PostsQueryHookResult = ReturnType<typeof usePostsQuery>;
 export type PostsLazyQueryHookResult = ReturnType<typeof usePostsLazyQuery>;
 export type PostsQueryResult = Apollo.QueryResult<PostsQuery, PostsQueryVariables>;
-export const ResourcesDocument = gql`
-    query resources {
-  resources {
-    resourceDomain
-    resourcePath
-  }
-}
-    `;
-
-/**
- * __useResourcesQuery__
- *
- * To run a query within a React component, call `useResourcesQuery` and pass it any options that fit your needs.
- * When your component renders, `useResourcesQuery` returns an object from Apollo Client that contains loading, error, and data properties
- * you can use to render your UI.
- *
- * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
- *
- * @example
- * const { data, loading, error } = useResourcesQuery({
- *   variables: {
- *   },
- * });
- */
-export function useResourcesQuery(baseOptions?: Apollo.QueryHookOptions<ResourcesQuery, ResourcesQueryVariables>) {
-        const options = {...defaultOptions, ...baseOptions}
-        return Apollo.useQuery<ResourcesQuery, ResourcesQueryVariables>(ResourcesDocument, options);
-      }
-export function useResourcesLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<ResourcesQuery, ResourcesQueryVariables>) {
-          const options = {...defaultOptions, ...baseOptions}
-          return Apollo.useLazyQuery<ResourcesQuery, ResourcesQueryVariables>(ResourcesDocument, options);
-        }
-export type ResourcesQueryHookResult = ReturnType<typeof useResourcesQuery>;
-export type ResourcesLazyQueryHookResult = ReturnType<typeof useResourcesLazyQuery>;
-export type ResourcesQueryResult = Apollo.QueryResult<ResourcesQuery, ResourcesQueryVariables>;
 export const RevokeSessionDocument = gql`
     mutation revokeSession($id: ID!) {
   revokeSession(id: $id)
@@ -1064,6 +1060,46 @@ export function useSetDarkModeMutation(baseOptions?: Apollo.MutationHookOptions<
 export type SetDarkModeMutationHookResult = ReturnType<typeof useSetDarkModeMutation>;
 export type SetDarkModeMutationResult = Apollo.MutationResult<SetDarkModeMutation>;
 export type SetDarkModeMutationOptions = Apollo.BaseMutationOptions<SetDarkModeMutation, SetDarkModeMutationVariables>;
+export const TagSearchDocument = gql`
+    query tagSearch($input: String) {
+  tags(byName: $input) {
+    edges {
+      node {
+        id
+        name
+      }
+    }
+  }
+}
+    `;
+
+/**
+ * __useTagSearchQuery__
+ *
+ * To run a query within a React component, call `useTagSearchQuery` and pass it any options that fit your needs.
+ * When your component renders, `useTagSearchQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useTagSearchQuery({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useTagSearchQuery(baseOptions?: Apollo.QueryHookOptions<TagSearchQuery, TagSearchQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<TagSearchQuery, TagSearchQueryVariables>(TagSearchDocument, options);
+      }
+export function useTagSearchLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<TagSearchQuery, TagSearchQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<TagSearchQuery, TagSearchQueryVariables>(TagSearchDocument, options);
+        }
+export type TagSearchQueryHookResult = ReturnType<typeof useTagSearchQuery>;
+export type TagSearchLazyQueryHookResult = ReturnType<typeof useTagSearchLazyQuery>;
+export type TagSearchQueryResult = Apollo.QueryResult<TagSearchQuery, TagSearchQueryVariables>;
 export const UnlinkTelegramDocument = gql`
     mutation unlinkTelegram {
   unlinkTelegram

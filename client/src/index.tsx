@@ -10,6 +10,7 @@ import {
 import { BrowserRouter } from 'react-router-dom'
 
 import './styles/global.sass'
+import generatedIntrospection from '@src/generated/introspection'
 
 import App from './app'
 
@@ -17,10 +18,12 @@ const httpLink = new HttpLink({
   uri: 'http://localhost:4000',
   credentials: 'include',
 })
-
+const cache = new InMemoryCache({
+  possibleTypes: generatedIntrospection.possibleTypes,
+})
 const client = new ApolloClient({
   link: from([httpLink]),
-  cache: new InMemoryCache(),
+  cache,
 })
 
 ReactDOM.render(

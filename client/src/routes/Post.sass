@@ -1,0 +1,21 @@
+.archive--post
+  .post--bar
+    margin-block-start: archive.$size-medium
+    margin-block-end: archive.$size-xsmall
+    gap: archive.$size-xxxsmall
+  .post--title
+    @include archive.text-style-title
+    margin: 0
+  .post--tags
+    display: flex
+    gap: archive.$size-xxxxsmall
+    .tag
+      border-radius: archive.$size-xxlarge
+      border: 1px solid
+      display: inline-flex
+      align-items: center
+      padding-inline: archive.$size-xxxsmall
+      height: archive.$size-small
+      @include archive.text-style-body-s
+  .post--content
+    @include archive.content-position

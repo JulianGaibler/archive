@@ -1,9 +1,30 @@
+definitions:
+  add: &top-comment
+    content: >
+      /**
+       * NOTE: THIS IS AN AUTO-GENERATED FILE!
+       * DO NOT MODIFY IT DIRECTLY!
+       *
+       * Use `npm run generate` while the server is running to generate
+       * this file again.
+       */
+
+      /* eslint-disable */
+
 overwrite: true
-schema: "http://localhost:4000"
-documents: "src/**/*.gql"
+schema: 'http://localhost:4000'
+documents: 'src/**/*.gql'
 generates:
   src/generated/graphql.tsx:
     plugins:
-      - "typescript"
-      - "typescript-operations"
-      - "typescript-react-apollo"
+      - add: *top-comment
+      - 'typescript'
+      - 'typescript-operations'
+      - 'typescript-react-apollo'
+  src/generated/introspection.ts:
+    plugins:
+      - add: *top-comment
+        content: '// THIS FILE IS GENERATED, DO NOT EDIT!'
+      - fragment-matcher
+    config:
+      useExplicitTyping: true

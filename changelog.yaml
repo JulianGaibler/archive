@@ -1,6 +1,15 @@
 # Changelog
 # Labels: [Added], [Fixed], [Improved]
 
+2.0.0:
+  - '[Improved] Posts can now contain multiple items'
+  - '[Improved] The video player will remember the audio level'
+  - '[Improved] The volume of uploaded videos now gets normalized'
+  - '[Fixed] Videos can now be shorter than 1 second'
+  - '[Fixed] Resolved an issue where searching for certain words was not possible #whybug'
+1.0.2:
+  - '[Fixed] Prompts not showing correct words or having empty buttons'
+  - '[Fixed] Multiple styling issues'
 1.0.1:
   - '[Added] Release notes view'
   - '[Fixed] Color inconsistencies with dark-mode - #4'

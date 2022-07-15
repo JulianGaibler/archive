@@ -2,7 +2,6 @@ import React from 'react'
 import './ArchiveHeader.sass'
 import Button, { ButtonKind } from '@src/components/Button'
 import { useMeQuery } from '@src/generated/graphql'
-import useResources from '@src/hooks/useResources'
 import { ButtonMenu, useContextMenu } from './ButtonMenu'
 
 import IconUser from '@src/assets/icons/user.svg'
@@ -38,7 +37,6 @@ const navigation = [
 
 const ArchiveHeader = () => {
   const { error, data } = useMeQuery()
-  const resourceURL = useResources()
 
   const ctx = useContextMenu()
 
@@ -46,7 +44,7 @@ const ArchiveHeader = () => {
     <header>
       <h1>Archive</h1>
       {error && <Button to="/login">Log in</Button>}
-      {resourceURL && data && (
+      {data && (
         <>
           <button
             ref={(ref) => (ctx.anchorRef.current = ref)}
@@ -55,7 +53,7 @@ const ArchiveHeader = () => {
               borderRadius: '35%',
               width: '32px',
               height: '32px',
-              background: `url(${resourceURL}upic/${data?.me?.profilePicture}-32.jpeg)`,
+              background: `url(${data?.me?.profilePicture}-32.jpeg)`,
             }}
           ></button>
           <ButtonMenu ctx={ctx} className="archive--header--menu">

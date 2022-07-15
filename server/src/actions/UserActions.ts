@@ -1,7 +1,7 @@
 import * as bcrypt from 'bcryptjs'
 import { FileUpload } from 'graphql-upload'
 
-import UserModel from '@src/models/UserModel'
+import { UserModel } from '@src/models'
 import Context from '@src/Context'
 import ActionUtils from './ActionUtils'
 import {
