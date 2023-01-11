@@ -28,7 +28,7 @@
     "graphql-upload": "^13.0.0",
     "graphql-ws": "^5.8.1",
     "hashids": "^2.2.10",
-    "knex": "^2.0.0",
+    "knex": "^2.4.0",
     "morgan": "^1.10.0",
     "node-vibrant": "^3.1.6",
     "objection": "^3.0.1",
