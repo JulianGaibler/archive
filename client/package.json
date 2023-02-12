@@ -14,7 +14,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@graphql-codegen/cli": "2.6.2",
+    "@graphql-codegen/cli": "2.16.5",
     "@graphql-codegen/typescript": "2.7.1",
     "@graphql-codegen/typescript-operations": "2.5.1",
     "@graphql-codegen/typescript-react-apollo": "3.3.1",
@@ -43,7 +43,7 @@
   "dependencies": {
     "@apollo/client": "^3.6.9",
     "@graphql-codegen/add": "^3.2.0",
-    "@graphql-codegen/cli": "2.8.1",
+    "@graphql-codegen/cli": "2.16.5",
     "@graphql-codegen/fragment-matcher": "^3.3.0",
     "date-fns": "^2.28.0",
     "debounce": "^1.2.1",
