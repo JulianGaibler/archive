@@ -1,11 +1,13 @@
-import { ApolloError } from 'apollo-server-core'
+import { GraphQLError } from 'graphql'
 import { ValidationError } from 'objection'
 
-export default class ValidationInputError extends ApolloError {
+export default class ValidationInputError extends GraphQLError {
   constructor(validationError: ValidationError) {
-    super(validationError.message, 'INPUT_ERROR', {
-      fields: validationError.data,
+    super(validationError.message, {
+      extensions: {
+        code: 'INPUT_ERROR',
+        validationError: validationError,
+      },
     })
-    this.originalError = validationError
   }
 }

@@ -4,6 +4,7 @@ import { stripHtml } from 'string-strip-html'
 import BaseModel from './BaseModel'
 
 import PostModel from './PostModel'
+import UserModel from './UserModel'
 
 export default class ItemModel extends BaseModel {
   /// Config
@@ -20,8 +21,10 @@ export default class ItemModel extends BaseModel {
   relativeHeight?: number
   audioAmpThumbnail?: number[]
   postId?: number
+  creatorId?: number
 
   post?: PostModel
+  creator?: UserModel
 
   /// Hooks
   async $beforeInsert(queryContext: QueryContext) {
@@ -61,6 +64,7 @@ export default class ItemModel extends BaseModel {
       postId: { type: 'number' },
       description: { type: ['string', 'null'], minLength: 4 },
       caption: { type: ['string', 'null'], minLength: 4 },
+      creatorId: { type: 'number' },
     },
   }
 
@@ -84,13 +88,21 @@ export default class ItemModel extends BaseModel {
   }
 
   private static async itemsByPosts(postIds: readonly number[]): Promise<ItemModel[][]> {
-    const users = await ItemModel.query().whereIn('postId', postIds as number[])
+    const users = await ItemModel.query().whereIn('postId', postIds as number[]).orderBy('position')
 
     return postIds.map((id) => users.filter((x) => x.postId === id))
   }
 
   /// Relations
   static relationMappings: RelationMappings = {
+    creator: {
+      relation: Model.BelongsToOneRelation,
+      modelClass: 'user',
+      join: {
+        from: 'item.creatorId',
+        to: 'user.id',
+      },
+    },
     post: {
       relation: Model.BelongsToOneRelation,
       modelClass: 'post',
@@ -100,5 +112,5 @@ export default class ItemModel extends BaseModel {
       },
     },
   }
-  static modelPaths = [__dirname]
+  static modelPaths = [new URL('.', import.meta.url).pathname]
 }

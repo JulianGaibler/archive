@@ -1,5 +1,5 @@
-import * as bcrypt from 'bcryptjs'
-import { FileUpload } from 'graphql-upload'
+import { default as argon2 } from "argon2"
+import FileUpload from "graphql-upload/Upload.mjs"
 
 import UserModel from '@src/models/UserModel'
 import Context from '@src/Context'
@@ -74,7 +74,10 @@ export default class {
     if (ctx.isAlreadyLoggedIn()) {
       throw new RequestError('You are already logged in.')
     }
-    const password = await bcrypt.hash(fields.password, 10)
+    const password = await hashPassword(fields.password)
+
+    console.log('Creating user', password)
+
     const user = (await UserModel.query().insert({
       username: fields.username,
       name: fields.name,
@@ -98,7 +101,8 @@ export default class {
     if (!user) {
       throw new AuthenticationError('No user found by that name.')
     }
-    const valid = await bcrypt.compare(fields.password, user.password)
+
+    const valid = await verifyPassword(user.password, fields.password)
     if (!valid) {
       throw new AuthenticationError('Invalid password')
     }
@@ -188,13 +192,21 @@ export default class {
     if (!user) {
       throw new AuthenticationError('This should not have happened.')
     }
-    const valid = await bcrypt.compare(fields.oldPassword, user.password)
+    const valid = await verifyPassword(user.password, fields.oldPassword)
     if (!valid) {
       throw new AuthenticationError('Invalid password')
     }
 
-    const password = await bcrypt.hash(fields.newPassword, 10)
+    const password = await hashPassword(fields.newPassword)
 
     await user.$query().patch({ password })
   }
+}
+
+function hashPassword(password: string): Promise<string> {
+  return argon2.hash(password, { type: argon2.argon2id })
+}
+
+function verifyPassword(hash: string, password: string): Promise<boolean> {
+  return argon2.verify(hash, password)
 }

@@ -1,4 +1,4 @@
-exports.up = async (knex) => {
+export async function up(knex) {
   await knex.schema
     .createTable('User', (table) => {
       table.increments('id')
@@ -171,7 +171,7 @@ exports.up = async (knex) => {
             `)
 }
 
-exports.down = async (knex) => {
+export async function down(knex) {
   await knex.raw('DROP TRIGGER IF EXISTS refresh_post_search_view ON "Post"')
   await knex.raw('DROP FUNCTION IF EXISTS refresh_post_search_view()')
   await knex.raw('DROP MATERIALIZED VIEW IF EXISTS post_search_view')

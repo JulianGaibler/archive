@@ -10,7 +10,21 @@ import KeywordActions from '@src/actions/KeywordActions'
 import UserActions from '@src/actions/UserActions'
 import ItemActions from '@src/actions/ItemActions'
 
-export const { nodeInterface, nodeField, nodesField } = nodeDefinitions(
+import UserType from './user/UserType'
+import KeywordType from './keyword/KeywordType'
+import PostType from './post/PostType'
+import SessionType from './session/SessionType'
+import TaskType from './task/TaskType'
+import ItemType from './item/ItemType'
+import { GraphQLInterfaceType, GraphQLFieldConfig } from 'graphql'
+
+interface GraphQLNodeDefinitions<TContext> {
+  nodeInterface: GraphQLInterfaceType;
+  nodeField: GraphQLFieldConfig<unknown, TContext>;
+  nodesField: GraphQLFieldConfig<unknown, TContext>;
+}
+
+export const { nodeInterface, nodeField, nodesField } = nodeDefinitions<Context>(
   (stringId, ctx: Context) => {
     const { type, id } = HashId.decodeUnkown(stringId)
     switch (type) {
@@ -30,22 +44,11 @@ export const { nodeInterface, nodeField, nodesField } = nodeDefinitions(
         return null
     }
   },
-  (obj) => {
-    switch (obj.constructor.name) {
-      case 'User':
-        return require('./user/UserType').default
-      case 'Keyword':
-        return require('./keyword/KeywordType').default
-      case 'Post':
-        return require('./post/PostType').default
-      case 'Session':
-        return require('./session/SessionType').default
-      case 'Task':
-        return require('./task/TaskType').default
-      case 'Collection':
-        return require('./collection/CollectionType').default
-      default:
-        return null
+  (obj: string): string | undefined => {
+    if (obj.constructor.name) {
+      // strip away "Model" at the end and return the rest
+      return obj.constructor.name.slice(0, -5)
     }
+    return undefined
   },
 )

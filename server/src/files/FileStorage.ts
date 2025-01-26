@@ -5,16 +5,13 @@ import fileType from 'file-type'
 import fs from 'fs'
 import ItemActions from '@src/actions/ItemActions'
 import jet from 'fs-jetpack'
-import sodium from 'sodium'
 import stream from 'stream'
 import TaskActions from '@src/actions/TaskActions'
 import tmp from 'tmp'
 import util from 'util'
-import { FileUpload } from 'graphql-upload'
+import FileUpload from "graphql-upload/Upload.mjs"
 import { InputError } from '@src/errors'
 import { Mutex } from 'async-mutex'
-import { PostgresPubSub } from 'graphql-postgres-subscriptions'
-import { raw } from 'objection'
 
 const pipeline = util.promisify(stream.pipeline)
 

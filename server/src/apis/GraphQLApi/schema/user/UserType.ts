@@ -68,5 +68,5 @@ export default UserType
 export const userHashType = HashIdTypes.USER
 
 export const { connectionType: userConnection } = connectionDefinitions({
-  nodeType: UserType,
+  nodeType: new GraphQLNonNull(UserType),
 })

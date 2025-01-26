@@ -50,5 +50,5 @@ export default SessionType
 export const sessionHashType = HashIdTypes.SESSION
 
 export const { connectionType: sessionConnection } = connectionDefinitions({
-  nodeType: SessionType,
+  nodeType: new GraphQLNonNull(SessionType),
 })

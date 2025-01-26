@@ -49,21 +49,18 @@ export default class {
       query
         .joinRelated('keywords')
         .whereIn('keywords.id', fields.byKeywords)
-        .groupBy('Post.id', 'keywords_join.addedAt')
+        .groupBy('post.id', 'keywords_join.addedAt')
         .orderBy('keywords_join.addedAt', 'desc')
     }
     if (fields.byContent && fields.byContent.trim().length > 0) {
       const tsQuery = fields.byContent
-        .split(' ')
-        .map((k) => `${k.replace(/[;/\\]/g, '')}:*`)
-        .join(' & ')
       query
         .joinRaw(
-          'INNER JOIN ( SELECT id, SEARCH FROM post_search_view WHERE SEARCH @@ to_tsquery(?)) b ON b.id = "Post".id',
+          'INNER JOIN ( SELECT post_id, text FROM item_search_view WHERE text @@ websearch_to_tsquery(\'english_nostop\', ?)) b ON b.post_id = post.id',
           tsQuery,
         )
-        .groupBy('Post.id', 'b.search')
-        .orderByRaw('ts_rank(b.search, to_tsquery(?)) desc', tsQuery)
+        .groupBy('post.id', 'b.text')
+        .orderByRaw('ts_rank(b.text, websearch_to_tsquery(\'english_nostop\',?)) desc', tsQuery)
     }
 
     const [data, totalSearchCount, totalCount] = await Promise.all([

@@ -80,7 +80,7 @@ export default TaskType
 export const taskHashType = HashIdTypes.TASK
 
 export const { connectionType: taskConnection } = connectionDefinitions({
-  nodeType: TaskType,
+  nodeType: new GraphQLNonNull(TaskType),
 })
 
 export const TaskStatus = new GraphQLEnumType({

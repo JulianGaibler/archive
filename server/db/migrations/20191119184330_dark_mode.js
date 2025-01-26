@@ -1,10 +1,10 @@
-exports.up = async (knex) => {
+export async function up(knex) {
   await knex.schema.alterTable('User', (table) => {
     table.boolean('darkmode').defaultTo(false).notNullable()
   })
 }
 
-exports.down = async (knex) => {
+export async function down(knex) {
   await knex.schema.alterTable('User', (table) => {
     table.dropColumn('darkmode')
   })

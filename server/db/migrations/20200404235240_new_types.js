@@ -1,11 +1,11 @@
-exports.up = async (knex) => {
+export async function up(knex) {
   await knex.schema
     .raw("ALTER TYPE format ADD VALUE 'AUDIO';")
     .raw("ALTER TYPE format ADD VALUE 'TEXT';")
 }
 
-exports.down = async (knex) => {
+export async function down(knex) {
   // no.
 }
 
-exports.config = { transaction: false }
+export const config = { transaction: false }

@@ -1,4 +1,4 @@
-import PostModel from '../models/Post'
+import PostModel from '@src/models/Post'
 import { encodeHashId } from '../utils'
 
 const PREFIX = 'telegramcursor:'

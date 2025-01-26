@@ -1,0 +1,20 @@
+---
+import Layout from '@src/layouts/Layout.astro'
+import Post from '@src/components/Post.svelte'
+
+import type { PostQuery, PostQueryVariables } from '@src/generated/graphql'
+import POST from '@src/queries/postQuery.gql'
+
+const ssrClient = Astro.locals.gqlClient
+const { postId } = Astro.params
+
+const result = await ssrClient
+  .query<PostQuery, PostQueryVariables>(POST, { id: postId })
+  .toPromise()
+---
+
+<Layout title="Archive">
+  <Post result={result.data} />
+</Layout>
+
+<style lang="sass"></style>

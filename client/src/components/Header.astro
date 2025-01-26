@@ -1,0 +1,45 @@
+---
+import Button from 'tint/components/Button.svelte'
+
+import type { MeQuery, MeQueryVariables } from '@src/generated/graphql'
+import ME from '@src/queries/meQuery.gql'
+import UserPicture from './UserPicture.svelte'
+
+const ssrClient = Astro.locals.gqlClient
+
+const result = await ssrClient
+  .query<MeQuery, MeQueryVariables>(ME, {})
+  .toPromise()
+---
+
+<header>
+  <div>
+    <h1>Archive</h1>
+  </div>
+  <div>
+    {
+      result.data?.me ? (
+        <UserPicture user={result.data.me} />
+      ) : (
+        <Button small={true} href="/login">
+          Log in
+        </Button>
+      )
+    }
+  </div>
+</header>
+
+<style lang="sass">
+  header
+    display: flex
+    justify-content: space-between
+    align-items: center
+    height: 72px
+    padding-inline: tint.$size-24
+    background-color: var(--tint-bg)
+
+  h1
+    font-family: 'HK Grotesk', sans-serif
+    font-size: tint.$size-24
+    font-weight: 700
+</style>

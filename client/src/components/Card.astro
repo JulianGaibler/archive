@@ -1,0 +1,64 @@
+---
+import { Button } from 'tint/components/index'
+
+interface Props {
+  title: string
+  subtitle: string
+  primary?: [string, string]
+  secondary?: [string, string]
+}
+
+const { title, subtitle, primary, secondary } = Astro.props
+---
+
+<li class="link-card tint-card tint-plain">
+  <div>
+    <h2>{title}</h2>
+    <p>{subtitle}</p>
+  </div>
+  <slot />
+  {
+    primary && (
+      <div class="links">
+        <Button
+          variant="primary"
+          href={primary[1]}
+          external={primary[1].startsWith('//')}
+        >
+          {primary[0]}
+        </Button>
+        {secondary && (
+          <Button
+            variant="secondary"
+            href={secondary[1]}
+            external={secondary[1].startsWith('//')}
+          >
+            {secondary[0]}
+          </Button>
+        )}
+      </div>
+    )
+  }
+</li>
+
+<style lang="sass">
+  li
+    display: flex
+    flex-direction: column
+    justify-content: space-between
+    padding: 48px
+    min-height: 470px
+    max-width: 400px
+    @include tint.type-body(false, d)
+    > div h2
+      padding-bottom: 4px
+    > :global(img)
+      display: block
+      width: 100%
+      height: auto
+  .links
+    display: flex
+    gap: 8px
+    @media (max-width: 500px)
+      flex-direction: column
+</style>

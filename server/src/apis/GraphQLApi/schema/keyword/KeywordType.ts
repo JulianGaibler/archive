@@ -44,5 +44,5 @@ export default KeywordType
 export const keywordHashType = HashIdTypes.KEYWORD
 
 export const { connectionType: keywordConnection } = connectionDefinitions({
-  nodeType: KeywordType,
+  nodeType: new GraphQLNonNull(KeywordType),
 })

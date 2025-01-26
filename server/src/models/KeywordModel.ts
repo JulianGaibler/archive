@@ -86,5 +86,5 @@ export default class KeywordModel extends UniqueModel {
       },
     },
   }
-  static modelPaths = [__dirname]
+  static modelPaths = [new URL('.', import.meta.url).pathname]
 }

@@ -1,0 +1,22 @@
+---
+import Layout from '@src/layouts/Layout.astro'
+import Wall from '@src/components/Wall.svelte'
+
+import type { PostsQuery, PostsQueryVariables } from '@src/generated/graphql'
+import POSTS from '@src/queries/postsQuery.gql'
+
+const ssrClient = Astro.locals.gqlClient
+
+// if there is a query param q, use it as the search term
+const byContent = new URL(Astro.request.url).searchParams.get('q')
+
+const result = await ssrClient
+  .query<PostsQuery, PostsQueryVariables>(POSTS, {byContent})
+  .toPromise()
+---
+
+<Layout title="Archive">
+  <Wall client:load results={result.data} {byContent} />
+</Layout>
+
+<style lang="sass"></style>

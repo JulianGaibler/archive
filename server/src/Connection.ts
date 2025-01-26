@@ -1,8 +1,6 @@
-import { Knex, knex } from 'knex'
+import { Knex, default as knex } from 'knex';
 import { Model, knexSnakeCaseMappers } from 'objection'
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const knexfile = require('../knexfile')
+import knexfile from '../knexfile.js'
 
 export default class Connection {
   knexInstance: Knex<any, unknown[]> | null = null
@@ -13,7 +11,7 @@ export default class Connection {
     }
 
     if (process.env.NODE_ENV === 'test') {
-      knexfile.connection.database += '_test'
+      (knexfile.connection as any).database += '_test'
     }
 
     this.knexInstance = knex({

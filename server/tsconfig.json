@@ -1,19 +1,20 @@
 {
   "compilerOptions": {
-    "target": "ES2018",
-    "module": "CommonJS",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "target": "esnext",
+    "module": "esnext",
     "moduleResolution": "node",
     "baseUrl": ".",
-    "paths": {
-      "@src/*": ["src/*"]
-    },
     "outDir": "./dist",
-    "esModuleInterop": true,
     "removeComments": true,
     "allowSyntheticDefaultImports": true,
     "noEmitOnError": true,
     "strict": true,
-    "lib": ["es2015", "es2017", "dom", "esnext.asynciterable"]
+    "paths": {
+      "@src/*": ["src/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules"],

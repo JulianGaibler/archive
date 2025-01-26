@@ -7,7 +7,7 @@ import GraphQLApi from './apis/GraphQLApi'
 
 const corsOptions: cors.CorsOptions = {
   credentials: true,
-  origin: process.env.ORIGIN || `http://localhost:3000`,
+  origin: process.env.ORIGIN || `http://localhost:4321`,
 }
 
 const OPTIONS = {
@@ -44,6 +44,11 @@ export default class {
     ) {
       this.app.use('/content', express.static('public'))
     }
+
+    this.app.get('/hello', (req, res) => {
+      res.send('hello')
+    })
+
     // Initialize GraphQL API
     this.gqlApi = new GraphQLApi()
     this.gqlApi.init(this.app, this.combinedServer, OPTIONS)

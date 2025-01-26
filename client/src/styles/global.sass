@@ -1,28 +1,36 @@
-@use '@src/styles/variables.sass'
-@use '@src/styles/fonts.sass'
+@use 'tint/styles/bootstrap' as bootstrap
+@use 'tint/styles/utils' as utils
+@use './colors'
 
-ul, ol, li, button, input, textarea, select
-  margin: 0
-  padding: 0
 
-li
-  text-indent: 0
-  list-style-type: none
+@include bootstrap.generate-color-variables(colors.$colors)
 
-button, input, textarea, select
-  color: inherit
-  font: inherit
-  background: unset
-  border: none
-  border-radius: 0
+@include bootstrap.generate-font-faces("~tint/fonts")
 
-body, html, #app-root
+@include bootstrap.base()
+
+html
   height: 100%
-
 body
-  font-family: "HK Grotesk"
-  color: var(--text-primary)
-  font-weight: 500
-  font-size: 14px
-  margin: 0
-  background: var(--layer-base)
+  min-height: 100%
+  display: flex
+  flex-direction: column
+  -webkit-font-smoothing: antialiased
+  -moz-osx-font-smoothing: grayscale
+
+.shrinkwrap
+  margin-inline: auto
+  max-width: 1080px
+  padding-inline: utils.$size-24
+
+ul.pipelist
+  list-style: none
+  display: flex
+  align-items: center
+  li
+    img
+      position: relative
+      top: utils.$size-2
+    &:not(:last-child)::after
+      content: '|'
+      margin-inline: utils.$size-8

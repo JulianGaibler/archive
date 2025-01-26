@@ -15,6 +15,8 @@ import { nodeInterface } from '../node'
 import Context from '@src/Context'
 
 import PostActions from '@src/actions/PostActions'
+import UserActions from '@src/actions/UserActions'
+import UserType from '../user/UserType'
 
 const ItemType = new GraphQLObjectType({
   name: 'Item',
@@ -50,6 +52,11 @@ const ItemType = new GraphQLObjectType({
       resolve: (item, args, ctx: Context) =>
         PostActions.qPost(ctx, item.postId),
     },
+    creator: {
+      type: new GraphQLNonNull(UserType),
+      resolve: (post, args, ctx: Context) =>
+        UserActions.qUser(ctx, { userId: post.creatorId }),
+    },
     position: {
       description:
         'Items are ordered within a post. This denotes the unique position.',
@@ -80,7 +87,7 @@ export default ItemType
 export const itemHashType = HashIdTypes.ITEM
 
 export const { connectionType: itemConnection } = connectionDefinitions({
-  nodeType: ItemType,
+  nodeType: new GraphQLNonNull(ItemType),
   connectionFields: {
     totalCount: { type: new GraphQLNonNull(GraphQLInt) },
   },

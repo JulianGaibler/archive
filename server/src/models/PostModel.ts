@@ -109,5 +109,5 @@ export default class PostModel extends BaseModel {
       },
     },
   }
-  static modelPaths = [__dirname]
+  static modelPaths = [new URL('.', import.meta.url).pathname]
 }

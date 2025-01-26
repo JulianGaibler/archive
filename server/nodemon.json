@@ -2,6 +2,9 @@
   "verbose": true,
   "ignore": [".git", "node_modules/**/node_modules"],
   "ext": "ts,graphql",
+  "execMap": {
+    "ts": "node --loader ts-node/esm -r tsconfig-paths/register"
+  },
   "env": {
     "NODE_ENV": "development"
   }

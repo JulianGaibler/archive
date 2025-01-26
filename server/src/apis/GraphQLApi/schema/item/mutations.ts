@@ -6,7 +6,7 @@ import {
   GraphQLNonNull,
   GraphQLString,
 } from 'graphql'
-import { GraphQLUpload } from 'graphql-upload'
+import GraphQLUpload from "graphql-upload/GraphQLUpload.mjs"
 import KeywordType from '../keyword/KeywordType'
 import TaskType from '../task/TaskType'
 import ItemType from './ItemType'
@@ -40,7 +40,6 @@ const uploadItems: GraphQLFieldConfig<any, any, any> = {
     },
     file: {
       description: 'The file.',
-      // @ts-ignore
       type: new GraphQLNonNull(GraphQLUpload),
     },
   },
@@ -88,7 +87,7 @@ const deleteItems: GraphQLFieldConfig<any, any, any> = {
     },
   },
   resolve: async (parent, args, ctx: Context) => {
-    const itemIds = args.ids.map((hashId) =>
+    const itemIds = args.ids.map((hashId: string) =>
       HashId.decode(postHashType, hashId),
     )
     return ItemActions.mDelete(ctx, { itemIds })

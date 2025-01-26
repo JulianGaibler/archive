@@ -1,4 +1,4 @@
-exports.up = async (knex) => {
+export async function up(knex) {
   // No 1: Delete Collections
   await knex.schema
     .dropTable('KeywordToCollection')
@@ -104,7 +104,7 @@ exports.up = async (knex) => {
   }
   // Move keywords from keyword_to_item to keyword_to_post
   const kti_relations = await knex.select().table('keyword_to_item')
-  for (let i = 0; i < items.length; i++) {
+  for (let i = 0; i < kti_relations.length; i++) {
     const kti_relation = kti_relations[i]
     const item = await knex('item')
       .where('id', '=', kti_relation.item_id)
@@ -121,8 +121,8 @@ exports.up = async (knex) => {
     .alterTable('item', (table) => {
       table.dropColumn('title')
       table.dropColumn('language')
-      table.dropColumn('uploaderId')
       table.dropColumn('color')
+      table.renameColumn('uploaderId', 'creator_id')
       table.renameColumn('originalPath', 'original_path')
       table.renameColumn('compressedPath', 'compressed_path')
       table.renameColumn('thumbnailPath', 'thumbnail_path')
@@ -137,6 +137,7 @@ exports.up = async (knex) => {
     )
     .raw('ALTER TABLE item ALTER COLUMN POSITION DROP DEFAULT;')
     .raw('ALTER TYPE "Format" RENAME TO "format";')
+    .raw('DROP TYPE "TaskStatus";')
     .createTable('task', (table) => {
       table.increments('id')
       table.string('ext', 10).notNullable()
@@ -161,23 +162,38 @@ exports.up = async (knex) => {
     })
 
   await knex.raw(`
-                CREATE MATERIALIZED VIEW item_search_view AS
-                SELECT i.id AS item_id,
-                  i.position,
-                  p.id AS post_id,
-                  to_tsvector(concat(
-                    p.title, ' ',
-                    coalesce(i.caption, ''), ' ',
-                    coalesce(i.description, ''), ' ',
-                    coalesce((string_agg(k.name, ' ')), '')
-                  )) AS search
-                FROM "item" i
-                LEFT JOIN "post" p ON p.id = i.post_id
-                LEFT JOIN "keyword_to_post" kp ON p.id = kp.post_id
-                LEFT JOIN "keyword" k ON k.id = kp.keyword_id
-                GROUP BY i.id, p.id, i.caption, i.description;
+                CREATE TEXT SEARCH DICTIONARY english_stem_nostop (
+                  TEMPLATE = snowball,
+                  LANGUAGE =
+                  english
+                );
 
-                CREATE index idx_search ON item_search_view USING GIN(search);
+                CREATE TEXT SEARCH CONFIGURATION public.english_nostop (
+                  COPY = pg_catalog.english
+                );
+
+                ALTER TEXT SEARCH CONFIGURATION public.english_nostop ALTER MAPPING FOR asciiword, asciihword, hword_asciipart, word, hword, hword_part WITH english_stem_nostop;
+
+                CREATE MATERIALIZED VIEW item_search_view AS
+                -- select the post id and title and concatenate them with the item captions and descriptions and the keyword names
+                SELECT
+                  p.id AS post_id,
+                  to_tsvector(
+                    'english_nostop', p.title || ' ' || coalesce(string_agg(coalesce(i.caption, '') || ' ' || coalesce(i.description, ''), ' '), '') || ' ' || coalesce(string_agg(k.name, ' '), '')) AS text
+                FROM
+                  post p
+                  -- left join the item table on the post_id column
+                  LEFT JOIN item i ON p.id = i.post_id
+                  -- left join the keyword_to_post table on the post_id column
+                  LEFT JOIN keyword_to_post ktp ON p.id = ktp.post_id
+                  -- left join the keyword table on the keyword_id column
+                  LEFT JOIN keyword k ON ktp.keyword_id = k.id
+                  -- group by the post id and title
+                GROUP BY
+                  p.id,
+                  p.title;
+
+                CREATE index idx_text ON item_search_view USING GIN(text);
 
                 CREATE OR REPLACE FUNCTION refresh_item_search_view_fn() RETURNS trigger AS $function$
                 BEGIN
@@ -204,9 +220,11 @@ exports.up = async (knex) => {
                 CREATE INDEX keyword_name_trgm_idx ON "keyword" USING gin(name gin_trgm_ops);
                 CREATE INDEX user_username_trgm_idx ON "user" USING gin(username gin_trgm_ops);
                 CREATE UNIQUE INDEX user_username_lower_idx ON "user" ((lower(username)));
+
+                ALTER TABLE "user" ALTER COLUMN "password" TYPE character varying (128);
             `)
 }
 
-exports.down = async (knex) => {
+export async function down(knex) {
   // Haha - no.
 }

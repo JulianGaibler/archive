@@ -1,6 +1,4 @@
 import {
-  GraphQLFloat,
-  GraphQLInputObjectType,
   GraphQLInt,
   GraphQLList,
   GraphQLNonNull,
@@ -29,10 +27,10 @@ const PostType: GraphQLObjectType<any, Context> = new GraphQLObjectType({
     title: { type: new GraphQLNonNull(GraphQLString) },
     language: {
       description: 'Language in which caption and title are written.',
-      type: Language,
+      type: new GraphQLNonNull(Language),
     },
     creator: {
-      type: UserType,
+      type: new GraphQLNonNull(UserType),
       resolve: (post, args, ctx: Context) =>
         UserActions.qUser(ctx, { userId: post.creatorId }),
     },
@@ -44,7 +42,7 @@ const PostType: GraphQLObjectType<any, Context> = new GraphQLObjectType({
         KeywordActions.qKeywordsByPost(ctx, { postId: post.id }),
     },
     items: {
-      type: itemConnection,
+      type: new GraphQLNonNull(itemConnection),
       description: 'Items in this post.',
       args: connectionArgs,
       resolve: async (post, args, ctx: Context) => {
@@ -72,7 +70,7 @@ export default PostType
 export const postHashType = HashIdTypes.POST
 
 export const { connectionType: postConnection } = connectionDefinitions({
-  nodeType: PostType,
+  nodeType: new GraphQLNonNull(PostType),
   connectionFields: {
     totalCount: { type: new GraphQLNonNull(GraphQLInt) },
   },

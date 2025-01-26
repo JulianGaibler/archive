@@ -79,5 +79,5 @@ export default class SessionModel extends BaseModel {
     return userIds.map((id) => sessions.filter((s) => s.userId === id))
   }
 
-  static modelPaths = [__dirname]
+  static modelPaths = [new URL('.', import.meta.url).pathname]
 }

@@ -1,4 +1,4 @@
-import { FileUpload } from 'graphql-upload'
+import FileUpload from "graphql-upload/Upload.mjs"
 import ItemModel from '@src/models/ItemModel'
 import Context from '@src/Context'
 import { AuthorizationError } from '@src/errors'

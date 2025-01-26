@@ -1,7 +1,11 @@
-import { ApolloError } from 'apollo-server-core'
+import { GraphQLError } from 'graphql'
 
-export default class NotFoundError extends ApolloError {
+export default class NotFoundError extends GraphQLError {
   constructor(msg?: string) {
-    super(msg || 'Item not found.', 'NOT_FOUND_ERROR')
+    super(msg || 'Item not found.', {
+      extensions: {
+        code: 'NOT_FOUND_ERROR',
+      },
+    })
   }
 }

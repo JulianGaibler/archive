@@ -1,7 +1,11 @@
-import { ApolloError } from 'apollo-server-core'
+import { GraphQLError } from 'graphql'
 
-export default class RequestError extends ApolloError {
+export default class RequestError extends GraphQLError {
   constructor(message: string) {
-    super(message, 'REQUEST_ERROR')
+    super(message, {
+      extensions: {
+        code: 'REQUEST_ERROR',
+      },
+    })
   }
 }

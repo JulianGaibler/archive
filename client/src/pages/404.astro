@@ -1,0 +1,23 @@
+---
+import ArticleLayout from '../layouts/ArticleLayout.astro'
+import card404 from '@src/assets/404.svg'
+---
+
+<ArticleLayout
+  title="Is this your card?"
+  subtitle="What it's not? Well, then I guess this page does not exist"
+>
+  <img class="tint-card" src={card404.src} alt="Playing card Spades 404" />
+</ArticleLayout>
+
+<style lang="sass">
+  img
+    user-drag: none
+    outline: none
+    user-select: none
+    background: #fff
+    display: block
+    margin: 0 auto
+    width: 50%
+    max-width: 400px
+  </style>

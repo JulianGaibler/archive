@@ -1,0 +1,30 @@
+query Posts($after: String, $byContent: String) {
+  posts(first: 40, after: $after, byContent: $byContent) {
+    edges {
+      node {
+        id
+        title
+        creator {
+          profilePicture
+          username
+        }
+        items(first: 1) {
+          totalCount
+          edges {
+            node {
+              id
+              type
+              thumbnailPath
+              relativeHeight
+            }
+          }
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+      startCursor
+    }
+  }
+}
