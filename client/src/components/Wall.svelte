@@ -107,7 +107,7 @@
 
 <svelte:window on:resize={calculateColumns} />
 
-<div class="tint-tinted nav">
+<div class="tint--tinted nav">
   <div class="shrinkwrap">
     <SearchField id="search" value={byContent || ''} on:search={onSearchChange} />
     <Button variant="primary">New Post</Button>
@@ -119,7 +119,7 @@
       <div class="column">
         {#each column as postNode}
           <a
-            class="tint-tinted post"
+            class="tint--tinted post"
             href={`/${postNode?.node?.id}`}
             style="padding-bottom: {postNode?.node?.items?.edges?.[0]?.node
               ?.relativeHeight}%"
@@ -203,7 +203,6 @@
       padding: tint.$size-12
       padding-block-start: tint.$size-24
       gap: tint.$size-4
-      @include tint.type-body(false, s)
       opacity: 0
       transition: opacity 0.2s ease-in-out
       transition-delay: 0.1s

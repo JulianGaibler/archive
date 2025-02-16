@@ -4,8 +4,8 @@
   import PostItem from '@src/components/PostItem.svelte'
   import { formatDate, titleCase } from '@src/utils'
   import Button from 'tint/components/Button.svelte'
-  import IconEdit from 'tint/icons/24-edit.svg?raw'
-  import IconTrash from 'tint/icons/24-trash.svg?raw'
+  import IconEdit from 'tint/icons/20-edit.svg?raw'
+  import IconTrash from 'tint/icons/20-trash.svg?raw'
 
   export let result: PostQuery | undefined
 
@@ -15,10 +15,10 @@
   $: itemObject = postObject!.items!.edges!
 </script>
 
-<div class="tint-tinted head">
+<div class="tint--tinted head">
   <div class="shrinkwrap split">
     <div>
-      <h1>{postObject.title}</h1>
+      <h1 class="tint--type">{postObject.title}</h1>
       <ul class="info pipelist">
         <li>
           Created by <UserPicture
@@ -42,7 +42,7 @@
     </div>
   </div>
 </div>
-<div class="tint-tinted items">
+<div class="tint--tinted items">
   <div class="shrinkwrap">
     {#each itemObject as item}
       <PostItem item={item?.node} />
@@ -69,9 +69,6 @@
     position: absolute
     background: var(--tint-bg)
     z-index: -1
-
-  h1
-    @include tint.type-headline(2, true)
   
   ul.info, ul.tags
     margin-block: tint.$size-8
@@ -88,6 +85,5 @@
       display: inline-flex
       align-items: center
       padding-inline: tint.$size-8
-      @include tint.type-body(false, s)
       line-height: 1
 </style>

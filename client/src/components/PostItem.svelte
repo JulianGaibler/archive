@@ -3,7 +3,7 @@
   import UserPicture from '@src/components/UserPicture.svelte'
   import Button from 'tint/components/Button.svelte'
   import ItemMedia from '@src/components/ItemMedia.svelte'
-  import IconEdit from 'tint/icons/24-edit.svg?raw'
+  import IconEdit from 'tint/icons/20-edit.svg?raw'
   import { getConvertedSrcPath, getPlainSrcPath } from '@src/utils'
 
   type PostItem = NonNullable<
@@ -43,12 +43,12 @@
     </div>
   </div>
   <div class="content">
-    <div class="tint-tinted">
-      <h3>Description</h3>
+    <div class="tint--tinted">
+      <h3 class="tint--type">Description</h3>
       <q>{item.description}</q>
     </div>
-    <div class="tint-tinted">
-      <h3>Caption</h3>
+    <div class="tint--tinted">
+      <h3 class="tint--type">Caption</h3>
       <q><pre>{item.caption}</pre></q>
     </div>
   </div>
@@ -83,7 +83,6 @@
     h3
       line-height: 1
       color: var(--tint-text-secondary)
-      @include tint.type-body(false, s)
     q
       quotes: none
 
