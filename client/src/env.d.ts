@@ -9,6 +9,6 @@ declare namespace App {
 declare module '*.gql' {
   import { type TypedDocumentNode } from 'urql'
   const Schema: TypedDocumentNode
-  
+
   export = Schema
 }

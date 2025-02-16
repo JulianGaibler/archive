@@ -11,7 +11,7 @@ const ssrClient = Astro.locals.gqlClient
 const byContent = new URL(Astro.request.url).searchParams.get('q')
 
 const result = await ssrClient
-  .query<PostsQuery, PostsQueryVariables>(POSTS, {byContent})
+  .query<PostsQuery, PostsQueryVariables>(POSTS, { byContent })
   .toPromise()
 ---
 

@@ -9,10 +9,13 @@
   import UserPicture from '@src/components/UserPicture.svelte'
   import { onMount } from 'svelte'
 
-  export let results: PostsQuery | undefined
+  interface Props {
+    results: PostsQuery | undefined
+    byContent?: string | null
+  }
 
-  export let byContent: string | null = null
-  let columns = 4
+  let { results = $bindable(), byContent = $bindable(null) }: Props = $props()
+  let columns = $state(4)
 
   type PostEdge = NonNullable<NonNullable<PostsQuery['posts']>['edges']>
 
@@ -22,19 +25,16 @@
       ? clientWidth > 850
         ? 4
         : clientWidth > 600
-        ? 3
-        : clientWidth > 450
-        ? 2
-        : 1
+          ? 3
+          : clientWidth > 450
+            ? 2
+            : 1
       : 4
   }
 
   onMount(calculateColumns)
 
-  function sortIntoColumns(
-    results: PostsQuery | undefined,
-    columns: number,
-  ) {
+  function sortIntoColumns(results: PostsQuery | undefined, columns: number) {
     // create an array initialized with 0, for each column
     const columnHeights = Array.from({ length: columns }, () => 0)
     // initialize an array of arrays, one for each column
@@ -51,7 +51,7 @@
     return columnPosts
   }
 
-  $: columnPosts = sortIntoColumns(results, columns)
+  let columnPosts = $derived(sortIntoColumns(results, columns))
 
   async function loadMore() {
     const result = await client
@@ -105,11 +105,15 @@
   }
 </script>
 
-<svelte:window on:resize={calculateColumns} />
+<svelte:window onresize={calculateColumns} />
 
 <div class="tint--tinted nav">
   <div class="shrinkwrap">
-    <SearchField id="search" value={byContent || ''} on:search={onSearchChange} />
+    <SearchField
+      id="search"
+      value={byContent || ''}
+      on:search={onSearchChange}
+    />
     <Button variant="primary">New Post</Button>
   </div>
 </div>

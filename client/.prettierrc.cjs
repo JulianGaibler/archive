@@ -6,7 +6,6 @@ module.exports = {
   tabWidth: 2,
   plugins: [
     'prettier-plugin-jsdoc',
-    '@trivago/prettier-plugin-sort-imports',
     'prettier-plugin-astro',
     'prettier-plugin-svelte',
   ],

@@ -1,8 +1,5 @@
 <script lang="ts">
-  import {
-    Format,
-    type PostQuery,
-  } from '@src/generated/graphql'
+  import { Format, type PostQuery } from '@src/generated/graphql'
   import { getConvertedSrcPath } from '@src/utils'
 
   type PostItem = NonNullable<
@@ -13,8 +10,11 @@
     >[0]
   >['node']
 
-  export let item: PostItem
+  interface Props {
+    item: PostItem
+  }
 
+  let { item }: Props = $props()
 </script>
 
 <div class="container tint-plain">

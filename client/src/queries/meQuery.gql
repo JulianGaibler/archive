@@ -1,8 +1,8 @@
 query me {
-    me {
-        name
-        username
-        profilePicture
-        darkMode
-    }
+  me {
+    name
+    username
+    profilePicture
+    darkMode
+  }
 }

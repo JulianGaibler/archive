@@ -1,12 +1,16 @@
 <script lang="ts">
   import type { User } from '@src/generated/graphql'
-  // only need profilePicture and username
-  export let user: Pick<User, 'profilePicture' | 'username'>
 
   type Sizes = '16' | '32' | '128'
 
-  export let size: Sizes = '32'
-  export let showUsername = false
+  interface Props {
+    // only need profilePicture and username
+    user: Pick<User, 'profilePicture' | 'username'>
+    size?: Sizes
+    showUsername?: boolean
+  }
+
+  let { user, size = '32', showUsername = false }: Props = $props()
 
   function getPictureSize(size: Sizes) {
     switch (size) {
@@ -19,7 +23,7 @@
     }
   }
 
-  $: pictureSize = getPictureSize(size)
+  let pictureSize = $derived(getPictureSize(size))
 </script>
 
 {#if !showUsername}

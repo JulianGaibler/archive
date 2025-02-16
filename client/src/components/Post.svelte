@@ -7,12 +7,16 @@
   import IconEdit from 'tint/icons/20-edit.svg?raw'
   import IconTrash from 'tint/icons/20-trash.svg?raw'
 
-  export let result: PostQuery | undefined
+  interface Props {
+    result: PostQuery | undefined
+  }
+
+  let { result }: Props = $props()
 
   type PostItemType = NonNullable<PostQuery['node']> & { __typename: 'Post' }
 
-  $: postObject = result?.node as PostItemType
-  $: itemObject = postObject!.items!.edges!
+  let postObject = $derived(result?.node as PostItemType)
+  let itemObject = $derived(postObject!.items!.edges!)
 </script>
 
 <div class="tint--tinted head">
@@ -37,8 +41,12 @@
       </ul>
     </div>
     <div class="actions">
-      <Button small={true} icon={true} title="Delete post">{@html IconTrash}</Button>
-      <Button small={true} icon={true} title="Edit post">{@html IconEdit}</Button>
+      <Button small={true} icon={true} title="Delete post"
+        >{@html IconTrash}</Button
+      >
+      <Button small={true} icon={true} title="Edit post"
+        >{@html IconEdit}</Button
+      >
     </div>
   </div>
 </div>

@@ -14,7 +14,11 @@
     >[0]
   >['node']
 
-  export let item: PostItem
+  interface Props {
+    item: PostItem
+  }
+
+  let { item }: Props = $props()
 </script>
 
 <article>
@@ -28,8 +32,7 @@
       <Button
         small={true}
         download={`archive-${item.id}`}
-        href={getPlainSrcPath(item.originalPath)}
-        >Download Original</Button
+        href={getPlainSrcPath(item.originalPath)}>Download Original</Button
       >
       <Button
         small={true}
