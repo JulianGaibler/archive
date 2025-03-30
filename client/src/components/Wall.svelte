@@ -1,13 +1,17 @@
 <script lang="ts">
   import Button from 'tint/components/Button.svelte'
   import SearchField from 'tint/components/SearchField.svelte'
-  import { queryStore } from '@urql/svelte'
-  import { Client } from 'urql'
-  import type { PostsQuery, PostsQueryVariables } from '@src/generated/graphql'
   import POSTS from '@src/queries/postsQuery.gql'
-  import { webClient as client } from '@src/urql-client'
   import UserPicture from '@src/components/UserPicture.svelte'
   import { onMount } from 'svelte'
+  import {
+    getSdk,
+    type PostsQuery,
+    type PostsQueryVariables,
+  } from '@src/generated/graphql'
+  import { webClient } from '@src/gql-client'
+
+  const sdk = getSdk(webClient)
 
   interface Props {
     results: PostsQuery | undefined
@@ -54,12 +58,10 @@
   let columnPosts = $derived(sortIntoColumns(results, columns))
 
   async function loadMore() {
-    const result = await client
-      .query<PostsQuery, PostsQueryVariables>(POSTS, {
-        after: results?.posts?.pageInfo?.endCursor,
-        byContent,
-      })
-      .toPromise()
+    const result = await sdk.Posts({
+      after: results?.posts?.pageInfo?.endCursor,
+      byContent,
+    })
     if (!results) {
       results = result.data
       return
@@ -78,8 +80,8 @@
     }
   }
 
-  async function onSearchChange(event: CustomEvent<{ value: string }>) {
-    byContent = event.detail.value.trim()
+  async function onSearchChange(value: string) {
+    byContent = value.trim()
     byContent = byContent.length === 0 ? null : byContent
     // add, update or remove query parameter
     const params = new URLSearchParams(window.location.search)
@@ -96,12 +98,20 @@
       `${window.location.pathname}${paramsString.length > 0 ? `?${paramsString}` : ''}`,
     )
 
-    const result = await client
-      .query<PostsQuery, PostsQueryVariables>(POSTS, {
-        byContent,
-      })
-      .toPromise()
+    const result = await sdk.Posts({
+      byContent,
+    })
     results = result.data
+  }
+
+  // print some debug info in SSR and on the client
+  // first check if we are in the browser
+  if (typeof window !== 'undefined') {
+    console.log('SSR:', results)
+    console.log('Columns:', columns)
+    console.log('Column posts:', columnPosts)
+  } else {
+    console.log('SSR: No window object')
   }
 </script>
 
@@ -112,7 +122,7 @@
     <SearchField
       id="search"
       value={byContent || ''}
-      on:search={onSearchChange}
+      onsearch={onSearchChange}
     />
     <Button variant="primary">New Post</Button>
   </div>
@@ -146,7 +156,7 @@
               <span>{postNode?.node?.title}</span>
               <div class="count">{postNode?.node?.items?.totalCount}</div>
               <div class="pfp">
-                <UserPicture user={postNode?.node?.creator} />
+                <UserPicture user={postNode?.node?.creator!} />
               </div>
             </div>
           </a>
@@ -155,7 +165,7 @@
     {/each}
   </div>
   <div class="shrinkwrap">
-    <Button on:click={loadMore}>Load more</Button>
+    <Button onclick={loadMore}>Load more</Button>
   </div>
 </div>
 

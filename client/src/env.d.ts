@@ -2,13 +2,11 @@
 
 declare namespace App {
   interface Locals {
-    gqlClient: import('urql').Client
+    gqlClient: import('graphql-request').GraphQLClient
   }
 }
 
 declare module '*.gql' {
-  import { type TypedDocumentNode } from 'urql'
-  const Schema: TypedDocumentNode
-
-  export = Schema
+  const content: string
+  export default content
 }

@@ -11,12 +11,11 @@ const ssrClient = Astro.locals.gqlClient
 const byContent = new URL(Astro.request.url).searchParams.get('q')
 
 const result = await ssrClient
-  .query<PostsQuery, PostsQueryVariables>(POSTS, { byContent })
-  .toPromise()
+  .request<PostsQuery, PostsQueryVariables>(POSTS, { byContent })
 ---
 
 <Layout title="Archive">
-  <Wall client:load results={result.data} {byContent} />
+  <Wall client:load results={result} {byContent} />
 </Layout>
 
 <style lang="sass"></style>

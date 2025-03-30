@@ -1,3 +1,6 @@
+import type { GraphQLClient, RequestOptions } from 'graphql-request';
+import { GraphQLError, print } from 'graphql'
+import gql from 'graphql-tag';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
 export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
@@ -5,6 +8,7 @@ export type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]?: 
 export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Maybe<T[SubKey]> };
 export type MakeEmpty<T extends { [key: string]: unknown }, K extends keyof T> = { [_ in K]?: never };
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
+type GraphQLClientRequestHeaders = RequestOptions['requestHeaders'];
 /** All built-in and custom scalars, mapped to their actual values */
 export type Scalars = {
   ID: { input: string; output: string; }
@@ -643,3 +647,243 @@ export type UnlinkTelegramMutationVariables = Exact<{ [key: string]: never; }>;
 
 
 export type UnlinkTelegramMutation = { __typename?: 'Mutation', unlinkTelegram: boolean };
+
+export type UploadPictureMutationVariables = Exact<{
+  file: Scalars['Upload']['input'];
+}>;
+
+
+export type UploadPictureMutation = { __typename?: 'Mutation', uploadProfilePicture: boolean };
+
+
+export const ChangeNameDocument = gql`
+    mutation changeName($newName: String!) {
+  changeName(newName: $newName)
+}
+    `;
+export const ChangePasswordDocument = gql`
+    mutation changePassword($oldPassword: String!, $newPassword: String!) {
+  changePassword(oldPassword: $oldPassword, newPassword: $newPassword)
+}
+    `;
+export const ClearProfilePictureDocument = gql`
+    mutation clearProfilePicture {
+  clearProfilePicture
+}
+    `;
+export const KeywordSearchDocument = gql`
+    query keywordSearch($input: String) {
+  keywords(byName: $input) {
+    edges {
+      node {
+        id
+        name
+      }
+    }
+  }
+}
+    `;
+export const LinkTelegramDocument = gql`
+    mutation linkTelegram($id: String!, $first_name: String, $last_name: String, $username: String, $photo_url: String, $auth_date: String!, $hash: String!) {
+  linkTelegram(
+    id: $id
+    first_name: $first_name
+    last_name: $last_name
+    username: $username
+    photo_url: $photo_url
+    auth_date: $auth_date
+    hash: $hash
+  )
+}
+    `;
+export const LoginDocument = gql`
+    mutation login($username: String!, $password: String!) {
+  login(username: $username, password: $password)
+}
+    `;
+export const LogoutDocument = gql`
+    mutation logout {
+  logout
+}
+    `;
+export const MeDocument = gql`
+    query me {
+  me {
+    name
+    username
+    profilePicture
+    darkMode
+  }
+}
+    `;
+export const PostDocument = gql`
+    query Post($id: ID!) {
+  node(id: $id) {
+    ... on Post {
+      id
+      title
+      language
+      updatedAt
+      createdAt
+      creator {
+        name
+        username
+        profilePicture
+      }
+      keywords {
+        name
+        id
+      }
+      items {
+        edges {
+          node {
+            caption
+            compressedPath
+            createdAt
+            description
+            type
+            relativeHeight
+            position
+            originalPath
+            id
+            creator {
+              username
+              profilePicture
+            }
+          }
+        }
+      }
+    }
+  }
+}
+    `;
+export const PostsDocument = gql`
+    query Posts($after: String, $byContent: String) {
+  posts(first: 40, after: $after, byContent: $byContent) {
+    edges {
+      node {
+        id
+        title
+        creator {
+          profilePicture
+          username
+        }
+        items(first: 1) {
+          totalCount
+          edges {
+            node {
+              id
+              type
+              thumbnailPath
+              relativeHeight
+            }
+          }
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+      startCursor
+    }
+  }
+}
+    `;
+export const ResourcesDocument = gql`
+    query resources {
+  resources {
+    resourceDomain
+    resourcePath
+  }
+}
+    `;
+export const RevokeSessionDocument = gql`
+    mutation revokeSession($id: ID!) {
+  revokeSession(id: $id)
+}
+    `;
+export const SetDarkModeDocument = gql`
+    mutation setDarkMode($enabled: Boolean!) {
+  setDarkMode(enabled: $enabled)
+}
+    `;
+export const UnlinkTelegramDocument = gql`
+    mutation unlinkTelegram {
+  unlinkTelegram
+}
+    `;
+export const UploadPictureDocument = gql`
+    mutation uploadPicture($file: Upload!) {
+  uploadProfilePicture(file: $file)
+}
+    `;
+
+export type SdkFunctionWrapper = <T>(action: (requestHeaders?:Record<string, string>) => Promise<T>, operationName: string, operationType?: string, variables?: any) => Promise<T>;
+
+
+const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) => action();
+const ChangeNameDocumentString = print(ChangeNameDocument);
+const ChangePasswordDocumentString = print(ChangePasswordDocument);
+const ClearProfilePictureDocumentString = print(ClearProfilePictureDocument);
+const KeywordSearchDocumentString = print(KeywordSearchDocument);
+const LinkTelegramDocumentString = print(LinkTelegramDocument);
+const LoginDocumentString = print(LoginDocument);
+const LogoutDocumentString = print(LogoutDocument);
+const MeDocumentString = print(MeDocument);
+const PostDocumentString = print(PostDocument);
+const PostsDocumentString = print(PostsDocument);
+const ResourcesDocumentString = print(ResourcesDocument);
+const RevokeSessionDocumentString = print(RevokeSessionDocument);
+const SetDarkModeDocumentString = print(SetDarkModeDocument);
+const UnlinkTelegramDocumentString = print(UnlinkTelegramDocument);
+const UploadPictureDocumentString = print(UploadPictureDocument);
+export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
+  return {
+    changeName(variables: ChangeNameMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ChangeNameMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ChangeNameMutation>(ChangeNameDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'changeName', 'mutation', variables);
+    },
+    changePassword(variables: ChangePasswordMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ChangePasswordMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ChangePasswordMutation>(ChangePasswordDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'changePassword', 'mutation', variables);
+    },
+    clearProfilePicture(variables?: ClearProfilePictureMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ClearProfilePictureMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ClearProfilePictureMutation>(ClearProfilePictureDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'clearProfilePicture', 'mutation', variables);
+    },
+    keywordSearch(variables?: KeywordSearchQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: KeywordSearchQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<KeywordSearchQuery>(KeywordSearchDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'keywordSearch', 'query', variables);
+    },
+    linkTelegram(variables: LinkTelegramMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: LinkTelegramMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<LinkTelegramMutation>(LinkTelegramDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'linkTelegram', 'mutation', variables);
+    },
+    login(variables: LoginMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: LoginMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<LoginMutation>(LoginDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'login', 'mutation', variables);
+    },
+    logout(variables?: LogoutMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: LogoutMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<LogoutMutation>(LogoutDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'logout', 'mutation', variables);
+    },
+    me(variables?: MeQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: MeQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<MeQuery>(MeDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'me', 'query', variables);
+    },
+    Post(variables: PostQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: PostQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<PostQuery>(PostDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Post', 'query', variables);
+    },
+    Posts(variables?: PostsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: PostsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<PostsQuery>(PostsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Posts', 'query', variables);
+    },
+    resources(variables?: ResourcesQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ResourcesQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ResourcesQuery>(ResourcesDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'resources', 'query', variables);
+    },
+    revokeSession(variables: RevokeSessionMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: RevokeSessionMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<RevokeSessionMutation>(RevokeSessionDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'revokeSession', 'mutation', variables);
+    },
+    setDarkMode(variables: SetDarkModeMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: SetDarkModeMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<SetDarkModeMutation>(SetDarkModeDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'setDarkMode', 'mutation', variables);
+    },
+    unlinkTelegram(variables?: UnlinkTelegramMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: UnlinkTelegramMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<UnlinkTelegramMutation>(UnlinkTelegramDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'unlinkTelegram', 'mutation', variables);
+    },
+    uploadPicture(variables: UploadPictureMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: UploadPictureMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<UploadPictureMutation>(UploadPictureDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'uploadPicture', 'mutation', variables);
+    }
+  };
+}
+export type Sdk = ReturnType<typeof getSdk>;

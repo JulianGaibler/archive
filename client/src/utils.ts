@@ -1,4 +1,30 @@
 import { Format } from '@src/generated/graphql'
+import { ClientError, rawRequest } from 'graphql-request'
+
+type GraphQLClientResponse =
+  ReturnType<typeof rawRequest> extends Promise<infer T> ? T : never
+
+export function getOperationResultError(
+  result: GraphQLClientResponse | ClientError,
+) {
+  // check if there is a response key in the result
+  if ('response' in result) {
+    const { response } = result
+    if (response.errors && response.errors.length > 0) {
+      return response.errors[0].message
+    }
+  }
+
+  if (!('errors' in result && result.errors)) {
+    return undefined
+  }
+
+  if (result.errors.length > 0) {
+    return result.errors[0].message
+  }
+
+  return 'An unknown error occurred'
+}
 
 export function getConvertedSrcPath(
   path: string,

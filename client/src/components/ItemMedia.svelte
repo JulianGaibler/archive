@@ -17,7 +17,7 @@
   let { item }: Props = $props()
 </script>
 
-<div class="container tint-plain">
+<div class="container tint--plain">
   {#if item.type === Format.Image}
     <picture>
       <source

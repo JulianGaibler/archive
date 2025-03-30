@@ -9,12 +9,11 @@ const ssrClient = Astro.locals.gqlClient
 const { postId } = Astro.params
 
 const result = await ssrClient
-  .query<PostQuery, PostQueryVariables>(POST, { id: postId })
-  .toPromise()
+  .request<PostQuery, PostQueryVariables>(POST, { id: postId })
 ---
 
 <Layout title="Archive">
-  <Post result={result.data} />
+  <Post result={result} />
 </Layout>
 
 <style lang="sass"></style>

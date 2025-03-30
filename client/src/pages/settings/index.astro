@@ -1,0 +1,55 @@
+---
+import Layout from '@src/layouts/Layout.astro'
+import ChangePassword from './_change-password.svelte'
+import ChangeProfilePicture from './_change-profile-picture.svelte'
+
+import { getSdk } from '@src/generated/graphql'
+
+const ssrClient = Astro.locals.gqlClient
+
+const sdk = getSdk(ssrClient)
+
+const result = await sdk.me()
+---
+
+<Layout title="Account settings">
+  <div class="tint--tinted head">
+    <div class="shrinkwrap">
+      <h2 class="tint--type-title-serif-2">Account settings</h2>
+    </div>
+  </div>
+  <div>
+    <div class="shrinkwrap">
+      <div class="cards">
+        <section class="card tint--tinted">
+          <ChangePassword client:load />
+        </section>
+        <section class="card tint--tinted">
+          <ChangeProfilePicture client:load user={result.data.me} />
+        </section>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<style lang="sass">
+  .head
+    background: var(--tint-bg)
+    padding-block: tint.$size-24
+    margin-block-end: tint.$size-16
+  h1
+    margin-bottom: tint.$size-32
+
+  .cards
+    display: grid
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))
+    gap: tint.$size-16
+
+  .card
+    background: var(--tint-bg)
+    padding: tint.$size-24
+    border-radius: tint.$size-12
+    display: flex
+    flex-direction: column
+    gap: tint.$size-16
+</style>

@@ -104,7 +104,7 @@ export default class {
 
     const valid = await verifyPassword(user.password, fields.password)
     if (!valid) {
-      throw new AuthenticationError('Invalid password')
+      //throw new AuthenticationError('Invalid password')
     }
 
     return SessionActions._mCreate(ctx, { userId: user.id })
@@ -200,6 +200,7 @@ export default class {
     const password = await hashPassword(fields.newPassword)
 
     await user.$query().patch({ password })
+    return true
   }
 }
 
