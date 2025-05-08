@@ -107,6 +107,7 @@
   <MessageBox icon={IconDone} onclose={resetSuccess}>
     <h2>Success</h2>
     <p>Your profile picture has been updated</p>
+    <!-- svelte-ignore a11y_invalid_attribute -->
     <a href="javascript:location.reload()">Reload page </a>
   </MessageBox>
 {/if}

@@ -2,7 +2,6 @@
   import AttributePicker from 'tint/components/AttributePicker.svelte'
   import {
     getSdk,
-    type KeywordSearchQuery,
     type KeywordSearchQueryVariables,
   } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'

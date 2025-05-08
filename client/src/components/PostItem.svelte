@@ -7,7 +7,6 @@
   import IconMore from 'tint/icons/20-more.svg?raw'
   import { getConvertedSrcPath, getPlainSrcPath } from '@src/utils'
   import type { PostUpdate } from './Post.svelte'
-  import { error } from 'node_modules/astro/dist/core/logger/core'
 
   type PostItem = NonNullable<
     NonNullable<

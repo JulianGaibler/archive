@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { User } from '@src/generated/graphql'
   import UserPicture from './UserPicture.svelte'
   import Menu, { type ContextClickHandler } from 'tint/components/Menu.svelte'
 
@@ -7,7 +8,7 @@
     unreadNotifications: number
   }
 
-  let { user, unreadNotifications }: Props = $props()
+  let { user }: Props = $props()
 
   let contextClick: ContextClickHandler | undefined = $state(undefined)
 
@@ -27,23 +28,4 @@
   button
     background: none
     border: none
-
-  .btn
-    display: flex
-    width: tint.$size-32
-    height: tint.$size-32
-    border-radius: tint.$profile-picture-radius
-    align-items: center
-    justify-content: center
-    color: var(--tint-text-secondary)
-    background-color: var(--tint-input-bg)
-    position: relative
-    .badge
-      position: absolute
-      top: - tint.$size-8
-      right: - tint.$size-8
-      background-color: var(--tint-action)
-      color: var(--tint-action-text)
-      border-radius: tint.$size-32
-      padding-inline: tint.$size-4
 </style>

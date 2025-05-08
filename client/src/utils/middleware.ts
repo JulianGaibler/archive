@@ -1,4 +1,4 @@
-import type { GraphQLClient, RequestMiddleware } from 'graphql-request'
+import type { RequestMiddleware } from 'graphql-request'
 
 const isExtractableFile = <ValueType>(value: ValueType) => {
   return (

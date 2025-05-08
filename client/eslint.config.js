@@ -28,8 +28,7 @@ export default ts.config(
   },
   {
     languageOptions: {
-      parserOptions: {
-      },
+      parserOptions: {},
     },
   },
   // svelte
@@ -55,13 +54,19 @@ export default ts.config(
       globals: {
         ...globals.nodeBuiltin,
         ...globals.browser,
-        '$$Generic': 'readonly',
+        $$Generic: 'readonly',
       },
     },
     ignores: ['**/*.config.js'],
   },
   {
     files: ['**/*.stories.svelte'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+  {
+    files: ['**/generated/graphql.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
     },

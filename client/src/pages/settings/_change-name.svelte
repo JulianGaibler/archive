@@ -12,7 +12,6 @@
   } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
   import { getOperationResultError } from '@src/utils'
-  import UserPicture from '@src/components/UserPicture.svelte'
 
   const sdk = getSdk(webClient)
 
@@ -45,27 +44,6 @@
 
     sdk
       .uploadPicture(args)
-      .finally(() => {
-        loading = false
-      })
-      .then((res) => {
-        globalError = getOperationResultError(res)
-        if (!globalError) {
-          success = true
-        }
-      })
-      .catch((err) => {
-        globalError = getOperationResultError(err)
-      })
-  }
-
-  const tryClearPicture = (e: Event) => {
-    e.preventDefault()
-    resetErrors()
-    loading = true
-
-    sdk
-      .clearProfilePicture()
       .finally(() => {
         loading = false
       })

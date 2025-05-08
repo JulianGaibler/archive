@@ -1,14 +1,9 @@
 <script lang="ts">
   import Button from 'tint/components/Button.svelte'
   import SearchField from 'tint/components/SearchField.svelte'
-  import POSTS from '@src/queries/postsQuery.gql'
   import UserPicture from '@src/components/UserPicture.svelte'
   import { onMount } from 'svelte'
-  import {
-    getSdk,
-    type PostsQuery,
-    type PostsQueryVariables,
-  } from '@src/generated/graphql'
+  import { getSdk, type PostsQuery } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
 
   const sdk = getSdk(webClient)
@@ -119,7 +114,7 @@
 </div>
 <div>
   <div class="shrinkwrap columns">
-    {#each columnPosts as column, i}
+    {#each columnPosts as column}
       <div class="column">
         {#each column as postNode}
           <a
@@ -146,7 +141,9 @@
               <span>{postNode?.node?.title}</span>
               <div class="count">{postNode?.node?.items?.totalCount}</div>
               <div class="pfp">
-                <UserPicture user={postNode?.node?.creator!} />
+                {#if postNode?.node?.creator}
+                  <UserPicture user={postNode?.node?.creator} />
+                {/if}
               </div>
             </div>
           </a>

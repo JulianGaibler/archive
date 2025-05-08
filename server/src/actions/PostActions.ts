@@ -195,7 +195,7 @@ export default class {
     return updatedPost
   }
 
-  static async mDelete(ctx: Context, fields: { postIds: number[] }) {
+  static async mDelete(ctx: Context, _fields: { postIds: number[] }) {
     ctx.isAuthenticated()
     // TODO
     // context.fileStorage.deleteFiles(context.auth.userId, ids)

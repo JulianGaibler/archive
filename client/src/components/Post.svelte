@@ -9,11 +9,7 @@
   import IconEdit from 'tint/icons/20-edit.svg?raw'
   import IconTrash from 'tint/icons/20-trash.svg?raw'
   import TextField from 'tint/components/TextField.svelte'
-  import {
-    getSdk,
-    type KeywordSearchQuery,
-    type KeywordSearchQueryVariables,
-  } from '@src/generated/graphql'
+  import { getSdk } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
   import { getOperationResultError } from '@src/utils'
 
@@ -199,7 +195,9 @@
 <div class="tint--tinted items">
   <div class="shrinkwrap">
     {#each itemObject as item}
-      <PostItem bind:editMode item={item.node} />
+      {#if item?.node}
+        <PostItem bind:editMode item={item.node} />
+      {/if}
     {/each}
   </div>
 </div>

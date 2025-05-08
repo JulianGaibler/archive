@@ -23,6 +23,9 @@ export default ts.config(
           ignoreRestSiblings: true,
         },
       ],
+      // Probably want to turn this rule on in the future but for now
+      // the effort to fix all the errors is too much
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
   {

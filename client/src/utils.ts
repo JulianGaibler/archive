@@ -27,7 +27,7 @@ export function getOperationResultError(
 }
 
 export function getConvertedSrcPath(
-  path: string,
+  path: string | undefined | null,
   format: Format,
   commonFormat: boolean,
 ) {
@@ -44,6 +44,10 @@ export function getConvertedSrcPath(
       nextGen: 'webm',
       common: 'mp4',
     },
+  }
+
+  if (!path) {
+    return undefined
   }
 
   const suffix = formats[format as keyof typeof formats]

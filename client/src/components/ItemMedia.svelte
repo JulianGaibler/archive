@@ -30,6 +30,7 @@
       />
     </picture>
   {:else}
+    <!-- svelte-ignore a11y_media_has_caption -->
     <video
       controls={item.type === Format.Video}
       loop={item.type === Format.Gif}
