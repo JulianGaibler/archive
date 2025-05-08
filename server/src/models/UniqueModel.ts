@@ -23,13 +23,6 @@ export default class UniqueModel extends BaseModel {
 
     this.checkSettings(this.$unique)
 
-    // TODO: Check if this code is valid
-    if (!queryOptions.old || (queryOptions.old as Array<any>).length < 1) {
-      throw new Error(
-        'Unique validation at update only works with queries started with $query.',
-      )
-    }
-
     return this.queryResolver(parent, true, queryOptions)
   }
 

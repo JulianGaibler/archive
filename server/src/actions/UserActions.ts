@@ -1,5 +1,5 @@
 import { default as argon2 } from "argon2"
-import FileUpload from "graphql-upload/Upload.mjs"
+import { FileUpload } from "graphql-upload/processRequest.mjs"
 
 import UserModel from '@src/models/UserModel'
 import Context from '@src/Context'
@@ -138,17 +138,17 @@ export default class {
     if (!user) {
       throw new AuthenticationError('This should not have happened.')
     }
+    console.log('Uploading profile picture', fields)
     const filename = await Context.fileStorage.setProfilePicture(fields.file)
 
-    // TODO: Investigate what this code was supposed to do
-    // if (user.profilePicture === null) {
-    //   try {
-    //     await Context.fileStorage.deleteProfilePicture(user.profilePicture)
-    //   } catch (e) {
-    //     Context.fileStorage.deleteProfilePicture(filename)
-    //     throw e
-    //   }
-    // }
+    if (user.profilePicture !== null) {
+      try {
+        await Context.fileStorage.deleteProfilePicture(user.profilePicture)
+      } catch (e) {
+        Context.fileStorage.deleteProfilePicture(filename)
+        throw e
+      }
+    }
     await user.$query().patch({ profilePicture: filename })
     return true
   }
@@ -162,7 +162,9 @@ export default class {
     if (user.profilePicture === null) {
       throw new AuthenticationError('There is no profile picture to clear.')
     }
-    return Context.fileStorage.deleteProfilePicture(user.profilePicture)
+    await Context.fileStorage.deleteProfilePicture(user.profilePicture)
+    await user.$query().patch({ profilePicture: null })
+    return true
   }
 
   static async mChangeName(ctx: Context, fields: { newName: string }) {

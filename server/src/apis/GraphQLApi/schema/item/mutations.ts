@@ -2,6 +2,7 @@ import {
   GraphQLBoolean,
   GraphQLFieldConfig,
   GraphQLID,
+  GraphQLInputObjectType,
   GraphQLList,
   GraphQLNonNull,
   GraphQLString,
@@ -9,7 +10,7 @@ import {
 import GraphQLUpload from "graphql-upload/GraphQLUpload.mjs"
 import KeywordType from '../keyword/KeywordType'
 import TaskType from '../task/TaskType'
-import ItemType from './ItemType'
+import ItemType, { itemHashType } from './ItemType'
 import HashId from '../../HashId'
 import Context from '@src/Context'
 import { Format, Language } from '../types'
@@ -50,10 +51,9 @@ const uploadItems: GraphQLFieldConfig<any, any, any> = {
   },
 }
 
-const editItem: GraphQLFieldConfig<any, any, any> = {
-  description: 'Edits an item.',
-  type: new GraphQLNonNull(ItemType),
-  args: {
+export const EditItemInput = new GraphQLInputObjectType({
+  name: 'EditItemInput',
+  fields: {
     id: {
       description: 'The ID of the item to edit.',
       type: new GraphQLNonNull(GraphQLID),
@@ -64,6 +64,16 @@ const editItem: GraphQLFieldConfig<any, any, any> = {
     caption: {
       type: GraphQLString,
     },
+  },
+})
+
+const editItem: GraphQLFieldConfig<any, any, any> = {
+  description: 'Edits an item.',
+  type: new GraphQLNonNull(ItemType),
+  args: {
+    id: EditItemInput.getFields().id,
+    description: EditItemInput.getFields().description,
+    caption: EditItemInput.getFields().caption,
   },
   resolve: async (parent, args, ctx: Context) => {
     const itemId = HashId.decode(postHashType, args.id)
@@ -88,7 +98,7 @@ const deleteItems: GraphQLFieldConfig<any, any, any> = {
   },
   resolve: async (parent, args, ctx: Context) => {
     const itemIds = args.ids.map((hashId: string) =>
-      HashId.decode(postHashType, hashId),
+      HashId.decode(itemHashType, hashId),
     )
     return ItemActions.mDelete(ctx, { itemIds })
   },

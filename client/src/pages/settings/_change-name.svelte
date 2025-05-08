@@ -1,5 +1,5 @@
 <script lang="ts">
-  import FileInput from 'tint/components/FileInput.svelte'
+  import TextField from 'tint/components/TextField.svelte'
   import Button from 'tint/components/Button.svelte'
   import MessageBox from 'tint/components/MessageBox.svelte'
   import IconWarning from 'tint/icons/20-warning.svg?raw'
@@ -17,7 +17,7 @@
   const sdk = getSdk(webClient)
 
   interface Props {
-    user: Pick<User, 'profilePicture' | 'username'>
+    user: Pick<User, 'username' | 'name'>
   }
 
   let { user }: Props = $props()
@@ -91,11 +91,7 @@
   }
 </script>
 
-<h2 class="tint--type-body-serif-bold">Profile picture</h2>
-
-<div class="flex-center">
-  <UserPicture {user} size="128" />
-</div>
+<h2 class="tint--type-body-serif-bold">Your name</h2>
 
 {#if globalError}
   <MessageBox icon={IconWarning} onclose={resetErrors}>
@@ -107,25 +103,23 @@
   <MessageBox icon={IconDone} onclose={resetSuccess}>
     <h2>Success</h2>
     <p>Your profile picture has been updated</p>
-    <a href="javascript:location.reload()">Reload page </a>
   </MessageBox>
 {/if}
+<TextField
+  id="file"
+  label="Username"
+  disabled
+  bind:value={user.username}
+  error={fileError}
+  helperText="Reach out if you want to change your username"
+/>
 <form onsubmit={tryChangePicture} class="pfp-set">
-  <FileInput
-    id="file"
-    accept="image/*"
-    label="Profile picture"
-    bind:value={file}
-    error={fileError}
-  />
+  <TextField id="file" label="Name" bind:value={user.name} error={fileError} />
   <div class="flex-center">
     <Button small variant="primary" submit={true} disabled={loading}
-      >Update picture</Button
+      >Update name</Button
     >
   </div>
-</form>
-<form class="flex-center pfp-clear" onsubmit={tryClearPicture}>
-  <Button small submit={true} disabled={loading}>Remove picture</Button>
 </form>
 
 <style lang="sass">

@@ -20,6 +20,13 @@ export type Scalars = {
   Upload: { input: any; output: any; }
 };
 
+export type EditItemInput = {
+  caption?: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
+  /** The ID of the item to edit. */
+  id: Scalars['ID']['input'];
+};
+
 /** Possible formats a post can have. */
 export enum Format {
   /** A sound file. */
@@ -38,14 +45,14 @@ export enum Format {
 export type Item = Node & {
   __typename?: 'Item';
   /** Spoken or written words within an item. */
-  caption?: Maybe<Scalars['String']['output']>;
+  caption: Scalars['String']['output'];
   /** Path where the compressed files are located without file-extension. */
   compressedPath?: Maybe<Scalars['String']['output']>;
   /** Identifies the date and time when the object was created. */
   createdAt: Scalars['DateTime']['output'];
   creator: User;
   /** Text describing the item. */
-  description?: Maybe<Scalars['String']['output']>;
+  description: Scalars['String']['output'];
   /** The ID of an object */
   id: Scalars['ID']['output'];
   /** Path where the original file is located. (with file-extension) */
@@ -212,6 +219,7 @@ export type MutationDeletePostsArgs = {
 
 export type MutationEditPostArgs = {
   id: Scalars['ID']['input'];
+  items?: InputMaybe<Array<EditItemInput>>;
   keywords?: InputMaybe<Array<Scalars['ID']['input']>>;
   language?: InputMaybe<Language>;
   title?: InputMaybe<Scalars['String']['input']>;
@@ -551,6 +559,11 @@ export type UserEdge = {
   node: User;
 };
 
+export type SettingsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type SettingsQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, darkMode?: boolean | null } | null, userSessions: Array<{ __typename?: 'Session', createdAt: any, firstIp: string, id: string, latestIp: string, userAgent: string, updatedAt: any }> };
+
 export type ChangeNameMutationVariables = Exact<{
   newName: Scalars['String']['input'];
 }>;
@@ -570,6 +583,24 @@ export type ClearProfilePictureMutationVariables = Exact<{ [key: string]: never;
 
 
 export type ClearProfilePictureMutation = { __typename?: 'Mutation', clearProfilePicture: boolean };
+
+export type CreateKeywordMutationVariables = Exact<{
+  name: Scalars['String']['input'];
+}>;
+
+
+export type CreateKeywordMutation = { __typename?: 'Mutation', createKeyword: { __typename?: 'Keyword', id: string, name: string } };
+
+export type EditPostMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+  title?: InputMaybe<Scalars['String']['input']>;
+  keywords?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
+  language?: InputMaybe<Language>;
+  items?: InputMaybe<Array<EditItemInput> | EditItemInput>;
+}>;
+
+
+export type EditPostMutation = { __typename?: 'Mutation', editPost: { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename?: 'Item', caption: string, compressedPath?: string | null, createdAt: any, description: string, type: Format, relativeHeight?: number | null, position: number, originalPath?: string | null, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } } };
 
 export type KeywordSearchQueryVariables = Exact<{
   input?: InputMaybe<Scalars['String']['input']>;
@@ -609,12 +640,14 @@ export type MeQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type MeQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, darkMode?: boolean | null } | null };
 
+export type PostDataFragment = { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename?: 'Item', caption: string, compressedPath?: string | null, createdAt: any, description: string, type: Format, relativeHeight?: number | null, position: number, originalPath?: string | null, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } };
+
 export type PostQueryVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
 
 
-export type PostQuery = { __typename?: 'Query', node?: { __typename?: 'Item' } | { __typename?: 'Keyword' } | { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename?: 'Item', caption?: string | null, compressedPath?: string | null, createdAt: any, description?: string | null, type: Format, relativeHeight?: number | null, position: number, originalPath?: string | null, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } } | { __typename?: 'Session' } | { __typename?: 'Task' } | { __typename?: 'User' } | null };
+export type PostQuery = { __typename?: 'Query', node?: { __typename?: 'Item' } | { __typename?: 'Keyword' } | { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename?: 'Item', caption: string, compressedPath?: string | null, createdAt: any, description: string, type: Format, relativeHeight?: number | null, position: number, originalPath?: string | null, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } } | { __typename?: 'Session' } | { __typename?: 'Task' } | { __typename?: 'User' } | null };
 
 export type PostsQueryVariables = Exact<{
   after?: InputMaybe<Scalars['String']['input']>;
@@ -655,7 +688,61 @@ export type UploadPictureMutationVariables = Exact<{
 
 export type UploadPictureMutation = { __typename?: 'Mutation', uploadProfilePicture: boolean };
 
-
+export const PostDataFragmentDoc = gql`
+    fragment PostData on Post {
+  id
+  title
+  language
+  updatedAt
+  createdAt
+  creator {
+    name
+    username
+    profilePicture
+  }
+  keywords {
+    name
+    id
+  }
+  items {
+    edges {
+      node {
+        caption
+        compressedPath
+        createdAt
+        description
+        type
+        relativeHeight
+        position
+        originalPath
+        id
+        creator {
+          username
+          profilePicture
+        }
+      }
+    }
+  }
+}
+    `;
+export const SettingsDocument = gql`
+    query settings {
+  me {
+    name
+    username
+    profilePicture
+    darkMode
+  }
+  userSessions {
+    createdAt
+    firstIp
+    id
+    latestIp
+    userAgent
+    updatedAt
+  }
+}
+    `;
 export const ChangeNameDocument = gql`
     mutation changeName($newName: String!) {
   changeName(newName: $newName)
@@ -671,6 +758,27 @@ export const ClearProfilePictureDocument = gql`
   clearProfilePicture
 }
     `;
+export const CreateKeywordDocument = gql`
+    mutation createKeyword($name: String!) {
+  createKeyword(name: $name) {
+    id
+    name
+  }
+}
+    `;
+export const EditPostDocument = gql`
+    mutation editPost($id: ID!, $title: String, $keywords: [ID!], $language: Language, $items: [EditItemInput!]) {
+  editPost(
+    id: $id
+    title: $title
+    keywords: $keywords
+    language: $language
+    items: $items
+  ) {
+    ...PostData
+  }
+}
+    ${PostDataFragmentDoc}`;
 export const KeywordSearchDocument = gql`
     query keywordSearch($input: String) {
   keywords(byName: $input) {
@@ -720,43 +828,11 @@ export const PostDocument = gql`
     query Post($id: ID!) {
   node(id: $id) {
     ... on Post {
-      id
-      title
-      language
-      updatedAt
-      createdAt
-      creator {
-        name
-        username
-        profilePicture
-      }
-      keywords {
-        name
-        id
-      }
-      items {
-        edges {
-          node {
-            caption
-            compressedPath
-            createdAt
-            description
-            type
-            relativeHeight
-            position
-            originalPath
-            id
-            creator {
-              username
-              profilePicture
-            }
-          }
-        }
-      }
+      ...PostData
     }
   }
 }
-    `;
+    ${PostDataFragmentDoc}`;
 export const PostsDocument = gql`
     query Posts($after: String, $byContent: String) {
   posts(first: 40, after: $after, byContent: $byContent) {
@@ -822,9 +898,12 @@ export type SdkFunctionWrapper = <T>(action: (requestHeaders?:Record<string, str
 
 
 const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) => action();
+const SettingsDocumentString = print(SettingsDocument);
 const ChangeNameDocumentString = print(ChangeNameDocument);
 const ChangePasswordDocumentString = print(ChangePasswordDocument);
 const ClearProfilePictureDocumentString = print(ClearProfilePictureDocument);
+const CreateKeywordDocumentString = print(CreateKeywordDocument);
+const EditPostDocumentString = print(EditPostDocument);
 const KeywordSearchDocumentString = print(KeywordSearchDocument);
 const LinkTelegramDocumentString = print(LinkTelegramDocument);
 const LoginDocumentString = print(LoginDocument);
@@ -839,6 +918,9 @@ const UnlinkTelegramDocumentString = print(UnlinkTelegramDocument);
 const UploadPictureDocumentString = print(UploadPictureDocument);
 export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
   return {
+    settings(variables?: SettingsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: SettingsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<SettingsQuery>(SettingsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'settings', 'query', variables);
+    },
     changeName(variables: ChangeNameMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ChangeNameMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<ChangeNameMutation>(ChangeNameDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'changeName', 'mutation', variables);
     },
@@ -847,6 +929,12 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     clearProfilePicture(variables?: ClearProfilePictureMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ClearProfilePictureMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<ClearProfilePictureMutation>(ClearProfilePictureDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'clearProfilePicture', 'mutation', variables);
+    },
+    createKeyword(variables: CreateKeywordMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: CreateKeywordMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<CreateKeywordMutation>(CreateKeywordDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'createKeyword', 'mutation', variables);
+    },
+    editPost(variables: EditPostMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: EditPostMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<EditPostMutation>(EditPostDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'editPost', 'mutation', variables);
     },
     keywordSearch(variables?: KeywordSearchQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: KeywordSearchQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<KeywordSearchQuery>(KeywordSearchDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'keywordSearch', 'query', variables);

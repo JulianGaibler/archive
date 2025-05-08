@@ -14,17 +14,19 @@ import FileStorage from '@src/files/FileStorage'
 export default class Context {
   static fileStorage: FileStorage
 
-  req: Request
-  res: Response
+  req: Request | null
+  res: Response | null
+  serverContext: boolean
   // Internal user ID
   private userIId: number | null
   // Object to store data for this context
   tmp: any
 
-  constructor(req: Request, res: Response, userIId: number | null) {
+  constructor(req: Request | null, res: Response | null, userIId: number | null) {
     this.req = req
     this.res = res
     this.userIId = userIId
+    this.serverContext = false
     this.tmp = {}
   }
 
@@ -49,7 +51,12 @@ export default class Context {
   }
 
   isServerContext(): boolean {
-    // FIXME: Not sure what this meant in Archive 1 (probably subscriptions)
-    return false
+    return this.serverContext
+  }
+
+  static createServerContext(): Context {
+    const ctx = new Context(null, null, null)
+    ctx.serverContext = true
+    return ctx
   }
 }

@@ -27,13 +27,15 @@
 </script>
 
 {#if !showUsername}
-  <picture>
-    <source
-      type="image/webp"
-      srcset={`${import.meta.env.PUBLIC_RESOURCE_PATH}upic/${
-        user.profilePicture
-      }-${pictureSize}.webp`}
-    />
+  <img
+    class={`x${size}`}
+    src={`${import.meta.env.PUBLIC_RESOURCE_PATH}upic/${
+      user.profilePicture
+    }-${pictureSize}.jpeg`}
+    alt={user.username}
+  />
+{:else}
+  <span aria-label={user.username}>
     <img
       class={`x${size}`}
       src={`${import.meta.env.PUBLIC_RESOURCE_PATH}upic/${
@@ -41,24 +43,6 @@
       }-${pictureSize}.jpeg`}
       alt={user.username}
     />
-  </picture>
-{:else}
-  <span aria-label={user.username}>
-    <picture>
-      <source
-        type="image/webp"
-        srcset={`${import.meta.env.PUBLIC_RESOURCE_PATH}upic/${
-          user.profilePicture
-        }-${pictureSize}.webp`}
-      />
-      <img
-        class={`x${size}`}
-        src={`${import.meta.env.PUBLIC_RESOURCE_PATH}upic/${
-          user.profilePicture
-        }-${pictureSize}.jpeg`}
-        alt={user.username}
-      />
-    </picture>
     {user.username}
   </span>
 {/if}
@@ -67,6 +51,7 @@
   img
     border-radius: tint.$profile-picture-radius
     overflow: hidden
+    background-color: var(--tint-input-bg)
     &.x16
       width: 16px
       height: 16px

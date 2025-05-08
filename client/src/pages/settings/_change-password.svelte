@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { preventDefault } from 'svelte/legacy'
+
   import TextField from 'tint/components/TextField.svelte'
   import Button from 'tint/components/Button.svelte'
   import MessageBox from 'tint/components/MessageBox.svelte'
@@ -14,21 +16,19 @@
 
   const sdk = getSdk(webClient)
 
-  let oldPassword = ''
-  let newPassword = ''
-  let newPasswordConfirm = ''
+  let oldPassword = $state('')
+  let newPassword = $state('')
+  let newPasswordConfirm = $state('')
 
-  let loading = false
-  let success = false
-  let globalError: string | undefined = undefined
-  let oldPasswordError: string | undefined = undefined
-  let newPasswordError: string | undefined = undefined
-  let newPasswordConfirmError: string | undefined = undefined
+  let loading = $state(false)
+  let success = $state(false)
+  let globalError: string | undefined = $state(undefined)
+  let oldPasswordError: string | undefined = $state(undefined)
+  let newPasswordError: string | undefined = $state(undefined)
+  let newPasswordConfirmError: string | undefined = $state(undefined)
 
   const tryChangePassword = (args: ChangePasswordMutationVariables) => {
     resetErrors()
-
-    console.log(args)
 
     if (args.oldPassword.trim().length === 0) {
       oldPasswordError = 'Please enter your current password'
@@ -91,8 +91,9 @@
   </MessageBox>
 {/if}
 <form
-  on:submit|preventDefault={() =>
-    tryChangePassword({ oldPassword, newPassword })}
+  onsubmit={preventDefault(() =>
+    tryChangePassword({ oldPassword, newPassword }),
+  )}
 >
   <TextField
     id="old-password"

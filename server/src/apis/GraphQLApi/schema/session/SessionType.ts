@@ -14,7 +14,7 @@ const SessionType = new GraphQLObjectType({
   description: 'Represents a Session object of an user.',
   interfaces: [nodeInterface],
   fields: () => ({
-    id: globalIdField(SessionModel),
+    id: globalIdField(sessionHashType),
     user: {
       description: 'User associated with that session',
       type: UserType,

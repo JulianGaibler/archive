@@ -64,11 +64,11 @@ const ItemType = new GraphQLObjectType({
     },
     caption: {
       description: 'Spoken or written words within an item.',
-      type: GraphQLString,
+      type: new GraphQLNonNull(GraphQLString),
     },
     description: {
       description: 'Text describing the item.',
-      type: GraphQLString,
+      type: new GraphQLNonNull(GraphQLString),
     },
     updatedAt: {
       description:

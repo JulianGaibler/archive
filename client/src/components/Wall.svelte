@@ -103,16 +103,6 @@
     })
     results = result.data
   }
-
-  // print some debug info in SSR and on the client
-  // first check if we are in the browser
-  if (typeof window !== 'undefined') {
-    console.log('SSR:', results)
-    console.log('Columns:', columns)
-    console.log('Column posts:', columnPosts)
-  } else {
-    console.log('SSR: No window object')
-  }
 </script>
 
 <svelte:window onresize={calculateColumns} />

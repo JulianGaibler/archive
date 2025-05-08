@@ -1,0 +1,19 @@
+#import { PostData } from './postQuery.gql';
+
+mutation editPost(
+  $id: ID!
+  $title: String
+  $keywords: [ID!]
+  $language: Language
+  $items: [EditItemInput!]
+) {
+  editPost(
+    id: $id
+    title: $title
+    keywords: $keywords
+    language: $language
+    items: $items
+  ) {
+    ...PostData
+  }
+}

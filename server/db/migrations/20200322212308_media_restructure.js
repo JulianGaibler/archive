@@ -131,6 +131,13 @@ export async function up(knex) {
       table.renameColumn('updatedAt', 'updated_at')
       table.integer('position').defaultTo(0).notNullable()
     })
+    // set all captions and descriptions that are null to ''
+    .raw('UPDATE item SET caption = \'\' WHERE caption IS NULL;')
+    .raw('UPDATE item SET description = \'\' WHERE description IS NULL;')
+    // make them not nullable
+    .raw('ALTER TABLE item ALTER COLUMN caption SET NOT NULL;')
+    .raw('ALTER TABLE item ALTER COLUMN description SET NOT NULL;')
+    // make description and caption non nullable
     .raw('ALTER TABLE item ADD COLUMN audio_amp_thumbnail smallint[];')
     .raw(
       'ALTER TABLE item ADD CONSTRAINT "position" unique(id, position) DEFERRABLE INITIALLY deferred;',

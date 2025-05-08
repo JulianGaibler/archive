@@ -8,12 +8,13 @@ import POST from '@src/queries/postQuery.gql'
 const ssrClient = Astro.locals.gqlClient
 const { postId } = Astro.params
 
-const result = await ssrClient
-  .request<PostQuery, PostQueryVariables>(POST, { id: postId })
+const result = await ssrClient.request<PostQuery, PostQueryVariables>(POST, {
+  id: postId,
+})
 ---
 
 <Layout title="Archive">
-  <Post result={result} />
+  <Post client:load result={result.node} />
 </Layout>
 
 <style lang="sass"></style>

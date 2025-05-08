@@ -1,0 +1,16 @@
+query settings {
+  me {
+    name
+    username
+    profilePicture
+    darkMode
+  }
+  userSessions {
+    createdAt
+    firstIp
+    id
+    latestIp
+    userAgent
+    updatedAt
+  }
+}

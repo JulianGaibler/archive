@@ -13,7 +13,10 @@ export function round(value: number, decimals: number = 2) {
   return Number(Math.round(+`${value}e${decimals}`) + 'e-' + decimals)
 }
 
-export async function asyncForEach(array, callback) {
+export async function asyncForEach<T>(
+  array: T[],
+  callback: (item: T, index: number, array: T[]) => Promise<void>
+): Promise<void> {
   for (let index = 0; index < array.length; index++) {
     await callback(array[index], index, array)
   }

@@ -2,9 +2,12 @@
   import type { PostQuery } from '@src/generated/graphql'
   import UserPicture from '@src/components/UserPicture.svelte'
   import Button from 'tint/components/Button.svelte'
+  import TextField from 'tint/components/TextField.svelte'
   import ItemMedia from '@src/components/ItemMedia.svelte'
   import IconMore from 'tint/icons/20-more.svg?raw'
   import { getConvertedSrcPath, getPlainSrcPath } from '@src/utils'
+  import type { PostUpdate } from './Post.svelte'
+  import { error } from 'node_modules/astro/dist/core/logger/core'
 
   type PostItem = NonNullable<
     NonNullable<
@@ -16,9 +19,10 @@
 
   interface Props {
     item: PostItem
+    editMode: PostUpdate | undefined
   }
 
-  let { item }: Props = $props()
+  let { item, editMode = $bindable() }: Props = $props()
 </script>
 
 <article>
@@ -29,31 +33,55 @@
       <li>July 15, 2019</li>
     </ul>
     <div class="actions">
-      <Button
-        small={true}
-        download={`archive-${item.id}`}
-        href={getPlainSrcPath(item.originalPath)}>Original</Button
-      >
-      <Button
-        small={true}
-        download={`archive-${item.id}-original`}
-        href={getConvertedSrcPath(item.compressedPath, item.type, true)}
-        >Compressed</Button
-      >
+      {#if item.originalPath}
+        <Button
+          small={true}
+          download={`archive-${item.id}`}
+          href={getPlainSrcPath(item.originalPath)}>Original</Button
+        >
+      {/if}
+      {#if item.compressedPath}
+        <Button
+          small={true}
+          download={`archive-${item.id}-original`}
+          href={getConvertedSrcPath(item.compressedPath, item.type, true)}
+          >Compressed</Button
+        >
+      {/if}
       <Button small={true} icon={true} title="Edit item"
         >{@html IconMore}</Button
       >
     </div>
   </div>
   <div class="content">
-    <div class="tint--tinted">
-      <h3 class="tint--type-ui-small">Description</h3>
-      <q>{item.description}</q>
-    </div>
-    <div class="tint--tinted">
-      <h3 class="tint--type-ui-small">Caption</h3>
-      <q><pre>{item.caption}</pre></q>
-    </div>
+    {#if editMode}
+      {@const i = editMode.items[item.id]}
+      <TextField
+        id="input"
+        label="Description"
+        variant="textarea"
+        disabled={editMode.loading}
+        bind:value={i.description.value}
+        error={i.description.error}
+      />
+      <TextField
+        id="input"
+        label="Caption"
+        variant="textarea"
+        disabled={editMode.loading}
+        bind:value={i.caption.value}
+        error={i.caption.error}
+      />
+    {:else}
+      <div class="tint--tinted">
+        <h3 class="tint--type-ui-small">Description</h3>
+        <q>{item.description}</q>
+      </div>
+      <div class="tint--tinted">
+        <h3 class="tint--type-ui-small">Caption</h3>
+        <q><pre>{item.caption}</pre></q>
+      </div>
+    {/if}
   </div>
 </article>
 

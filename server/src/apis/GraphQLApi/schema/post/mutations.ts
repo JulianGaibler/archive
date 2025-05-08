@@ -2,6 +2,7 @@ import {
   GraphQLBoolean,
   GraphQLFieldConfig,
   GraphQLID,
+  GraphQLInputObjectType,
   GraphQLList,
   GraphQLNonNull,
   GraphQLString,
@@ -13,6 +14,8 @@ import Context from '@src/Context'
 
 import HashId from '../../HashId'
 import PostActions from '@src/actions/PostActions'
+import { EditItemInput } from '../item/mutations'
+import { itemHashType } from '../item/ItemType'
 
 const createPost: GraphQLFieldConfig<any, any, any> = {
   description: 'Creates a new Post',
@@ -61,18 +64,35 @@ const editPost: GraphQLFieldConfig<any, any, any> = {
     language: {
       type: Language,
     },
+    items: {
+      description: 'Optional array of items with description and caption.',
+      type: new GraphQLList(
+        new GraphQLNonNull(
+          EditItemInput,
+        ),
+      ),
+    },
   },
   resolve: async (parent, args, ctx: Context) => {
-    let keywords
-    if (args.keywords && args.keywords.length > 0) {
+    let keywords = args.keywords !== undefined ? [] : undefined
+    if (args.keywords !== undefined && args.keywords.length > 0) {
       keywords = args.keywords.map((hashId: string) =>
         HashId.decode(keywordHashType, hashId),
       )
     }
     const postId = HashId.decode(postHashType, args.id)
-    const { title, language } = args
+    const { title, language, items } = args
 
-    return PostActions.mEdit(ctx, { postId, title, language, keywords })
+    const itemsWithIds = items?.map((item: any) => {
+      const itemId = HashId.decode(itemHashType, item.id)
+      return {
+        ...item,
+        id: itemId,
+      }
+    }
+    )
+
+    return PostActions.mEdit(ctx, { postId, title, language, keywords, items: itemsWithIds })
   },
 }
 

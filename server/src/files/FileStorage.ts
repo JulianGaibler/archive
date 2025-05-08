@@ -1,17 +1,17 @@
 import Context from '../Context'
-import cuid from 'cuid'
+import { createId } from '@paralleldrive/cuid2'
 import FileProcessor from './FileProcessor'
-import fileType from 'file-type'
+import { fileTypeFromStream } from 'file-type'
 import fs from 'fs'
 import ItemActions from '@src/actions/ItemActions'
-import jet from 'fs-jetpack'
 import stream from 'stream'
 import TaskActions from '@src/actions/TaskActions'
 import tmp from 'tmp'
 import util from 'util'
-import FileUpload from "graphql-upload/Upload.mjs"
+import { FileUpload } from "graphql-upload/processRequest.mjs"
 import { InputError } from '@src/errors'
 import { Mutex } from 'async-mutex'
+import * as fileUtils from './file-utils'
 
 const pipeline = util.promisify(stream.pipeline)
 
@@ -22,7 +22,7 @@ export enum FileType {
   GIF = 'GIF',
 }
 
-// Options
+// File storage options
 const options = {
   dist: process.env.STORAGE_PATH || 'public',
   directories: {
@@ -34,7 +34,7 @@ const options = {
   },
 }
 
-/** Keeps track of queue and saves files in directories */
+
 export default class FileStorage {
   private taskMutex: Mutex
 
@@ -42,9 +42,12 @@ export default class FileStorage {
     this.taskMutex = new Mutex()
     this.performCleanup()
 
-    const newDir = jet.dir(options.dist)
+    fileUtils.dir(options.dist)
     Object.keys(options.directories).forEach((key) => {
-      newDir.dir(options.directories[key])
+      // construct a path from the base and the directory
+      const path = fileUtils.resolvePath(options.dist, options.directories[key as keyof typeof options.directories])
+      // ensure directory exists
+      fileUtils.dir(path)
     })
   }
 
@@ -53,14 +56,14 @@ export default class FileStorage {
     upload: Promise<FileUpload>,
     serializedItem: string,
   ) {
-    const { createReadStream, mimetype } = await upload
-    const typedStream = await fileType.stream(createReadStream())
+    const { createReadStream } = await upload
+    const typedStream = await fileTypeFromStream(createReadStream())
 
-    if (!typedStream.fileType) {
+    if (!typedStream) {
       // If 'file-type' couldn't figure out what this is, we just throw
       throw new InputError('File-Type not recognized')
     }
-    const { ext, mime } = typedStream.fileType
+    const { ext, mime } = typedStream
     // Throws an error if unsupported
     getKind(mime)
 
@@ -104,9 +107,9 @@ export default class FileStorage {
 
   /** Creates profile picture files and returns generic path */
   async setProfilePicture(upload: Promise<FileUpload>): Promise<string> {
-    const { createReadStream, mimetype } = await upload
+    const { createReadStream } = await upload
 
-    const filename = `pb-${cuid()}`
+    const filename = `pb-${createId()}`
 
     await FileProcessor.createProfilePicture(
       createReadStream(),
@@ -148,12 +151,12 @@ export default class FileStorage {
 
   /** Processes an Item from the Queue */
   private async processItem(ctx: Context, taskId: number, itemData: any) {
-    const filePath = jet.path(
+    const filePath = fileUtils.resolvePath(
       options.dist,
       options.directories.queue,
       taskId.toString(),
     )
-    const update = (changes) => TaskActions.mUpdate(ctx, { taskId, changes })
+    const update = (changes: any) => TaskActions.mUpdate(ctx, { taskId, changes })
 
     const task = await TaskActions.qTask(ctx, { taskId })
 
@@ -178,7 +181,7 @@ export default class FileStorage {
     itemData.type = fileTypeEnum
 
     try {
-      let result
+      let result: any
       if (fileTypeEnum === FileType.GIF || fileTypeEnum === FileType.VIDEO) {
         result = await processor.processVideo(
           filePath,
@@ -189,18 +192,18 @@ export default class FileStorage {
         result = await processor.processImage(filePath, tmpDir.name)
       }
 
-      const fileId = cuid()
+      const fileId = createId()
 
       // Save files where they belong
-      const movePromises = []
+      const movePromises: Promise<void>[] = []
       Object.keys(result.createdFiles).forEach((category) => {
         if (category === 'original') {
           movePromises.push(
-            jet.moveAsync(
+            fileUtils.moveAsync(
               result.createdFiles[category],
-              jet.path(
+              fileUtils.resolvePath(
                 options.dist,
-                options.directories[category],
+                options.directories[category as keyof typeof options.directories],
                 `${fileId}.${task.ext}`,
               ),
             ),
@@ -208,9 +211,9 @@ export default class FileStorage {
         } else {
           Object.keys(result.createdFiles[category]).forEach((ext) => {
             movePromises.push(
-              jet.moveAsync(
+              fileUtils.moveAsync(
                 result.createdFiles[category][ext],
-                jet.path(
+                fileUtils.resolvePath(
                   options.dist,
                   options.directories[category],
                   `${fileId}.${ext}`,
@@ -222,7 +225,7 @@ export default class FileStorage {
       })
       // When all are done, delete tmp-dir
       await Promise.all(movePromises)
-      jet.remove(filePath)
+      fileUtils.remove(filePath)
 
       itemData.relHeight = result.relHeight
       itemData.compressedPath = `${options.directories.compressed}/${fileId}`
@@ -232,7 +235,7 @@ export default class FileStorage {
       // TODO: Create item
       const itemId = await ItemActions.mCreate(ctx, itemData)
       await update({ status: 'DONE', createdPostId: itemId })
-    } catch (e) {
+    } catch (e: any) {
       tmpDir.removeCallback()
       await update({ status: 'FAILED', notes: e.toString() })
     } finally {
@@ -241,16 +244,16 @@ export default class FileStorage {
     }
   }
 
-  async streamToFile(readStream, path: string[]) {
-    const jetpath = jet.path(...path)
+  async streamToFile(readStream: stream.Readable, path: string[]) {
+    const filePath = fileUtils.resolvePath(...path)
 
     try {
-      await pipeline(readStream, jet.createWriteStream(jetpath))
+      await pipeline(readStream, fs.createWriteStream(filePath))
     } catch (e) {
-      fs.unlinkSync(jetpath)
+      fs.unlinkSync(filePath)
       throw e
     }
-    return jetpath
+    return filePath
   }
 
   /** Runs at startup to check if there are orphaned tasks from a server crash */
@@ -260,8 +263,8 @@ export default class FileStorage {
       const ctx = Context.createServerContext()
       const ids = await TaskActions.mCleanup(ctx)
       ids.forEach((id) =>
-        jet.remove(
-          jet.path(options.dist, options.directories.queue, id.toString()),
+        fileUtils.remove(
+          fileUtils.resolvePath(options.dist, options.directories.queue, id.toString()),
         ),
       )
     } finally {

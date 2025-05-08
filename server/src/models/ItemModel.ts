@@ -13,8 +13,8 @@ export default class ItemModel extends BaseModel {
   /// Attributes
   readonly id!: number
   type!: string
-  caption?: string
-  description?: string
+  caption!: string
+  description!: string
   compressedPath?: string
   thumbnailPath?: string
   originalPath?: string
@@ -62,8 +62,8 @@ export default class ItemModel extends BaseModel {
         maxLength: 64,
       },
       postId: { type: 'number' },
-      description: { type: ['string', 'null'], minLength: 4 },
-      caption: { type: ['string', 'null'], minLength: 4 },
+      description: { type: ['string'], minLength: 4 },
+      caption: { type: ['string'], minLength: 4 },
       creatorId: { type: 'number' },
     },
   }

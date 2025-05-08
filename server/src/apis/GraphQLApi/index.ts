@@ -11,6 +11,8 @@ import { ApolloServer } from '@apollo/server'
 import { expressMiddleware } from '@apollo/server/express4';
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer'
 // import { ApolloServerPluginLandingPageDisabled } from '@apollo/server/plugin/disabled'
+import graphqlUploadExpress from "graphql-upload/graphqlUploadExpress.mjs";
+import FileStorage from '@src/files/FileStorage'
 
 
 /**
@@ -48,6 +50,15 @@ export default class {
       ],
     })
     await apollo.start()
+
+    Context.fileStorage = new FileStorage()
+
+    app.use(
+      graphqlUploadExpress({
+        maxFileSize: 1024 * 1024 * 1024, // 1 GB
+        maxFiles: 10,
+      }),
+    )
 
     app.use(
       options.endpoint,

@@ -25,9 +25,12 @@ export const webClient = new GraphQLClient('http://localhost:4000/api', {
   requestMiddleware: uploadMiddleware,
 })
 
-export const webSubscriptionsClient = typeof window === 'undefined' ? null : createClient({
-  url: 'ws://localhost:4000/sub',
-})
+export const webSubscriptionsClient =
+  typeof window === 'undefined'
+    ? null
+    : createClient({
+        url: 'ws://localhost:4000/sub',
+      })
 // TODO reconnect on error
 
 export type { GraphQLClient as GqlClient }

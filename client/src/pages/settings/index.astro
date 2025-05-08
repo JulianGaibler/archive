@@ -1,7 +1,9 @@
 ---
 import Layout from '@src/layouts/Layout.astro'
 import ChangePassword from './_change-password.svelte'
+import ChangeName from './_change-name.svelte'
 import ChangeProfilePicture from './_change-profile-picture.svelte'
+import ManageSessions from './_manage-sessions.svelte'
 
 import { getSdk } from '@src/generated/graphql'
 
@@ -9,7 +11,7 @@ const ssrClient = Astro.locals.gqlClient
 
 const sdk = getSdk(ssrClient)
 
-const result = await sdk.me()
+const result = await sdk.settings()
 ---
 
 <Layout title="Account settings">
@@ -26,6 +28,12 @@ const result = await sdk.me()
         </section>
         <section class="card tint--tinted">
           <ChangeProfilePicture client:load user={result.data.me} />
+        </section>
+        <section class="card tint--tinted">
+          <ChangeName client:load user={result.data.me} />
+        </section>
+        <section class="card tint--tinted">
+          <ManageSessions client:load sessions={result.data.userSessions} />
         </section>
       </div>
     </div>

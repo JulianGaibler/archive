@@ -10,8 +10,9 @@ const ssrClient = Astro.locals.gqlClient
 // if there is a query param q, use it as the search term
 const byContent = new URL(Astro.request.url).searchParams.get('q')
 
-const result = await ssrClient
-  .request<PostsQuery, PostsQueryVariables>(POSTS, { byContent })
+const result = await ssrClient.request<PostsQuery, PostsQueryVariables>(POSTS, {
+  byContent,
+})
 ---
 
 <Layout title="Archive">

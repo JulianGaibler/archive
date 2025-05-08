@@ -2,13 +2,12 @@
   import UserPicture from './UserPicture.svelte'
   import Menu, { type ContextClickHandler } from 'tint/components/Menu.svelte'
 
-
   interface Props {
-    user: Pick<User, 'profilePicture' | 'username'>;
-    unreadNotifications: number;
+    user: Pick<User, 'profilePicture' | 'username'>
+    unreadNotifications: number
   }
 
-  let { user, unreadNotifications }: Props = $props();
+  let { user, unreadNotifications }: Props = $props()
 
   let contextClick: ContextClickHandler | undefined = $state(undefined)
 

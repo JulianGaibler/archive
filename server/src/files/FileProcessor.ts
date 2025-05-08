@@ -1,13 +1,14 @@
 import ffmpeg from 'fluent-ffmpeg'
 import fs from 'fs'
-import jet from 'fs-jetpack'
 import sharp from 'sharp'
-import stream from 'stream'
+import stream, { Readable } from 'stream'
 import tmp from 'tmp'
 import util from 'util'
 import { FileType } from './FileStorage'
 import { ReadStream } from 'fs-capacitor'
 import { asyncForEach, round, to } from '../utils'
+import * as fileUtils from './file-utils'
+import { InputError } from '@src/errors'
 
 const pipeline = util.promisify(stream.pipeline)
 
@@ -16,21 +17,18 @@ const profilePictureOptions = [
     size: 32,
     options: {
       jpeg: { quality: 91, progressive: true },
-      webp: { quality: 80 },
     },
   },
   {
     size: 80,
     options: {
       jpeg: { quality: 91, progressive: true },
-      webp: { quality: 80 },
     },
   },
   {
     size: 256,
     options: {
       jpeg: { quality: 91, progressive: true },
-      webp: { quality: 80, nearLossless: true },
     },
   },
 ]
@@ -58,15 +56,15 @@ export default class FileProcessor {
   }
 
   async processImage(filePath: string, directory: string) {
-    const compressed = jet.path(directory, 'image')
+    const compressed = fileUtils.resolvePath(directory, 'image')
     const filePaths = {
       jpeg: `${compressed}.jpeg`,
       webp: `${compressed}.webp`,
     }
 
-    const newRead = jet.createReadStream(filePath)
-    const wsJpeg = jet.createWriteStream(filePaths.jpeg)
-    const wsWebp = jet.createWriteStream(filePaths.webp)
+    const newRead = fs.createReadStream(filePath)
+    const wsJpeg = fs.createWriteStream(filePaths.jpeg)
+    const wsWebp = fs.createWriteStream(filePaths.webp)
 
     const transform = sharp().rotate().removeAlpha().resize(900, 900, {
       fit: sharp.fit.inside,
@@ -97,8 +95,12 @@ export default class FileProcessor {
 
     const { height, width } = await sharp(filePath).metadata()
 
+    if (!height || !width) {
+      throw new InputError('Invalid image file')
+    }
+
     const thumbnailPaths = await this.createThumbnail(
-      jet.createReadStream(filePath),
+      fs.createReadStream(filePath),
       directory,
     )
     return {
@@ -113,12 +115,12 @@ export default class FileProcessor {
 
   async processVideo(filePath: string, directory: string, fileType: FileType) {
     // TODO: Are the files really being removed from the temp file?
-    const compressed = jet.path(directory, 'video')
+    const compressed = fileUtils.resolvePath(directory, 'video')
     const filePaths = {
       mp4: `${compressed}.mp4`,
       webm: `${compressed}.webm`,
     }
-    const videoThumbnail = jet.path(directory, 'video_thumbnail')
+    const videoThumbnail = fileUtils.resolvePath(directory, 'video_thumbnail')
     const videoThumbnailPaths = {
       mp4: `${videoThumbnail}.mp4`,
       webm: `${videoThumbnail}.webm`,
@@ -139,20 +141,20 @@ export default class FileProcessor {
           reject(e)
         })
         .on('end', () => {
-          resolve()
+          resolve(undefined)
         })
     })
 
-    const tmpPath = jet.path(tmpDir.name, tmpFilename)
+    const tmpPath = fileUtils.resolvePath(tmpDir.name, tmpFilename)
 
     const { height, width } = await sharp(tmpPath).metadata()
 
     const thumbnailPaths = await this.createThumbnail(
-      jet.createReadStream(tmpPath),
+      fs.createReadStream(tmpPath),
       directory,
     )
 
-    jet.remove(tmpPath)
+     fileUtils.remove(tmpPath)
     tmpDir.removeCallback()
 
     const renderProgress =
@@ -174,7 +176,7 @@ export default class FileProcessor {
       renderIdx: number,
       inputPath: string,
       outputPath: string,
-      size: string,
+      size: string | undefined,
       outputOptions: string[],
       optionsCallback?: any,
     ) => {
@@ -188,7 +190,7 @@ export default class FileProcessor {
         }
         f.output(outputPath)
           .outputOptions(outputOptions)
-          .on('progress', (p) => updateProgress(renderIdx, p.percent))
+          .on('progress', (p) => p.percent !== undefined && updateProgress(renderIdx, p.percent))
           .on('error', reject)
           .on('end', resolve)
           .run()
@@ -224,6 +226,9 @@ export default class FileProcessor {
     let renderB
     let renderC
 
+    if (!width || !height) {
+      throw new InputError('Invalid video file')
+    }
     // Render main video
     const outputHeight = height > 720 ? 720 : height
     renderA = renderVideo(0, filePath, filePaths.mp4, `?x${outputHeight}`, [
@@ -312,14 +317,14 @@ export default class FileProcessor {
 
   private async createThumbnail(readStream, directory: string) {
     // TODO: why I am not waiting here for pipe to finish? use storeFS!
-    const compressed = jet.path(directory, 'thumbnail')
+    const compressed = fileUtils.resolvePath(directory, 'thumbnail')
     const filePaths = {
       jpeg: `${compressed}.jpeg`,
       webp: `${compressed}.webp`,
     }
 
-    const wsJpeg = jet.createWriteStream(filePaths.jpeg)
-    const wsWebp = jet.createWriteStream(filePaths.webp)
+    const wsJpeg = fs.createWriteStream(filePaths.jpeg)
+    const wsWebp = fs.createWriteStream(filePaths.webp)
 
     const transform = sharp().rotate().removeAlpha().resize(400, 400, {
       fit: sharp.fit.inside,
@@ -351,28 +356,45 @@ export default class FileProcessor {
 
   /** Creates files following this pattern [filename]-[s/m/l].[jpg/webp] */
   static async createProfilePicture(
-    readStream: ReadStream,
+    readStream: Readable,
     path: string[],
     filename: string,
   ) {
-    const tf0 = sharp().removeAlpha().rotate()
+    // Convert the readStream into a buffer
+    const buffer = await new Promise<Buffer>((resolve, reject) => {
+      const chunks: Buffer[] = []
+      readStream.on('data', (chunk) => chunks.push(chunk))
+      readStream.on('end', () => resolve(Buffer.concat(chunks)))
+      readStream.on('error', reject)
+    })
+
+    const tf0 = sharp(buffer).removeAlpha().rotate()
     await asyncForEach(profilePictureOptions, async (sizeObj) => {
       const tf1 = tf0.clone().resize(sizeObj.size, sizeObj.size, {
         fit: sharp.fit.cover,
       })
       await asyncForEach(Object.keys(sizeObj.options), async (format) => {
-        const fullPath = jet.path(
+
+        // dump available info here to console
+        console.log('INFODUMP', {
+          path,
+          size: sizeObj.size,
+          format,
+          options: sizeObj.options[format],
+        })
+
+        const fullPath = fileUtils.resolvePath(
           ...path,
           `${filename}-${sizeObj.size}.${format}`,
         )
         const [err] = await to(
           pipeline(
-            readStream,
             tf1.clone().toFormat(format, sizeObj.options[format]),
-            jet.createWriteStream(fullPath),
+            fs.createWriteStream(fullPath),
           ),
         )
         if (err) {
+          console.error('Error creating profile picture', err)
           fs.unlinkSync(fullPath)
           throw err
         }
@@ -385,8 +407,8 @@ export default class FileProcessor {
     profilePictureOptions.forEach((sizeObj) => {
       Object.keys(sizeObj.options).forEach((format) => {
         removePromises.push(
-          jet.removeAsync(
-            jet.path(...path, `${filename}-${sizeObj.size}.${format}`),
+           fileUtils.removeAsync(
+            fileUtils.resolvePath(...path, `${filename}-${sizeObj.size}.${format}`),
           ),
         )
       })
@@ -405,15 +427,15 @@ export default class FileProcessor {
 
     itemTypes[type].compressed.forEach((ext) => {
       removePromises.push(
-        jet.removeAsync(jet.path(...path, `${compressedPath}.${ext}`)),
+         fileUtils.removeAsync(fileUtils.resolvePath(...path, `${compressedPath}.${ext}`)),
       )
     })
     itemTypes[type].thumbnail.forEach((ext) => {
       removePromises.push(
-        jet.removeAsync(jet.path(...path, `${thumbnailPath}.${ext}`)),
+         fileUtils.removeAsync(fileUtils.resolvePath(...path, `${thumbnailPath}.${ext}`)),
       )
     })
-    removePromises.push(jet.removeAsync(jet.path(...path, originalPath)))
+    removePromises.push( fileUtils.removeAsync(fileUtils.resolvePath(...path, originalPath)))
 
     await Promise.all(removePromises)
   }

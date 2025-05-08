@@ -2,6 +2,7 @@ import SessionModel from '@src/models/SessionModel'
 import Context from '@src/Context'
 import { AuthenticationError, InputError, NotFoundError } from '@src/errors'
 import { randomBytes } from 'crypto'
+import { UAParser } from 'ua-parser-js'
 
 export default class {
   // **
@@ -18,9 +19,28 @@ export default class {
   }
 
   /** Get all sessions for the current user */
-  static qGetUserSessions(ctx: Context): Promise<SessionModel[]> {
+  static async qGetUserSessions(ctx: Context): Promise<SessionModel[]> {
     const userIId = ctx.isAuthenticated()
-    return ctx.dataLoaders.session.getByUser.load(userIId)
+    const x = await ctx.dataLoaders.session.getByUser.load(userIId)
+    const parser = new UAParser()
+    return x.map((session) => {
+      const parsedUserAgent = parser.setUA(session.userAgent).getResult()
+
+      const browser = parsedUserAgent.browser.name
+      const browserMajor = parsedUserAgent.browser.major
+      const os = parsedUserAgent.os.name
+
+      const userAgentString =
+        (browser && browserMajor && os
+          ? `${browser} ${browserMajor} on ${os}`
+          : [browser, browserMajor, os]
+              .filter((x) => x !== undefined)
+              .join(' ')) || 'Unknown'
+      return Object.assign(new SessionModel(), {
+        ...session,
+        userAgent: userAgentString,
+      })
+    })
   }
 
   /** Verify that the session is valid, and either return the userId or null */

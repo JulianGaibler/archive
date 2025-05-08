@@ -4,6 +4,7 @@ import BaseModel from './BaseModel'
 
 import KeywordModel from './KeywordModel'
 import UserModel from './UserModel'
+import ItemModel from './ItemModel'
 
 export default class PostModel extends BaseModel {
   /// Config
@@ -17,6 +18,7 @@ export default class PostModel extends BaseModel {
 
   creator?: UserModel
   keywords?: KeywordModel[]
+  items?: ItemModel[]
 
   /// Schema
   static jsonSchema = {
@@ -106,6 +108,14 @@ export default class PostModel extends BaseModel {
           extra: ['addedAt'],
         },
         to: 'keyword.id',
+      },
+    },
+    items: {
+      relation: Model.HasManyRelation,
+      modelClass: 'ItemModel',
+      join: {
+        from: 'post.id',
+        to: 'item.postId',
       },
     },
   }

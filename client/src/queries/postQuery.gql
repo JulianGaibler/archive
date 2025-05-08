@@ -1,39 +1,43 @@
+fragment PostData on Post {
+  id
+  title
+  language
+  updatedAt
+  createdAt
+  creator {
+    name
+    username
+    profilePicture
+  }
+  keywords {
+    name
+    id
+  }
+  items {
+    edges {
+      node {
+        caption
+        compressedPath
+        createdAt
+        description
+        type
+        relativeHeight
+        position
+        originalPath
+        id
+        creator {
+          username
+          profilePicture
+        }
+      }
+    }
+  }
+}
+
 query Post($id: ID!) {
   node(id: $id) {
     ... on Post {
-      id
-      title
-      language
-      updatedAt
-      createdAt
-      creator {
-        name
-        username
-        profilePicture
-      }
-      keywords {
-        name
-        id
-      }
-      items {
-        edges {
-          node {
-            caption
-            compressedPath
-            createdAt
-            description
-            type
-            relativeHeight
-            position
-            originalPath
-            id
-            creator {
-              username
-              profilePicture
-            }
-          }
-        }
-      }
+      ...PostData
     }
   }
 }
