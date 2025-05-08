@@ -9,7 +9,11 @@ import { HashIdTypes } from '../../HashId'
 import KeywordType from '../keyword/KeywordType'
 import ItemType, { itemConnection } from '../item/ItemType'
 import UserType from '../user/UserType'
-import { connectionArgs, connectionDefinitions, connectionFromArray } from 'graphql-relay'
+import {
+  connectionArgs,
+  connectionDefinitions,
+  connectionFromArray,
+} from 'graphql-relay'
 import { DateTime, globalIdField, Language } from '../types'
 import { nodeInterface } from '../node'
 import Context from '@src/Context'

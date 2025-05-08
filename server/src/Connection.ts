@@ -1,4 +1,4 @@
-import { Knex, default as knex } from 'knex';
+import { Knex, default as knex } from 'knex'
 import { Model, knexSnakeCaseMappers } from 'objection'
 import knexfile from '../knexfile.js'
 
@@ -11,7 +11,7 @@ export default class Connection {
     }
 
     if (process.env.NODE_ENV === 'test') {
-      (knexfile.connection as any).database += '_test'
+      ;(knexfile.connection as any).database += '_test'
     }
 
     this.knexInstance = knex({

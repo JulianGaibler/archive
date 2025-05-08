@@ -7,7 +7,7 @@ import {
   GraphQLNonNull,
   GraphQLString,
 } from 'graphql'
-import GraphQLUpload from "graphql-upload/GraphQLUpload.mjs"
+import GraphQLUpload from 'graphql-upload/GraphQLUpload.mjs'
 import KeywordType from '../keyword/KeywordType'
 import TaskType from '../task/TaskType'
 import ItemType, { itemHashType } from './ItemType'

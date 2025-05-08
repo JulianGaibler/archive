@@ -154,7 +154,7 @@ export default class FileProcessor {
       directory,
     )
 
-     fileUtils.remove(tmpPath)
+    fileUtils.remove(tmpPath)
     tmpDir.removeCallback()
 
     const renderProgress =
@@ -190,7 +190,11 @@ export default class FileProcessor {
         }
         f.output(outputPath)
           .outputOptions(outputOptions)
-          .on('progress', (p) => p.percent !== undefined && updateProgress(renderIdx, p.percent))
+          .on(
+            'progress',
+            (p) =>
+              p.percent !== undefined && updateProgress(renderIdx, p.percent),
+          )
           .on('error', reject)
           .on('end', resolve)
           .run()
@@ -374,7 +378,6 @@ export default class FileProcessor {
         fit: sharp.fit.cover,
       })
       await asyncForEach(Object.keys(sizeObj.options), async (format) => {
-
         // dump available info here to console
         console.log('INFODUMP', {
           path,
@@ -407,8 +410,11 @@ export default class FileProcessor {
     profilePictureOptions.forEach((sizeObj) => {
       Object.keys(sizeObj.options).forEach((format) => {
         removePromises.push(
-           fileUtils.removeAsync(
-            fileUtils.resolvePath(...path, `${filename}-${sizeObj.size}.${format}`),
+          fileUtils.removeAsync(
+            fileUtils.resolvePath(
+              ...path,
+              `${filename}-${sizeObj.size}.${format}`,
+            ),
           ),
         )
       })
@@ -427,15 +433,21 @@ export default class FileProcessor {
 
     itemTypes[type].compressed.forEach((ext) => {
       removePromises.push(
-         fileUtils.removeAsync(fileUtils.resolvePath(...path, `${compressedPath}.${ext}`)),
+        fileUtils.removeAsync(
+          fileUtils.resolvePath(...path, `${compressedPath}.${ext}`),
+        ),
       )
     })
     itemTypes[type].thumbnail.forEach((ext) => {
       removePromises.push(
-         fileUtils.removeAsync(fileUtils.resolvePath(...path, `${thumbnailPath}.${ext}`)),
+        fileUtils.removeAsync(
+          fileUtils.resolvePath(...path, `${thumbnailPath}.${ext}`),
+        ),
       )
     })
-    removePromises.push( fileUtils.removeAsync(fileUtils.resolvePath(...path, originalPath)))
+    removePromises.push(
+      fileUtils.removeAsync(fileUtils.resolvePath(...path, originalPath)),
+    )
 
     await Promise.all(removePromises)
   }

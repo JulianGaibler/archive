@@ -29,7 +29,6 @@ const taskUpdates: GraphQLFieldConfig<any, any, any> = {
     // const { asyncIteratorFn, filterFn } = TaskActions.sTasks(ctx, {
     //   taskIds,
     // })
-
     // return withFilter(asyncIteratorFn, filterFn)()
   },
 }

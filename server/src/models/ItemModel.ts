@@ -33,7 +33,7 @@ export default class ItemModel extends BaseModel {
     this.caption = this.caption && stripHtml(this.caption).result
   }
   async $beforeUpdate(opt: ModelOptions, queryContext: QueryContext) {
-    await super.$beforeUpdate(opt, queryContext);
+    await super.$beforeUpdate(opt, queryContext)
     this.description = this.description && stripHtml(this.description).result
     this.caption = this.caption && stripHtml(this.caption).result
   }
@@ -76,7 +76,9 @@ export default class ItemModel extends BaseModel {
     return { getById, getByPost }
   }
 
-  private static async itemsByIds(itemIds: readonly number[]): Promise<ItemModel[]> {
+  private static async itemsByIds(
+    itemIds: readonly number[],
+  ): Promise<ItemModel[]> {
     const items = await ItemModel.query().findByIds(itemIds as number[])
 
     const itemMap: { [key: string]: ItemModel } = {}
@@ -87,8 +89,12 @@ export default class ItemModel extends BaseModel {
     return itemIds.map((id) => itemMap[id])
   }
 
-  private static async itemsByPosts(postIds: readonly number[]): Promise<ItemModel[][]> {
-    const users = await ItemModel.query().whereIn('postId', postIds as number[]).orderBy('position')
+  private static async itemsByPosts(
+    postIds: readonly number[],
+  ): Promise<ItemModel[][]> {
+    const users = await ItemModel.query()
+      .whereIn('postId', postIds as number[])
+      .orderBy('position')
 
     return postIds.map((id) => users.filter((x) => x.postId === id))
   }

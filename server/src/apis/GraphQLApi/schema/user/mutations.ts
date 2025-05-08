@@ -4,7 +4,7 @@ import {
   GraphQLNonNull,
   GraphQLString,
 } from 'graphql'
-import GraphQLUpload from "graphql-upload/GraphQLUpload.mjs"
+import GraphQLUpload from 'graphql-upload/GraphQLUpload.mjs'
 
 import AuthCookieUtils from '../../AuthCookieUtils'
 

@@ -8,12 +8,11 @@ import Context from '@src/Context'
 import { ValidationError } from 'objection'
 import { ValidationInputError } from '@src/errors'
 import { ApolloServer } from '@apollo/server'
-import { expressMiddleware } from '@apollo/server/express4';
+import { expressMiddleware } from '@apollo/server/express4'
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer'
 // import { ApolloServerPluginLandingPageDisabled } from '@apollo/server/plugin/disabled'
-import graphqlUploadExpress from "graphql-upload/graphqlUploadExpress.mjs";
+import graphqlUploadExpress from 'graphql-upload/graphqlUploadExpress.mjs'
 import FileStorage from '@src/files/FileStorage'
-
 
 /**
  * This class is responsible for handling all GraphQL requests.
@@ -64,14 +63,16 @@ export default class {
       options.endpoint,
       json(),
       expressMiddleware(apollo, {
-        context: async ({ req, res }) => await this.createContext(req as any, res as any),
+        context: async ({ req, res }) =>
+          await this.createContext(req as any, res as any),
       }),
     )
   }
 
   /**
    * Creates a context object for the GraphQL request. With a context object,
-   * you can check if a user is authenticated, and have access to the dataloaders.
+   * you can check if a user is authenticated, and have access to the
+   * dataloaders.
    *
    * @param req The Express request object.
    * @param res The Express response object.

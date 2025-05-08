@@ -22,7 +22,11 @@ export default class Context {
   // Object to store data for this context
   tmp: any
 
-  constructor(req: Request | null, res: Response | null, userIId: number | null) {
+  constructor(
+    req: Request | null,
+    res: Response | null,
+    userIId: number | null,
+  ) {
     this.req = req
     this.res = res
     this.userIId = userIId

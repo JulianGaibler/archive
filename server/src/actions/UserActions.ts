@@ -1,5 +1,5 @@
-import { default as argon2 } from "argon2"
-import { FileUpload } from "graphql-upload/processRequest.mjs"
+import { default as argon2 } from 'argon2'
+import { FileUpload } from 'graphql-upload/processRequest.mjs'
 
 import UserModel from '@src/models/UserModel'
 import Context from '@src/Context'

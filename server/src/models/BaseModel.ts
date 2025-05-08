@@ -12,7 +12,7 @@ export default class BaseModel extends Model {
   }
 
   async $beforeUpdate(opt: ModelOptions, queryContext: QueryContext) {
-    await super.$beforeUpdate(opt, queryContext);
+    await super.$beforeUpdate(opt, queryContext)
     this.updatedAt = new Date()
   }
 

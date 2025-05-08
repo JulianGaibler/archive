@@ -66,11 +66,7 @@ const editPost: GraphQLFieldConfig<any, any, any> = {
     },
     items: {
       description: 'Optional array of items with description and caption.',
-      type: new GraphQLList(
-        new GraphQLNonNull(
-          EditItemInput,
-        ),
-      ),
+      type: new GraphQLList(new GraphQLNonNull(EditItemInput)),
     },
   },
   resolve: async (parent, args, ctx: Context) => {
@@ -89,10 +85,15 @@ const editPost: GraphQLFieldConfig<any, any, any> = {
         ...item,
         id: itemId,
       }
-    }
-    )
+    })
 
-    return PostActions.mEdit(ctx, { postId, title, language, keywords, items: itemsWithIds })
+    return PostActions.mEdit(ctx, {
+      postId,
+      title,
+      language,
+      keywords,
+      items: itemsWithIds,
+    })
   },
 }
 

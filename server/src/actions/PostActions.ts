@@ -57,11 +57,14 @@ export default class {
       const tsQuery = fields.byContent
       query
         .joinRaw(
-          'INNER JOIN ( SELECT post_id, text FROM item_search_view WHERE text @@ websearch_to_tsquery(\'english_nostop\', ?)) b ON b.post_id = post.id',
+          "INNER JOIN ( SELECT post_id, text FROM item_search_view WHERE text @@ websearch_to_tsquery('english_nostop', ?)) b ON b.post_id = post.id",
           tsQuery,
         )
         .groupBy('post.id', 'b.text')
-        .orderByRaw('ts_rank(b.text, websearch_to_tsquery(\'english_nostop\',?)) desc', tsQuery)
+        .orderByRaw(
+          "ts_rank(b.text, websearch_to_tsquery('english_nostop',?)) desc",
+          tsQuery,
+        )
     }
 
     const [data, totalSearchCount, totalCount] = await Promise.all([
@@ -129,62 +132,65 @@ export default class {
       language: fields.language || undefined,
     }
 
-    const itemsData = fields.items && fields.items.length > 0
-      ? fields.items.map((item) => ({
-        id: item.id,
-        caption: item.caption || undefined,
-        description: item.description || undefined,
-        postId: fields.postId, // Ensure items are associated with the post
-      }))
-      : []
+    const itemsData =
+      fields.items && fields.items.length > 0
+        ? fields.items.map((item) => ({
+            id: item.id,
+            caption: item.caption || undefined,
+            description: item.description || undefined,
+            postId: fields.postId, // Ensure items are associated with the post
+          }))
+        : []
 
-    const updatedPost = await knex.transaction(async (trx) => {
-      // Update the post
-      const updatedPost = await PostModel.query(trx).patchAndFetchById(
-        fields.postId,
-        postData,
-      )
-
-      // Update the keyword-post relationships
-      if (fields.keywords !== undefined) {
-        const existingKeywords = await PostModel.relatedQuery('keywords', trx)
-          .for(fields.postId)
-          .select('id')
-
-        const existingKeywordIds = existingKeywords.map((k) => k.id)
-        const keywordsToAdd = fields.keywords.filter(
-          (id) => !existingKeywordIds.includes(id),
-        )
-        const keywordsToRemove = existingKeywordIds.filter(
-          (id) => !fields.keywords?.includes(id),
+    const updatedPost = await knex
+      .transaction(async (trx) => {
+        // Update the post
+        const updatedPost = await PostModel.query(trx).patchAndFetchById(
+          fields.postId,
+          postData,
         )
 
-        if (keywordsToAdd.length > 0) {
-          await PostModel.relatedQuery('keywords', trx)
+        // Update the keyword-post relationships
+        if (fields.keywords !== undefined) {
+          const existingKeywords = await PostModel.relatedQuery('keywords', trx)
             .for(fields.postId)
-            .relate(keywordsToAdd)
+            .select('id')
+
+          const existingKeywordIds = existingKeywords.map((k) => k.id)
+          const keywordsToAdd = fields.keywords.filter(
+            (id) => !existingKeywordIds.includes(id),
+          )
+          const keywordsToRemove = existingKeywordIds.filter(
+            (id) => !fields.keywords?.includes(id),
+          )
+
+          if (keywordsToAdd.length > 0) {
+            await PostModel.relatedQuery('keywords', trx)
+              .for(fields.postId)
+              .relate(keywordsToAdd)
+          }
+
+          if (keywordsToRemove.length > 0) {
+            await PostModel.relatedQuery('keywords', trx)
+              .for(fields.postId)
+              .unrelate()
+              .whereIn('id', keywordsToRemove)
+          }
         }
 
-        if (keywordsToRemove.length > 0) {
-          await PostModel.relatedQuery('keywords', trx)
+        // Update the items
+        for (const item of itemsData) {
+          await PostModel.relatedQuery('items', trx)
             .for(fields.postId)
-            .unrelate()
-            .whereIn('id', keywordsToRemove)
+            .patch(item)
+            .where('id', item.id)
         }
-      }
 
-      // Update the items
-      for (const item of itemsData) {
-        await PostModel.relatedQuery('items', trx)
-          .for(fields.postId)
-          .patch(item)
-          .where('id', item.id)
-      }
-
-      return updatedPost
-    }).catch((error) => {
-      throw new ValidationInputError(error)
-    })
+        return updatedPost
+      })
+      .catch((error) => {
+        throw new ValidationInputError(error)
+      })
 
     return updatedPost
   }

@@ -8,7 +8,7 @@ import stream from 'stream'
 import TaskActions from '@src/actions/TaskActions'
 import tmp from 'tmp'
 import util from 'util'
-import { FileUpload } from "graphql-upload/processRequest.mjs"
+import { FileUpload } from 'graphql-upload/processRequest.mjs'
 import { InputError } from '@src/errors'
 import { Mutex } from 'async-mutex'
 import * as fileUtils from './file-utils'
@@ -34,7 +34,6 @@ const options = {
   },
 }
 
-
 export default class FileStorage {
   private taskMutex: Mutex
 
@@ -45,7 +44,10 @@ export default class FileStorage {
     fileUtils.dir(options.dist)
     Object.keys(options.directories).forEach((key) => {
       // construct a path from the base and the directory
-      const path = fileUtils.resolvePath(options.dist, options.directories[key as keyof typeof options.directories])
+      const path = fileUtils.resolvePath(
+        options.dist,
+        options.directories[key as keyof typeof options.directories],
+      )
       // ensure directory exists
       fileUtils.dir(path)
     })
@@ -156,7 +158,8 @@ export default class FileStorage {
       options.directories.queue,
       taskId.toString(),
     )
-    const update = (changes: any) => TaskActions.mUpdate(ctx, { taskId, changes })
+    const update = (changes: any) =>
+      TaskActions.mUpdate(ctx, { taskId, changes })
 
     const task = await TaskActions.qTask(ctx, { taskId })
 
@@ -170,8 +173,8 @@ export default class FileStorage {
       mime === 'image/gif'
         ? FileType.GIF
         : kind === 'video'
-        ? FileType.VIDEO
-        : FileType.IMAGE
+          ? FileType.VIDEO
+          : FileType.IMAGE
 
     if (itemData.type === 'VIDEO' && fileTypeEnum === FileType.GIF) {
       fileTypeEnum = FileType.VIDEO
@@ -203,7 +206,9 @@ export default class FileStorage {
               result.createdFiles[category],
               fileUtils.resolvePath(
                 options.dist,
-                options.directories[category as keyof typeof options.directories],
+                options.directories[
+                  category as keyof typeof options.directories
+                ],
                 `${fileId}.${task.ext}`,
               ),
             ),
@@ -264,7 +269,11 @@ export default class FileStorage {
       const ids = await TaskActions.mCleanup(ctx)
       ids.forEach((id) =>
         fileUtils.remove(
-          fileUtils.resolvePath(options.dist, options.directories.queue, id.toString()),
+          fileUtils.resolvePath(
+            options.dist,
+            options.directories.queue,
+            id.toString(),
+          ),
         ),
       )
     } finally {

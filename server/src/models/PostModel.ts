@@ -72,9 +72,9 @@ export default class PostModel extends BaseModel {
     keywordIds: readonly number[],
   ): Promise<PostModel[][]> {
     const keywords = await KeywordModel.query()
-    .findByIds(keywordIds as number[])
-    .select('Keyword.id', 'posts')
-    .withGraphFetched('posts')
+      .findByIds(keywordIds as number[])
+      .select('Keyword.id', 'posts')
+      .withGraphFetched('posts')
 
     const keywordMap: { [key: string]: any } = {}
     keywords.forEach((keyword) => {

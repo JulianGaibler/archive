@@ -17,13 +17,13 @@ export const DateTime = new GraphQLScalarType({
     return value instanceof Date ? value.getTime() : null
   },
   parseValue: (value) => {
-      return typeof value === 'number' ? new Date(value) : null
+    return typeof value === 'number' ? new Date(value) : null
   },
   parseLiteral: (ast) => {
-      if (ast.kind === Kind.INT) {
-          return new Date(parseInt(ast.value, 10))
-      }
-      return null
+    if (ast.kind === Kind.INT) {
+      return new Date(parseInt(ast.value, 10))
+    }
+    return null
   },
 })
 
@@ -102,8 +102,8 @@ export const Language = new GraphQLEnumType({
 
 export function globalIdField(hashIdType: any): GraphQLFieldConfig<any, any> {
   return {
-      description: 'The ID of an object',
-      type: new GraphQLNonNull(GraphQLID),
-      resolve: (post) => HashId.encode(hashIdType, post.id),
+    description: 'The ID of an object',
+    type: new GraphQLNonNull(GraphQLID),
+    resolve: (post) => HashId.encode(hashIdType, post.id),
   }
 }

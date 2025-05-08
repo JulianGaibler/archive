@@ -10,9 +10,9 @@ export const HashIdTypes = {
   SESSION: 3,
   TASK: 4,
   POST: 5,
-} as const;
+} as const
 
-export type HashIdType = typeof HashIdTypes[keyof typeof HashIdTypes];
+export type HashIdType = (typeof HashIdTypes)[keyof typeof HashIdTypes]
 
 const VALID_HASH_ID_TYPES = Object.values(HashIdTypes) as number[]
 
@@ -26,7 +26,7 @@ export default class {
     const res = hashIds.decode(stringId) as number[]
     if (
       res.length < 2 ||
-      !(VALID_HASH_ID_TYPES.includes(res[0])) ||
+      !VALID_HASH_ID_TYPES.includes(res[0]) ||
       (res[0] as HashIdType) !== hashIdType
     ) {
       console.log('red', res)
@@ -38,7 +38,7 @@ export default class {
 
   static decodeUnkown(stringId: string) {
     const res = hashIds.decode(stringId) as number[]
-    if (res.length < 2 || !(VALID_HASH_ID_TYPES.includes(res[0]))) {
+    if (res.length < 2 || !VALID_HASH_ID_TYPES.includes(res[0])) {
       throw new InputError('ID was invalid.')
     }
     return {

@@ -1,4 +1,4 @@
-import FileUpload from "graphql-upload/Upload.mjs"
+import FileUpload from 'graphql-upload/Upload.mjs'
 import ItemModel from '@src/models/ItemModel'
 import Context from '@src/Context'
 import { AuthorizationError } from '@src/errors'
@@ -79,7 +79,10 @@ export default class {
         .count('Post.id')
         .execute()
         .then((x) =>
-          (x as any).reduce((acc: number, val: any) => acc + parseInt(val.count, 10), 0),
+          (x as any).reduce(
+            (acc: number, val: any) => acc + parseInt(val.count, 10),
+            0,
+          ),
         ),
       ItemModel.query()
         .count()

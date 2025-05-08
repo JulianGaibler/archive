@@ -1,4 +1,4 @@
-module.exports = {
+const config = {
   semi: false,
   trailingComma: 'all',
   singleQuote: true,
@@ -6,8 +6,9 @@ module.exports = {
   tabWidth: 2,
   plugins: [
     'prettier-plugin-jsdoc',
-    '@trivago/prettier-plugin-sort-imports',
     'prettier-plugin-astro',
     'prettier-plugin-svelte',
   ],
 }
+
+export default config
