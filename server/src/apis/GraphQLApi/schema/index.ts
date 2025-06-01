@@ -17,6 +17,15 @@ import userMutations from './user/mutations'
 
 import taskSubscriptions from './task/subscriptions'
 
+import {
+  ProcessingItemType,
+  VideoItemType,
+  ImageItemType,
+  GifItemType,
+  AudioItemType,
+} from './item/ItemType'
+
+
 export default new GraphQLSchema({
   query: new GraphQLObjectType({
     name: 'Query',
@@ -46,4 +55,11 @@ export default new GraphQLSchema({
       ...taskSubscriptions,
     },
   }),
+  types: [
+    ProcessingItemType,
+    VideoItemType,
+    ImageItemType,
+    GifItemType,
+    AudioItemType,
+  ],
 })

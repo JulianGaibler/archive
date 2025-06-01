@@ -118,15 +118,16 @@
     label="Profile picture"
     bind:value={file}
     error={fileError}
+    disabled={loading}
   />
   <div class="flex-center">
-    <Button small variant="primary" submit={true} disabled={loading}
+    <Button small variant="primary" submit={true} {loading}
       >Update picture</Button
     >
   </div>
 </form>
 <form class="flex-center pfp-clear" onsubmit={tryClearPicture}>
-  <Button small submit={true} disabled={loading}>Remove picture</Button>
+  <Button small submit={true} {loading}>Remove picture</Button>
 </form>
 
 <style lang="sass">

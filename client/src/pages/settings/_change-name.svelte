@@ -7,7 +7,7 @@
 
   import {
     getSdk,
-    type UploadPictureMutationVariables,
+    type ChangeNameMutationVariables,
     type User,
   } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
@@ -21,29 +21,29 @@
 
   let { user }: Props = $props()
 
-  let file = $state<File | undefined>(undefined)
+  let newName = $state<string>(user.name || '')
 
   let loading = $state(false)
   let success = $state(false)
   let globalError = $state<string | undefined>(undefined)
-  let fileError = $state<string | undefined>(undefined)
+  let inputError = $state<string | undefined>(undefined)
 
   const tryChangePicture = (e: Event) => {
     e.preventDefault()
-    const args: UploadPictureMutationVariables = { file }
+    const args: ChangeNameMutationVariables = { newName }
     resetErrors()
 
-    if (!file) {
-      fileError = 'Please select a file'
+    if (!newName || newName.trim().length === 0) {
+      inputError = 'Please enter a name'
     }
-    if (fileError) {
+    if (inputError) {
       return
     }
 
     loading = true
 
     sdk
-      .uploadPicture(args)
+      .changeName(args)
       .finally(() => {
         loading = false
       })
@@ -60,12 +60,11 @@
 
   function resetErrors() {
     globalError = undefined
-    fileError = undefined
+    inputError = undefined
   }
 
   function resetSuccess() {
     success = false
-    file = undefined
   }
 </script>
 
@@ -80,7 +79,7 @@
 {#if success}
   <MessageBox icon={IconDone} onclose={resetSuccess}>
     <h2>Success</h2>
-    <p>Your profile picture has been updated</p>
+    <p>Your name has been updated</p>
   </MessageBox>
 {/if}
 <TextField
@@ -88,13 +87,12 @@
   label="Username"
   disabled
   bind:value={user.username}
-  error={fileError}
   helperText="Reach out if you want to change your username"
 />
-<form onsubmit={tryChangePicture} class="pfp-set">
-  <TextField id="file" label="Name" bind:value={user.name} error={fileError} />
+<form onsubmit={tryChangePicture} class="update">
+  <TextField id="file" label="Name" bind:value={newName} error={inputError} />
   <div class="flex-center">
-    <Button small variant="primary" submit={true} disabled={loading}
+    <Button small variant="primary" submit={true} {loading}
       >Update name</Button
     >
   </div>
@@ -109,14 +107,8 @@ form
   align-items: stretch
   gap: tint.$size-8
 
-form.pfp-set
+form.update
   flex-grow: 1
-
-form.pfp-clear
-  flex-direction: row
-
-a
-  color: var(--tint-text-link)
 
 .flex-center
   display: flex

@@ -6,12 +6,15 @@
   import { formatDate, titleCase } from '@src/utils'
   import Button from 'tint/components/Button.svelte'
   import Select from 'tint/components/Select.svelte'
+  import Dialog, { type OpenDialog } from 'tint/components/Dialog.svelte'
   import IconEdit from 'tint/icons/20-edit.svg?raw'
   import IconTrash from 'tint/icons/20-trash.svg?raw'
   import TextField from 'tint/components/TextField.svelte'
   import { getSdk } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
-  import { getOperationResultError } from '@src/utils'
+  import IconUpload from 'tint/icons/20-upload.svg?raw'
+  import {createEditManager} from '@src/utils/edit-manager'
+  import { onMount } from 'svelte'
 
   const sdk = getSdk(webClient)
 
@@ -19,119 +22,71 @@
     result: PostQuery['node'] | undefined
   }
 
-  interface UpdateValue<T> {
-    value: T
-    error?: string
-  }
-
-  export type PostUpdate = {
-    loading: boolean
-    title: UpdateValue<string>
-    language: UpdateValue<Language>
-    keywords: UpdateValue<string[]>
-    items: Record<
-      string,
-      {
-        description: UpdateValue<string>
-        caption: UpdateValue<string>
-        position: UpdateValue<number>
-      }
-    >
-  }
-
   let { result }: Props = $props()
 
   type PostItemType = NonNullable<PostQuery['node']> & { __typename: 'Post' }
+  
+  const editManager = createEditManager(sdk, result as PostItemType)
+  const {data: editData, post: postObject, loading} = editManager
 
-  let postObject = $derived(result as PostItemType)
-  let itemObject = $derived(postObject!.items!.edges!)
+  let itemObject = $derived($postObject!.items!.edges!)
+  let dropzone = $state<HTMLElement | undefined>(undefined)
+  let fileInput = $state<HTMLInputElement | undefined>(undefined)
+  let showDropzone = $state(false)
+  let openDialog = $state<OpenDialog | undefined>(undefined)
 
-  let editMode = $state<PostUpdate | undefined>(undefined)
 
-  function goToEditMode() {
-    const createUpdateValue = <T,>(value: T): UpdateValue<T> => ({
-      value,
-      error: undefined,
-    })
+  onMount(() => {
+    // editManager.startEdit()
+  })
 
-    editMode = {
-      loading: false,
-      title: createUpdateValue(postObject.title),
-      language: createUpdateValue(postObject.language),
-      keywords: createUpdateValue(
-        postObject.keywords.map((keyword) => keyword.id),
-      ),
-      items:
-        postObject.items.edges?.reduce(
-          (acc, item) => {
-            const node = item?.node
-            if (node) {
-              acc[node.id] = {
-                description: createUpdateValue(node.description),
-                caption: createUpdateValue(node.caption),
-                position: createUpdateValue(node.position),
-              }
-            }
-            return acc
-          },
-          {} as PostUpdate['items'],
-        ) || {},
-    }
+// when generalError is set, open the dialog
+  $effect(() => {
+    editManager.setOpenDialog(openDialog)
+  })
+
+  function allowDrag(e: DragEvent) {
+    e.dataTransfer!.dropEffect = 'copy'
+    e.preventDefault()
   }
 
-  async function submitEdit() {
-    if (!editMode) return
-    editMode.loading = true
-    const updateResult = await sdk
-      .editPost({
-        id: postObject.id,
-        title: editMode?.title.value,
-        language: editMode?.language.value,
-        keywords: editMode?.keywords.value,
-        items: Object.entries(editMode?.items || {}).map(([id, item]) => ({
-          id,
-          description: item.description.value,
-          caption: item.caption.value,
-        })),
-      })
-      .catch((err) => {
-        editMode!.loading = false
-        editMode!.title.error = getOperationResultError(err)
-      })
-    editMode!.loading = false
-    if (!updateResult) {
-      return
-    }
-    if (getOperationResultError(updateResult)) {
-      editMode!.title.error = getOperationResultError(updateResult)
-      return
-    }
-    editMode = undefined
+  function handleDragEnter() {
+    // if (!upload.locked) showDropzone = true
+    showDropzone = true
+  }
 
-    // result can be set to result.data.editPost
+  function handleDragLeave() {
+    showDropzone = false
+  }
 
-    result = updateResult.data.editPost
+  function handleDrop(e: DragEvent) {
+    e.preventDefault()
+    showDropzone = false
+    if ($editData === undefined) {
+      editManager.startEdit()
+    }
+    Array.from(e.dataTransfer!.files).forEach((f) => editManager.addFile(f))
   }
 </script>
 
 <div class="tint--tinted head">
   <div class="shrinkwrap split">
-    {#if editMode}
+    {#if $editData !== undefined}
       <div class="edit">
         <div class="info">
           <TextField
             id="post-title"
             label="Title"
-            disabled={editMode.loading}
-            error={editMode.title.error}
-            bind:value={editMode.title.value}
+            disabled={$loading}
+            error={$editData.title.error}
+            bind:value={$editData.title.value}
           />
           <Select
             id="post-language"
             label="Language"
             fillWidth={false}
-            disabled={editMode.loading}
-            bind:value={editMode.language.value}
+            disabled={$loading}
+            bind:value={$editData.language.value}
             items={Object.entries(Language).map(([key, value]) => ({
               value: value,
               label: key,
@@ -140,43 +95,43 @@
         </div>
         <KeywordPicker
           id="post-attributes"
-          bind:value={editMode.keywords.value}
-          disabled={editMode.loading}
-          initialItems={postObject.keywords}
+          bind:value={$editData.keywords.value}
+          disabled={$loading}
+          initialItems={$postObject.keywords}
         />
       </div>
     {:else}
       <div>
-        <h1 class="tint--type">{postObject.title}</h1>
+        <h1 class="tint--type">{$postObject.title}</h1>
 
         <ul class="info pipelist">
           <li>
             Created by <UserPicture
-              user={postObject.creator}
+              user={$postObject.creator}
               size="16"
               showUsername={true}
             />
           </li>
-          <li>{formatDate(new Date(postObject.createdAt))}</li>
-          <li>{titleCase(postObject.language)}</li>
+          <li>{formatDate(new Date($postObject.createdAt))}</li>
+          <li>{titleCase($postObject.language)}</li>
         </ul>
         <ul class="tags">
-          {#each postObject.keywords as keyword (keyword.id)}
+          {#each $postObject.keywords as keyword (keyword.id)}
             <li><a href={keyword.id}>{keyword.name}</a></li>
           {/each}
         </ul>
       </div>
     {/if}
     <div class="actions">
-      {#if editMode}
+      {#if $editData !== undefined}
         <Button
-          onclick={() => (editMode = undefined)}
-          disabled={editMode.loading}>Cancel</Button
+          onclick={editManager.cancelEdit}
+          disabled={$loading}>Cancel</Button
         >
         <Button
-          onclick={submitEdit}
+          onclick={editManager.submitEdit}
           variant="primary"
-          disabled={editMode.loading}>Save</Button
+          disabled={$loading}>Save</Button
         >
       {:else}
         <Button small={true} icon={true} title="Delete post"
@@ -186,7 +141,7 @@
           small={true}
           icon={true}
           title="Edit post"
-          onclick={goToEditMode}>{@html IconEdit}</Button
+          onclick={editManager.startEdit}>{@html IconEdit}</Button
         >
       {/if}
     </div>
@@ -196,11 +151,54 @@
   <div class="shrinkwrap">
     {#each itemObject as item}
       {#if item?.node}
-        <PostItem bind:editMode item={item.node} />
+        <PostItem bind:editData={$editData} loading={$loading} itemData={item.node} />
       {/if}
     {/each}
+    {#if $editData !== undefined}
+    {#each Object.keys($editData.uploadItems) as key (key)}
+      <PostItem bind:editData={$editData} uploadItemIndex={key} loading={$loading} />
+    {/each}
+      <button class="tint--tinted upload-button" onclick={() => fileInput?.click()}>
+        {@html IconUpload}
+        <span>Click or drag to upload new item</span>
+      </button>
+      <input
+        class="upload-input"
+        type="file"
+        multiple
+        bind:this={fileInput}
+        onchange={(e: Event) => {
+          const target = e.target as HTMLInputElement | null
+          const files = target?.files
+          if (files) {
+            Array.from(files).forEach((f) => editManager.addFile(f))
+          }
+        }}
+      />
+    {/if}
   </div>
 </div>
+
+<svelte:window ondragenter={handleDragEnter} />
+<div
+  bind:this={dropzone}
+  class="tint--tinted dropzone"
+  role="region"
+  aria-label="File dropzone"
+  class:show={showDropzone}
+  ondragover={allowDrag}
+  ondragleave={handleDragLeave}
+  ondrop={handleDrop}
+>
+  <div class="tint--card">
+    {@html IconUpload}
+    Drop your files here
+  </div>
+</div>
+
+<Dialog bind:openDialog heading="Hmm" actionLabel="Okay">
+  <p>Hello</p>
+</Dialog>
 
 <style lang="sass">
 .head
@@ -216,7 +214,7 @@
     .actions
       display: flex
       gap: tint.$size-8
-  &::after
+  &::before
     content: ""
     inset: 0 0 (tint.$size-64 * -2)
     position: absolute
@@ -251,4 +249,68 @@
       :global(> *)
         &:last-child
           min-width: 10em
+
+.dropzone, .upload-button
+  &::before
+    position: absolute
+    content: ''
+    box-sizing: border-box
+    inset: tint.$size-8
+    display: block
+    border-radius: tint.$size-4
+    color: var(--tint-text-secondary)
+    border: 2px dashed
+    pointer-events: none
+
+
+.upload-button
+  position: relative
+  border: 1px solid transparent
+  background: var(--tint-input-bg)
+  border-radius: tint.$size-8
+  padding: tint.$size-16
+  min-height: tint.$size-64 * 2
+  display: flex
+  gap: tint.$size-8
+  width: 100%
+  box-sizing: border-box
+  flex-direction: column
+  align-items: center
+  justify-content: center
+  @include tint.effect-focus
+  &:not(:disabled):hover
+    background-color: var(--tint-action-secondary-hover)
+  &:not(:disabled):active
+    background-color: var(--tint-action-secondary-active)
+  &::before
+    opacity: .25
+.upload-input
+  display: none
+
+.dropzone
+  position: fixed
+  visibility: hidden
+  inset: 0
+  z-index: 200
+  padding: 1rem
+  background: color-mix(in srgb, var(--tint-input-bg), transparent 25%)
+  backdrop-filter: blur(16px)
+  display: flex
+  justify-content: center
+  align-items: center
+  &::before
+    border-radius: tint.$size-8
+    inset: tint.$size-16
+  > div
+    padding: tint.$size-32
+    gap: tint.$size-24
+    display: flex
+    flex-direction: column
+    align-items: center
+    :global(svg)
+      color: var(--tint-text-secondary)
+      width: tint.$size-64
+      height: tint.$size-64
+  &.show
+    visibility: initial
 </style>

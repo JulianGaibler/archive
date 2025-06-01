@@ -1,46 +1,52 @@
-import { Format } from '@src/generated/graphql'
 import { ClientError, rawRequest } from 'graphql-request'
 
 type GraphQLClientResponse =
   ReturnType<typeof rawRequest> extends Promise<infer T> ? T : never
 
 export function getOperationResultError(
-  result: GraphQLClientResponse | ClientError,
+  result: GraphQLClientResponse | ClientError | unknown,
 ) {
+
   // check if there is a response key in the result
-  if ('response' in result) {
-    const { response } = result
-    if (response.errors && response.errors.length > 0) {
-      return response.errors[0].message
+    if (isClientError(result)) {
+      const { response } = result
+      if (response.errors && response.errors.length > 0) {
+        return response.errors[0].message
+      }
     }
-  }
-
-  if (!('errors' in result && result.errors)) {
+  
+    if (isGraphQLResponse(result)) {
+      if (result.errors && result.errors.length > 0) {
+        return result.errors[0].message
+      }
+    }
+  
     return undefined
+  
+  function isClientError(result: unknown): result is ClientError {
+    return typeof result === 'object' && result !== null && 'response' in result
   }
-
-  if (result.errors.length > 0) {
-    return result.errors[0].message
+  
+  function isGraphQLResponse(result: unknown): result is GraphQLClientResponse {
+    return typeof result === 'object' && result !== null && 'errors' in result
   }
-
-  return 'An unknown error occurred'
 }
 
 export function getConvertedSrcPath(
   path: string | undefined | null,
-  format: Format,
+  format: string,
   commonFormat: boolean,
 ) {
   const formats = {
-    [Format['Image']]: {
+    'ImageItem': {
       nextGen: 'webp',
       common: 'jpeg',
     },
-    [Format['Video']]: {
+    'VideoItem': {
       nextGen: 'webm',
       common: 'mp4',
     },
-    [Format['Gif']]: {
+    'GifItem': {
       nextGen: 'webm',
       common: 'mp4',
     },

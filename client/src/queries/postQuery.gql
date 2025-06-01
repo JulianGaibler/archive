@@ -16,18 +16,23 @@ fragment PostData on Post {
   items {
     edges {
       node {
-        caption
-        compressedPath
+        __typename
         createdAt
         description
-        type
-        relativeHeight
         position
-        originalPath
         id
         creator {
           username
           profilePicture
+        }
+        ... on MediaItem {
+          caption
+          originalPath
+          compressedPath
+        }
+        ... on VisualMediaItem {
+          relativeHeight
+          thumbnailPath
         }
       }
     }

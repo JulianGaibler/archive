@@ -30,7 +30,6 @@
   }
 
   function onSubmit() {
-    console.log('submit')
     tryLogin({ username, password })
   }
 </script>

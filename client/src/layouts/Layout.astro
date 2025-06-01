@@ -1,6 +1,7 @@
 ---
 import fonts from 'tint/fonts'
 import Header from '@src/components/Header.astro'
+import Footer from '@src/components/Footer.astro'
 
 interface Props {
   title: string
@@ -34,9 +35,17 @@ const { title, description } = Astro.props
   </head>
   <body>
     <Header />
-    <slot />
+    <main><slot /></main>
+    <Footer />
   </body>
 </html>
 <style is:global lang="sass">
   @import "../styles/global"
+
+  body
+    min-height: 100%
+    display: flex
+    flex-direction: column
+  main
+    flex: 1
 </style>

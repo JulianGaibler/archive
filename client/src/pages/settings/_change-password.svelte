@@ -125,7 +125,7 @@
     error={newPasswordConfirmError}
     oninput={() => (newPasswordConfirmError = undefined)}
   />
-  <Button submit={true} disabled={loading}>Update password</Button>
+  <Button submit={true} {loading}>Update password</Button>
 </form>
 
 <style lang="sass">

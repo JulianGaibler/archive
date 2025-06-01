@@ -174,6 +174,8 @@ export default class {
       throw new AuthenticationError('This should not have happened.')
     }
     await user.$query().patch({ name: fields.newName })
+
+    return true
   }
 
   static async mSetDarkMode(ctx: Context, fields: { enabled: boolean }) {

@@ -33,7 +33,6 @@
   let error = $state<string | undefined>(undefined)
 
   async function searchKeywords(search: string) {
-    console.log('searchKeywords', search)
     const result = await sdk.keywordSearch({
       input: search,
     } as KeywordSearchQueryVariables)

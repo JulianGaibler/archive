@@ -20,6 +20,23 @@ export type Scalars = {
   Upload: { input: any; output: any; }
 };
 
+/** An audio item. */
+export type AudioItem = Item & MediaItem & Node & {
+  __typename?: 'AudioItem';
+  ampThumbnail: Array<Scalars['Float']['output']>;
+  caption: Scalars['String']['output'];
+  compressedPath: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  creator: User;
+  description: Scalars['String']['output'];
+  /** The ID of an object */
+  id: Scalars['ID']['output'];
+  originalPath: Scalars['String']['output'];
+  position: Scalars['Int']['output'];
+  post: Post;
+  updatedAt: Scalars['DateTime']['output'];
+};
+
 export type EditItemInput = {
   caption?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
@@ -41,32 +58,51 @@ export enum Format {
   Video = 'VIDEO'
 }
 
-/** An item belonging to a post. */
-export type Item = Node & {
-  __typename?: 'Item';
-  /** Spoken or written words within an item. */
+/** A GIF item. */
+export type GifItem = Item & MediaItem & Node & VisualMediaItem & {
+  __typename?: 'GifItem';
   caption: Scalars['String']['output'];
-  /** Path where the compressed files are located without file-extension. */
-  compressedPath?: Maybe<Scalars['String']['output']>;
-  /** Identifies the date and time when the object was created. */
+  compressedPath: Scalars['String']['output'];
   createdAt: Scalars['DateTime']['output'];
   creator: User;
-  /** Text describing the item. */
   description: Scalars['String']['output'];
   /** The ID of an object */
   id: Scalars['ID']['output'];
-  /** Path where the original file is located. (with file-extension) */
-  originalPath?: Maybe<Scalars['String']['output']>;
-  /** Items are ordered within a post. This denotes the unique position. */
+  originalPath: Scalars['String']['output'];
   position: Scalars['Int']['output'];
-  /** Post to which this item belongs. */
-  post?: Maybe<Post>;
-  /** Height, relative to the width in percent. */
-  relativeHeight?: Maybe<Scalars['Float']['output']>;
-  /** Path where the thumbnails are located without file-extension. */
+  post: Post;
+  relativeHeight: Scalars['Float']['output'];
   thumbnailPath?: Maybe<Scalars['String']['output']>;
-  type: Format;
-  /** Identifies the date and time when the object was last updated. */
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+/** An image item. */
+export type ImageItem = Item & MediaItem & Node & VisualMediaItem & {
+  __typename?: 'ImageItem';
+  caption: Scalars['String']['output'];
+  compressedPath: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  creator: User;
+  description: Scalars['String']['output'];
+  /** The ID of an object */
+  id: Scalars['ID']['output'];
+  originalPath: Scalars['String']['output'];
+  position: Scalars['Int']['output'];
+  post: Post;
+  relativeHeight: Scalars['Float']['output'];
+  thumbnailPath?: Maybe<Scalars['String']['output']>;
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+/** Base interface for all item types. */
+export type Item = {
+  createdAt: Scalars['DateTime']['output'];
+  creator: User;
+  description: Scalars['String']['output'];
+  /** The ID of an object */
+  id: Scalars['ID']['output'];
+  position: Scalars['Int']['output'];
+  post: Post;
   updatedAt: Scalars['DateTime']['output'];
 };
 
@@ -146,6 +182,13 @@ export enum Language {
   /** The Turkish language. */
   Turkish = 'TURKISH'
 }
+
+/** Interface for media items. */
+export type MediaItem = {
+  caption: Scalars['String']['output'];
+  compressedPath: Scalars['String']['output'];
+  originalPath: Scalars['String']['output'];
+};
 
 export type Mutation = {
   __typename?: 'Mutation';
@@ -327,6 +370,21 @@ export type PostEdge = {
   cursor: Scalars['String']['output'];
   /** The item at the end of the edge */
   node: Post;
+};
+
+/** An item that is being processed. */
+export type ProcessingItem = Item & Node & {
+  __typename?: 'ProcessingItem';
+  createdAt: Scalars['DateTime']['output'];
+  creator: User;
+  description: Scalars['String']['output'];
+  /** The ID of an object */
+  id: Scalars['ID']['output'];
+  position: Scalars['Int']['output'];
+  post: Post;
+  progress: Scalars['Int']['output'];
+  status: TaskStatus;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type Query = {
@@ -559,6 +617,30 @@ export type UserEdge = {
   node: User;
 };
 
+/** A video item. */
+export type VideoItem = Item & MediaItem & Node & VisualMediaItem & {
+  __typename?: 'VideoItem';
+  caption: Scalars['String']['output'];
+  compressedPath: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  creator: User;
+  description: Scalars['String']['output'];
+  /** The ID of an object */
+  id: Scalars['ID']['output'];
+  originalPath: Scalars['String']['output'];
+  position: Scalars['Int']['output'];
+  post: Post;
+  relativeHeight: Scalars['Float']['output'];
+  thumbnailPath?: Maybe<Scalars['String']['output']>;
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+/** Interface for media items. */
+export type VisualMediaItem = {
+  relativeHeight: Scalars['Float']['output'];
+  thumbnailPath?: Maybe<Scalars['String']['output']>;
+};
+
 export type SettingsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -600,7 +682,7 @@ export type EditPostMutationVariables = Exact<{
 }>;
 
 
-export type EditPostMutation = { __typename?: 'Mutation', editPost: { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename?: 'Item', caption: string, compressedPath?: string | null, createdAt: any, description: string, type: Format, relativeHeight?: number | null, position: number, originalPath?: string | null, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } } };
+export type EditPostMutation = { __typename?: 'Mutation', editPost: { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } } };
 
 export type KeywordSearchQueryVariables = Exact<{
   input?: InputMaybe<Scalars['String']['input']>;
@@ -640,14 +722,14 @@ export type MeQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type MeQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, darkMode?: boolean | null } | null };
 
-export type PostDataFragment = { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename?: 'Item', caption: string, compressedPath?: string | null, createdAt: any, description: string, type: Format, relativeHeight?: number | null, position: number, originalPath?: string | null, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } };
+export type PostDataFragment = { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } };
 
 export type PostQueryVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
 
 
-export type PostQuery = { __typename?: 'Query', node?: { __typename?: 'Item' } | { __typename?: 'Keyword' } | { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename?: 'Item', caption: string, compressedPath?: string | null, createdAt: any, description: string, type: Format, relativeHeight?: number | null, position: number, originalPath?: string | null, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } } | { __typename?: 'Session' } | { __typename?: 'Task' } | { __typename?: 'User' } | null };
+export type PostQuery = { __typename?: 'Query', node?: { __typename?: 'AudioItem' } | { __typename?: 'GifItem' } | { __typename?: 'ImageItem' } | { __typename?: 'Keyword' } | { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } } | { __typename?: 'ProcessingItem' } | { __typename?: 'Session' } | { __typename?: 'Task' } | { __typename?: 'User' } | { __typename?: 'VideoItem' } | null };
 
 export type PostsQueryVariables = Exact<{
   after?: InputMaybe<Scalars['String']['input']>;
@@ -655,7 +737,7 @@ export type PostsQueryVariables = Exact<{
 }>;
 
 
-export type PostsQuery = { __typename?: 'Query', posts?: { __typename?: 'PostConnection', edges?: Array<{ __typename?: 'PostEdge', node: { __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, edges?: Array<{ __typename?: 'ItemEdge', node: { __typename?: 'Item', id: string, type: Format, thumbnailPath?: string | null, relativeHeight?: number | null } } | null> | null } } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null } } | null };
+export type PostsQuery = { __typename?: 'Query', posts?: { __typename?: 'PostConnection', edges?: Array<{ __typename?: 'PostEdge', node: { __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string } } | null> | null } } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null } } | null };
 
 export type ResourcesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -707,18 +789,23 @@ export const PostDataFragmentDoc = gql`
   items {
     edges {
       node {
-        caption
-        compressedPath
+        __typename
         createdAt
         description
-        type
-        relativeHeight
         position
-        originalPath
         id
         creator {
           username
           profilePicture
+        }
+        ... on MediaItem {
+          caption
+          originalPath
+          compressedPath
+        }
+        ... on VisualMediaItem {
+          relativeHeight
+          thumbnailPath
         }
       }
     }
@@ -849,9 +936,14 @@ export const PostsDocument = gql`
           edges {
             node {
               id
-              type
-              thumbnailPath
-              relativeHeight
+              __typename
+              ... on VisualMediaItem {
+                relativeHeight
+                thumbnailPath
+              }
+              ... on AudioItem {
+                ampThumbnail
+              }
             }
           }
         }

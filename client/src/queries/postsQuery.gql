@@ -13,9 +13,14 @@ query Posts($after: String, $byContent: String) {
           edges {
             node {
               id
-              type
-              thumbnailPath
-              relativeHeight
+              __typename
+              ... on VisualMediaItem {
+                relativeHeight
+                thumbnailPath
+              }
+              ... on AudioItem {
+                ampThumbnail
+              }
             }
           }
         }

@@ -4,3 +4,8 @@ generated/
 .DS_Store
 *.svg
 *.sass
+*.woff
+*.woff2
+*.jpeg
+*.jpg
+*.png

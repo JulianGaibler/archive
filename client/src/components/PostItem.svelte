@@ -6,80 +6,129 @@
   import ItemMedia from '@src/components/ItemMedia.svelte'
   import IconMore from 'tint/icons/20-more.svg?raw'
   import { getConvertedSrcPath, getPlainSrcPath } from '@src/utils'
-  import type { PostUpdate } from './Post.svelte'
+  import type { PostUpdate, UploadItem } from '@src/utils/edit-manager'
 
-  type PostItem = NonNullable<
-    NonNullable<
-      NonNullable<
-        (NonNullable<PostQuery['node']> & { __typename: 'Post' })['items']
-      >['edges']
-    >[0]
-  >['node']
+  type ExtractPost<T> = T extends { __typename?: 'Post' } ? T : never
+  type Post = ExtractPost<NonNullable<PostQuery['node']>>
+  type ItemConnection = NonNullable<Post['items']>
+  type ItemEdges = NonNullable<ItemConnection['edges']>
+  type ItemEdge = NonNullable<ItemEdges[number]>
+  type PostItem = ItemEdge['node']
 
-  interface Props {
-    item: PostItem
-    editMode: PostUpdate | undefined
+  type Props = {
+    loading: boolean
+    itemData?: PostItem
+    editData?: PostUpdate
+    uploadItemIndex?: string
   }
 
-  let { item, editMode = $bindable() }: Props = $props()
+  let {
+    loading,
+    itemData = undefined,
+    editData = $bindable(),
+    uploadItemIndex = undefined,
+  }: Props = $props()
+
+  function forceUpdateEditData() {
+    if (editData) {
+      editData = { ...editData }
+    } else {
+      throw new Error('Edit data is not defined')
+    }
+  }
+
+  let item = $derived.by<PostItem | UploadItem>(() => {
+    if (editData && uploadItemIndex !== undefined)
+      return editData.uploadItems[uploadItemIndex]
+    if (itemData) return itemData
+    throw new Error('Either itemData or uploadItem must be defined')
+  })
+  let editItem = $derived.by(() => {
+    if (editData && uploadItemIndex !== undefined)
+      return editData.uploadItems[uploadItemIndex]
+    if (editData) return editData.items[item.id]
+    return undefined
+  })
 </script>
 
 <article>
-  <ItemMedia {item} />
-  <div class="info">
-    <ul class="origin pipelist">
-      <li><UserPicture user={item.creator} size="16" showUsername={true} /></li>
-      <li>July 15, 2019</li>
-    </ul>
-    <div class="actions">
-      {#if item.originalPath}
-        <Button
-          small={true}
-          download={`archive-${item.id}`}
-          href={getPlainSrcPath(item.originalPath)}>Original</Button
+  {#if '__typename' in item}
+    {#if item.__typename === 'ImageItem' || item.__typename === 'VideoItem' || item.__typename === 'GifItem'}
+      <ItemMedia {item} />
+    {/if}
+    <div class="info">
+      <ul class="origin pipelist">
+        <li>
+          <UserPicture user={item.creator} size="16" showUsername={true} />
+        </li>
+        <li>July 15, 2019</li>
+      </ul>
+      <div class="actions">
+        {#if 'originalPath' in item}
+          <Button
+            small={true}
+            download={`archive-${item.id}`}
+            href={getPlainSrcPath(item.originalPath)}>Original</Button
+          >
+        {/if}
+        {#if 'compressedPath' in item}
+          <Button
+            small={true}
+            download={`archive-${item.id}-original`}
+            href={getConvertedSrcPath(
+              item.compressedPath,
+              item.__typename,
+              true,
+            )}>Compressed</Button
+          >
+        {/if}
+        <Button small={true} icon={true} title="Edit item"
+          >{@html IconMore}</Button
         >
-      {/if}
-      {#if item.compressedPath}
-        <Button
-          small={true}
-          download={`archive-${item.id}-original`}
-          href={getConvertedSrcPath(item.compressedPath, item.type, true)}
-          >Compressed</Button
-        >
-      {/if}
-      <Button small={true} icon={true} title="Edit item"
-        >{@html IconMore}</Button
-      >
+      </div>
     </div>
-  </div>
+  {/if}
+  {#if 'file' in item}
+    <ItemMedia file={item.file} />
+    <div class="info">
+      <div class="actions standalone">
+        <Button small={true}>Remove</Button>
+      </div>
+    </div>
+  {/if}
   <div class="content">
-    {#if editMode}
-      {@const i = editMode.items[item.id]}
+    {#if editItem}
       <TextField
         id="input"
         label="Description"
         variant="textarea"
-        disabled={editMode.loading}
-        bind:value={i.description.value}
-        error={i.description.error}
+        disabled={loading}
+        bind:value={editItem.description.value}
+        error={editItem.description.error}
+        oninput={forceUpdateEditData}
       />
-      <TextField
-        id="input"
-        label="Caption"
-        variant="textarea"
-        disabled={editMode.loading}
-        bind:value={i.caption.value}
-        error={i.caption.error}
-      />
+      {#if editItem.caption !== undefined}
+        <TextField
+          id="input"
+          label="Caption"
+          variant="textarea"
+          disabled={loading}
+          bind:value={editItem.caption.value}
+          error={editItem.caption.error}
+          oninput={forceUpdateEditData}
+        />
+      {/if}
     {:else}
       <div class="tint--tinted">
         <h3 class="tint--type-ui-small">Description</h3>
         <q>{item.description}</q>
       </div>
-      <div class="tint--tinted">
-        <h3 class="tint--type-ui-small">Caption</h3>
-        <q><pre>{item.caption}</pre></q>
-      </div>
+      {#if 'caption' in item}
+        <div class="tint--tinted">
+          <h3 class="tint--type-ui-small">Caption</h3>
+          <q><pre>{item.caption}</pre></q>
+        </div>
+      {/if}
     {/if}
   </div>
 </article>
@@ -100,7 +149,10 @@
       flex: 1
     .actions
       display: flex
+      justify-content: flex-end
       gap: tint.$size-8
+      &.standalone
+        flex: 1
 
   .content
     display: grid

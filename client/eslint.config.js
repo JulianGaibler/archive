@@ -3,6 +3,7 @@ import prettierConfig from 'eslint-config-prettier'
 import ts from 'typescript-eslint'
 import svelte from 'eslint-plugin-svelte'
 import svelteConfig from './svelte.config.js'
+import eslintPluginAstro from 'eslint-plugin-astro';
 import globals from 'globals'
 
 export default ts.config(
@@ -48,6 +49,7 @@ export default ts.config(
       'svelte/no-at-html-tags': 'off',
     },
   },
+  ...eslintPluginAstro.configs.recommended,
   prettierConfig,
   {
     languageOptions: {
