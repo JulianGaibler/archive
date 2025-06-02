@@ -4,77 +4,59 @@ import sharp from 'sharp'
 import stream, { Readable } from 'stream'
 import tmp from 'tmp'
 import util from 'util'
-import { FileType } from './FileStorage'
-import { ReadStream } from 'fs-capacitor'
 import { asyncForEach, round, to } from '../utils'
 import * as fileUtils from './file-utils'
 import { InputError } from '@src/errors'
+import {
+  FileType,
+  FileProcessingResult,
+  UpdateCallback,
+  StreamFactory,
+  ThumbnailPaths,
+} from './types'
+import {
+  profilePictureOptions,
+  itemTypes,
+  videoEncodingOptions,
+  processingConfig,
+} from './config'
 
 const pipeline = util.promisify(stream.pipeline)
 
-const profilePictureOptions = [
-  {
-    size: 32,
-    options: {
-      jpeg: { quality: 91, progressive: true },
-    },
-  },
-  {
-    size: 80,
-    options: {
-      jpeg: { quality: 91, progressive: true },
-    },
-  },
-  {
-    size: 256,
-    options: {
-      jpeg: { quality: 91, progressive: true },
-    },
-  },
-]
-
-const itemTypes = {
-  VIDEO: {
-    compressed: ['mp4', 'webm'],
-    thumbnail: ['jpeg', 'mp4', 'webm', 'webp'],
-  },
-  IMAGE: {
-    compressed: ['jpeg', 'webp'],
-    thumbnail: ['jpeg', 'webp'],
-  },
-  GIF: {
-    compressed: ['gif', 'mp4', 'webm'],
-    thumbnail: ['jpeg', 'mp4', 'webm', 'webp'],
-  },
-}
-
 export default class FileProcessor {
-  updateCallback
+  private readonly updateCallback: UpdateCallback
 
-  constructor(updateCallback) {
+  constructor(updateCallback: UpdateCallback) {
     this.updateCallback = updateCallback
   }
 
-  async processImage(filePath: string, directory: string) {
+  async processImage(
+    filePath: string,
+    directory: string,
+  ): Promise<FileProcessingResult> {
     const compressed = fileUtils.resolvePath(directory, 'image')
-    const filePaths = {
+    const filePaths: ThumbnailPaths = {
       jpeg: `${compressed}.jpeg`,
       webp: `${compressed}.webp`,
     }
-
-    const newRead = fs.createReadStream(filePath)
     const wsJpeg = fs.createWriteStream(filePaths.jpeg)
     const wsWebp = fs.createWriteStream(filePaths.webp)
 
-    const transform = sharp().rotate().removeAlpha().resize(900, 900, {
-      fit: sharp.fit.inside,
-      withoutEnlargement: true,
-    })
+    const transform = sharp()
+      .rotate()
+      .removeAlpha()
+      .resize(processingConfig.image.maxSize, processingConfig.image.maxSize, {
+        fit: sharp.fit.inside,
+        withoutEnlargement: true,
+      })
 
     const [err1] = await to(
       pipeline(
-        newRead,
-        transform.clone().toFormat('jpeg', { quality: 91, progressive: true }),
+        fs.createReadStream(filePath),
+        transform.clone().toFormat('jpeg', {
+          quality: processingConfig.image.jpegQuality,
+          progressive: true,
+        }),
         wsJpeg,
       ),
     )
@@ -84,8 +66,11 @@ export default class FileProcessor {
 
     const [err2] = await to(
       pipeline(
-        newRead,
-        transform.clone().toFormat('webp', { quality: 80, nearLossless: true }),
+        fs.createReadStream(filePath),
+        transform.clone().toFormat('webp', {
+          quality: processingConfig.image.webpQuality,
+          nearLossless: true,
+        }),
         wsWebp,
       ),
     )
@@ -100,9 +85,10 @@ export default class FileProcessor {
     }
 
     const thumbnailPaths = await this.createThumbnail(
-      fs.createReadStream(filePath),
+      () => fs.createReadStream(filePath),
       directory,
     )
+
     return {
       relHeight: round((height / width) * 100, 4),
       createdFiles: {
@@ -113,44 +99,46 @@ export default class FileProcessor {
     }
   }
 
-  async processVideo(filePath: string, directory: string, fileType: FileType) {
-    // TODO: Are the files really being removed from the temp file?
+  async processVideo(
+    filePath: string,
+    directory: string,
+    fileType: FileType,
+  ): Promise<FileProcessingResult> {
     const compressed = fileUtils.resolvePath(directory, 'video')
-    const filePaths = {
+    const filePaths: Record<string, string> = {
       mp4: `${compressed}.mp4`,
       webm: `${compressed}.webm`,
     }
     const videoThumbnail = fileUtils.resolvePath(directory, 'video_thumbnail')
-    const videoThumbnailPaths = {
+    const videoThumbnailPaths: Record<string, string> = {
       mp4: `${videoThumbnail}.mp4`,
       webm: `${videoThumbnail}.webm`,
     }
 
-    // Create temp dir for screenshot -_-
+    // Create temp dir for screenshot
     const tmpDir = tmp.dirSync()
     const tmpFilename = 'thumb.png'
 
-    await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       ffmpeg(filePath)
         .screenshots({
           timestamps: [1],
           filename: tmpFilename,
           folder: tmpDir.name,
         })
-        .on('error', (e) => {
-          reject(e)
-        })
-        .on('end', () => {
-          resolve(undefined)
-        })
+        .on('error', reject)
+        .on('end', () => resolve())
     })
 
     const tmpPath = fileUtils.resolvePath(tmpDir.name, tmpFilename)
-
     const { height, width } = await sharp(tmpPath).metadata()
 
+    if (!height || !width) {
+      throw new InputError('Invalid video file')
+    }
+
     const thumbnailPaths = await this.createThumbnail(
-      fs.createReadStream(tmpPath),
+      () => fs.createReadStream(tmpPath),
       directory,
     )
 
@@ -160,26 +148,23 @@ export default class FileProcessor {
     const renderProgress =
       fileType === FileType.GIF ? [0, 0, 0, 0, 0] : [0, 0, 0, 0]
     const updateProgress = (idx: number, progress: number) => {
-      if (isNaN(progress)) {
-        return
-      }
-      if (progress <= renderProgress[idx]) {
+      if (isNaN(progress) || progress <= renderProgress[idx]) {
         return
       }
       renderProgress[idx] = progress
       const average =
         renderProgress.reduce((a, b) => a + b, 0) / renderProgress.length
-      this.updateCallback({ progress: Math.floor(average) })
+      this.updateCallback({ taskProgress: Math.floor(average) })
     }
 
     const renderVideo = (
       renderIdx: number,
       inputPath: string,
       outputPath: string,
-      size: string | undefined,
-      outputOptions: string[],
-      optionsCallback?: any,
-    ) => {
+      size?: string,
+      outputOptions: string[] = [],
+      optionsCallback?: (f: any) => void,
+    ): Promise<void> => {
       return new Promise((resolve, reject) => {
         const f = ffmpeg(inputPath)
         if (optionsCallback) {
@@ -192,122 +177,124 @@ export default class FileProcessor {
           .outputOptions(outputOptions)
           .on(
             'progress',
-            (p) =>
+            (p: any) =>
               p.percent !== undefined && updateProgress(renderIdx, p.percent),
           )
           .on('error', reject)
-          .on('end', resolve)
+          .on('end', () => resolve())
           .run()
       })
     }
 
-    const mp4VideoOptions = [
-      '-pix_fmt yuv420p',
-      '-deinterlace',
-      '-vsync 1',
-      '-vcodec libx264',
-      '-profile:v main',
-      '-tune film',
-      '-g 60',
-      '-x264opts no-scenecut',
-      '-max_muxing_queue_size 1024',
-      '-f mp4',
-    ]
-    const mp4AudioOptions = ['-acodec aac', '-ac 2', '-ar 44100']
+    const mp4VideoOptions = videoEncodingOptions.mp4.video
+    const mp4AudioOptions = videoEncodingOptions.mp4.audio
+    const webmVideoOptions = videoEncodingOptions.webm.video
+    const webmAudioOptions = videoEncodingOptions.webm.audio
 
-    const webmVideoOptions = [
-      '-pix_fmt yuv420p',
-      '-deinterlace',
-      '-vsync 1',
-      '-c:v libvpx-vp9',
-      '-cpu-used 2',
-      '-max_muxing_queue_size 1024',
-      '-f webm',
-    ]
-    const webmAudioOptions = ['-c:a libopus']
-
-    let renderA
-    let renderB
-    let renderC
-
-    if (!width || !height) {
-      throw new InputError('Invalid video file')
-    }
     // Render main video
-    const outputHeight = height > 720 ? 720 : height
-    renderA = renderVideo(0, filePath, filePaths.mp4, `?x${outputHeight}`, [
-      ...mp4VideoOptions,
-      ...(fileType === FileType.VIDEO
-        ? [...mp4AudioOptions, ...['-b:a 192k']]
-        : ['-an']),
-      ...['-b:v: 2500k', '-bufsize 2000k', '-maxrate 4500k'],
-    ])
-    renderB = renderVideo(1, filePath, filePaths.webm, `?x${outputHeight}`, [
-      ...webmVideoOptions,
-      ...(fileType === FileType.VIDEO
-        ? [...webmAudioOptions, ...['-b:a 192k']]
-        : ['-an']),
-      ...['-b:v: 2000k', '-bufsize 1000k', '-maxrate 3000k'],
-    ])
+    const outputHeight =
+      height > processingConfig.video.maxHeight
+        ? processingConfig.video.maxHeight
+        : height
 
+    const renderA = renderVideo(
+      0,
+      filePath,
+      filePaths.mp4!,
+      `?x${outputHeight}`,
+      [
+        ...mp4VideoOptions,
+        ...(fileType === FileType.VIDEO
+          ? [...mp4AudioOptions, '-b:a 192k']
+          : ['-an']),
+        '-b:v 2500k',
+        '-bufsize 2000k',
+        '-maxrate 4500k',
+      ],
+    )
+
+    const renderB = renderVideo(
+      1,
+      filePath,
+      filePaths.webm!,
+      `?x${outputHeight}`,
+      [
+        ...webmVideoOptions,
+        ...(fileType === FileType.VIDEO
+          ? [...webmAudioOptions, '-b:a 192k']
+          : ['-an']),
+        '-b:v 2000k',
+        '-bufsize 1000k',
+        '-maxrate 3000k',
+      ],
+    )
+
+    const _renderC: Promise<void> = Promise.resolve()
     if (fileType === FileType.GIF) {
-      ;(filePaths as any).gif = `${compressed}.gif`
-      renderC = renderVideo(
+      filePaths.gif = `${compressed}.gif`
+      const _renderC = renderVideo(
         4,
         filePath,
-        (filePaths as any).gif,
+        filePaths.gif,
         undefined,
         ['-f gif'],
-        (f) => {
+        (f: any) => {
           f.addOption(
             '-filter_complex',
-            `[0:v] fps=25,scale=${
-              width > 480 ? 480 : width
-            }:-2,split [a][b];[a] palettegen [p];[b][p] paletteuse`,
+            `[0:v] fps=25,scale=${width > 480 ? 480 : width}:-2,split [a][b];[a] palettegen [p];[b][p] paletteuse`,
           )
         },
       )
-    } else {
-      renderC = Promise.resolve()
     }
+
     await Promise.all([renderA, renderB])
 
-    // Render thumbnail
-    const outputThumbnailWidth = width > 400 ? 400 : width
-    const thumbnailOptions = (f) => {
-      f.duration(7.5)
+    // Render thumbnail videos
+    const outputThumbnailWidth =
+      width > processingConfig.video.thumbnailWidth
+        ? processingConfig.video.thumbnailWidth
+        : width
+
+    const thumbnailOptions = (f: any) => {
+      f.duration(processingConfig.video.thumbnailDuration)
     }
-    renderA = renderVideo(
+
+    const renderD = renderVideo(
       2,
       filePath,
-      videoThumbnailPaths.mp4,
+      videoThumbnailPaths.mp4!,
       `${outputThumbnailWidth}x?`,
       [
         ...mp4VideoOptions,
         ...(fileType === FileType.VIDEO
-          ? [...mp4AudioOptions, ...['-b:a 96k']]
+          ? [...mp4AudioOptions, '-b:a 96k']
           : ['-an']),
-        ...['-b:v: 625k', '-bufsize 500k', '-maxrate 1000k'],
+        '-b:v 625k',
+        '-bufsize 500k',
+        '-maxrate 1000k',
       ],
       thumbnailOptions,
     )
-    renderB = renderVideo(
+
+    const renderE = renderVideo(
       3,
       filePath,
-      videoThumbnailPaths.webm,
+      videoThumbnailPaths.webm!,
       `${outputThumbnailWidth}x?`,
       [
         ...webmVideoOptions,
         ...(fileType === FileType.VIDEO
-          ? [...webmAudioOptions, ...['-b:a 96k']]
+          ? [...webmAudioOptions, '-b:a 96k']
           : ['-an']),
-        ...['-b:v: 500k', '-bufsize 250k', '-maxrate 750k'],
+        '-b:v 500k',
+        '-bufsize 250k',
+        '-maxrate 750k',
       ],
       thumbnailOptions,
     )
-    await Promise.all([renderA, renderB])
 
-    this.updateCallback({ progress: 100 })
+    await Promise.all([renderD, renderE])
+    await this.updateCallback({ taskProgress: 100 })
 
     return {
       relHeight: round((height / width) * 100, 4),
@@ -319,10 +306,12 @@ export default class FileProcessor {
     }
   }
 
-  private async createThumbnail(readStream, directory: string) {
-    // TODO: why I am not waiting here for pipe to finish? use storeFS!
+  private async createThumbnail(
+    createReadStream: StreamFactory,
+    directory: string,
+  ): Promise<ThumbnailPaths> {
     const compressed = fileUtils.resolvePath(directory, 'thumbnail')
-    const filePaths = {
+    const filePaths: ThumbnailPaths = {
       jpeg: `${compressed}.jpeg`,
       webp: `${compressed}.webp`,
     }
@@ -330,40 +319,54 @@ export default class FileProcessor {
     const wsJpeg = fs.createWriteStream(filePaths.jpeg)
     const wsWebp = fs.createWriteStream(filePaths.webp)
 
-    const transform = sharp().rotate().removeAlpha().resize(400, 400, {
-      fit: sharp.fit.inside,
-    })
+    const transform = sharp()
+      .rotate()
+      .removeAlpha()
+      .resize(
+        processingConfig.thumbnail.maxSize,
+        processingConfig.thumbnail.maxSize,
+        { fit: sharp.fit.inside },
+      )
 
     const [err1] = await to(
       pipeline(
-        readStream,
-        transform.clone().toFormat('jpeg', { quality: 50, progressive: true }),
+        createReadStream(),
+        transform.clone().toFormat('jpeg', {
+          quality: processingConfig.thumbnail.jpegQuality,
+          progressive: true,
+        }),
         wsJpeg,
       ),
     )
-    if (err1) {
-      throw err1
-    }
+    if (err1) throw err1
+
     const [err2] = await to(
       pipeline(
-        readStream,
-        transform.clone().toFormat('webp', { quality: 50 }),
+        createReadStream(),
+        transform.clone().toFormat('webp', {
+          quality: processingConfig.thumbnail.webpQuality,
+        }),
         wsWebp,
       ),
     )
-    if (err2) {
-      throw err2
-    }
+    if (err2) throw err2
 
     return filePaths
   }
 
-  /** Creates files following this pattern [filename]-[s/m/l].[jpg/webp] */
+  /**
+   * Creates profile picture files following pattern [filename]-[size].[format]
+   *
+   * @param {Readable} readStream The readable stream of the image
+   * @param {string[]} path Array of path segments to construct the destination
+   *   directory
+   * @param {string} filename The base filename for the profile pictures
+   */
   static async createProfilePicture(
     readStream: Readable,
     path: string[],
     filename: string,
-  ) {
+  ): Promise<void> {
     // Convert the readStream into a buffer
     const buffer = await new Promise<Buffer>((resolve, reject) => {
       const chunks: Buffer[] = []
@@ -373,40 +376,45 @@ export default class FileProcessor {
     })
 
     const tf0 = sharp(buffer).removeAlpha().rotate()
+
     await asyncForEach(profilePictureOptions, async (sizeObj) => {
       const tf1 = tf0.clone().resize(sizeObj.size, sizeObj.size, {
         fit: sharp.fit.cover,
       })
-      await asyncForEach(Object.keys(sizeObj.options), async (format) => {
-        // dump available info here to console
-        console.log('INFODUMP', {
-          path,
-          size: sizeObj.size,
-          format,
-          options: sizeObj.options[format],
-        })
 
-        const fullPath = fileUtils.resolvePath(
-          ...path,
-          `${filename}-${sizeObj.size}.${format}`,
-        )
-        const [err] = await to(
-          pipeline(
-            tf1.clone().toFormat(format, sizeObj.options[format]),
-            fs.createWriteStream(fullPath),
-          ),
-        )
-        if (err) {
-          console.error('Error creating profile picture', err)
-          fs.unlinkSync(fullPath)
-          throw err
-        }
-      })
+      await asyncForEach(
+        Object.keys(sizeObj.options),
+        async (format: string) => {
+          const formatOptions =
+            sizeObj.options[format as keyof typeof sizeObj.options]
+          const fullPath = fileUtils.resolvePath(
+            ...path,
+            `${filename}-${sizeObj.size}.${format}`,
+          )
+
+          const [err] = await to(
+            pipeline(
+              tf1.clone().toFormat(format as any, formatOptions),
+              fs.createWriteStream(fullPath),
+            ),
+          )
+
+          if (err) {
+            console.error('Error creating profile picture', err)
+            fs.unlinkSync(fullPath)
+            throw err
+          }
+        },
+      )
     })
   }
 
-  static async deleteProfilePicture(path: string[], filename: string) {
-    const removePromises = []
+  static async deleteProfilePicture(
+    path: string[],
+    filename: string,
+  ): Promise<void> {
+    const removePromises: Promise<void>[] = []
+
     profilePictureOptions.forEach((sizeObj) => {
       Object.keys(sizeObj.options).forEach((format) => {
         removePromises.push(
@@ -419,6 +427,7 @@ export default class FileProcessor {
         )
       })
     })
+
     await Promise.all(removePromises)
   }
 
@@ -428,23 +437,30 @@ export default class FileProcessor {
     originalPath: string,
     thumbnailPath: string,
     compressedPath: string,
-  ) {
-    const removePromises = []
+  ): Promise<void> {
+    const removePromises: Promise<void>[] = []
 
-    itemTypes[type].compressed.forEach((ext) => {
+    const typeConfig = itemTypes[type]
+    if (!typeConfig) {
+      throw new InputError(`Unknown file type: ${type}`)
+    }
+
+    typeConfig.compressed.forEach((ext) => {
       removePromises.push(
         fileUtils.removeAsync(
           fileUtils.resolvePath(...path, `${compressedPath}.${ext}`),
         ),
       )
     })
-    itemTypes[type].thumbnail.forEach((ext) => {
+
+    typeConfig.thumbnail.forEach((ext) => {
       removePromises.push(
         fileUtils.removeAsync(
           fileUtils.resolvePath(...path, `${thumbnailPath}.${ext}`),
         ),
       )
     })
+
     removePromises.push(
       fileUtils.removeAsync(fileUtils.resolvePath(...path, originalPath)),
     )

@@ -3,16 +3,21 @@ import { Server as HttpServer } from 'http'
 import schema from './schema'
 import AuthCookieUtils from './AuthCookieUtils'
 import SessionActions from '@src/actions/SessionActions'
-import { GraphQLError } from 'graphql'
+import { ExecutionArgs, GraphQLError } from 'graphql'
 import Context from '@src/Context'
-import { ValidationError } from 'objection'
-import { ValidationInputError } from '@src/errors'
 import { ApolloServer } from '@apollo/server'
 import { expressMiddleware } from '@apollo/server/express4'
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer'
+import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default'
 // import { ApolloServerPluginLandingPageDisabled } from '@apollo/server/plugin/disabled'
 import graphqlUploadExpress from 'graphql-upload/graphqlUploadExpress.mjs'
 import FileStorage from '@src/files/FileStorage'
+import { WebSocketServer } from 'ws'
+import { useServer } from 'graphql-ws/use/ws'
+import { Context as WsContext, SubscribeMessage } from 'graphql-ws'
+import { PostgresPubSub } from '@src/pubsub'
+import knexfile from '@src/../knexfile'
+import topics from '@src/pubsub/topics'
 
 /**
  * This class is responsible for handling all GraphQL requests.
@@ -20,7 +25,38 @@ import FileStorage from '@src/files/FileStorage'
  * @class GraphQLApi
  */
 export default class {
-  async init(app: express.Application, server: HttpServer, options: any) {
+  async init(app: express.Application, httpServer: HttpServer, options: any) {
+    const connection = knexfile.connection
+
+    Context.pubSub = new PostgresPubSub({
+      host: connection.host,
+      port: connection.port,
+      database: connection.database,
+      user: connection.user,
+      password: connection.password,
+
+      topics: Object.values(topics),
+
+      native: false,
+      paranoidChecking: 30000,
+      retryInterval: 1000,
+      retryLimit: 10,
+    })
+    await Context.pubSub.connect()
+
+    const wsServer = new WebSocketServer({
+      server: httpServer,
+      path: '/sub',
+    })
+    const serverCleanup = useServer(
+      {
+        schema,
+        context: (ctx, msg, args) =>
+          this.createSubscriptionContext(ctx, msg, args),
+      },
+      wsServer,
+    )
+
     const apollo = new ApolloServer<Context>({
       schema,
       // formatError: (err) => {
@@ -44,8 +80,22 @@ export default class {
       //   return err
       // },
       plugins: [
-        ApolloServerPluginDrainHttpServer({ httpServer: server }),
+        ApolloServerPluginDrainHttpServer({ httpServer }),
         // ApolloServerPluginLandingPageDisabled(),
+        ApolloServerPluginLandingPageLocalDefault({
+          embed: {
+            endpointIsEditable: true,
+          },
+        }),
+        {
+          async serverWillStart() {
+            return {
+              async drainServer() {
+                await serverCleanup.dispose()
+              },
+            }
+          },
+        },
       ],
     })
     await apollo.start()
@@ -62,9 +112,8 @@ export default class {
     app.use(
       options.endpoint,
       json(),
-      expressMiddleware(apollo, {
-        context: async ({ req, res }) =>
-          await this.createContext(req as any, res as any),
+      expressMiddleware(apollo as any, {
+        context: ({ req, res }) => this.createContext(req, res),
       }),
     )
   }
@@ -78,22 +127,18 @@ export default class {
    * @param res The Express response object.
    * @returns A promise that resolves to the context object.
    */
-  private async createContext(req: Request, res: Response) {
-    const token = AuthCookieUtils.getAuthCookie(req)
-    let userIId = null
-    if (token) {
-      const userAgent = req.headers['user-agent']
-        ? req.headers['user-agent']
-        : ''
+  private async createContext(req: express.Request, res: express.Response) {
+    return await Context.createContext({ type: 'http', req, res })
+  }
 
-      userIId = await SessionActions.qVerify({
-        token,
-        userAgent,
-        latestIp: req.ip,
-      })
-    }
-    const ctx = new Context(req, res, userIId)
-    ctx.tmp.token = token
-    return ctx
+  private async createSubscriptionContext(
+    ctx: WsContext,
+    _message: SubscribeMessage,
+    _args: ExecutionArgs,
+  ) {
+    return await Context.createContext({
+      type: 'websocket',
+      extra: ctx.extra,
+    })
   }
 }

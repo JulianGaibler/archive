@@ -31,9 +31,11 @@ export default class KeywordModel extends UniqueModel {
 
   /// Loaders
   static getLoaders() {
-    const getById = new DataLoader<number, KeywordModel>(this.keywordsByIds)
+    const getById = new DataLoader<number, KeywordModel>(
+      KeywordModel.keywordsByIds,
+    )
     const getByPost = new DataLoader<number, KeywordModel[]>(
-      this.keywordsByPost,
+      KeywordModel.keywordsByPost,
     )
 
     return { getById, getByPost }

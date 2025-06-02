@@ -38,12 +38,12 @@ export default class UserModel extends UniqueModel {
 
   /// Loaders
   static getLoaders() {
-    const getById = new DataLoader<number, UserModel>(this.usersByIds)
+    const getById = new DataLoader<number, UserModel>(UserModel.usersByIds)
     const getByUsername = new DataLoader<string, UserModel>(
-      this.usersByUsername,
+      UserModel.usersByUsername,
     )
     const getByTelegramId = new DataLoader<string, UserModel>(
-      this.usersByTelegramId,
+      UserModel.usersByTelegramId,
     )
 
     return { getById, getByUsername, getByTelegramId }

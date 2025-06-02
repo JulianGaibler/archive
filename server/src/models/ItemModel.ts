@@ -18,10 +18,14 @@ export default class ItemModel extends BaseModel {
   compressedPath?: string
   thumbnailPath?: string
   originalPath?: string
-  relativeHeight?: number
+  relativeHeight?: string
   audioAmpThumbnail?: number[]
   postId?: number
   creatorId?: number
+  taskNotes?: string
+  taskStatus?: string
+  taskProgress?: number
+  position!: number
 
   post?: PostModel
   creator?: UserModel
@@ -41,37 +45,47 @@ export default class ItemModel extends BaseModel {
   /// Schema
   static jsonSchema = {
     type: 'object',
-    required: ['title'],
+    required: ['type', 'caption', 'description', 'position'],
 
     properties: {
       id: { type: 'number' },
-      type: { type: 'string', enum: ['VIDEO', 'IMAGE', 'GIF'] },
+      type: { type: 'string' },
       compressedPath: {
         type: ['string', 'null'],
         minLength: 2,
-        maxLength: 32,
+        maxLength: 255,
       },
       thumbnailPath: {
         type: ['string', 'null'],
         minLength: 2,
-        maxLength: 64,
+        maxLength: 255,
       },
       originalPath: {
         type: ['string', 'null'],
         minLength: 2,
-        maxLength: 64,
+        maxLength: 255,
+      },
+      relativeHeight: {
+        type: ['string', 'null'],
+        maxLength: 255,
       },
       postId: { type: 'number' },
-      description: { type: ['string'], minLength: 4 },
-      caption: { type: ['string'], minLength: 4 },
+      description: { type: 'string', minLength: 4 },
+      caption: { type: 'string', minLength: 4 },
       creatorId: { type: 'number' },
+      taskNotes: { type: ['string', 'null'] },
+      taskStatus: { type: ['string', 'null'] },
+      taskProgress: { type: 'number' },
+      position: { type: 'number' },
     },
   }
 
   /// Loaders
   static getLoaders() {
-    const getById = new DataLoader<number, ItemModel>(this.itemsByIds)
-    const getByPost = new DataLoader<number, ItemModel[]>(this.itemsByPosts)
+    const getById = new DataLoader<number, ItemModel>(ItemModel.itemsByIds)
+    const getByPost = new DataLoader<number, ItemModel[]>(
+      ItemModel.itemsByPosts,
+    )
 
     return { getById, getByPost }
   }

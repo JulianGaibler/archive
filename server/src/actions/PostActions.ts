@@ -1,7 +1,9 @@
 import PostModel from '@src/models/PostModel'
 import Context from '@src/Context'
 import ActionUtils from './ActionUtils'
-import { ValidationInputError } from '@src/errors'
+import { AuthorizationError, InputError, NotFoundError } from '@src/errors'
+import { FileUpload } from 'graphql-upload/processRequest.mjs'
+import { ItemModel } from '@src/models'
 
 export default class {
   /// Queries
@@ -122,9 +124,14 @@ export default class {
       language?: string
       keywords?: number[]
       items?: { id: number; caption?: string; description?: string }[]
+      newItems?: {
+        file: Promise<FileUpload>
+        caption?: string
+        description?: string
+      }[]
     },
   ) {
-    ctx.isAuthenticated()
+    const userIId = ctx.isAuthenticated()
     const knex = PostModel.knex()
     const postData = {
       id: fields.postId,
@@ -186,18 +193,492 @@ export default class {
             .where('id', item.id)
         }
 
+        if (fields.newItems && fields.newItems.length > 0) {
+          // create new items
+          const existingItems = await PostModel.relatedQuery('items', trx)
+            .for(fields.postId)
+            .select('position')
+            .orderBy('position', 'desc')
+            .limit(1)
+
+          const highestPosition =
+            existingItems.length > 0 ? existingItems[0].position : 0
+
+          for (let index = 0; index < fields.newItems.length; index++) {
+            const item = fields.newItems[index]
+            const newItemData = {
+              type: 'PROCESSING',
+              caption: item.caption,
+              description: item.description,
+              postId: fields.postId,
+              creatorId: userIId,
+              taskStatus: 'QUEUED',
+              taskProgress: 0,
+              taskNotes: '',
+              position: highestPosition + index + 1,
+            }
+            const newItem = await ItemModel.query(trx).insert(newItemData)
+            await Context.fileStorage.storeFile(ctx, item.file, newItem.id)
+          }
+        }
+
+        // Reorder items to eliminate gaps
+        await trx.raw(
+          `
+          WITH ordered_items AS (
+            SELECT id, ROW_NUMBER() OVER (ORDER BY position ASC) as new_position
+            FROM item
+            WHERE "post_id" = ?
+          )
+          UPDATE item
+          SET position = ordered_items.new_position
+          FROM ordered_items
+          WHERE item.id = ordered_items.id
+        `,
+          [fields.postId],
+        )
+
         return updatedPost
       })
       .catch((error) => {
-        throw new ValidationInputError(error)
+        console.error('Error updating post:', error)
+        console.error('Stack trace:', error.stack)
+
+        throw error
       })
+
+    Context.fileStorage.checkQueue()
 
     return updatedPost
   }
 
-  static async mDelete(ctx: Context, _fields: { postIds: number[] }) {
-    ctx.isAuthenticated()
-    // TODO
-    // context.fileStorage.deleteFiles(context.auth.userId, ids)
+  static async mDeletePost(ctx: Context, fields: { postId: number }) {
+    const userIId = ctx.isAuthenticated()
+    const knex = PostModel.knex()
+
+    return await knex
+      .transaction(async (trx) => {
+        // Check if post exists and user owns it
+        const post = await PostModel.query(trx)
+          .findById(fields.postId)
+          .withGraphFetched('items')
+
+        if (!post) {
+          throw new NotFoundError('Post not found')
+        }
+
+        if (post.creatorId !== userIId) {
+          throw new AuthorizationError('You can only delete your own posts.')
+        }
+
+        // Get all items for file deletion
+        const items = post.items || []
+
+        // Delete all files associated with items
+        if (items.length > 0) {
+          const itemsForDeletion = items
+            .filter(
+              (item) =>
+                item.originalPath && item.thumbnailPath && item.compressedPath,
+            )
+            .map((item) => ({
+              type: item.type,
+              originalPath: item.originalPath!,
+              thumbnailPath: item.thumbnailPath!,
+              compressedPath: item.compressedPath!,
+            }))
+
+          if (itemsForDeletion.length > 0) {
+            await Context.fileStorage.deleteFiles(itemsForDeletion)
+          }
+        }
+
+        // Delete the post
+        await PostModel.query(trx).deleteById(fields.postId)
+
+        return { success: true, deletedPostId: fields.postId }
+      })
+      .catch((error) => {
+        console.error('Error deleting post:', error)
+        throw error
+      })
+  }
+
+  static async mDeleteItem(ctx: Context, fields: { itemId: number }) {
+    const userIId = ctx.isAuthenticated()
+    const knex = PostModel.knex()
+
+    return await knex
+      .transaction(async (trx) => {
+        // Get item with post information
+        const item = await ItemModel.query(trx)
+          .findById(fields.itemId)
+          .withGraphFetched('post')
+
+        if (!item) {
+          throw new NotFoundError('Item not found')
+        }
+
+        // Check authorization: user owns the item OR user owns the post
+        const userOwnsItem = item.creatorId === userIId
+        const userOwnsPost = item.post?.creatorId === userIId
+
+        if (!userOwnsItem && !userOwnsPost) {
+          throw new AuthorizationError(
+            'You can only delete items from your own posts or items you created.',
+          )
+        }
+
+        // Delete associated files
+        if (item.originalPath && item.thumbnailPath && item.compressedPath) {
+          await Context.fileStorage.deleteFiles([
+            {
+              type: item.type,
+              originalPath: item.originalPath,
+              thumbnailPath: item.thumbnailPath,
+              compressedPath: item.compressedPath,
+            },
+          ])
+        }
+
+        // Delete the item
+        await ItemModel.query(trx).deleteById(fields.itemId)
+
+        // Reorder remaining items in the post
+        if (item.postId) {
+          await this._reorderItemPositions(trx, item.postId)
+        }
+
+        return { success: true, deletedItemId: fields.itemId }
+      })
+      .catch((error) => {
+        console.error('Error deleting item:', error)
+        throw error
+      })
+  }
+
+  static async mReorderItem(
+    ctx: Context,
+    fields: { itemId: number; newPosition: number },
+  ) {
+    const userIId = ctx.isAuthenticated()
+    const knex = PostModel.knex()
+
+    return await knex
+      .transaction(async (trx) => {
+        // Get item with post information
+        const item = await ItemModel.query(trx)
+          .findById(fields.itemId)
+          .withGraphFetched('post')
+
+        if (!item) {
+          throw new NotFoundError('Item not found')
+        }
+
+        // Check authorization: user owns the post OR user owns the item
+        const userOwnsPost = item.post?.creatorId === userIId
+        const userOwnsItem = item.creatorId === userIId
+
+        if (!userOwnsPost && !userOwnsItem) {
+          throw new AuthorizationError(
+            'You can only reorder items in your own posts or items you created.',
+          )
+        }
+
+        if (!item.postId) {
+          throw new InputError('Item is not associated with a post')
+        }
+
+        // Get total count of items in the post
+        const itemCount = await ItemModel.query(trx)
+          .where('postId', item.postId)
+          .resultSize()
+
+        // Validate new position
+        if (fields.newPosition < 1 || fields.newPosition > itemCount) {
+          throw new InputError(`Position must be between 1 and ${itemCount}`)
+        }
+
+        // If position hasn't changed, return early
+        if (item.position === fields.newPosition) {
+          return {
+            success: true,
+            itemId: fields.itemId,
+            newPosition: fields.newPosition,
+          }
+        }
+
+        // Update the item's position temporarily to avoid conflicts
+        await ItemModel.query(trx)
+          .patch({ position: -1 })
+          .where('id', fields.itemId)
+
+        // Shift other items based on direction of move
+        if (fields.newPosition > item.position) {
+          // Moving down: shift items up
+          await trx.raw(
+            `
+            UPDATE item
+            SET position = position - 1
+            WHERE post_id = ? AND position > ? AND position <= ?
+          `,
+            [item.postId, item.position, fields.newPosition],
+          )
+        } else {
+          // Moving up: shift items down
+          await trx.raw(
+            `
+            UPDATE item
+            SET position = position + 1
+            WHERE post_id = ? AND position >= ? AND position < ?
+          `,
+            [item.postId, fields.newPosition, item.position],
+          )
+        }
+
+        // Set the item to its new position
+        await ItemModel.query(trx)
+          .patch({ position: fields.newPosition })
+          .where('id', fields.itemId)
+
+        // Ensure positions are sequential (cleanup any gaps)
+        await this._reorderItemPositions(trx, item.postId)
+
+        return {
+          success: true,
+          itemId: fields.itemId,
+          newPosition: fields.newPosition,
+        }
+      })
+      .catch((error) => {
+        console.error('Error reordering item:', error)
+        throw error
+      })
+  }
+
+  static async mMergePost(
+    ctx: Context,
+    fields: {
+      sourcePostId: number
+      targetPostId: number
+      mergeKeywords?: boolean
+    },
+  ) {
+    const userIId = ctx.isAuthenticated()
+    const knex = PostModel.knex()
+
+    return await knex
+      .transaction(async (trx) => {
+        // Check if both posts exist and user owns them
+        const [sourcePost, targetPost] = await Promise.all([
+          PostModel.query(trx)
+            .findById(fields.sourcePostId)
+            .withGraphFetched('[items, keywords]'),
+          PostModel.query(trx)
+            .findById(fields.targetPostId)
+            .withGraphFetched('[items, keywords]'),
+        ])
+
+        if (!sourcePost) {
+          throw new NotFoundError('Source post not found')
+        }
+        if (!targetPost) {
+          throw new NotFoundError('Target post not found')
+        }
+
+        if (sourcePost.creatorId !== userIId) {
+          throw new AuthorizationError('You can only merge your own posts.')
+        }
+        if (targetPost.creatorId !== userIId) {
+          throw new AuthorizationError(
+            'You can only merge into your own posts.',
+          )
+        }
+
+        // Get the highest position in the target post
+        const highestPositionResult = (await ItemModel.query(trx)
+          .where('postId', fields.targetPostId)
+          .max('position as maxPosition')
+          .first()) as any
+
+        const highestPosition = highestPositionResult?.maxPosition || 0
+
+        // Move all items from source to target post
+        if (sourcePost.items && sourcePost.items.length > 0) {
+          for (let i = 0; i < sourcePost.items.length; i++) {
+            const item = sourcePost.items[i]
+            await ItemModel.query(trx)
+              .patch({
+                postId: fields.targetPostId,
+                position: highestPosition + i + 1,
+              })
+              .where('id', item.id)
+          }
+        }
+
+        // Merge keywords if requested
+        if (
+          fields.mergeKeywords &&
+          sourcePost.keywords &&
+          sourcePost.keywords.length > 0
+        ) {
+          const targetKeywordIds = targetPost.keywords?.map((k) => k.id) || []
+          const keywordsToAdd = sourcePost.keywords
+            .map((k) => k.id)
+            .filter((id) => !targetKeywordIds.includes(id))
+
+          if (keywordsToAdd.length > 0) {
+            await PostModel.relatedQuery('keywords', trx)
+              .for(fields.targetPostId)
+              .relate(keywordsToAdd)
+          }
+        }
+
+        // Delete the source post
+        await PostModel.query(trx).deleteById(fields.sourcePostId)
+
+        // Reorder items in target post to ensure sequential positions
+        await this._reorderItemPositions(trx, fields.targetPostId)
+
+        return {
+          success: true,
+          sourcePostId: fields.sourcePostId,
+          targetPostId: fields.targetPostId,
+          mergedItemsCount: sourcePost.items?.length || 0,
+          mergedKeywordsCount: fields.mergeKeywords
+            ? sourcePost.keywords?.length || 0
+            : 0,
+        }
+      })
+      .catch((error) => {
+        console.error('Error merging posts:', error)
+        throw error
+      })
+  }
+
+  static async mMoveItem(
+    ctx: Context,
+    fields: {
+      itemId: number
+      targetPostId: number
+      keepEmptyPost?: boolean
+    },
+  ) {
+    const userIId = ctx.isAuthenticated()
+    const knex = PostModel.knex()
+
+    return await knex
+      .transaction(async (trx) => {
+        // Get item with its current post information
+        const item = await ItemModel.query(trx)
+          .findById(fields.itemId)
+          .withGraphFetched('post')
+
+        if (!item) {
+          throw new NotFoundError('Item not found')
+        }
+
+        // Get target post
+        const targetPost = await PostModel.query(trx).findById(
+          fields.targetPostId,
+        )
+
+        if (!targetPost) {
+          throw new NotFoundError('Target post not found')
+        }
+
+        // Check authorization: user owns the item OR user owns both posts
+        const userOwnsItem = item.creatorId === userIId
+        const userOwnsSourcePost = item.post?.creatorId === userIId
+        const userOwnsTargetPost = targetPost.creatorId === userIId
+
+        if (!userOwnsItem && (!userOwnsSourcePost || !userOwnsTargetPost)) {
+          throw new AuthorizationError(
+            'You can only move items you own or between posts you own.',
+          )
+        }
+
+        if (!item.postId) {
+          throw new InputError('Item is not associated with a post')
+        }
+
+        const sourcePostId = item.postId
+
+        // If moving to the same post, do nothing
+        if (sourcePostId === fields.targetPostId) {
+          return {
+            success: true,
+            itemId: fields.itemId,
+            sourcePostId,
+            targetPostId: fields.targetPostId,
+            sourcePostDeleted: false,
+          }
+        }
+
+        // Get the highest position in the target post
+        const highestPositionResult = (await ItemModel.query(trx)
+          .where('postId', fields.targetPostId)
+          .max('position as maxPosition')
+          .first()) as any
+
+        const newPosition = (highestPositionResult?.maxPosition || 0) + 1
+
+        // Move the item to the target post
+        await ItemModel.query(trx)
+          .patch({
+            postId: fields.targetPostId,
+            position: newPosition,
+          })
+          .where('id', fields.itemId)
+
+        // Reorder items in the source post
+        await this._reorderItemPositions(trx, sourcePostId)
+
+        // Check if source post is now empty and should be deleted
+        let sourcePostDeleted = false
+        if (!fields.keepEmptyPost) {
+          const remainingItemsCount = await ItemModel.query(trx)
+            .where('postId', sourcePostId)
+            .resultSize()
+
+          if (remainingItemsCount === 0) {
+            await PostModel.query(trx).deleteById(sourcePostId)
+            sourcePostDeleted = true
+          }
+        }
+
+        return {
+          success: true,
+          itemId: fields.itemId,
+          sourcePostId,
+          targetPostId: fields.targetPostId,
+          sourcePostDeleted,
+        }
+      })
+      .catch((error) => {
+        console.error('Error moving item:', error)
+        throw error
+      })
+  }
+
+  // Utility function to reorder item positions sequentially
+  private static async _reorderItemPositions(
+    trx: any,
+    postId: number,
+  ): Promise<void> {
+    await trx.raw(
+      `
+      WITH ordered_items AS (
+        SELECT id, ROW_NUMBER() OVER (ORDER BY position ASC) as new_position
+        FROM item
+        WHERE post_id = ?
+      )
+      UPDATE item
+      SET position = ordered_items.new_position
+      FROM ordered_items
+      WHERE item.id = ordered_items.id
+    `,
+      [postId],
+    )
   }
 }

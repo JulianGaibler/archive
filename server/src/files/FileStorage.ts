@@ -3,300 +3,350 @@ import { createId } from '@paralleldrive/cuid2'
 import FileProcessor from './FileProcessor'
 import { fileTypeFromStream } from 'file-type'
 import fs from 'fs'
-import ItemActions from '@src/actions/ItemActions'
 import stream from 'stream'
 import TaskActions from '@src/actions/TaskActions'
 import tmp from 'tmp'
 import util from 'util'
 import { FileUpload } from 'graphql-upload/processRequest.mjs'
 import { InputError } from '@src/errors'
-import { Mutex } from 'async-mutex'
 import * as fileUtils from './file-utils'
+import { FileType, UpdateCallback } from './types'
+import { ItemModel } from '@src/models'
+import { FilePathManager } from './FilePathManager'
+import { FileProcessingQueue } from './QueueManager'
 
 const pipeline = util.promisify(stream.pipeline)
 
-// Enums
-export enum FileType {
-  VIDEO = 'VIDEO',
-  IMAGE = 'IMAGE',
-  GIF = 'GIF',
-}
-
-// File storage options
-const options = {
-  dist: process.env.STORAGE_PATH || 'public',
-  directories: {
-    compressed: 'compressed',
-    thumbnail: 'thumbnail',
-    original: 'original',
-    queue: 'queue',
-    profilePictures: 'upic',
-  },
-}
+export { FileType }
 
 export default class FileStorage {
-  private taskMutex: Mutex
+  private readonly pathManager: FilePathManager
+  private readonly queue: FileProcessingQueue
 
   constructor() {
-    this.taskMutex = new Mutex()
-    this.performCleanup()
-
-    fileUtils.dir(options.dist)
-    Object.keys(options.directories).forEach((key) => {
-      // construct a path from the base and the directory
-      const path = fileUtils.resolvePath(
-        options.dist,
-        options.directories[key as keyof typeof options.directories],
-      )
-      // ensure directory exists
-      fileUtils.dir(path)
-    })
+    this.pathManager = new FilePathManager()
+    this.queue = new FileProcessingQueue()
   }
 
+  /**
+   * Stores an uploaded file to the queue for processing
+   *
+   * @param {Context} _ctx The context object
+   * @param {Promise<FileUpload>} upload The file upload promise
+   * @param {number} itemId The item ID to associate with the upload
+   * @returns {Promise<void>}
+   */
   async storeFile(
-    ctx: Context,
+    _ctx: Context,
     upload: Promise<FileUpload>,
-    serializedItem: string,
-  ) {
+    itemId: number,
+  ): Promise<void> {
     const { createReadStream } = await upload
     const typedStream = await fileTypeFromStream(createReadStream())
 
     if (!typedStream) {
-      // If 'file-type' couldn't figure out what this is, we just throw
       throw new InputError('File-Type not recognized')
     }
-    const { ext, mime } = typedStream
-    // Throws an error if unsupported
-    getKind(mime)
 
-    const taskId = await TaskActions.mCreate(ctx, {
-      ext,
-      serializedItem,
-      mimeType: mime,
-    })
+    const { mime } = typedStream
+    this.validateFileType(mime) // Throws if unsupported
 
-    try {
-      await this.streamToFile(typedStream, [
-        options.dist,
-        options.directories.queue,
-        taskId.toString(),
-      ])
-    } catch (error) {
-      await TaskActions.mDelete(ctx, { taskId })
-      throw error
-    }
-
-    this.checkQueue()
-
-    return taskId
+    const queuePath = this.pathManager.getQueuePath(itemId)
+    await this.streamToFile(createReadStream(), queuePath)
   }
 
-  async deleteFiles(items: any[]) {
-    const promises = new Array(items.length)
-    const rowsLength = items.length
-    for (let i = 0; i < rowsLength; ++i) {
-      const item = items[i]
-      promises[i] = FileProcessor.deleteItem(
-        [options.dist],
+  /**
+   * Deletes files associated with multiple items
+   *
+   * @param {{
+   *   type: string
+   *   originalPath: string
+   *   thumbnailPath: string
+   *   compressedPath: string
+   * }[]} items
+   *   Items to delete
+   * @returns {Promise<void>}
+   */
+  async deleteFiles(
+    items: Array<{
+      type: string
+      originalPath: string
+      thumbnailPath: string
+      compressedPath: string
+    }>,
+  ): Promise<void> {
+    const deletionPromises = items.map((item) =>
+      FileProcessor.deleteItem(
+        [this.pathManager.getDirectoryPath('original').replace(/\/[^/]*$/, '')], // Get base path
         item.type,
         item.originalPath,
         item.thumbnailPath,
         item.compressedPath,
-      )
-    }
-    return Promise.all(promises)
+      ),
+    )
+
+    await Promise.all(deletionPromises)
   }
 
-  /** Creates profile picture files and returns generic path */
+  /**
+   * Creates profile picture files and returns the generic filename
+   *
+   * @param {Promise<FileUpload>} upload The file upload promise
+   * @returns {Promise<string>} The generic filename
+   */
   async setProfilePicture(upload: Promise<FileUpload>): Promise<string> {
     const { createReadStream } = await upload
-
     const filename = `pb-${createId()}`
 
     await FileProcessor.createProfilePicture(
       createReadStream(),
-      [options.dist, options.directories.profilePictures],
+      [this.pathManager.getDirectoryPath('profilePictures')],
       filename,
     )
+
     return filename
   }
 
-  /** Takes generic path to delete all variances of profile pictures */
-  async deleteProfilePicture(filename: string) {
+  /**
+   * Deletes all variants of a profile picture
+   *
+   * @param {string} filename The filename to delete
+   * @returns {Promise<void>}
+   */
+  async deleteProfilePicture(filename: string): Promise<void> {
     return FileProcessor.deleteProfilePicture(
-      [options.dist, options.directories.profilePictures],
+      [this.pathManager.getDirectoryPath('profilePictures')],
       filename,
     )
   }
 
-  /** Checks if the queue has items and if there are other active tasks */
-  private async checkQueue() {
-    const release = await this.taskMutex.acquire()
-
-    const ctx = Context.createServerContext()
-
+  /** Checks the queue and processes the next item if available */
+  async checkQueue(): Promise<void> {
     try {
-      if (await TaskActions.qCheckIfBusy(ctx)) {
-        return
+      const itemId = await this.queue.checkQueue()
+      if (itemId !== undefined) {
+        await this.processItem(itemId)
       }
-
-      const result = await TaskActions.mPopQueue(ctx)
-      if (!result) {
-        return
-      }
-
-      this.processItem(ctx, result.taskId, result.itemData)
-    } finally {
-      release()
+    } catch (error) {
+      console.error('Error in queue processing:', error)
     }
   }
 
-  /** Processes an Item from the Queue */
-  private async processItem(ctx: Context, taskId: number, itemData: any) {
-    const filePath = fileUtils.resolvePath(
-      options.dist,
-      options.directories.queue,
-      taskId.toString(),
-    )
-    const update = (changes: any) =>
-      TaskActions.mUpdate(ctx, { taskId, changes })
-
-    const task = await TaskActions.qTask(ctx, { taskId })
-
-    const tmpDir = tmp.dirSync()
-    const processor = new FileProcessor(update)
-
-    const mime = task.mimeType
-    const kind = getKind(mime)
-
-    let fileTypeEnum: FileType =
-      mime === 'image/gif'
-        ? FileType.GIF
-        : kind === 'video'
-          ? FileType.VIDEO
-          : FileType.IMAGE
-
-    if (itemData.type === 'VIDEO' && fileTypeEnum === FileType.GIF) {
-      fileTypeEnum = FileType.VIDEO
-    } else if (itemData.type === 'GIF' && fileTypeEnum === FileType.VIDEO) {
-      fileTypeEnum = FileType.GIF
-    }
-    itemData.type = fileTypeEnum
+  /**
+   * Processes a single item from the queue
+   *
+   * @param {number} itemId The item ID to process
+   * @returns {Promise<void>}
+   */
+  private async processItem(itemId: number): Promise<void> {
+    const ctx = Context.createPrivilegedContext()
 
     try {
-      let result: any
-      if (fileTypeEnum === FileType.GIF || fileTypeEnum === FileType.VIDEO) {
-        result = await processor.processVideo(
+      const filePath = this.pathManager.getQueuePath(itemId)
+      const updateCallback: UpdateCallback = async (changes) => {
+        await TaskActions.mUpdate(ctx, { itemId, changes })
+      }
+
+      const task = await TaskActions.qTask(ctx, { itemIds: itemId })
+
+      if (!task) {
+        throw new Error(`Task not found for item ${itemId}`)
+      }
+
+      // Create temporary directory for processing
+      const tmpDir = tmp.dirSync({
+        unsafeCleanup: true,
+        postfix: '-archive',
+      })
+
+      try {
+        const result = await this.processFileInTempDir(
           filePath,
           tmpDir.name,
-          fileTypeEnum,
+          updateCallback,
         )
-      } else if (fileTypeEnum === FileType.IMAGE) {
-        result = await processor.processImage(filePath, tmpDir.name)
+        await this.moveProcessedFiles(result, task, itemId, updateCallback)
+
+        // Clean up
+        fileUtils.remove(filePath)
+      } catch (error) {
+        console.error(`Error processing item ${itemId}:`, error)
+        await updateCallback({
+          taskStatus: 'FAILED',
+          taskNotes: error instanceof Error ? error.message : String(error),
+        })
+      } finally {
+        tmpDir.removeCallback()
+        // Continue processing queue
+        setImmediate(() => this.checkQueue())
       }
-
-      const fileId = createId()
-
-      // Save files where they belong
-      const movePromises: Promise<void>[] = []
-      Object.keys(result.createdFiles).forEach((category) => {
-        if (category === 'original') {
-          movePromises.push(
-            fileUtils.moveAsync(
-              result.createdFiles[category],
-              fileUtils.resolvePath(
-                options.dist,
-                options.directories[
-                  category as keyof typeof options.directories
-                ],
-                `${fileId}.${task.ext}`,
-              ),
-            ),
-          )
-        } else {
-          Object.keys(result.createdFiles[category]).forEach((ext) => {
-            movePromises.push(
-              fileUtils.moveAsync(
-                result.createdFiles[category][ext],
-                fileUtils.resolvePath(
-                  options.dist,
-                  options.directories[category],
-                  `${fileId}.${ext}`,
-                ),
-              ),
-            )
-          })
-        }
+    } catch (error) {
+      console.error(`Error setting up processing for item ${itemId}:`, error)
+      await TaskActions.mUpdate(ctx, {
+        itemId,
+        changes: {
+          taskStatus: 'FAILED',
+          taskNotes: error instanceof Error ? error.message : String(error),
+        },
       })
-      // When all are done, delete tmp-dir
-      await Promise.all(movePromises)
-      fileUtils.remove(filePath)
-
-      itemData.relHeight = result.relHeight
-      itemData.compressedPath = `${options.directories.compressed}/${fileId}`
-      itemData.thumbnailPath = `${options.directories.thumbnail}/${fileId}`
-      itemData.originalPath = `${options.directories.original}/${fileId}.${task.ext}`
-
-      // TODO: Create item
-      const itemId = await ItemActions.mCreate(ctx, itemData)
-      await update({ status: 'DONE', createdPostId: itemId })
-    } catch (e: any) {
-      tmpDir.removeCallback()
-      await update({ status: 'FAILED', notes: e.toString() })
-    } finally {
-      tmpDir.removeCallback()
-      this.checkQueue() // TODO, this is recursive
     }
   }
 
-  async streamToFile(readStream: stream.Readable, path: string[]) {
-    const filePath = fileUtils.resolvePath(...path)
+  private async processFileInTempDir(
+    filePath: string,
+    tmpDirName: string,
+    updateCallback: UpdateCallback,
+  ) {
+    const processor = new FileProcessor(updateCallback)
 
+    const typedStream = await fileTypeFromStream(fs.createReadStream(filePath))
+    if (!typedStream) {
+      throw new InputError('File-Type not recognized')
+    }
+
+    const mime = typedStream.mime
+    const fileType = this.determineFileType(mime)
+
+    let result
+    if (fileType === FileType.GIF || fileType === FileType.VIDEO) {
+      result = await processor.processVideo(filePath, tmpDirName, fileType)
+    } else if (fileType === FileType.IMAGE) {
+      result = await processor.processImage(filePath, tmpDirName)
+    } else {
+      throw new InputError(`Unsupported file type: ${fileType}`)
+    }
+
+    return { result, fileType }
+  }
+
+  private async moveProcessedFiles(
+    { result, fileType }: { result: any; fileType: FileType },
+    _task: ItemModel,
+    _itemId: number,
+    updateCallback: UpdateCallback,
+  ): Promise<void> {
+    const fileId = createId()
+    const movePromises: Promise<void>[] = []
+
+    // Derive extension from file type
+    const ext = this.getExtensionFromFileType(fileType)
+
+    // Move processed files to their final destinations
+    Object.keys(result.createdFiles).forEach((category) => {
+      if (category === 'original') {
+        const destPath = this.pathManager.getOriginalPath(fileId, ext)
+        movePromises.push(
+          fileUtils.moveAsync(result.createdFiles[category], destPath),
+        )
+      } else {
+        const files = result.createdFiles[category]
+        Object.keys(files).forEach((fileExt) => {
+          const destPath =
+            category === 'compressed'
+              ? this.pathManager.getCompressedPath(fileId, fileExt)
+              : this.pathManager.getThumbnailPath(fileId, fileExt)
+          movePromises.push(fileUtils.moveAsync(files[fileExt], destPath))
+        })
+      }
+    })
+
+    await Promise.all(movePromises)
+
+    // Update database with final paths and status
+    await updateCallback({
+      type: fileType,
+      taskStatus: 'DONE',
+      relativeHeight: result.relHeight.toString(),
+      compressedPath: this.pathManager.getRelativeCompressedPath(fileId),
+      thumbnailPath: this.pathManager.getRelativeThumbnailPath(fileId),
+      originalPath: this.pathManager.getRelativeOriginalPath(fileId, ext),
+    })
+  }
+
+  /**
+   * Streams data to a file path
+   *
+   * @param {stream.Readable} readStream The readable stream
+   * @param {string} filePath The destination file path
+   * @returns {Promise<string>} The file path
+   */
+  private async streamToFile(
+    readStream: stream.Readable,
+    filePath: string,
+  ): Promise<string> {
     try {
       await pipeline(readStream, fs.createWriteStream(filePath))
-    } catch (e) {
-      fs.unlinkSync(filePath)
-      throw e
-    }
-    return filePath
-  }
-
-  /** Runs at startup to check if there are orphaned tasks from a server crash */
-  private async performCleanup() {
-    const release = await this.taskMutex.acquire()
-    try {
-      const ctx = Context.createServerContext()
-      const ids = await TaskActions.mCleanup(ctx)
-      ids.forEach((id) =>
-        fileUtils.remove(
-          fileUtils.resolvePath(
-            options.dist,
-            options.directories.queue,
-            id.toString(),
-          ),
-        ),
-      )
-    } finally {
-      release()
-      this.checkQueue()
+      return filePath
+    } catch (error) {
+      // Clean up failed file
+      try {
+        fs.unlinkSync(filePath)
+      } catch (unlinkError) {
+        console.warn('Failed to clean up failed file:', unlinkError)
+      }
+      throw error
     }
   }
-}
 
-function getKind(mimeType: string): string {
-  // Treat GIFs as videos
-  if (mimeType === 'image/gif') {
-    return 'video'
+  /**
+   * Validates that a MIME type is supported
+   *
+   * @param {string} mimeType The MIME type to validate
+   * @returns {void}
+   */
+  private validateFileType(mimeType: string): void {
+    this.getFileKind(mimeType) // Will throw if unsupported
   }
-  if (mimeType === 'application/vnd.ms-asf') {
-    return 'video'
+
+  /** Determines the file type enum from MIME type */
+  private determineFileType(mimeType: string): FileType {
+    if (mimeType === 'image/gif') {
+      return FileType.GIF
+    }
+
+    const kind = this.getFileKind(mimeType)
+    return kind === 'video' ? FileType.VIDEO : FileType.IMAGE
   }
-  switch (mimeType.split('/')[0]) {
-    case 'image':
-      return 'image'
-    case 'video':
+
+  /**
+   * Gets the general file kind from MIME type
+   *
+   * @param {string} mimeType The MIME type to analyze
+   * @returns {'image' | 'video'} The file kind (image or video)
+   */
+  private getFileKind(mimeType: string): 'image' | 'video' {
+    // Treat GIFs as videos for processing
+    if (mimeType === 'image/gif' || mimeType === 'application/vnd.ms-asf') {
       return 'video'
-    default:
-      throw new InputError('File-Type is not supported')
+    }
+
+    const [primaryType] = mimeType.split('/')
+    switch (primaryType) {
+      case 'image':
+        return 'image'
+      case 'video':
+        return 'video'
+      default:
+        throw new InputError('File-Type is not supported')
+    }
+  }
+
+  /**
+   * Gets a file extension from a FileType enum
+   *
+   * @param {FileType} fileType The file type enum
+   * @returns {string} A default file extension for the type
+   */
+  private getExtensionFromFileType(fileType: FileType): string {
+    switch (fileType) {
+      case FileType.IMAGE:
+        return 'jpg'
+      case FileType.VIDEO:
+        return 'mp4'
+      case FileType.GIF:
+        return 'gif'
+      default:
+        return 'bin'
+    }
   }
 }

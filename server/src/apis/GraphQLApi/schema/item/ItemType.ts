@@ -102,15 +102,16 @@ export const ProcessingItemType = new GraphQLObjectType({
   fields: () => ({
     // ItemInterface fields
     id: globalIdField(itemHashType),
-    post: { type: new GraphQLNonNull(PostType) },
-    creator: { type: new GraphQLNonNull(UserType) },
+    post: { type: new GraphQLNonNull(PostType), resolve: resolvePost },
+    creator: { type: new GraphQLNonNull(UserType), resolve: resolveCreator },
     position: { type: new GraphQLNonNull(GraphQLInt) },
     description: { type: new GraphQLNonNull(GraphQLString) },
     updatedAt: { type: new GraphQLNonNull(DateTime) },
     createdAt: { type: new GraphQLNonNull(DateTime) },
     // Type specific fields
-    progress: { type: new GraphQLNonNull(GraphQLInt) },
-    status: { type: new GraphQLNonNull(TaskStatus) },
+    taskProgress: { type: GraphQLInt },
+    taskStatus: { type: new GraphQLNonNull(TaskStatus) },
+    taskNotes: { type: GraphQLString },
   }),
 })
 

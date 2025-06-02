@@ -50,7 +50,7 @@ export default class TaskModel extends BaseModel {
 
   /// Loaders
   static getLoaders() {
-    const getById = new DataLoader<number, TaskModel>(this.tasksByIds)
+    const getById = new DataLoader<number, TaskModel>(TaskModel.tasksByIds)
 
     return { getById }
   }

@@ -202,10 +202,12 @@ export type Mutation = {
   createKeyword: Keyword;
   /** Creates a new Post */
   createPost: Post;
+  /** Deletes an item from a post and reorders remaining items. */
+  deleteItem: Scalars['Boolean']['output'];
   /** Deleted a keyword. */
   deleteKeyword: Scalars['Boolean']['output'];
-  /** Deletes list of posts and returns list of the ones that were actually deleted. */
-  deletePosts: Array<Scalars['ID']['output']>;
+  /** Deletes a post and all its associated items and files. */
+  deletePost: Scalars['Boolean']['output'];
   /** Edits a post. */
   editPost: Post;
   /** Associates the Telegram ID of a user with their Archive Profil. */
@@ -214,6 +216,12 @@ export type Mutation = {
   login: Scalars['Boolean']['output'];
   /** Terminates the current users session. */
   logout: Scalars['Boolean']['output'];
+  /** Merges one post into another, moving all items and optionally keywords. */
+  mergePost: Scalars['Boolean']['output'];
+  /** Moves an item from one post to another. */
+  moveItem: Scalars['Boolean']['output'];
+  /** Reorders an item within a post to a new position. */
+  reorderItem: Scalars['Int']['output'];
   /** Revokes the session of a user. */
   revokeSession: Scalars['Boolean']['output'];
   /** Sets the user's dark-mode preference. */
@@ -250,13 +258,18 @@ export type MutationCreatePostArgs = {
 };
 
 
+export type MutationDeleteItemArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type MutationDeleteKeywordArgs = {
   id: Scalars['String']['input'];
 };
 
 
-export type MutationDeletePostsArgs = {
-  ids: Array<Scalars['ID']['input']>;
+export type MutationDeletePostArgs = {
+  id: Scalars['ID']['input'];
 };
 
 
@@ -265,6 +278,7 @@ export type MutationEditPostArgs = {
   items?: InputMaybe<Array<EditItemInput>>;
   keywords?: InputMaybe<Array<Scalars['ID']['input']>>;
   language?: InputMaybe<Language>;
+  newItems?: InputMaybe<Array<NewItemInput>>;
   title?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -286,6 +300,26 @@ export type MutationLoginArgs = {
 };
 
 
+export type MutationMergePostArgs = {
+  mergeKeywords?: InputMaybe<Scalars['Boolean']['input']>;
+  sourcePostId: Scalars['ID']['input'];
+  targetPostId: Scalars['ID']['input'];
+};
+
+
+export type MutationMoveItemArgs = {
+  itemId: Scalars['ID']['input'];
+  keepEmptyPost?: InputMaybe<Scalars['Boolean']['input']>;
+  targetPostId: Scalars['ID']['input'];
+};
+
+
+export type MutationReorderItemArgs = {
+  id: Scalars['ID']['input'];
+  newPosition: Scalars['Int']['input'];
+};
+
+
 export type MutationRevokeSessionArgs = {
   id: Scalars['ID']['input'];
 };
@@ -304,6 +338,13 @@ export type MutationSignupArgs = {
 
 
 export type MutationUploadProfilePictureArgs = {
+  file: Scalars['Upload']['input'];
+};
+
+export type NewItemInput = {
+  caption?: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
+  /** The file to upload. */
   file: Scalars['Upload']['input'];
 };
 
@@ -382,8 +423,9 @@ export type ProcessingItem = Item & Node & {
   id: Scalars['ID']['output'];
   position: Scalars['Int']['output'];
   post: Post;
-  progress: Scalars['Int']['output'];
-  status: TaskStatus;
+  taskNotes?: Maybe<Scalars['String']['output']>;
+  taskProgress?: Maybe<Scalars['Int']['output']>;
+  taskStatus: TaskStatus;
   updatedAt: Scalars['DateTime']['output'];
 };
 
@@ -495,7 +537,7 @@ export type Subscription = {
 
 
 export type SubscriptionTaskUpdatesArgs = {
-  ids?: InputMaybe<Array<Scalars['String']['input']>>;
+  ids: Array<Scalars['String']['input']>;
 };
 
 /** A task for an uploaded item. */
@@ -555,10 +597,10 @@ export type TaskUpdate = {
   __typename?: 'TaskUpdate';
   /** The ID of an object */
   id: Scalars['ID']['output'];
+  /** The updated or created item. */
+  item?: Maybe<Item>;
   /** Indicates what kind of update this is. */
   kind: UpdateKind;
-  /** The updated or created task. */
-  task?: Maybe<Task>;
 };
 
 /** Enum that specifies if an update contains a new object, an update or if an object has been deleted. */
@@ -679,10 +721,49 @@ export type EditPostMutationVariables = Exact<{
   keywords?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
   language?: InputMaybe<Language>;
   items?: InputMaybe<Array<EditItemInput> | EditItemInput>;
+  newItems?: InputMaybe<Array<NewItemInput> | NewItemInput>;
 }>;
 
 
-export type EditPostMutation = { __typename?: 'Mutation', editPost: { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } } };
+export type EditPostMutation = { __typename?: 'Mutation', editPost: { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } } };
+
+export type DeleteItemMutationVariables = Exact<{
+  deleteItemId: Scalars['ID']['input'];
+}>;
+
+
+export type DeleteItemMutation = { __typename?: 'Mutation', deleteItem: boolean };
+
+export type ReorderItemMutationVariables = Exact<{
+  reorderItemId: Scalars['ID']['input'];
+  newPosition: Scalars['Int']['input'];
+}>;
+
+
+export type ReorderItemMutation = { __typename?: 'Mutation', reorderItem: number };
+
+export type DeletePostMutationVariables = Exact<{
+  deletePostId: Scalars['ID']['input'];
+}>;
+
+
+export type DeletePostMutation = { __typename?: 'Mutation', deletePost: boolean };
+
+export type MergePostMutationVariables = Exact<{
+  sourcePostId: Scalars['ID']['input'];
+  targetPostId: Scalars['ID']['input'];
+}>;
+
+
+export type MergePostMutation = { __typename?: 'Mutation', mergePost: boolean };
+
+export type MoveItemMutationVariables = Exact<{
+  itemId: Scalars['ID']['input'];
+  targetPostId: Scalars['ID']['input'];
+}>;
+
+
+export type MoveItemMutation = { __typename?: 'Mutation', moveItem: boolean };
 
 export type KeywordSearchQueryVariables = Exact<{
   input?: InputMaybe<Scalars['String']['input']>;
@@ -722,14 +803,26 @@ export type MeQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type MeQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, darkMode?: boolean | null } | null };
 
-export type PostDataFragment = { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } };
+type ItemData_AudioItem_Fragment = { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
+
+type ItemData_GifItem_Fragment = { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
+
+type ItemData_ImageItem_Fragment = { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
+
+type ItemData_ProcessingItem_Fragment = { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
+
+type ItemData_VideoItem_Fragment = { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
+
+export type ItemDataFragment = ItemData_AudioItem_Fragment | ItemData_GifItem_Fragment | ItemData_ImageItem_Fragment | ItemData_ProcessingItem_Fragment | ItemData_VideoItem_Fragment;
+
+export type PostDataFragment = { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } };
 
 export type PostQueryVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
 
 
-export type PostQuery = { __typename?: 'Query', node?: { __typename?: 'AudioItem' } | { __typename?: 'GifItem' } | { __typename?: 'ImageItem' } | { __typename?: 'Keyword' } | { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } } | { __typename?: 'ProcessingItem' } | { __typename?: 'Session' } | { __typename?: 'Task' } | { __typename?: 'User' } | { __typename?: 'VideoItem' } | null };
+export type PostQuery = { __typename?: 'Query', node?: { __typename?: 'AudioItem' } | { __typename?: 'GifItem' } | { __typename?: 'ImageItem' } | { __typename?: 'Keyword' } | { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } } | { __typename?: 'ProcessingItem' } | { __typename?: 'Session' } | { __typename?: 'Task' } | { __typename?: 'User' } | { __typename?: 'VideoItem' } | null };
 
 export type PostsQueryVariables = Exact<{
   after?: InputMaybe<Scalars['String']['input']>;
@@ -758,6 +851,13 @@ export type SetDarkModeMutationVariables = Exact<{
 
 export type SetDarkModeMutation = { __typename?: 'Mutation', setDarkMode: boolean };
 
+export type TaskUpdatesSubscriptionVariables = Exact<{
+  ids: Array<Scalars['String']['input']> | Scalars['String']['input'];
+}>;
+
+
+export type TaskUpdatesSubscription = { __typename?: 'Subscription', taskUpdates: { __typename?: 'TaskUpdate', kind: UpdateKind, item?: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | null } };
+
 export type UnlinkTelegramMutationVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -770,6 +870,33 @@ export type UploadPictureMutationVariables = Exact<{
 
 export type UploadPictureMutation = { __typename?: 'Mutation', uploadProfilePicture: boolean };
 
+export const ItemDataFragmentDoc = gql`
+    fragment ItemData on Item {
+  __typename
+  createdAt
+  description
+  position
+  id
+  creator {
+    username
+    profilePicture
+  }
+  ... on MediaItem {
+    caption
+    originalPath
+    compressedPath
+  }
+  ... on VisualMediaItem {
+    relativeHeight
+    thumbnailPath
+  }
+  ... on ProcessingItem {
+    taskProgress
+    taskStatus
+    taskNotes
+  }
+}
+    `;
 export const PostDataFragmentDoc = gql`
     fragment PostData on Post {
   id
@@ -789,29 +916,12 @@ export const PostDataFragmentDoc = gql`
   items {
     edges {
       node {
-        __typename
-        createdAt
-        description
-        position
-        id
-        creator {
-          username
-          profilePicture
-        }
-        ... on MediaItem {
-          caption
-          originalPath
-          compressedPath
-        }
-        ... on VisualMediaItem {
-          relativeHeight
-          thumbnailPath
-        }
+        ...ItemData
       }
     }
   }
 }
-    `;
+    ${ItemDataFragmentDoc}`;
 export const SettingsDocument = gql`
     query settings {
   me {
@@ -854,18 +964,44 @@ export const CreateKeywordDocument = gql`
 }
     `;
 export const EditPostDocument = gql`
-    mutation editPost($id: ID!, $title: String, $keywords: [ID!], $language: Language, $items: [EditItemInput!]) {
+    mutation editPost($id: ID!, $title: String, $keywords: [ID!], $language: Language, $items: [EditItemInput!], $newItems: [NewItemInput!]) {
   editPost(
     id: $id
     title: $title
     keywords: $keywords
     language: $language
     items: $items
+    newItems: $newItems
   ) {
     ...PostData
   }
 }
     ${PostDataFragmentDoc}`;
+export const DeleteItemDocument = gql`
+    mutation deleteItem($deleteItemId: ID!) {
+  deleteItem(id: $deleteItemId)
+}
+    `;
+export const ReorderItemDocument = gql`
+    mutation reorderItem($reorderItemId: ID!, $newPosition: Int!) {
+  reorderItem(id: $reorderItemId, newPosition: $newPosition)
+}
+    `;
+export const DeletePostDocument = gql`
+    mutation deletePost($deletePostId: ID!) {
+  deletePost(id: $deletePostId)
+}
+    `;
+export const MergePostDocument = gql`
+    mutation mergePost($sourcePostId: ID!, $targetPostId: ID!) {
+  mergePost(sourcePostId: $sourcePostId, targetPostId: $targetPostId)
+}
+    `;
+export const MoveItemDocument = gql`
+    mutation moveItem($itemId: ID!, $targetPostId: ID!) {
+  moveItem(itemId: $itemId, targetPostId: $targetPostId)
+}
+    `;
 export const KeywordSearchDocument = gql`
     query keywordSearch($input: String) {
   keywords(byName: $input) {
@@ -975,6 +1111,16 @@ export const SetDarkModeDocument = gql`
   setDarkMode(enabled: $enabled)
 }
     `;
+export const TaskUpdatesDocument = gql`
+    subscription taskUpdates($ids: [String!]!) {
+  taskUpdates(ids: $ids) {
+    kind
+    item {
+      ...ItemData
+    }
+  }
+}
+    ${ItemDataFragmentDoc}`;
 export const UnlinkTelegramDocument = gql`
     mutation unlinkTelegram {
   unlinkTelegram
@@ -996,6 +1142,11 @@ const ChangePasswordDocumentString = print(ChangePasswordDocument);
 const ClearProfilePictureDocumentString = print(ClearProfilePictureDocument);
 const CreateKeywordDocumentString = print(CreateKeywordDocument);
 const EditPostDocumentString = print(EditPostDocument);
+const DeleteItemDocumentString = print(DeleteItemDocument);
+const ReorderItemDocumentString = print(ReorderItemDocument);
+const DeletePostDocumentString = print(DeletePostDocument);
+const MergePostDocumentString = print(MergePostDocument);
+const MoveItemDocumentString = print(MoveItemDocument);
 const KeywordSearchDocumentString = print(KeywordSearchDocument);
 const LinkTelegramDocumentString = print(LinkTelegramDocument);
 const LoginDocumentString = print(LoginDocument);
@@ -1006,6 +1157,7 @@ const PostsDocumentString = print(PostsDocument);
 const ResourcesDocumentString = print(ResourcesDocument);
 const RevokeSessionDocumentString = print(RevokeSessionDocument);
 const SetDarkModeDocumentString = print(SetDarkModeDocument);
+const TaskUpdatesDocumentString = print(TaskUpdatesDocument);
 const UnlinkTelegramDocumentString = print(UnlinkTelegramDocument);
 const UploadPictureDocumentString = print(UploadPictureDocument);
 export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
@@ -1027,6 +1179,21 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     editPost(variables: EditPostMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: EditPostMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<EditPostMutation>(EditPostDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'editPost', 'mutation', variables);
+    },
+    deleteItem(variables: DeleteItemMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: DeleteItemMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<DeleteItemMutation>(DeleteItemDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'deleteItem', 'mutation', variables);
+    },
+    reorderItem(variables: ReorderItemMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ReorderItemMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ReorderItemMutation>(ReorderItemDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'reorderItem', 'mutation', variables);
+    },
+    deletePost(variables: DeletePostMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: DeletePostMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<DeletePostMutation>(DeletePostDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'deletePost', 'mutation', variables);
+    },
+    mergePost(variables: MergePostMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: MergePostMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<MergePostMutation>(MergePostDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'mergePost', 'mutation', variables);
+    },
+    moveItem(variables: MoveItemMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: MoveItemMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<MoveItemMutation>(MoveItemDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'moveItem', 'mutation', variables);
     },
     keywordSearch(variables?: KeywordSearchQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: KeywordSearchQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<KeywordSearchQuery>(KeywordSearchDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'keywordSearch', 'query', variables);
@@ -1057,6 +1224,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     setDarkMode(variables: SetDarkModeMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: SetDarkModeMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<SetDarkModeMutation>(SetDarkModeDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'setDarkMode', 'mutation', variables);
+    },
+    taskUpdates(variables: TaskUpdatesSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: TaskUpdatesSubscription; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<TaskUpdatesSubscription>(TaskUpdatesDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'taskUpdates', 'subscription', variables);
     },
     unlinkTelegram(variables?: UnlinkTelegramMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: UnlinkTelegramMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<UnlinkTelegramMutation>(UnlinkTelegramDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'unlinkTelegram', 'mutation', variables);

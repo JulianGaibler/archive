@@ -5,16 +5,19 @@
   import KeywordPicker from '@src/components/KeywordPicker.svelte'
   import { formatDate, titleCase } from '@src/utils'
   import Button from 'tint/components/Button.svelte'
+  import Modal from 'tint/components/Modal.svelte'
+  import ProgressBar from 'tint/components/ProgressBar.svelte'
   import Select from 'tint/components/Select.svelte'
   import Dialog, { type OpenDialog } from 'tint/components/Dialog.svelte'
   import IconEdit from 'tint/icons/20-edit.svg?raw'
-  import IconTrash from 'tint/icons/20-trash.svg?raw'
+  import IconMore from 'tint/icons/20-more.svg?raw'
   import TextField from 'tint/components/TextField.svelte'
   import { getSdk } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
   import IconUpload from 'tint/icons/20-upload.svg?raw'
-  import {createEditManager} from '@src/utils/edit-manager'
+  import { createEditManager } from '@src/utils/edit-manager'
   import { onMount } from 'svelte'
+  import Menu, { type ContextClickHandler } from 'tint/components/Menu.svelte'
 
   const sdk = getSdk(webClient)
 
@@ -25,9 +28,9 @@
   let { result }: Props = $props()
 
   type PostItemType = NonNullable<PostQuery['node']> & { __typename: 'Post' }
-  
+
   const editManager = createEditManager(sdk, result as PostItemType)
-  const {data: editData, post: postObject, loading} = editManager
+  const { data: editData, post: postObject, loading } = editManager
 
   let itemObject = $derived($postObject!.items!.edges!)
   let dropzone = $state<HTMLElement | undefined>(undefined)
@@ -35,12 +38,13 @@
   let showDropzone = $state(false)
   let openDialog = $state<OpenDialog | undefined>(undefined)
 
+  let progress = $derived($editData?.uploadController?.progress)
 
   onMount(() => {
     // editManager.startEdit()
   })
 
-// when generalError is set, open the dialog
+  // when generalError is set, open the dialog
   $effect(() => {
     editManager.setOpenDialog(openDialog)
   })
@@ -67,6 +71,13 @@
     }
     Array.from(e.dataTransfer!.files).forEach((f) => editManager.addFile(f))
   }
+
+  let buttonClick: ContextClickHandler | undefined = $state(undefined)
+
+  const moreActions = [
+    { label: 'Merge post', onClick: () => console.log('Merge post') },
+    { label: 'Delete post', onClick: () => console.log('Delete post') },
+  ]
 </script>
 
 <div class="tint--tinted head">
@@ -124,24 +135,25 @@
     {/if}
     <div class="actions">
       {#if $editData !== undefined}
-        <Button
-          onclick={editManager.cancelEdit}
-          disabled={$loading}>Cancel</Button
-        >
+        <Button onclick={editManager.cancelEdit}>Cancel</Button>
         <Button
           onclick={editManager.submitEdit}
           variant="primary"
-          disabled={$loading}>Save</Button
+          loading={$loading}>Save</Button
         >
       {:else}
-        <Button small={true} icon={true} title="Delete post"
-          >{@html IconTrash}</Button
-        >
         <Button
           small={true}
           icon={true}
           title="Edit post"
           onclick={editManager.startEdit}>{@html IconEdit}</Button
+        >
+        <Button
+          small={true}
+          icon={true}
+          title="Post options"
+          onclick={buttonClick}
+          onmousedown={buttonClick}>{@html IconMore}</Button
         >
       {/if}
     </div>
@@ -151,14 +163,25 @@
   <div class="shrinkwrap">
     {#each itemObject as item}
       {#if item?.node}
-        <PostItem bind:editData={$editData} loading={$loading} itemData={item.node} />
+        <PostItem
+          bind:editData={$editData}
+          loading={$loading}
+          itemData={item.node}
+        />
       {/if}
     {/each}
     {#if $editData !== undefined}
-    {#each Object.keys($editData.uploadItems) as key (key)}
-      <PostItem bind:editData={$editData} uploadItemIndex={key} loading={$loading} />
-    {/each}
-      <button class="tint--tinted upload-button" onclick={() => fileInput?.click()}>
+      {#each Object.keys($editData.uploadItems) as key (key)}
+        <PostItem
+          bind:editData={$editData}
+          uploadItemIndex={key}
+          loading={$loading}
+        />
+      {/each}
+      <button
+        class="tint--tinted upload-button"
+        onclick={() => fileInput?.click()}
+      >
         {@html IconUpload}
         <span>Click or drag to upload new item</span>
       </button>
@@ -196,9 +219,24 @@
   </div>
 </div>
 
-<Dialog bind:openDialog heading="Hmm" actionLabel="Okay">
-  <p>Hello</p>
-</Dialog>
+<Dialog bind:openDialog />
+
+<Modal open={$editData?.isUploading} notClosable>
+  <div class="upload-progress">
+    <h2 class="tint--type-title-serif-3">
+      Uploading {$editData?.uploadItems.length} items
+    </h2>
+    <ProgressBar progress={$progress?.percentage || 0} active showProgress />
+    <Button
+      small
+      onclick={() => {
+        editManager.cancelUpload()
+      }}>Cancel upload</Button
+    >
+  </div>
+</Modal>
+
+<Menu variant="button" bind:contextClick={buttonClick} items={moreActions} />
 
 <style lang="sass">
 .head
@@ -313,4 +351,13 @@
       height: tint.$size-64
   &.show
     visibility: initial
+
+.upload-progress
+  box-sizing: border-box
+  width: min(500px, calc(100vw - tint.$size-32))
+  display: flex
+  flex-direction: column
+  align-items: center
+  gap: tint.$size-32
+  padding: tint.$size-32
 </style>

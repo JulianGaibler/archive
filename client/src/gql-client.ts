@@ -1,6 +1,7 @@
 import { createClient } from 'graphql-ws'
 import { uploadMiddleware } from './utils/middleware'
 import { GraphQLClient } from 'graphql-request'
+import { createProgressFetch } from './utils/custom-fetch'
 
 export const getSsrClient = (token: string | undefined, request: Request) => {
   const headers: { [key: string]: string } = {
@@ -23,6 +24,7 @@ export const webClient = new GraphQLClient('http://localhost:4000/api', {
   errorPolicy: 'all',
   credentials: 'include',
   requestMiddleware: uploadMiddleware,
+  fetch: createProgressFetch(),
 })
 
 export const webSubscriptionsClient =

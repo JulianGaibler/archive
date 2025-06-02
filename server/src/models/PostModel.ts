@@ -35,10 +35,12 @@ export default class PostModel extends BaseModel {
 
   /// Loaders
   static getLoaders() {
-    const getById = new DataLoader<number, PostModel>(this.postsByIds)
-    const getByUser = new DataLoader<number, PostModel[]>(this.postsByUsers)
+    const getById = new DataLoader<number, PostModel>(PostModel.postsByIds)
+    const getByUser = new DataLoader<number, PostModel[]>(
+      PostModel.postsByUsers,
+    )
     const getByKeyword = new DataLoader<number, PostModel[]>(
-      this.postsByKeywords,
+      PostModel.postsByKeywords,
     )
 
     return { getById, getByUser, getByKeyword }

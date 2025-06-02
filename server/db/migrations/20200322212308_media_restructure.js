@@ -4,23 +4,23 @@ export async function up(knex) {
     .dropTable('KeywordToCollection')
     .dropTable('CollectionToPost')
     .dropTable('Collection')
-    .dropTable('Task')
     .raw('DROP SEQUENCE IF EXISTS "Collection_id_seq";')
 
   // No 2: Since we're changing the structure quite a bit, all views,
   // indexes and triggers have to get dropped.
   await knex.raw(`
-        DROP INDEX post_title_trgmidx;
-        DROP INDEX post_caption_trgmidx;
-        DROP INDEX keyword_name_trgmidx;
-        DROP INDEX user_username_trgmidx;
-        DROP INDEX user_username_lower_idx;
+        DROP INDEX IF EXISTS post_title_trgmidx;
+        DROP INDEX IF EXISTS post_caption_trgmidx;
+        DROP INDEX IF EXISTS keyword_name_trgmidx;
+        DROP INDEX IF EXISTS user_username_trgmidx;
+        DROP INDEX IF EXISTS user_username_lower_idx;
 
-        DROP TRIGGER refresh_post_search_view ON "Post";
-        DROP FUNCTION refresh_post_search_view();
-        DROP INDEX idx_search;
+        DROP TRIGGER IF EXISTS refresh_post_search_view ON "Post";
+        DROP FUNCTION IF EXISTS refresh_post_search_view();
+        DROP INDEX IF EXISTS idx_search;
 
-        DROP MATERIALIZED VIEW post_search_view;
+        DROP MATERIALIZED VIEW IF EXISTS post_search_view;
+        DROP TYPE IF EXISTS task_status;
     `)
 
   // No 3: To make writing future queries less annoying, let's change
@@ -116,8 +116,27 @@ export async function up(knex) {
     })
   }
 
+  // Add task fields to item table before dropping task table
+  await knex.schema.alterTable('item', (table) => {
+    table.text('task_notes')
+    table.enu('task_status', ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'], {
+      useNative: true,
+      enumName: 'task_status',
+    }).notNullable().defaultTo('QUEUED')
+    table.specificType('task_progress', 'smallint')
+  })
+
+  // set all items task_status to DONE
+  await knex('item')
+    .update({
+      task_status: 'DONE',
+      task_progress: 100,
+      task_notes: '',
+    })
+
   await knex.schema
     .dropTable('keyword_to_item')
+    .dropTable('Task')
     .alterTable('item', (table) => {
       table.dropColumn('title')
       table.dropColumn('language')
@@ -143,32 +162,23 @@ export async function up(knex) {
       'ALTER TABLE item ADD CONSTRAINT "position" unique(id, position) DEFERRABLE INITIALLY deferred;',
     )
     .raw('ALTER TABLE item ALTER COLUMN POSITION DROP DEFAULT;')
+    .raw('DROP TYPE IF EXISTS "format";')
     .raw('ALTER TYPE "Format" RENAME TO "format";')
-    .raw('DROP TYPE "TaskStatus";')
-    .createTable('task', (table) => {
-      table.increments('id')
-      table.string('ext', 10).notNullable()
-      table.string('mime_type', 255).notNullable()
-      table.text('notes').notNullable()
-      table.text('serialized_item')
-      table
-        .enu('status', ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'], {
-          useNative: true,
-          enumName: 'task_status',
-        })
-        .notNullable()
-      table.integer('uploader_id').references('user.id').onDelete('SET NULL')
-      table.specificType('progress', 'smallint')
-      table.integer('add_to_post_id').references('post.id').onDelete('SET NULL')
-      table
-        .integer('created_item_id')
-        .references('post.id')
-        .onDelete('SET NULL')
-      table.bigInteger('updated_at').notNullable()
-      table.bigInteger('created_at').notNullable()
-    })
+    .raw('ALTER TYPE "format" ADD VALUE IF NOT EXISTS \'PROCESSING\';')
 
   await knex.raw(`
+                DROP TEXT SEARCH CONFIGURATION IF EXISTS public.english_nostop CASCADE;
+                DROP TEXT SEARCH DICTIONARY IF EXISTS english_stem_nostop CASCADE;
+                DROP MATERIALIZED VIEW IF EXISTS item_search_view CASCADE;
+                DROP FUNCTION IF EXISTS refresh_item_search_view_fn() CASCADE;
+                DROP INDEX IF EXISTS idx_text;
+                DROP INDEX IF EXISTS post_title_trgm_idx;
+                DROP INDEX IF EXISTS item_description_trgm_idx;
+                DROP INDEX IF EXISTS item_caption_trgm_idx;
+                DROP INDEX IF EXISTS keyword_name_trgm_idx;
+                DROP INDEX IF EXISTS user_username_trgm_idx;
+                DROP INDEX IF EXISTS user_username_lower_idx;
+
                 CREATE TEXT SEARCH DICTIONARY english_stem_nostop (
                   TEMPLATE = snowball,
                   LANGUAGE =
@@ -232,6 +242,6 @@ export async function up(knex) {
             `)
 }
 
-export async function down(knex) {
+export async function down(_knex) {
   // Haha - no.
 }

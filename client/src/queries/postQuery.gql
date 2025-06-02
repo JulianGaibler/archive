@@ -1,3 +1,29 @@
+fragment ItemData on Item {
+  __typename
+  createdAt
+  description
+  position
+  id
+  creator {
+    username
+    profilePicture
+  }
+  ... on MediaItem {
+    caption
+    originalPath
+    compressedPath
+  }
+  ... on VisualMediaItem {
+    relativeHeight
+    thumbnailPath
+  }
+  ... on ProcessingItem {
+    taskProgress
+    taskStatus
+    taskNotes
+  }
+}
+
 fragment PostData on Post {
   id
   title
@@ -16,24 +42,7 @@ fragment PostData on Post {
   items {
     edges {
       node {
-        __typename
-        createdAt
-        description
-        position
-        id
-        creator {
-          username
-          profilePicture
-        }
-        ... on MediaItem {
-          caption
-          originalPath
-          compressedPath
-        }
-        ... on VisualMediaItem {
-          relativeHeight
-          thumbnailPath
-        }
+        ...ItemData
       }
     }
   }

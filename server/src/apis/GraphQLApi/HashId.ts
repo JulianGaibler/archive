@@ -29,7 +29,6 @@ export default class {
       !VALID_HASH_ID_TYPES.includes(res[0]) ||
       (res[0] as HashIdType) !== hashIdType
     ) {
-      console.log('red', res)
       throw new InputError('ID was invalid.')
     }
 

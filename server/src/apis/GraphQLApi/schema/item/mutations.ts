@@ -66,6 +66,21 @@ export const EditItemInput = new GraphQLInputObjectType({
     },
   },
 })
+export const NewItemInput = new GraphQLInputObjectType({
+  name: 'NewItemInput',
+  fields: {
+    file: {
+      description: 'The file to upload.',
+      type: new GraphQLNonNull(GraphQLUpload),
+    },
+    description: {
+      type: GraphQLString,
+    },
+    caption: {
+      type: GraphQLString,
+    },
+  },
+})
 
 const editItem: GraphQLFieldConfig<any, any, any> = {
   description: 'Edits an item.',

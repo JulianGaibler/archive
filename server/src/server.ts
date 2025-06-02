@@ -52,7 +52,7 @@ export default class {
     // Initialize GraphQL API
     try {
       this.gqlApi = new GraphQLApi()
-    this.gqlApi.init(this.app, this.combinedServer, OPTIONS)
+      this.gqlApi.init(this.app, this.combinedServer, OPTIONS)
     } catch (e) {
       console.error('Error initializing GraphQL API', e)
       throw e

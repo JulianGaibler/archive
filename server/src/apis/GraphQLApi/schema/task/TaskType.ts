@@ -111,9 +111,9 @@ export const TaskUpdate = new GraphQLObjectType({
       description: 'Indicates what kind of update this is.',
       type: new GraphQLNonNull(UpdateKind),
     },
-    task: {
-      description: 'The updated or created task.',
-      type: TaskType,
+    item: {
+      description: 'The updated or created item.',
+      type: ItemType,
     },
   }),
 })

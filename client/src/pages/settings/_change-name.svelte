@@ -92,9 +92,7 @@
 <form onsubmit={tryChangePicture} class="update">
   <TextField id="file" label="Name" bind:value={newName} error={inputError} />
   <div class="flex-center">
-    <Button small variant="primary" submit={true} {loading}
-      >Update name</Button
-    >
+    <Button small variant="primary" submit={true} {loading}>Update name</Button>
   </div>
 </form>
 

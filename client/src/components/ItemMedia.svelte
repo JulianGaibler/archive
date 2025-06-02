@@ -16,7 +16,7 @@
   // Helper function to determine media type from File
   function getMediaType(file: File): 'image' | 'video' | 'gif' | 'unsupported' {
     const mimeType = file.type.toLowerCase()
-    
+
     if (mimeType.startsWith('image/')) {
       if (mimeType === 'image/gif') {
         return 'gif'
@@ -25,7 +25,7 @@
     } else if (mimeType.startsWith('video/')) {
       return 'video'
     }
-    
+
     return 'unsupported'
   }
 
@@ -36,13 +36,17 @@
 
   // Determine what we're rendering
   let mediaType = $derived(
-    item 
-      ? (item.__typename === 'ImageItem' ? 'image' : 
-         item.__typename === 'VideoItem' ? 'video' : 
-         item.__typename === 'GifItem' ? 'gif' : 'unsupported')
-      : file 
-      ? getMediaType(file)
-      : 'unsupported'
+    item
+      ? item.__typename === 'ImageItem'
+        ? 'image'
+        : item.__typename === 'VideoItem'
+          ? 'video'
+          : item.__typename === 'GifItem'
+            ? 'gif'
+            : 'unsupported'
+      : file
+        ? getMediaType(file)
+        : 'unsupported',
   )
 
   let isImage = $derived(mediaType === 'image')
@@ -67,18 +71,12 @@
           alt="No alt text provided"
         />
       {:else if file}
-        <img
-          src={getFileUrl(file)}
-          alt="No alt text provided"
-        />
+        <img src={getFileUrl(file)} alt="No alt text provided" />
       {/if}
     </picture>
   {:else if isVideo || isGif}
     <!-- svelte-ignore a11y_media_has_caption -->
-    <video
-      controls={isVideo}
-      loop={isGif}
-    >
+    <video controls={isVideo} loop={isGif}>
       {#if item}
         <source
           src={getConvertedSrcPath(item.compressedPath, item.__typename, false)}
@@ -89,10 +87,7 @@
           type="video/mp4"
         />
       {:else if file}
-        <source
-          src={getFileUrl(file)}
-          type={file.type}
-        />
+        <source src={getFileUrl(file)} type={file.type} />
       {/if}
     </video>
   {:else}

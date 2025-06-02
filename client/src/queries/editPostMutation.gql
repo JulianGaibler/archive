@@ -6,6 +6,7 @@ mutation editPost(
   $keywords: [ID!]
   $language: Language
   $items: [EditItemInput!]
+  $newItems: [NewItemInput!]
 ) {
   editPost(
     id: $id
@@ -13,7 +14,28 @@ mutation editPost(
     keywords: $keywords
     language: $language
     items: $items
+    newItems: $newItems
   ) {
     ...PostData
   }
+}
+
+mutation deleteItem($deleteItemId: ID!) {
+  deleteItem(id: $deleteItemId)
+}
+
+mutation reorderItem($reorderItemId: ID!, $newPosition: Int!) {
+  reorderItem(id: $reorderItemId, newPosition: $newPosition)
+}
+
+mutation deletePost($deletePostId: ID!) {
+  deletePost(id: $deletePostId)
+}
+
+mutation mergePost($sourcePostId: ID!, $targetPostId: ID!) {
+  mergePost(sourcePostId: $sourcePostId, targetPostId: $targetPostId)
+}
+
+mutation moveItem($itemId: ID!, $targetPostId: ID!) {
+  moveItem(itemId: $itemId, targetPostId: $targetPostId)
 }

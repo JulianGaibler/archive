@@ -3,10 +3,10 @@ import { Model, knexSnakeCaseMappers } from 'objection'
 import knexfile from '../knexfile.js'
 
 export default class Connection {
-  knexInstance: Knex<any, unknown[]> | null = null
+  static knexInstance: Knex<any, unknown[]> | null = null
 
   async connect(): Promise<void> {
-    if (this.knexInstance) {
+    if (Connection.knexInstance) {
       return
     }
 
@@ -14,18 +14,18 @@ export default class Connection {
       ;(knexfile.connection as any).database += '_test'
     }
 
-    this.knexInstance = knex({
+    Connection.knexInstance = knex({
       ...knexfile,
       ...knexSnakeCaseMappers(),
     })
-    Model.knex(this.knexInstance)
+    Model.knex(Connection.knexInstance)
   }
 
   async close(): Promise<void> {
-    if (this.knexInstance == null) {
+    if (Connection.knexInstance == null) {
       return Promise.resolve()
     }
-    await this.knexInstance.destroy()
+    await Connection.knexInstance.destroy()
   }
 
   static async createTestDB(): Promise<void> {

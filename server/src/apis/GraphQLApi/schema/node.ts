@@ -34,7 +34,7 @@ export const { nodeInterface, nodeField, nodesField } =
         case HashIdTypes.SESSION:
           return SessionActions.qSession(ctx, { sessionId: id })
         case HashIdTypes.TASK:
-          return TaskActions.qTask(ctx, { taskId: id })
+          return TaskActions.qTask(ctx, { itemIds: id })
         case HashIdTypes.KEYWORD:
           return KeywordActions.qKeyword(ctx, { keywordId: id })
         case HashIdTypes.USER:

@@ -10,7 +10,7 @@
 
   let { user }: Props = $props()
 
-  let contextClick: ContextClickHandler | undefined = $state(undefined)
+  let buttonClick: ContextClickHandler | undefined = $state(undefined)
 
   const tabActions = [
     { label: 'Settings', onClick: () => document.location.assign('/settings') },
@@ -18,11 +18,11 @@
   ]
 </script>
 
-<button onclick={contextClick} onmousedown={contextClick}>
+<button onclick={buttonClick} onmousedown={buttonClick}>
   <UserPicture {user} />
 </button>
 
-<Menu variant="button" bind:contextClick items={tabActions} />
+<Menu variant="button" bind:contextClick={buttonClick} items={tabActions} />
 
 <style lang="sass">
   button

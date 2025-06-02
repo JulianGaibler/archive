@@ -7,31 +7,57 @@ const isExtractableFile = <ValueType>(value: ValueType) => {
   )
 }
 
+interface ExtractedFile {
+  variableKey: string
+  file: File | Blob
+}
+
+const extractFilesRecursively = (
+  value: unknown,
+  path: string[] = [],
+): ExtractedFile[] => {
+  // Handle null/undefined
+  if (value == null) {
+    return []
+  }
+
+  // Handle direct file
+  if (isExtractableFile(value)) {
+    return [
+      {
+        variableKey: path.join('.'),
+        file: value as File | Blob,
+      },
+    ]
+  }
+
+  // Handle arrays
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) =>
+      extractFilesRecursively(item, [...path, index.toString()]),
+    )
+  }
+
+  // Handle objects (but not File/Blob instances or other special objects)
+  if (
+    typeof value === 'object' &&
+    value.constructor === Object // Only plain objects
+  ) {
+    return Object.entries(value).flatMap(([key, val]) =>
+      extractFilesRecursively(val, [...path, key]),
+    )
+  }
+
+  // Handle primitives and other types
+  return []
+}
+
 export const uploadMiddleware: RequestMiddleware = (request) => {
   const files = Object.entries(request.variables || {}).flatMap(
     ([variableKey, variableValue]) => {
-      if (isExtractableFile(variableValue)) {
-        return [
-          {
-            variableKey: [`variables.${variableKey}`],
-            file: variableValue,
-          },
-        ]
-      }
-
-      if (
-        Array.isArray(variableValue) &&
-        variableValue.every((item) => isExtractableFile(item))
-      ) {
-        return variableValue.map((file, fileIndex) => {
-          return {
-            variableKey: [`variables.${variableKey}.${fileIndex}`],
-            file,
-          }
-        })
-      }
-
-      return []
+      return extractFilesRecursively(variableValue, [
+        `variables.${variableKey}`,
+      ])
     },
   )
 
@@ -45,7 +71,7 @@ export const uploadMiddleware: RequestMiddleware = (request) => {
   const map = files.reduce((accumulator, { variableKey }, index) => {
     return {
       ...accumulator,
-      [index.toString()]: variableKey,
+      [index.toString()]: [variableKey],
     }
   }, {})
 

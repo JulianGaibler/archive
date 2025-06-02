@@ -76,8 +76,6 @@ export default class {
     }
     const password = await hashPassword(fields.password)
 
-    console.log('Creating user', password)
-
     const user = (await UserModel.query().insert({
       username: fields.username,
       name: fields.name,

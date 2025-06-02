@@ -4,6 +4,7 @@
   import Button from 'tint/components/Button.svelte'
   import TextField from 'tint/components/TextField.svelte'
   import ItemMedia from '@src/components/ItemMedia.svelte'
+  import ProcessingMediaStatus from '@src/components/ProcessingMediaStatus.svelte'
   import IconMore from 'tint/icons/20-more.svg?raw'
   import { getConvertedSrcPath, getPlainSrcPath } from '@src/utils'
   import type { PostUpdate, UploadItem } from '@src/utils/edit-manager'
@@ -53,7 +54,9 @@
 
 <article>
   {#if '__typename' in item}
-    {#if item.__typename === 'ImageItem' || item.__typename === 'VideoItem' || item.__typename === 'GifItem'}
+    {#if item.__typename === 'ProcessingItem'}
+      <ProcessingMediaStatus {item} />
+    {:else}
       <ItemMedia {item} />
     {/if}
     <div class="info">
@@ -140,7 +143,6 @@
     gap: tint.$size-12
     &:not(:last-child)
       margin-block-end: tint.$size-32
-
   .info
     display: flex
     align-items: center

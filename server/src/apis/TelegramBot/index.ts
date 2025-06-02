@@ -31,20 +31,29 @@ export default class {
   }
 }
 
+/**
+ * Middleware function for Telegram bot requests
+ *
+ * @param {any} msgCtx - Telegram message context
+ * @param {Function} next - Next handler function
+ * @returns {Promise<any>} Result of the next handler
+ */
 async function middleware(
   msgCtx: any,
   next: (ctx: Context, msgCtx: any) => any,
 ) {
-  const serverCtx = Context.createServerContext()
+  const serverCtx = Context.createPrivilegedContext()
   const user = await UserActions.qUser(serverCtx, {
     telegramId: msgCtx.update.message.from.id.toString(),
   })
-  const ctx = new Context(null, null, user.id)
+
+  // Create a privileged context for the telegram user
+  const ctx = Context.createPrivilegedContextWithUser(user.id)
   return next(ctx, msgCtx)
 }
 
 async function checkStatus(ctx: Context, msgCtx: any) {
-  if (ctx.userIId) {
+  if (ctx.userId) {
     msgCtx.reply(
       'You are already connected to Archive. Go to archive.jwels.berlin/settings if you want to unlink your Account.',
     )
@@ -69,7 +78,7 @@ async function checkStatus(ctx: Context, msgCtx: any) {
 async function inlineQuery(ctx: Context, msgCtx: any) {
   const { id, from, query, offset: cursor } = msgCtx.inlineQuery
 
-  if (!ctx.userIId) {
+  if (!ctx.userId) {
     msgCtx.telegram.answerInlineQuery(id, [], {
       is_personal: true,
       next_offset: '',

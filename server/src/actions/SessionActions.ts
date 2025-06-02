@@ -47,7 +47,7 @@ export default class {
   static async qVerify(fields: {
     token: string
     userAgent: string
-    latestIp: string
+    latestIp?: string
   }): Promise<number | null> {
     const oldSession = await SessionModel.query().findOne({
       token: fields.token,
@@ -55,9 +55,15 @@ export default class {
     if (!oldSession) {
       return null
     }
-    const updatedSession = await oldSession.$query().updateAndFetch({
+    const updateFields: { userAgent: string; latestIp?: string } = {
       userAgent: fields.userAgent,
-    })
+    }
+    if (fields.latestIp) {
+      updateFields.latestIp = fields.latestIp
+    }
+    const updatedSession = await oldSession
+      .$query()
+      .updateAndFetch(updateFields)
 
     // Diff between last update and now is more than 5 days
     if (Math.abs(updatedSession.updatedAt.getTime() - Date.now()) > 4.32e8) {
@@ -75,6 +81,11 @@ export default class {
   /**
    * Create a new session for the user and return the token Server internal
    * function. Do not use expose to client without checking permissions.
+   *
+   * @param {Context} ctx - The context object containing request information
+   * @param {object} fields - Object containing userId
+   * @param {number} fields.userId - The user ID to create a session for
+   * @returns {Promise<string>} Promise that resolves to the session token
    */
   static async _mCreate(
     ctx: Context,
@@ -83,20 +94,30 @@ export default class {
     const buffer = randomBytes(32)
     const token = buffer.toString('base64')
 
-    const userAgent = ctx.req.headers['user-agent']
-      ? ctx.req.headers['user-agent']
-      : ''
+    const userAgent = ctx.req?.headers['user-agent'] || ''
+    const firstIp = ctx.req?.ip || ''
+    const latestIp = ctx.req?.ip || ''
+
     await SessionModel.query().insert({
       token,
       userId: fields.userId,
       userAgent,
-      firstIp: ctx.req.ip,
-      latestIp: ctx.req.ip,
+      firstIp,
+      latestIp,
     })
     return token
   }
 
-  /** Revoke a session from a user */
+  /**
+   * Revoke a session from a user
+   *
+   * @param {Context} ctx - The context object
+   * @param {object} fields - Object containing sessionId or token
+   * @param {number} [fields.sessionId] - The session ID to revoke
+   * @param {string} [fields.token] - The session token to revoke
+   * @returns {Promise<boolean>} Promise that resolves to true if session was
+   *   revoked
+   */
   static async mRevoke(
     ctx: Context,
     fields: { sessionId?: number; token?: string },
@@ -126,7 +147,15 @@ export default class {
     return deletedRows > 0
   }
 
-  static async mRevokeCurrent(ctx: Context, token: string): Promise<boolean> {
+  /**
+   * Revoke the current session
+   *
+   * @param {Context} _ctx - The context object (unused)
+   * @param {string} token - The session token to revoke
+   * @returns {Promise<boolean>} Promise that resolves to true if session was
+   *   revoked
+   */
+  static async mRevokeCurrent(_ctx: Context, token: string): Promise<boolean> {
     const deletedRows = (await SessionModel.query()
       .delete()
       .findOne({ token })) as any as number

@@ -1,7 +1,7 @@
 import { GraphQLObjectType, GraphQLSchema } from 'graphql'
 import { nodeField, nodesField } from './node'
 
-import itemQueries from './item/queries'
+// import itemQueries from './item/queries'
 import keywordQueries from './keyword/queries'
 import postQueries from './post/queries'
 import resourceQueries from './resources/queries'
@@ -9,7 +9,7 @@ import sessionQueries from './session/queries'
 import taskQueries from './task/queries'
 import userQueries from './user/queries'
 
-import itemMutations from './item/mutations'
+// import itemMutations from './item/mutations'
 import keywordMutations from './keyword/mutations'
 import postMutations from './post/mutations'
 import sessionMutations from './session/mutations'
@@ -24,7 +24,6 @@ import {
   GifItemType,
   AudioItemType,
 } from './item/ItemType'
-
 
 export default new GraphQLSchema({
   query: new GraphQLObjectType({
