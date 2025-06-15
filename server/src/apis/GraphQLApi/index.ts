@@ -1,12 +1,9 @@
-import express, { Request, Response, json } from 'express'
+import express from 'express'
 import { Server as HttpServer } from 'http'
 import schema from './schema'
-import AuthCookieUtils from './AuthCookieUtils'
-import SessionActions from '@src/actions/SessionActions'
-import { ExecutionArgs, GraphQLError } from 'graphql'
 import Context from '@src/Context'
 import { ApolloServer } from '@apollo/server'
-import { expressMiddleware } from '@apollo/server/express4'
+import { expressMiddleware } from '@as-integrations/express5'
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer'
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default'
 // import { ApolloServerPluginLandingPageDisabled } from '@apollo/server/plugin/disabled'
@@ -14,14 +11,13 @@ import graphqlUploadExpress from 'graphql-upload/graphqlUploadExpress.mjs'
 import FileStorage from '@src/files/FileStorage'
 import { WebSocketServer } from 'ws'
 import { useServer } from 'graphql-ws/use/ws'
-import { Context as WsContext, SubscribeMessage } from 'graphql-ws'
+import { Context as WsContext } from 'graphql-ws'
 import { PostgresPubSub } from '@src/pubsub'
 import knexfile from '@src/../knexfile'
 import topics from '@src/pubsub/topics'
 
 /**
  * This class is responsible for handling all GraphQL requests.
- *
  * @class GraphQLApi
  */
 export default class {
@@ -51,8 +47,8 @@ export default class {
     const serverCleanup = useServer(
       {
         schema,
-        context: (ctx, msg, args) =>
-          this.createSubscriptionContext(ctx, msg, args),
+        context: async (ctx, _msg, _args) =>
+          await this.createSubscriptionContext(ctx),
       },
       wsServer,
     )
@@ -111,7 +107,6 @@ export default class {
 
     app.use(
       options.endpoint,
-      json(),
       expressMiddleware(apollo as any, {
         context: ({ req, res }) => this.createContext(req, res),
       }),
@@ -122,20 +117,15 @@ export default class {
    * Creates a context object for the GraphQL request. With a context object,
    * you can check if a user is authenticated, and have access to the
    * dataloaders.
-   *
-   * @param req The Express request object.
-   * @param res The Express response object.
-   * @returns A promise that resolves to the context object.
+   * @param {express.Request} req - The Express request object.
+   * @param {express.Response} res - The Express response object.
+   * @returns {Promise<Context>} A promise that resolves to the context object.
    */
   private async createContext(req: express.Request, res: express.Response) {
     return await Context.createContext({ type: 'http', req, res })
   }
 
-  private async createSubscriptionContext(
-    ctx: WsContext,
-    _message: SubscribeMessage,
-    _args: ExecutionArgs,
-  ) {
+  private async createSubscriptionContext(ctx: WsContext) {
     return await Context.createContext({
       type: 'websocket',
       extra: ctx.extra,

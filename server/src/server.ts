@@ -19,7 +19,6 @@ const OPTIONS = {
 /**
  * Creates a new express server that serves the GraphQL API and files from the
  * public directory.
- *
  * @class Server
  */
 export default class {
@@ -34,6 +33,10 @@ export default class {
     this.app.set('trust proxy', 'loopback')
     this.app.use(cookieParser())
     this.app.use(cors(corsOptions))
+    
+    // Add JSON middleware globally
+    this.app.use(express.json())
+    
     // Serve public folder in development and do logging
     if (process.env.NODE_ENV === 'development') {
       this.app.use(logger('dev'))
@@ -45,7 +48,7 @@ export default class {
       this.app.use('/content', express.static('public'))
     }
 
-    this.app.get('/hello', (req, res) => {
+    this.app.get('/hello', (_req, res) => {
       res.send('hello')
     })
 
