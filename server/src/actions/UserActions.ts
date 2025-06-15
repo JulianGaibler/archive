@@ -11,6 +11,7 @@ import {
 } from '../errors'
 
 import SessionActions from '@src/actions/SessionActions'
+import RateLimiter from '@src/middleware/RateLimiter'
 
 export default class {
   /// Queries
@@ -93,17 +94,32 @@ export default class {
       throw new RequestError('You are already logged in.')
     }
 
+    // Rate limiting by IP address and username
+    const clientIP = ctx.req?.ip || ctx.req?.socket?.remoteAddress || 'unknown'
+    const rateLimitKey = `${clientIP}:${fields.username.toLowerCase()}`
+
+    try {
+      RateLimiter.checkLoginAttempt(rateLimitKey)
+    } catch (error) {
+      // Rate limit error - still perform timing-constant operations
+      await performTimingConstantAuth(null, fields.password)
+      throw error
+    }
+
+    // Always perform both database lookup and password verification to maintain constant timing
     const user = await UserModel.query()
       .whereRaw('LOWER(username) = ?', fields.username.toLowerCase())
       .first()
-    if (!user) {
-      throw new AuthenticationError('No user found by that name.')
+
+    const valid = await performTimingConstantAuth(user, fields.password)
+
+    // Always use the same error message regardless of whether user exists or password is wrong
+    if (!user || !valid) {
+      throw new AuthenticationError('Invalid credentials')
     }
 
-    const valid = await verifyPassword(user.password, fields.password)
-    if (!valid) {
-      //throw new AuthenticationError('Invalid password')
-    }
+    // Success - clear rate limiting for this identifier
+    RateLimiter.recordSuccessfulLogin(rateLimitKey)
 
     return SessionActions._mCreate(ctx, { userId: user.id })
   }
@@ -206,10 +222,55 @@ export default class {
   }
 }
 
+/**
+ * Hash a password using Argon2id with OWASP recommended parameters
+ *
+ * @param {string} password - The plaintext password to hash
+ * @returns {Promise<string>} Promise resolving to the hashed password
+ */
 function hashPassword(password: string): Promise<string> {
-  return argon2.hash(password, { type: argon2.argon2id })
+  return argon2.hash(password, {
+    type: argon2.argon2id,
+    memoryCost: 19456, // 19 MiB
+    timeCost: 2, // 2 iterations
+    parallelism: 1, // 1 thread
+  })
 }
 
+/**
+ * Verify a password against its hash using Argon2
+ *
+ * @param {string} hash - The stored password hash
+ * @param {string} password - The plaintext password to verify
+ * @returns {Promise<boolean>} Promise resolving to true if password is valid
+ */
 function verifyPassword(hash: string, password: string): Promise<boolean> {
   return argon2.verify(hash, password)
+}
+
+/**
+ * Performs timing-constant authentication to defend against timing attacks.
+ * Always takes roughly the same amount of time regardless of whether the user
+ * exists.
+ *
+ * @param user - The user object (null if user doesn't exist)
+ * @param password - The plaintext password to verify
+ * @returns Promise resolving to true if authentication is valid, false
+ *   otherwise
+ */
+async function performTimingConstantAuth(
+  user: UserModel | null,
+  password: string,
+): Promise<boolean> {
+  if (user) {
+    // User exists, verify their actual password
+    return await verifyPassword(user.password, password)
+  } else {
+    // User doesn't exist, perform dummy verification with same timing characteristics
+    // This dummy hash has the same format as a real Argon2id hash
+    const dummyHash =
+      '$argon2id$v=19$m=19456,t=2,p=1$YWFhYWFhYWFhYWFhYWFhYQ$YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFh'
+    await verifyPassword(dummyHash, password).catch(() => false)
+    return false
+  }
 }

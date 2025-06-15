@@ -1,30 +1,58 @@
 import { Request, Response } from 'express'
+import { COOKIE_MAX_AGE } from '@src/constants/SessionConstants'
+
+// Cookie names - less identifiable than "sessionId" and "token" to reduce fingerprinting
+export const SESSION_COOKIE_NAME = 's-id'
+export const AUTH_COOKIE_NAME = 's-t'
 
 /**
- * Handles setting and retrieving the cookie token. The token cookie is only
- * readable by the server, not by client-side code and requires a secure
- * connection in production.
+ * Handles setting and retrieving the session cookies. The session uses two
+ * cookies:
  *
- * @class AuthCookieUtils
+ * - SESSION_COOKIE_NAME: secure session identifier with high entropy
+ * - AUTH_COOKIE_NAME: random token that must match the hashed token in the
+ *   database Both cookies are only readable by the server, not by client-side
+ *   code and require a secure connection in production.
  */
 export default class AuthCookieUtils {
-  static getAuthCookie(req: Request) {
-    return req.cookies.token || null
+  static getAuthCookies(
+    req: Request,
+  ): { sessionId: string; token: string } | null {
+    const sessionId = req.cookies[SESSION_COOKIE_NAME]
+    const token = req.cookies[AUTH_COOKIE_NAME]
+
+    if (!sessionId || !token) {
+      return null
+    }
+
+    return { sessionId, token }
   }
 
-  static setAuthCookie(res: Response, token: string) {
-    res.cookie('token', token, {
+  static setAuthCookies(res: Response, sessionId: string, token: string) {
+    const isProduction = process.env.NODE_ENV === 'production'
+
+    const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-    })
+      secure: isProduction,
+      maxAge: COOKIE_MAX_AGE,
+      sameSite: 'strict' as const,
+    }
+
+    res.cookie(SESSION_COOKIE_NAME, sessionId, cookieOptions)
+    res.cookie(AUTH_COOKIE_NAME, token, cookieOptions)
   }
 
-  static deleteAuthCookie(res: Response) {
-    res.cookie('token', '', {
+  static deleteAuthCookies(res: Response) {
+    const isProduction = process.env.NODE_ENV === 'production'
+
+    const expiredCookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       expires: new Date(0),
-    })
+      sameSite: 'strict' as const,
+    }
+
+    res.cookie(SESSION_COOKIE_NAME, '', expiredCookieOptions)
+    res.cookie(AUTH_COOKIE_NAME, '', expiredCookieOptions)
   }
 }

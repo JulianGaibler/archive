@@ -1,6 +1,7 @@
 import DataLoader from 'dataloader'
 import { Model, RelationMappings } from 'objection'
 import BaseModel from './BaseModel'
+import { SESSION_EXPIRY_TIME } from '@src/constants/SessionConstants'
 
 import UserModel from './UserModel'
 
@@ -10,7 +11,10 @@ export default class SessionModel extends BaseModel {
 
   /// Attributes
   readonly id!: number
-  readonly token!: string
+  readonly secureSessionId!: string
+  readonly tokenHash!: string
+  readonly secretVersion!: number
+  readonly lastTokenRotation!: number
   readonly userId!: number
   readonly userAgent!: string
   readonly firstIp!: string
@@ -24,7 +28,10 @@ export default class SessionModel extends BaseModel {
 
     properties: {
       id: { type: 'number' },
-      token: { type: 'string' },
+      secureSessionId: { type: 'string' },
+      tokenHash: { type: 'string' },
+      secretVersion: { type: 'number' },
+      lastTokenRotation: { type: 'number' },
       userId: { type: ['number', 'null'] },
       userAgent: { type: 'string' },
       firstIP: { type: 'string' },
@@ -76,7 +83,7 @@ export default class SessionModel extends BaseModel {
     const sessions = await SessionModel.query()
       .orderBy('updatedAt', 'desc')
       .whereIn('userId', userIds as number[])
-      .andWhere('updatedAt', '>=', Date.now() - 4.32e8)
+      .andWhere('updatedAt', '>=', Date.now() - SESSION_EXPIRY_TIME)
 
     return userIds.map((id) => sessions.filter((s) => s.userId === id))
   }

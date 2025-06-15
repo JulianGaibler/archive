@@ -5,9 +5,7 @@ import {
   GraphQLNonNull,
 } from 'graphql'
 import Context from '@src/Context'
-import { sessionHashType } from './SessionType'
 
-import HashId from '../../HashId'
 import SessionActions from '@src/actions/SessionActions'
 
 const revokeSession: GraphQLFieldConfig<any, any, any> = {
@@ -19,9 +17,8 @@ const revokeSession: GraphQLFieldConfig<any, any, any> = {
       type: new GraphQLNonNull(GraphQLID),
     },
   },
-  resolve: async (parent, args, ctx: Context) => {
-    const sessionId = HashId.decode(sessionHashType, args.id)
-    return SessionActions.mRevoke(ctx, { sessionId })
+  resolve: async (_parent, args, ctx: Context) => {
+    return SessionActions.mRevoke(ctx, { sessionId: args.id })
   },
 }
 

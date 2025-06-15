@@ -11,7 +11,10 @@ import {
 } from '@src/models'
 import FileStorage from '@src/files/FileStorage'
 import { PostgresPubSub } from '@src/pubsub'
-import AuthCookieUtils from '@src/apis/GraphQLApi/AuthCookieUtils'
+import AuthCookieUtils, {
+  SESSION_COOKIE_NAME,
+  AUTH_COOKIE_NAME,
+} from '@src/apis/GraphQLApi/AuthCookieUtils'
 import SessionActions from '@src/actions/SessionActions'
 
 const loaders = {
@@ -66,18 +69,33 @@ export default class Context {
     if (args.type === 'http') {
       newContext.req = args.req
       newContext.res = args.res
-      const token = AuthCookieUtils.getAuthCookie(newContext.req as any)
-      if (token) {
+      const cookies = AuthCookieUtils.getAuthCookies(newContext.req as any)
+      if (cookies) {
         const userAgent = newContext.req.headers['user-agent']
           ? newContext.req.headers['user-agent']
           : ''
 
-        newContext.tmp.token = token
-        newContext.userIId = await SessionActions.qVerify({
-          token,
+        newContext.tmp.sessionId = cookies.sessionId
+        newContext.tmp.token = cookies.token
+        const verifyResult = await SessionActions.qVerify({
+          sessionId: cookies.sessionId,
+          token: cookies.token,
           userAgent,
           latestIp: newContext.req.ip || '',
         })
+
+        if (verifyResult) {
+          newContext.userIId = verifyResult.userId
+          // If token was rotated, update the cookies
+          if (verifyResult.rotatedToken) {
+            newContext.tmp.token = verifyResult.rotatedToken
+            AuthCookieUtils.setAuthCookies(
+              newContext.res!,
+              cookies.sessionId,
+              verifyResult.rotatedToken,
+            )
+          }
+        }
       }
     } else if (args.type === 'websocket') {
       const headerArray = args.extra.request.rawHeaders as string[] | undefined
@@ -92,15 +110,25 @@ export default class Context {
         )
         const userAgent = agentIndex !== -1 ? headerArray[agentIndex + 1] : ''
 
-        if (cookies?.token) {
-          newContext.tmp.token = cookies.token
+        if (cookies?.[SESSION_COOKIE_NAME] && cookies?.[AUTH_COOKIE_NAME]) {
+          newContext.tmp.sessionId = cookies[SESSION_COOKIE_NAME]
+          newContext.tmp.token = cookies[AUTH_COOKIE_NAME]
           newContext.tmp.userAgent = userAgent
-          newContext.userIId = await SessionActions.qVerify({
+          const verifyResult = await SessionActions.qVerify({
+            sessionId: cookies.sessionId,
             token: cookies.token,
             userAgent,
             latestIp: undefined,
           })
-          newContext.lastAuthCheck = Date.now()
+
+          if (verifyResult) {
+            newContext.userIId = verifyResult.userId
+            newContext.lastAuthCheck = Date.now()
+            // For websockets, we can't update cookies, but we store the rotated token
+            if (verifyResult.rotatedToken) {
+              newContext.tmp.token = verifyResult.rotatedToken
+            }
+          }
         }
       }
     } else {
@@ -151,9 +179,11 @@ export default class Context {
       throw new AuthenticationError()
     }
     // if this is a websocket context, we need to check the last auth check and if its over 5 minutes, recheck
-    if (!this.tmp.token) {
+    if (!this.tmp.sessionId || !this.tmp.token) {
       console.error(this)
-      throw new Error('Something went wrong with the auth check (no token)')
+      throw new Error(
+        'Something went wrong with the auth check (no session credentials)',
+      )
     }
     if (!this.lastAuthCheck) {
       throw new Error(
@@ -162,13 +192,18 @@ export default class Context {
     }
     if (Date.now() - this.lastAuthCheck > 5 * 60 * 1000) {
       // recheck the token
-      const result = await SessionActions.qVerify({
+      const verifyResult = await SessionActions.qVerify({
+        sessionId: this.tmp.sessionId,
         token: this.tmp.token,
         userAgent: this.tmp.userAgent,
         latestIp: undefined,
       })
-      if (!result || result !== this.userIId) {
+      if (!verifyResult || verifyResult.userId !== this.userIId) {
         throw new AuthenticationError()
+      }
+      // Update stored token if it was rotated
+      if (verifyResult.rotatedToken) {
+        this.tmp.token = verifyResult.rotatedToken
       }
       this.lastAuthCheck = Date.now()
     }

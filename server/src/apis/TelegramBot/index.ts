@@ -1,5 +1,5 @@
 /* eslint-disable camelcase */
-import { createHash, createHmac } from 'crypto'
+import { createHash, createHmac, timingSafeEqual } from 'crypto'
 import { NextFunction, Request, Response } from 'express'
 import Telegraf from 'telegraf'
 
@@ -159,7 +159,15 @@ export function validateAuth({ hash, ...data }) {
     .map((k) => `${k}=${data[k]}`)
     .join('\n')
   const hmac = createHmac('sha256', SECRET).update(checkString).digest('hex')
-  if (hmac !== hash) {
+
+  // Use timing-safe comparison to prevent timing attacks
+  const hashBuffer = Buffer.from(hash, 'hex')
+  const hmacBuffer = Buffer.from(hmac, 'hex')
+
+  if (
+    hashBuffer.length !== hmacBuffer.length ||
+    !timingSafeEqual(hashBuffer, hmacBuffer)
+  ) {
     throw new RequestError('Telegram data was not valid!')
   }
 

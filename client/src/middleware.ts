@@ -3,7 +3,9 @@ import { defineMiddleware } from 'astro/middleware'
 
 export const onRequest = defineMiddleware(
   ({ request, cookies, locals }, next) => {
-    locals.gqlClient = getSsrClient(cookies.get('token')?.value, request)
+    const token = cookies.get('s-t')?.value
+    const sessionId = cookies.get('s-id')?.value
+    locals.gqlClient = getSsrClient(token, sessionId, request)
     return next()
   },
 )

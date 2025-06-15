@@ -51,11 +51,45 @@ export async function up(knex) {
       table.renameColumn('latestIP', 'latest_ip')
       table.renameColumn('updatedAt', 'updated_at')
       table.renameColumn('createdAt', 'created_at')
+
+      // Secure sessions implementation
+      // Add the tokenHash field to store HMAC-SHA256 hashed tokens (64 hex characters)
+      table.string('token_hash', 64).notNullable().defaultTo('')
+      // Add secret version field to track which secret was used to hash the token
+      table.integer('secret_version').notNullable().defaultTo(1)
+      // Add last token rotation timestamp
+      table.bigInteger('last_token_rotation').notNullable().defaultTo(0)
+      // Add a cryptographically secure session identifier for cookies
+      // 32 bytes = 256 bits of entropy (far exceeds OWASP's 128-bit recommendation)
+      table.string('secure_session_id', 44).notNullable().defaultTo('')
     })
     .alterTable('keyword_to_item', (table) => {
       table.renameColumn('post_id', 'item_id')
       table.renameColumn('addedAt', 'added_at')
     })
+
+  // No 3.5: Secure session implementation - replace plain token with hashed token
+  // Check if the unique constraint on token exists and drop it
+  const hasTokenConstraint = await knex.raw(`
+    SELECT constraint_name
+    FROM information_schema.table_constraints
+    WHERE table_name = 'session'
+    AND constraint_type = 'UNIQUE'
+    AND constraint_name LIKE '%token%'
+  `)
+
+  if (hasTokenConstraint.rows.length > 0) {
+    await knex.schema.alterTable('session', (table) => {
+      table.dropUnique(['token'])
+    })
+  }
+
+  // Drop the old token column and add unique constraint on tokenHash and secure_session_id
+  await knex.schema.alterTable('session', (table) => {
+    table.dropColumn('token')
+    table.unique(['token_hash'])
+    table.unique(['secure_session_id'])
+  })
 
   // No 4: Convert posts in items, each contained in one post
   await knex.schema

@@ -30,8 +30,8 @@ const signup: GraphQLFieldConfig<any, any, any> = {
     },
   },
   resolve: async (parent, args, ctx: Context) => {
-    const sessionId = await UserActions.mSignup(ctx, args)
-    AuthCookieUtils.setAuthCookie(ctx.res, sessionId)
+    const { sessionId, token } = await UserActions.mSignup(ctx, args)
+    AuthCookieUtils.setAuthCookies(ctx.res!, sessionId, token)
     return true
   },
 }
@@ -50,8 +50,8 @@ const login: GraphQLFieldConfig<any, any, any> = {
     },
   },
   resolve: async (parent, args, ctx: Context) => {
-    const sessionId = await UserActions.mLogin(ctx, args)
-    AuthCookieUtils.setAuthCookie(ctx.res, sessionId)
+    const { sessionId, token } = await UserActions.mLogin(ctx, args)
+    AuthCookieUtils.setAuthCookies(ctx.res!, sessionId, token)
     return true
   },
 }
@@ -60,9 +60,11 @@ const logout: GraphQLFieldConfig<any, any, any> = {
   description: 'Terminates the current users session.',
   type: new GraphQLNonNull(GraphQLBoolean),
   resolve: async (parent, args, ctx: Context) => {
-    const rv = await SessionActions.mRevoke(ctx, ctx.tmp.token)
+    const rv = await SessionActions.mRevoke(ctx, {
+      sessionId: ctx.tmp.sessionId,
+    })
     if (rv) {
-      AuthCookieUtils.deleteAuthCookie(ctx.res)
+      AuthCookieUtils.deleteAuthCookies(ctx.res!)
     }
     return rv
   },
