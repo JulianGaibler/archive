@@ -37,7 +37,7 @@
       input: search,
     } as KeywordSearchQueryVariables)
 
-    if (!result || 'errors' in result) {
+    if (!result || ('errors' in result && result.errors !== undefined)) {
       error = 'Error fetching keywords.'
       return {
         items: [],

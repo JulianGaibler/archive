@@ -48,10 +48,36 @@ fragment PostData on Post {
   }
 }
 
-query Post($id: ID!) {
-  node(id: $id) {
-    ... on Post {
-      ...PostData
+fragment PostsConnection on PostConnection {
+  edges {
+    node {
+      id
+      title
+      creator {
+        profilePicture
+        username
+      }
+      items(first: 1) {
+        totalCount
+        edges {
+          node {
+            id
+            __typename
+            ... on VisualMediaItem {
+              relativeHeight
+              thumbnailPath
+            }
+            ... on AudioItem {
+              ampThumbnail
+            }
+          }
+        }
+      }
     }
+  }
+  pageInfo {
+    hasNextPage
+    endCursor
+    startCursor
   }
 }

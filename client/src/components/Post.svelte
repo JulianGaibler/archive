@@ -8,6 +8,7 @@
   import Modal from 'tint/components/Modal.svelte'
   import ProgressBar from 'tint/components/ProgressBar.svelte'
   import Select from 'tint/components/Select.svelte'
+  import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
   import Dialog, { type OpenDialog } from 'tint/components/Dialog.svelte'
   import IconEdit from 'tint/icons/20-edit.svg?raw'
   import IconMore from 'tint/icons/20-more.svg?raw'
@@ -17,31 +18,59 @@
   import IconUpload from 'tint/icons/20-upload.svg?raw'
   import { createEditManager } from '@src/utils/edit-manager'
   import { onMount } from 'svelte'
-  import Menu, { type ContextClickHandler } from 'tint/components/Menu.svelte'
+  import Menu, {
+    MENU_SEPARATOR,
+    type ContextClickHandler,
+    type MenuItem,
+  } from 'tint/components/Menu.svelte'
+  import ReorderModal from '@src/components/ReorderModal.svelte'
+  import MergePostModal from '@src/components/MergePostModal.svelte'
 
   const sdk = getSdk(webClient)
 
   interface Props {
-    result: PostQuery['node'] | undefined
+    result?: PostQuery['node'] | undefined
+    isNewPost?: boolean // Only used for initial setup, reactive state handled by edit manager
   }
 
-  let { result }: Props = $props()
+  let { result, isNewPost = false }: Props = $props()
 
   type PostItemType = NonNullable<PostQuery['node']> & { __typename: 'Post' }
 
-  const editManager = createEditManager(sdk, result as PostItemType)
-  const { data: editData, post: postObject, loading } = editManager
+  const editManager = createEditManager(
+    sdk,
+    isNewPost ? undefined : (result as PostItemType),
+    isNewPost,
+  )
+  const {
+    data: editData,
+    post: postObject,
+    loading,
+    isInNewPostMode,
+  } = editManager
 
-  let itemObject = $derived($postObject!.items!.edges!)
+  let itemObject = $derived($postObject ? $postObject.items!.edges! : [])
   let dropzone = $state<HTMLElement | undefined>(undefined)
   let fileInput = $state<HTMLInputElement | undefined>(undefined)
   let showDropzone = $state(false)
   let openDialog = $state<OpenDialog | undefined>(undefined)
+  let showReorderModal = $state(false)
+  let reorderItems = $state<
+    Array<{ id: string; description: string; thumbnail?: string }>
+  >([])
+  let reorderLoading = $state(false)
+  let showMergeModal = $state(false)
+  let mergeLoading = $state(false)
+  let showMoveModal = $state(false)
+  let moveLoading = $state(false)
+  let selectedItemId = $state<string | undefined>(undefined)
 
   let progress = $derived($editData?.uploadController?.progress)
 
   onMount(() => {
-    // editManager.startEdit()
+    if ($isInNewPostMode) {
+      editManager.startEdit()
+    }
   })
 
   // when generalError is set, open the dialog
@@ -50,13 +79,18 @@
   })
 
   function allowDrag(e: DragEvent) {
-    e.dataTransfer!.dropEffect = 'copy'
-    e.preventDefault()
+    // Only allow drag if files are being dragged
+    if (e.dataTransfer?.types.includes('Files')) {
+      e.dataTransfer.dropEffect = 'copy'
+      e.preventDefault()
+    }
   }
 
-  function handleDragEnter() {
-    // if (!upload.locked) showDropzone = true
-    showDropzone = true
+  function handleDragEnter(e: DragEvent) {
+    // Only show dropzone if files are being dragged
+    if (e.dataTransfer?.types.includes('Files')) {
+      showDropzone = true
+    }
   }
 
   function handleDragLeave() {
@@ -66,23 +100,168 @@
   function handleDrop(e: DragEvent) {
     e.preventDefault()
     showDropzone = false
-    if ($editData === undefined) {
-      editManager.startEdit()
+
+    // Only process if files are being dropped
+    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+      if ($editData === undefined) {
+        editManager.startEdit()
+      }
+      Array.from(e.dataTransfer.files).forEach((f) => editManager.addFile(f))
     }
-    Array.from(e.dataTransfer!.files).forEach((f) => editManager.addFile(f))
   }
 
   let buttonClick: ContextClickHandler | undefined = $state(undefined)
 
-  const moreActions = [
-    { label: 'Merge post', onClick: () => console.log('Merge post') },
-    { label: 'Delete post', onClick: () => console.log('Delete post') },
+  // Reorder functionality
+  function openReorderModal() {
+    const items = itemObject
+      .filter((item) => item?.node)
+      .map((item) => {
+        const node = item!.node!
+        let thumbnail: string | undefined = undefined
+
+        // Handle different thumbnail types based on item type
+        if ('thumbnailPath' in node && node.thumbnailPath) {
+          thumbnail = node.thumbnailPath
+        } else if (
+          'ampThumbnail' in node &&
+          Array.isArray(node.ampThumbnail) &&
+          node.ampThumbnail.length > 0
+        ) {
+          // For audio items, we could generate a thumbnail from ampThumbnail data
+          // For now, we'll leave it undefined
+          thumbnail = undefined
+        }
+
+        return {
+          id: node.id,
+          description: node.description || 'No description',
+          thumbnail,
+        }
+      })
+    reorderItems = items
+    showReorderModal = true
+  }
+
+  function handleReorderCancel() {
+    showReorderModal = false
+    reorderLoading = false
+  }
+
+  async function handleReorderSubmit(newOrder: string[]) {
+    reorderLoading = true
+    try {
+      await editManager.reorderItems(newOrder)
+      showReorderModal = false
+    } catch (error) {
+      console.error('Failed to reorder items:', error)
+    } finally {
+      reorderLoading = false
+    }
+  }
+
+  // Merge functionality
+  function openMergeModal() {
+    showMergeModal = true
+  }
+
+  function handleMergeCancel() {
+    showMergeModal = false
+    mergeLoading = false
+  }
+
+  async function handleMergeSubmit(
+    targetPostId: string,
+    mergeKeywords: boolean,
+  ) {
+    mergeLoading = true
+    try {
+      const success = await editManager.mergePost(targetPostId, mergeKeywords)
+      if (success) {
+        // Redirect to target post after successful merge
+        window.location.href = `/${targetPostId}`
+      }
+      showMergeModal = false
+    } catch (error) {
+      console.error('Failed to merge post:', error)
+    } finally {
+      mergeLoading = false
+    }
+  }
+
+  // Move item functionality
+  function openMoveModal(itemId: string) {
+    selectedItemId = itemId
+    showMoveModal = true
+  }
+
+  function handleMoveCancel() {
+    showMoveModal = false
+    moveLoading = false
+    selectedItemId = undefined
+  }
+
+  async function handleMoveSubmit(
+    targetPostId: string,
+    keepEmptyPost: boolean,
+  ) {
+    if (!selectedItemId) return
+
+    moveLoading = true
+    try {
+      const success = await editManager.moveItem(
+        selectedItemId,
+        targetPostId,
+        keepEmptyPost,
+      )
+      if (success) {
+        // Redirect to target post after successful move
+        window.location.href = `/${targetPostId}`
+      }
+      showMoveModal = false
+      selectedItemId = undefined
+    } catch (error) {
+      console.error('Failed to move item:', error)
+    } finally {
+      moveLoading = false
+    }
+  }
+
+  // Delete item functionality
+  async function handleDeleteItem(itemId: string) {
+    const success = await editManager.deleteItem(itemId)
+    if (success) {
+      // Item successfully deleted, no redirect needed as it updates the current post
+      console.log('Item deleted successfully')
+    }
+  }
+
+  const moreActions: MenuItem[] = [
+    { label: 'Reorder items', onClick: openReorderModal },
+    { label: 'Merge post', onClick: openMergeModal },
+    MENU_SEPARATOR,
+    {
+      label: 'Delete post',
+      onClick: async () => {
+        const success = await editManager.deletePost()
+        if (success) {
+          // Redirect to home page after successful deletion
+          window.location.href = '/'
+        }
+      },
+    },
   ]
 </script>
 
 <div class="tint--tinted head">
   <div class="shrinkwrap split">
-    {#if $editData !== undefined}
+    {#if isNewPost && import.meta.env.SSR}
+      <!-- SSR: Show loading indicator before JS hydration -->
+      <div class="loading-container">
+        <LoadingIndicator size={32} />
+        <noscript>JavaScript is required to create a new post.</noscript>
+      </div>
+    {:else if $editData !== undefined}
       <div class="edit">
         <div class="info">
           <TextField
@@ -108,10 +287,10 @@
           id="post-attributes"
           bind:value={$editData.keywords.value}
           disabled={$loading}
-          initialItems={$postObject.keywords}
+          initialItems={$postObject ? $postObject.keywords : []}
         />
       </div>
-    {:else}
+    {:else if !$isInNewPostMode && $postObject}
       <div>
         <h1 class="tint--type">{$postObject.title}</h1>
 
@@ -135,13 +314,18 @@
     {/if}
     <div class="actions">
       {#if $editData !== undefined}
-        <Button onclick={editManager.cancelEdit}>Cancel</Button>
+        {#if !$isInNewPostMode}
+          <Button onclick={editManager.cancelEdit}>Cancel</Button>
+        {/if}
         <Button
           onclick={editManager.submitEdit}
           variant="primary"
-          loading={$loading}>Save</Button
+          loading={$loading}
+          disabled={$isInNewPostMode &&
+            Object.keys($editData.uploadItems).length === 0}
+          >{$isInNewPostMode ? 'Create Post' : 'Save'}</Button
         >
-      {:else}
+      {:else if !(isNewPost && import.meta.env.SSR)}
         <Button
           small={true}
           icon={true}
@@ -159,45 +343,51 @@
     </div>
   </div>
 </div>
-<div class="tint--tinted items">
+<div class="items">
   <div class="shrinkwrap">
-    {#each itemObject as item}
-      {#if item?.node}
-        <PostItem
-          bind:editData={$editData}
-          loading={$loading}
-          itemData={item.node}
+    {#if isNewPost && import.meta.env.SSR}
+      <!-- Empty items during SSR loading -->
+    {:else}
+      {#each itemObject as item (item?.node?.id)}
+        {#if item?.node}
+          <PostItem
+            bind:editData={$editData}
+            loading={$loading}
+            itemData={item.node}
+            onMoveItem={openMoveModal}
+            onDeleteItem={handleDeleteItem}
+          />
+        {/if}
+      {/each}
+      {#if $editData !== undefined}
+        {#each Object.keys($editData.uploadItems) as key (key)}
+          <PostItem
+            bind:editData={$editData}
+            uploadItemIndex={key}
+            loading={$loading}
+          />
+        {/each}
+        <button
+          class="tint--tinted upload-button"
+          onclick={() => fileInput?.click()}
+        >
+          {@html IconUpload}
+          <span>Click or drag to upload new item</span>
+        </button>
+        <input
+          class="upload-input"
+          type="file"
+          multiple
+          bind:this={fileInput}
+          onchange={(e: Event) => {
+            const target = e.target as HTMLInputElement | null
+            const files = target?.files
+            if (files) {
+              Array.from(files).forEach((f) => editManager.addFile(f))
+            }
+          }}
         />
       {/if}
-    {/each}
-    {#if $editData !== undefined}
-      {#each Object.keys($editData.uploadItems) as key (key)}
-        <PostItem
-          bind:editData={$editData}
-          uploadItemIndex={key}
-          loading={$loading}
-        />
-      {/each}
-      <button
-        class="tint--tinted upload-button"
-        onclick={() => fileInput?.click()}
-      >
-        {@html IconUpload}
-        <span>Click or drag to upload new item</span>
-      </button>
-      <input
-        class="upload-input"
-        type="file"
-        multiple
-        bind:this={fileInput}
-        onchange={(e: Event) => {
-          const target = e.target as HTMLInputElement | null
-          const files = target?.files
-          if (files) {
-            Array.from(files).forEach((f) => editManager.addFile(f))
-          }
-        }}
-      />
     {/if}
   </div>
 </div>
@@ -236,7 +426,35 @@
   </div>
 </Modal>
 
-<Menu variant="button" bind:contextClick={buttonClick} items={moreActions} />
+<Menu
+  variant="button"
+  bind:contextClick={buttonClick}
+  items={moreActions}
+  animated
+/>
+
+<ReorderModal
+  open={showReorderModal}
+  items={reorderItems}
+  loading={reorderLoading}
+  onCancel={handleReorderCancel}
+  onSubmit={handleReorderSubmit}
+/>
+
+<MergePostModal
+  open={showMergeModal}
+  loading={mergeLoading}
+  onCancel={handleMergeCancel}
+  onSubmit={handleMergeSubmit}
+/>
+
+<MergePostModal
+  open={showMoveModal}
+  loading={moveLoading}
+  onCancel={handleMoveCancel}
+  onSubmit={handleMoveSubmit}
+  mode="move"
+/>
 
 <style lang="sass">
 .head
@@ -266,6 +484,7 @@
     list-style: none
     display: flex
     gap: tint.$size-8
+    flex-wrap: wrap
     a
       border-radius: tint.$button-radius-small
       border: 1px solid
@@ -307,7 +526,7 @@
   background: var(--tint-input-bg)
   border-radius: tint.$size-8
   padding: tint.$size-16
-  min-height: tint.$size-64 * 2
+  min-height: tint.$size-64 * 3
   display: flex
   gap: tint.$size-8
   width: 100%
@@ -317,9 +536,9 @@
   justify-content: center
   @include tint.effect-focus
   &:not(:disabled):hover
-    background-color: var(--tint-action-secondary-hover)
+    background-color: color-mix(in srgb, var(--tint-input-bg), currentColor 5%)
   &:not(:disabled):active
-    background-color: var(--tint-action-secondary-active)
+    background-color: color-mix(in srgb, var(--tint-input-bg), currentColor 15%)
   &::before
     opacity: .25
 .upload-input
@@ -360,4 +579,13 @@
   align-items: center
   gap: tint.$size-32
   padding: tint.$size-32
+
+.loading-container
+  display: flex
+  flex-direction: column
+  gap: tint.$size-16
+  justify-content: center
+  align-items: center
+  padding-inline: tint.$size-32
+  min-height: 116px
 </style>

@@ -1,4 +1,3 @@
-import crossFetch from 'cross-fetch'
 import { writable, type Readable } from 'svelte/store'
 
 // Types
@@ -27,7 +26,7 @@ const activeUploads = new Map<
 export const UPLOAD_ID_HEADER = 'x-custom-fetch-id'
 
 // Progress fetch wrapper
-export const createProgressFetch = (): typeof crossFetch => {
+export const createProgressFetch = (): typeof fetch => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return async (input: any, init?: RequestInit): Promise<Response> => {
     const headers = new Headers(init?.headers)
@@ -35,7 +34,7 @@ export const createProgressFetch = (): typeof crossFetch => {
 
     // If no upload ID header, just use regular fetch
     if (!uploadId) {
-      return crossFetch(input, init)
+      return fetch(input, init)
     }
 
     // Remove the custom header before making the actual request
@@ -45,7 +44,7 @@ export const createProgressFetch = (): typeof crossFetch => {
     const uploadInfo = activeUploads.get(uploadId)
     if (!uploadInfo) {
       // Fallback to regular fetch if upload info not found
-      return crossFetch(input, { ...init, headers })
+      return fetch(input, { ...init, headers })
     }
 
     const { progress, controller } = uploadInfo

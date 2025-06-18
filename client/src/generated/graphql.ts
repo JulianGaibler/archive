@@ -132,6 +132,8 @@ export type Keyword = Node & {
   id: Scalars['ID']['output'];
   /** Identifies the keyword name. */
   name: Scalars['String']['output'];
+  /** The number of posts associated with this keyword. */
+  postCount: Scalars['Int']['output'];
   /** All Posts associated with this keyword. */
   posts?: Maybe<PostConnection>;
 };
@@ -222,6 +224,8 @@ export type Mutation = {
   moveItem: Scalars['Boolean']['output'];
   /** Reorders an item within a post to a new position. */
   reorderItem: Scalars['Int']['output'];
+  /** Reorders multiple items within a post to the specified order. Items not included will be placed after the reordered items maintaining their relative positions. */
+  reorderItems: Scalars['Boolean']['output'];
   /** Revokes the session of a user. */
   revokeSession: Scalars['Boolean']['output'];
   /** Sets the user's dark-mode preference. */
@@ -317,6 +321,12 @@ export type MutationMoveItemArgs = {
 export type MutationReorderItemArgs = {
   id: Scalars['ID']['input'];
   newPosition: Scalars['Int']['input'];
+};
+
+
+export type MutationReorderItemsArgs = {
+  itemIds: Array<Scalars['ID']['input']>;
+  postId: Scalars['ID']['input'];
 };
 
 
@@ -458,6 +468,7 @@ export type QueryKeywordsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   byName?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  sortByPostCount?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 
@@ -477,7 +488,7 @@ export type QueryPostsArgs = {
   byKeywords?: InputMaybe<Array<Scalars['ID']['input']>>;
   byLanguage?: InputMaybe<Language>;
   byTypes?: InputMaybe<Array<Format>>;
-  byUsers?: InputMaybe<Array<Scalars['ID']['input']>>;
+  byUsers?: InputMaybe<Array<Scalars['String']['input']>>;
   first?: InputMaybe<Scalars['Int']['input']>;
 };
 
@@ -688,25 +699,58 @@ export type SettingsQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type SettingsQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, darkMode?: boolean | null } | null, userSessions: Array<{ __typename?: 'Session', createdAt: any, firstIp: string, id: string, latestIp: string, userAgent: string, updatedAt: any }> };
 
-export type ChangeNameMutationVariables = Exact<{
-  newName: Scalars['String']['input'];
+export type LoginMutationVariables = Exact<{
+  username: Scalars['String']['input'];
+  password: Scalars['String']['input'];
 }>;
 
 
-export type ChangeNameMutation = { __typename?: 'Mutation', changeName: boolean };
+export type LoginMutation = { __typename?: 'Mutation', login: boolean };
 
-export type ChangePasswordMutationVariables = Exact<{
-  oldPassword: Scalars['String']['input'];
-  newPassword: Scalars['String']['input'];
+export type LogoutMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type LogoutMutation = { __typename?: 'Mutation', logout: boolean };
+
+type ItemData_AudioItem_Fragment = { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
+
+type ItemData_GifItem_Fragment = { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
+
+type ItemData_ImageItem_Fragment = { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
+
+type ItemData_ProcessingItem_Fragment = { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
+
+type ItemData_VideoItem_Fragment = { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
+
+export type ItemDataFragment = ItemData_AudioItem_Fragment | ItemData_GifItem_Fragment | ItemData_ImageItem_Fragment | ItemData_ProcessingItem_Fragment | ItemData_VideoItem_Fragment;
+
+export type PostDataFragment = { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } };
+
+export type PostsConnectionFragment = { __typename?: 'PostConnection', edges?: Array<{ __typename?: 'PostEdge', node: { __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string } } | null> | null } } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null } };
+
+export type KeywordsQueryVariables = Exact<{
+  after?: InputMaybe<Scalars['String']['input']>;
+  byName?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 
-export type ChangePasswordMutation = { __typename?: 'Mutation', changePassword: boolean };
+export type KeywordsQuery = { __typename?: 'Query', keywords?: { __typename?: 'KeywordConnection', edges?: Array<{ __typename?: 'KeywordEdge', node: { __typename?: 'Keyword', id: string, name: string, postCount: number } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } | null };
 
-export type ClearProfilePictureMutationVariables = Exact<{ [key: string]: never; }>;
+export type KeywordSearchQueryVariables = Exact<{
+  input?: InputMaybe<Scalars['String']['input']>;
+}>;
 
 
-export type ClearProfilePictureMutation = { __typename?: 'Mutation', clearProfilePicture: boolean };
+export type KeywordSearchQuery = { __typename?: 'Query', keywords?: { __typename?: 'KeywordConnection', edges?: Array<{ __typename?: 'KeywordEdge', node: { __typename?: 'Keyword', id: string, name: string } } | null> | null } | null };
+
+export type KeywordWithPostsQueryVariables = Exact<{
+  nodeId: Scalars['ID']['input'];
+  after?: InputMaybe<Scalars['String']['input']>;
+  byContent?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type KeywordWithPostsQuery = { __typename?: 'Query', keyword?: { __typename: 'AudioItem' } | { __typename: 'GifItem' } | { __typename: 'ImageItem' } | { __typename: 'Keyword', name: string, postCount: number } | { __typename: 'Post' } | { __typename: 'ProcessingItem' } | { __typename: 'Session' } | { __typename: 'Task' } | { __typename: 'User' } | { __typename: 'VideoItem' } | null, posts?: { __typename?: 'PostConnection', edges?: Array<{ __typename?: 'PostEdge', node: { __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string } } | null> | null } } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null } } | null };
 
 export type CreateKeywordMutationVariables = Exact<{
   name: Scalars['String']['input'];
@@ -714,6 +758,40 @@ export type CreateKeywordMutationVariables = Exact<{
 
 
 export type CreateKeywordMutation = { __typename?: 'Mutation', createKeyword: { __typename?: 'Keyword', id: string, name: string } };
+
+export type PostQueryVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type PostQuery = { __typename?: 'Query', node?: { __typename?: 'AudioItem' } | { __typename?: 'GifItem' } | { __typename?: 'ImageItem' } | { __typename?: 'Keyword' } | { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } } | { __typename?: 'ProcessingItem' } | { __typename?: 'Session' } | { __typename?: 'Task' } | { __typename?: 'User' } | { __typename?: 'VideoItem' } | null };
+
+export type PostsQueryVariables = Exact<{
+  after?: InputMaybe<Scalars['String']['input']>;
+  byContent?: InputMaybe<Scalars['String']['input']>;
+  byKeywords?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
+  byUsers?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
+}>;
+
+
+export type PostsQuery = { __typename?: 'Query', posts?: { __typename?: 'PostConnection', edges?: Array<{ __typename?: 'PostEdge', node: { __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string } } | null> | null } } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null } } | null };
+
+export type PostsTextOnlyQueryVariables = Exact<{
+  after?: InputMaybe<Scalars['String']['input']>;
+  byContent?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type PostsTextOnlyQuery = { __typename?: 'Query', posts?: { __typename?: 'PostConnection', edges?: Array<{ __typename?: 'PostEdge', node: { __typename?: 'Post', id: string, title: string } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null } } | null };
+
+export type CreatePostMutationVariables = Exact<{
+  title: Scalars['String']['input'];
+  language: Language;
+  keywords?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
+}>;
+
+
+export type CreatePostMutation = { __typename?: 'Mutation', createPost: { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } } };
 
 export type EditPostMutationVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -734,14 +812,6 @@ export type DeleteItemMutationVariables = Exact<{
 
 export type DeleteItemMutation = { __typename?: 'Mutation', deleteItem: boolean };
 
-export type ReorderItemMutationVariables = Exact<{
-  reorderItemId: Scalars['ID']['input'];
-  newPosition: Scalars['Int']['input'];
-}>;
-
-
-export type ReorderItemMutation = { __typename?: 'Mutation', reorderItem: number };
-
 export type DeletePostMutationVariables = Exact<{
   deletePostId: Scalars['ID']['input'];
 }>;
@@ -752,25 +822,81 @@ export type DeletePostMutation = { __typename?: 'Mutation', deletePost: boolean 
 export type MergePostMutationVariables = Exact<{
   sourcePostId: Scalars['ID']['input'];
   targetPostId: Scalars['ID']['input'];
+  mergeKeywords?: InputMaybe<Scalars['Boolean']['input']>;
 }>;
 
 
 export type MergePostMutation = { __typename?: 'Mutation', mergePost: boolean };
 
+export type ReorderItemMutationVariables = Exact<{
+  itemIds: Array<Scalars['ID']['input']> | Scalars['ID']['input'];
+  postId: Scalars['ID']['input'];
+}>;
+
+
+export type ReorderItemMutation = { __typename?: 'Mutation', reorderItems: boolean };
+
 export type MoveItemMutationVariables = Exact<{
   itemId: Scalars['ID']['input'];
   targetPostId: Scalars['ID']['input'];
+  keepEmptyPost?: InputMaybe<Scalars['Boolean']['input']>;
 }>;
 
 
 export type MoveItemMutation = { __typename?: 'Mutation', moveItem: boolean };
 
-export type KeywordSearchQueryVariables = Exact<{
-  input?: InputMaybe<Scalars['String']['input']>;
+export type TaskUpdatesSubscriptionVariables = Exact<{
+  ids: Array<Scalars['String']['input']> | Scalars['String']['input'];
 }>;
 
 
-export type KeywordSearchQuery = { __typename?: 'Query', keywords?: { __typename?: 'KeywordConnection', edges?: Array<{ __typename?: 'KeywordEdge', node: { __typename?: 'Keyword', id: string, name: string } } | null> | null } | null };
+export type TaskUpdatesSubscription = { __typename?: 'Subscription', taskUpdates: { __typename?: 'TaskUpdate', kind: UpdateKind, item?: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | null } };
+
+export type ChangeNameMutationVariables = Exact<{
+  newName: Scalars['String']['input'];
+}>;
+
+
+export type ChangeNameMutation = { __typename?: 'Mutation', changeName: boolean };
+
+export type ChangePasswordMutationVariables = Exact<{
+  oldPassword: Scalars['String']['input'];
+  newPassword: Scalars['String']['input'];
+}>;
+
+
+export type ChangePasswordMutation = { __typename?: 'Mutation', changePassword: boolean };
+
+export type UploadPictureMutationVariables = Exact<{
+  file: Scalars['Upload']['input'];
+}>;
+
+
+export type UploadPictureMutation = { __typename?: 'Mutation', uploadProfilePicture: boolean };
+
+export type ClearProfilePictureMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClearProfilePictureMutation = { __typename?: 'Mutation', clearProfilePicture: boolean };
+
+export type SetDarkModeMutationVariables = Exact<{
+  enabled: Scalars['Boolean']['input'];
+}>;
+
+
+export type SetDarkModeMutation = { __typename?: 'Mutation', setDarkMode: boolean };
+
+export type RevokeSessionMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type RevokeSessionMutation = { __typename?: 'Mutation', revokeSession: boolean };
+
+export type ResourcesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ResourcesQuery = { __typename?: 'Query', resources?: { __typename?: 'Resources', resourceDomain: string, resourcePath: string } | null };
 
 export type LinkTelegramMutationVariables = Exact<{
   id: Scalars['String']['input'];
@@ -785,90 +911,39 @@ export type LinkTelegramMutationVariables = Exact<{
 
 export type LinkTelegramMutation = { __typename?: 'Mutation', linkTelegram: boolean };
 
-export type LoginMutationVariables = Exact<{
-  username: Scalars['String']['input'];
-  password: Scalars['String']['input'];
-}>;
+export type UnlinkTelegramMutationVariables = Exact<{ [key: string]: never; }>;
 
 
-export type LoginMutation = { __typename?: 'Mutation', login: boolean };
-
-export type LogoutMutationVariables = Exact<{ [key: string]: never; }>;
-
-
-export type LogoutMutation = { __typename?: 'Mutation', logout: boolean };
+export type UnlinkTelegramMutation = { __typename?: 'Mutation', unlinkTelegram: boolean };
 
 export type MeQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type MeQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, darkMode?: boolean | null } | null };
 
-type ItemData_AudioItem_Fragment = { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
-
-type ItemData_GifItem_Fragment = { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
-
-type ItemData_ImageItem_Fragment = { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
-
-type ItemData_ProcessingItem_Fragment = { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
-
-type ItemData_VideoItem_Fragment = { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
-
-export type ItemDataFragment = ItemData_AudioItem_Fragment | ItemData_GifItem_Fragment | ItemData_ImageItem_Fragment | ItemData_ProcessingItem_Fragment | ItemData_VideoItem_Fragment;
-
-export type PostDataFragment = { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } };
-
-export type PostQueryVariables = Exact<{
-  id: Scalars['ID']['input'];
+export type UserQueryVariables = Exact<{
+  username: Scalars['String']['input'];
 }>;
 
 
-export type PostQuery = { __typename?: 'Query', node?: { __typename?: 'AudioItem' } | { __typename?: 'GifItem' } | { __typename?: 'ImageItem' } | { __typename?: 'Keyword' } | { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } } | { __typename?: 'ProcessingItem' } | { __typename?: 'Session' } | { __typename?: 'Task' } | { __typename?: 'User' } | { __typename?: 'VideoItem' } | null };
+export type UserQuery = { __typename?: 'Query', user?: { __typename?: 'User', id: string, username: string, name: string, profilePicture?: string | null, posts?: { __typename?: 'PostConnection', totalCount: number } | null } | null };
 
-export type PostsQueryVariables = Exact<{
+export type UsersQueryVariables = Exact<{
+  after?: InputMaybe<Scalars['String']['input']>;
+  byUsername?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type UsersQuery = { __typename?: 'Query', users?: { __typename?: 'UserConnection', edges?: Array<{ __typename?: 'UserEdge', node: { __typename?: 'User', id: string, username: string, name: string, profilePicture?: string | null, posts?: { __typename?: 'PostConnection', totalCount: number } | null } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } | null };
+
+export type UserWithPostsQueryVariables = Exact<{
+  username: Scalars['String']['input'];
   after?: InputMaybe<Scalars['String']['input']>;
   byContent?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 
-export type PostsQuery = { __typename?: 'Query', posts?: { __typename?: 'PostConnection', edges?: Array<{ __typename?: 'PostEdge', node: { __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string } } | null> | null } } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null } } | null };
-
-export type ResourcesQueryVariables = Exact<{ [key: string]: never; }>;
-
-
-export type ResourcesQuery = { __typename?: 'Query', resources?: { __typename?: 'Resources', resourceDomain: string, resourcePath: string } | null };
-
-export type RevokeSessionMutationVariables = Exact<{
-  id: Scalars['ID']['input'];
-}>;
-
-
-export type RevokeSessionMutation = { __typename?: 'Mutation', revokeSession: boolean };
-
-export type SetDarkModeMutationVariables = Exact<{
-  enabled: Scalars['Boolean']['input'];
-}>;
-
-
-export type SetDarkModeMutation = { __typename?: 'Mutation', setDarkMode: boolean };
-
-export type TaskUpdatesSubscriptionVariables = Exact<{
-  ids: Array<Scalars['String']['input']> | Scalars['String']['input'];
-}>;
-
-
-export type TaskUpdatesSubscription = { __typename?: 'Subscription', taskUpdates: { __typename?: 'TaskUpdate', kind: UpdateKind, item?: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | null } };
-
-export type UnlinkTelegramMutationVariables = Exact<{ [key: string]: never; }>;
-
-
-export type UnlinkTelegramMutation = { __typename?: 'Mutation', unlinkTelegram: boolean };
-
-export type UploadPictureMutationVariables = Exact<{
-  file: Scalars['Upload']['input'];
-}>;
-
-
-export type UploadPictureMutation = { __typename?: 'Mutation', uploadProfilePicture: boolean };
+export type UserWithPostsQuery = { __typename?: 'Query', user?: { __typename?: 'User', id: string, username: string, name: string, profilePicture?: string | null, posts?: { __typename?: 'PostConnection', totalCount: number } | null } | null, posts?: { __typename?: 'PostConnection', edges?: Array<{ __typename?: 'PostEdge', node: { __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string } } | null> | null } } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null } } | null };
 
 export const ItemDataFragmentDoc = gql`
     fragment ItemData on Item {
@@ -922,6 +997,41 @@ export const PostDataFragmentDoc = gql`
   }
 }
     ${ItemDataFragmentDoc}`;
+export const PostsConnectionFragmentDoc = gql`
+    fragment PostsConnection on PostConnection {
+  edges {
+    node {
+      id
+      title
+      creator {
+        profilePicture
+        username
+      }
+      items(first: 1) {
+        totalCount
+        edges {
+          node {
+            id
+            __typename
+            ... on VisualMediaItem {
+              relativeHeight
+              thumbnailPath
+            }
+            ... on AudioItem {
+              ampThumbnail
+            }
+          }
+        }
+      }
+    }
+  }
+  pageInfo {
+    hasNextPage
+    endCursor
+    startCursor
+  }
+}
+    `;
 export const SettingsDocument = gql`
     query settings {
   me {
@@ -940,21 +1050,59 @@ export const SettingsDocument = gql`
   }
 }
     `;
-export const ChangeNameDocument = gql`
-    mutation changeName($newName: String!) {
-  changeName(newName: $newName)
+export const LoginDocument = gql`
+    mutation login($username: String!, $password: String!) {
+  login(username: $username, password: $password)
 }
     `;
-export const ChangePasswordDocument = gql`
-    mutation changePassword($oldPassword: String!, $newPassword: String!) {
-  changePassword(oldPassword: $oldPassword, newPassword: $newPassword)
+export const LogoutDocument = gql`
+    mutation logout {
+  logout
 }
     `;
-export const ClearProfilePictureDocument = gql`
-    mutation clearProfilePicture {
-  clearProfilePicture
+export const KeywordsDocument = gql`
+    query Keywords($after: String, $byName: String) {
+  keywords(first: 50, after: $after, sortByPostCount: true, byName: $byName) {
+    edges {
+      node {
+        id
+        name
+        postCount
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
 }
     `;
+export const KeywordSearchDocument = gql`
+    query keywordSearch($input: String) {
+  keywords(byName: $input) {
+    edges {
+      node {
+        id
+        name
+      }
+    }
+  }
+}
+    `;
+export const KeywordWithPostsDocument = gql`
+    query KeywordWithPosts($nodeId: ID!, $after: String, $byContent: String) {
+  keyword: node(id: $nodeId) {
+    __typename
+    ... on Keyword {
+      name
+      postCount
+    }
+  }
+  posts(first: 24, after: $after, byContent: $byContent, byKeywords: [$nodeId]) {
+    ...PostsConnection
+  }
+}
+    ${PostsConnectionFragmentDoc}`;
 export const CreateKeywordDocument = gql`
     mutation createKeyword($name: String!) {
   createKeyword(name: $name) {
@@ -963,6 +1111,52 @@ export const CreateKeywordDocument = gql`
   }
 }
     `;
+export const PostDocument = gql`
+    query Post($id: ID!) {
+  node(id: $id) {
+    ... on Post {
+      ...PostData
+    }
+  }
+}
+    ${PostDataFragmentDoc}`;
+export const PostsDocument = gql`
+    query Posts($after: String, $byContent: String, $byKeywords: [ID!], $byUsers: [String!]) {
+  posts(
+    first: 40
+    after: $after
+    byContent: $byContent
+    byKeywords: $byKeywords
+    byUsers: $byUsers
+  ) {
+    ...PostsConnection
+  }
+}
+    ${PostsConnectionFragmentDoc}`;
+export const PostsTextOnlyDocument = gql`
+    query PostsTextOnly($after: String, $byContent: String) {
+  posts(first: 20, after: $after, byContent: $byContent) {
+    edges {
+      node {
+        id
+        title
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+      startCursor
+    }
+  }
+}
+    `;
+export const CreatePostDocument = gql`
+    mutation createPost($title: String!, $language: Language!, $keywords: [ID!]) {
+  createPost(title: $title, language: $language, keywords: $keywords) {
+    ...PostData
+  }
+}
+    ${PostDataFragmentDoc}`;
 export const EditPostDocument = gql`
     mutation editPost($id: ID!, $title: String, $keywords: [ID!], $language: Language, $items: [EditItemInput!], $newItems: [NewItemInput!]) {
   editPost(
@@ -982,35 +1176,79 @@ export const DeleteItemDocument = gql`
   deleteItem(id: $deleteItemId)
 }
     `;
-export const ReorderItemDocument = gql`
-    mutation reorderItem($reorderItemId: ID!, $newPosition: Int!) {
-  reorderItem(id: $reorderItemId, newPosition: $newPosition)
-}
-    `;
 export const DeletePostDocument = gql`
     mutation deletePost($deletePostId: ID!) {
   deletePost(id: $deletePostId)
 }
     `;
 export const MergePostDocument = gql`
-    mutation mergePost($sourcePostId: ID!, $targetPostId: ID!) {
-  mergePost(sourcePostId: $sourcePostId, targetPostId: $targetPostId)
+    mutation mergePost($sourcePostId: ID!, $targetPostId: ID!, $mergeKeywords: Boolean) {
+  mergePost(
+    sourcePostId: $sourcePostId
+    targetPostId: $targetPostId
+    mergeKeywords: $mergeKeywords
+  )
+}
+    `;
+export const ReorderItemDocument = gql`
+    mutation reorderItem($itemIds: [ID!]!, $postId: ID!) {
+  reorderItems(itemIds: $itemIds, postId: $postId)
 }
     `;
 export const MoveItemDocument = gql`
-    mutation moveItem($itemId: ID!, $targetPostId: ID!) {
-  moveItem(itemId: $itemId, targetPostId: $targetPostId)
+    mutation moveItem($itemId: ID!, $targetPostId: ID!, $keepEmptyPost: Boolean) {
+  moveItem(
+    itemId: $itemId
+    targetPostId: $targetPostId
+    keepEmptyPost: $keepEmptyPost
+  )
 }
     `;
-export const KeywordSearchDocument = gql`
-    query keywordSearch($input: String) {
-  keywords(byName: $input) {
-    edges {
-      node {
-        id
-        name
-      }
+export const TaskUpdatesDocument = gql`
+    subscription taskUpdates($ids: [String!]!) {
+  taskUpdates(ids: $ids) {
+    kind
+    item {
+      ...ItemData
     }
+  }
+}
+    ${ItemDataFragmentDoc}`;
+export const ChangeNameDocument = gql`
+    mutation changeName($newName: String!) {
+  changeName(newName: $newName)
+}
+    `;
+export const ChangePasswordDocument = gql`
+    mutation changePassword($oldPassword: String!, $newPassword: String!) {
+  changePassword(oldPassword: $oldPassword, newPassword: $newPassword)
+}
+    `;
+export const UploadPictureDocument = gql`
+    mutation uploadPicture($file: Upload!) {
+  uploadProfilePicture(file: $file)
+}
+    `;
+export const ClearProfilePictureDocument = gql`
+    mutation clearProfilePicture {
+  clearProfilePicture
+}
+    `;
+export const SetDarkModeDocument = gql`
+    mutation setDarkMode($enabled: Boolean!) {
+  setDarkMode(enabled: $enabled)
+}
+    `;
+export const RevokeSessionDocument = gql`
+    mutation revokeSession($id: ID!) {
+  revokeSession(id: $id)
+}
+    `;
+export const ResourcesDocument = gql`
+    query resources {
+  resources {
+    resourceDomain
+    resourcePath
   }
 }
     `;
@@ -1027,14 +1265,9 @@ export const LinkTelegramDocument = gql`
   )
 }
     `;
-export const LoginDocument = gql`
-    mutation login($username: String!, $password: String!) {
-  login(username: $username, password: $password)
-}
-    `;
-export const LogoutDocument = gql`
-    mutation logout {
-  logout
+export const UnlinkTelegramDocument = gql`
+    mutation unlinkTelegram {
+  unlinkTelegram
 }
     `;
 export const MeDocument = gql`
@@ -1047,159 +1280,96 @@ export const MeDocument = gql`
   }
 }
     `;
-export const PostDocument = gql`
-    query Post($id: ID!) {
-  node(id: $id) {
-    ... on Post {
-      ...PostData
+export const UserDocument = gql`
+    query User($username: String!) {
+  user(username: $username) {
+    id
+    username
+    name
+    profilePicture
+    posts {
+      totalCount
     }
   }
 }
-    ${PostDataFragmentDoc}`;
-export const PostsDocument = gql`
-    query Posts($after: String, $byContent: String) {
-  posts(first: 40, after: $after, byContent: $byContent) {
+    `;
+export const UsersDocument = gql`
+    query Users($after: String, $byUsername: String) {
+  users(first: 50, after: $after, byUsername: $byUsername) {
     edges {
       node {
         id
-        title
-        creator {
-          profilePicture
-          username
-        }
-        items(first: 1) {
+        username
+        name
+        profilePicture
+        posts {
           totalCount
-          edges {
-            node {
-              id
-              __typename
-              ... on VisualMediaItem {
-                relativeHeight
-                thumbnailPath
-              }
-              ... on AudioItem {
-                ampThumbnail
-              }
-            }
-          }
         }
       }
     }
     pageInfo {
       hasNextPage
       endCursor
-      startCursor
     }
   }
 }
     `;
-export const ResourcesDocument = gql`
-    query resources {
-  resources {
-    resourceDomain
-    resourcePath
-  }
-}
-    `;
-export const RevokeSessionDocument = gql`
-    mutation revokeSession($id: ID!) {
-  revokeSession(id: $id)
-}
-    `;
-export const SetDarkModeDocument = gql`
-    mutation setDarkMode($enabled: Boolean!) {
-  setDarkMode(enabled: $enabled)
-}
-    `;
-export const TaskUpdatesDocument = gql`
-    subscription taskUpdates($ids: [String!]!) {
-  taskUpdates(ids: $ids) {
-    kind
-    item {
-      ...ItemData
+export const UserWithPostsDocument = gql`
+    query UserWithPosts($username: String!, $after: String, $byContent: String) {
+  user(username: $username) {
+    id
+    username
+    name
+    profilePicture
+    posts {
+      totalCount
     }
   }
+  posts(first: 24, after: $after, byContent: $byContent, byUsers: [$username]) {
+    ...PostsConnection
+  }
 }
-    ${ItemDataFragmentDoc}`;
-export const UnlinkTelegramDocument = gql`
-    mutation unlinkTelegram {
-  unlinkTelegram
-}
-    `;
-export const UploadPictureDocument = gql`
-    mutation uploadPicture($file: Upload!) {
-  uploadProfilePicture(file: $file)
-}
-    `;
+    ${PostsConnectionFragmentDoc}`;
 
 export type SdkFunctionWrapper = <T>(action: (requestHeaders?:Record<string, string>) => Promise<T>, operationName: string, operationType?: string, variables?: any) => Promise<T>;
 
 
 const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) => action();
 const SettingsDocumentString = print(SettingsDocument);
-const ChangeNameDocumentString = print(ChangeNameDocument);
-const ChangePasswordDocumentString = print(ChangePasswordDocument);
-const ClearProfilePictureDocumentString = print(ClearProfilePictureDocument);
-const CreateKeywordDocumentString = print(CreateKeywordDocument);
-const EditPostDocumentString = print(EditPostDocument);
-const DeleteItemDocumentString = print(DeleteItemDocument);
-const ReorderItemDocumentString = print(ReorderItemDocument);
-const DeletePostDocumentString = print(DeletePostDocument);
-const MergePostDocumentString = print(MergePostDocument);
-const MoveItemDocumentString = print(MoveItemDocument);
-const KeywordSearchDocumentString = print(KeywordSearchDocument);
-const LinkTelegramDocumentString = print(LinkTelegramDocument);
 const LoginDocumentString = print(LoginDocument);
 const LogoutDocumentString = print(LogoutDocument);
-const MeDocumentString = print(MeDocument);
+const KeywordsDocumentString = print(KeywordsDocument);
+const KeywordSearchDocumentString = print(KeywordSearchDocument);
+const KeywordWithPostsDocumentString = print(KeywordWithPostsDocument);
+const CreateKeywordDocumentString = print(CreateKeywordDocument);
 const PostDocumentString = print(PostDocument);
 const PostsDocumentString = print(PostsDocument);
-const ResourcesDocumentString = print(ResourcesDocument);
-const RevokeSessionDocumentString = print(RevokeSessionDocument);
-const SetDarkModeDocumentString = print(SetDarkModeDocument);
+const PostsTextOnlyDocumentString = print(PostsTextOnlyDocument);
+const CreatePostDocumentString = print(CreatePostDocument);
+const EditPostDocumentString = print(EditPostDocument);
+const DeleteItemDocumentString = print(DeleteItemDocument);
+const DeletePostDocumentString = print(DeletePostDocument);
+const MergePostDocumentString = print(MergePostDocument);
+const ReorderItemDocumentString = print(ReorderItemDocument);
+const MoveItemDocumentString = print(MoveItemDocument);
 const TaskUpdatesDocumentString = print(TaskUpdatesDocument);
-const UnlinkTelegramDocumentString = print(UnlinkTelegramDocument);
+const ChangeNameDocumentString = print(ChangeNameDocument);
+const ChangePasswordDocumentString = print(ChangePasswordDocument);
 const UploadPictureDocumentString = print(UploadPictureDocument);
+const ClearProfilePictureDocumentString = print(ClearProfilePictureDocument);
+const SetDarkModeDocumentString = print(SetDarkModeDocument);
+const RevokeSessionDocumentString = print(RevokeSessionDocument);
+const ResourcesDocumentString = print(ResourcesDocument);
+const LinkTelegramDocumentString = print(LinkTelegramDocument);
+const UnlinkTelegramDocumentString = print(UnlinkTelegramDocument);
+const MeDocumentString = print(MeDocument);
+const UserDocumentString = print(UserDocument);
+const UsersDocumentString = print(UsersDocument);
+const UserWithPostsDocumentString = print(UserWithPostsDocument);
 export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
   return {
     settings(variables?: SettingsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: SettingsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<SettingsQuery>(SettingsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'settings', 'query', variables);
-    },
-    changeName(variables: ChangeNameMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ChangeNameMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ChangeNameMutation>(ChangeNameDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'changeName', 'mutation', variables);
-    },
-    changePassword(variables: ChangePasswordMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ChangePasswordMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ChangePasswordMutation>(ChangePasswordDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'changePassword', 'mutation', variables);
-    },
-    clearProfilePicture(variables?: ClearProfilePictureMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ClearProfilePictureMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ClearProfilePictureMutation>(ClearProfilePictureDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'clearProfilePicture', 'mutation', variables);
-    },
-    createKeyword(variables: CreateKeywordMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: CreateKeywordMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<CreateKeywordMutation>(CreateKeywordDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'createKeyword', 'mutation', variables);
-    },
-    editPost(variables: EditPostMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: EditPostMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<EditPostMutation>(EditPostDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'editPost', 'mutation', variables);
-    },
-    deleteItem(variables: DeleteItemMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: DeleteItemMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<DeleteItemMutation>(DeleteItemDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'deleteItem', 'mutation', variables);
-    },
-    reorderItem(variables: ReorderItemMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ReorderItemMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ReorderItemMutation>(ReorderItemDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'reorderItem', 'mutation', variables);
-    },
-    deletePost(variables: DeletePostMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: DeletePostMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<DeletePostMutation>(DeletePostDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'deletePost', 'mutation', variables);
-    },
-    mergePost(variables: MergePostMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: MergePostMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<MergePostMutation>(MergePostDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'mergePost', 'mutation', variables);
-    },
-    moveItem(variables: MoveItemMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: MoveItemMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<MoveItemMutation>(MoveItemDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'moveItem', 'mutation', variables);
-    },
-    keywordSearch(variables?: KeywordSearchQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: KeywordSearchQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<KeywordSearchQuery>(KeywordSearchDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'keywordSearch', 'query', variables);
-    },
-    linkTelegram(variables: LinkTelegramMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: LinkTelegramMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<LinkTelegramMutation>(LinkTelegramDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'linkTelegram', 'mutation', variables);
     },
     login(variables: LoginMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: LoginMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<LoginMutation>(LoginDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'login', 'mutation', variables);
@@ -1207,8 +1377,17 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     logout(variables?: LogoutMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: LogoutMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<LogoutMutation>(LogoutDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'logout', 'mutation', variables);
     },
-    me(variables?: MeQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: MeQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<MeQuery>(MeDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'me', 'query', variables);
+    Keywords(variables?: KeywordsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: KeywordsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<KeywordsQuery>(KeywordsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Keywords', 'query', variables);
+    },
+    keywordSearch(variables?: KeywordSearchQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: KeywordSearchQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<KeywordSearchQuery>(KeywordSearchDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'keywordSearch', 'query', variables);
+    },
+    KeywordWithPosts(variables: KeywordWithPostsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: KeywordWithPostsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<KeywordWithPostsQuery>(KeywordWithPostsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'KeywordWithPosts', 'query', variables);
+    },
+    createKeyword(variables: CreateKeywordMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: CreateKeywordMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<CreateKeywordMutation>(CreateKeywordDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'createKeyword', 'mutation', variables);
     },
     Post(variables: PostQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: PostQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<PostQuery>(PostDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Post', 'query', variables);
@@ -1216,23 +1395,71 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     Posts(variables?: PostsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: PostsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<PostsQuery>(PostsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Posts', 'query', variables);
     },
-    resources(variables?: ResourcesQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ResourcesQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ResourcesQuery>(ResourcesDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'resources', 'query', variables);
+    PostsTextOnly(variables?: PostsTextOnlyQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: PostsTextOnlyQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<PostsTextOnlyQuery>(PostsTextOnlyDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'PostsTextOnly', 'query', variables);
     },
-    revokeSession(variables: RevokeSessionMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: RevokeSessionMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<RevokeSessionMutation>(RevokeSessionDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'revokeSession', 'mutation', variables);
+    createPost(variables: CreatePostMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: CreatePostMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<CreatePostMutation>(CreatePostDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'createPost', 'mutation', variables);
     },
-    setDarkMode(variables: SetDarkModeMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: SetDarkModeMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<SetDarkModeMutation>(SetDarkModeDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'setDarkMode', 'mutation', variables);
+    editPost(variables: EditPostMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: EditPostMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<EditPostMutation>(EditPostDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'editPost', 'mutation', variables);
+    },
+    deleteItem(variables: DeleteItemMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: DeleteItemMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<DeleteItemMutation>(DeleteItemDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'deleteItem', 'mutation', variables);
+    },
+    deletePost(variables: DeletePostMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: DeletePostMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<DeletePostMutation>(DeletePostDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'deletePost', 'mutation', variables);
+    },
+    mergePost(variables: MergePostMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: MergePostMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<MergePostMutation>(MergePostDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'mergePost', 'mutation', variables);
+    },
+    reorderItem(variables: ReorderItemMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ReorderItemMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ReorderItemMutation>(ReorderItemDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'reorderItem', 'mutation', variables);
+    },
+    moveItem(variables: MoveItemMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: MoveItemMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<MoveItemMutation>(MoveItemDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'moveItem', 'mutation', variables);
     },
     taskUpdates(variables: TaskUpdatesSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: TaskUpdatesSubscription; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<TaskUpdatesSubscription>(TaskUpdatesDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'taskUpdates', 'subscription', variables);
     },
-    unlinkTelegram(variables?: UnlinkTelegramMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: UnlinkTelegramMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<UnlinkTelegramMutation>(UnlinkTelegramDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'unlinkTelegram', 'mutation', variables);
+    changeName(variables: ChangeNameMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ChangeNameMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ChangeNameMutation>(ChangeNameDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'changeName', 'mutation', variables);
+    },
+    changePassword(variables: ChangePasswordMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ChangePasswordMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ChangePasswordMutation>(ChangePasswordDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'changePassword', 'mutation', variables);
     },
     uploadPicture(variables: UploadPictureMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: UploadPictureMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<UploadPictureMutation>(UploadPictureDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'uploadPicture', 'mutation', variables);
+    },
+    clearProfilePicture(variables?: ClearProfilePictureMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ClearProfilePictureMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ClearProfilePictureMutation>(ClearProfilePictureDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'clearProfilePicture', 'mutation', variables);
+    },
+    setDarkMode(variables: SetDarkModeMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: SetDarkModeMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<SetDarkModeMutation>(SetDarkModeDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'setDarkMode', 'mutation', variables);
+    },
+    revokeSession(variables: RevokeSessionMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: RevokeSessionMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<RevokeSessionMutation>(RevokeSessionDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'revokeSession', 'mutation', variables);
+    },
+    resources(variables?: ResourcesQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ResourcesQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ResourcesQuery>(ResourcesDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'resources', 'query', variables);
+    },
+    linkTelegram(variables: LinkTelegramMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: LinkTelegramMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<LinkTelegramMutation>(LinkTelegramDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'linkTelegram', 'mutation', variables);
+    },
+    unlinkTelegram(variables?: UnlinkTelegramMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: UnlinkTelegramMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<UnlinkTelegramMutation>(UnlinkTelegramDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'unlinkTelegram', 'mutation', variables);
+    },
+    me(variables?: MeQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: MeQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<MeQuery>(MeDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'me', 'query', variables);
+    },
+    User(variables: UserQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: UserQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<UserQuery>(UserDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'User', 'query', variables);
+    },
+    Users(variables?: UsersQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: UsersQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<UsersQuery>(UsersDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Users', 'query', variables);
+    },
+    UserWithPosts(variables: UserWithPostsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: UserWithPostsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<UserWithPostsQuery>(UserWithPostsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UserWithPosts', 'query', variables);
     }
   };
 }

@@ -8,7 +8,14 @@ const ssrClient = Astro.locals.gqlClient
 
 const sdk = getSdk(ssrClient)
 
-const result = await sdk.me()
+let result: Awaited<ReturnType<typeof sdk.me>> | null = null
+let error = false
+try {
+  result = await sdk.me()
+} catch (_error) {
+  result = null
+  error = true
+}
 ---
 
 <header>
@@ -17,7 +24,7 @@ const result = await sdk.me()
   </div>
   <div>
     {
-      result.data?.me ? (
+      error ? null : result?.data?.me ? (
         <HeaderMenu client:load user={result.data.me} />
       ) : (
         <Button small={true} href="/login">

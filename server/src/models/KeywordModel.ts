@@ -37,8 +37,11 @@ export default class KeywordModel extends UniqueModel {
     const getByPost = new DataLoader<number, KeywordModel[]>(
       KeywordModel.keywordsByPost,
     )
+    const getPostCountByKeyword = new DataLoader<number, number>(
+      KeywordModel.postCountsByKeywords,
+    )
 
-    return { getById, getByPost }
+    return { getById, getByPost, getPostCountByKeyword }
   }
 
   private static async keywordsByIds(
@@ -67,6 +70,24 @@ export default class KeywordModel extends UniqueModel {
     })
 
     return postIds.map((id) => (postMap[id] ? postMap[id].keywords : []))
+  }
+
+  private static async postCountsByKeywords(
+    keywordIds: readonly number[],
+  ): Promise<number[]> {
+    const counts = await KeywordModel.query()
+      .findByIds(keywordIds as number[])
+      .select('keyword.id')
+      .joinRelated('posts')
+      .groupBy('keyword.id')
+      .count('posts.id as postCount')
+
+    const countMap: { [key: string]: number } = {}
+    counts.forEach((result: any) => {
+      countMap[result.id] = parseInt(result.postCount, 10)
+    })
+
+    return keywordIds.map((id) => countMap[id] || 0)
   }
 
   /// Relations

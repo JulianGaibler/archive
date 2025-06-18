@@ -1,0 +1,10 @@
+---
+import Layout from '@src/layouts/Layout.astro'
+import Post from '@src/components/Post.svelte'
+---
+
+<Layout title="Archive - New Post">
+  <Post client:load isNewPost={true} />
+</Layout>
+
+<style lang="sass"></style>

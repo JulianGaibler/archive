@@ -1,0 +1,257 @@
+---
+import Layout from '@src/layouts/Layout.astro'
+import type { ErrorPageProps } from '@src/utils/error-handling'
+import Button from 'tint/components/Button.svelte'
+import IconWarning from 'tint/icons/20-warning.svg?raw'
+
+type Props = ErrorPageProps
+
+const { error, isDev = import.meta.env.DEV } = Astro.props
+
+// Generate title based on status code
+const getTitle = (statusCode: number) => {
+  const titles: Record<number, string> = {
+    404: 'Page Not Found',
+    500: 'Server Error',
+    400: 'Bad Request',
+    401: 'Unauthorized',
+    403: 'Forbidden',
+  }
+  return titles[statusCode] || `Error ${statusCode}`
+}
+
+// Check if error details has the structured error shape
+const isStructuredError = (
+  details: unknown,
+): details is {
+  type: unknown
+  name: unknown
+  message: unknown
+  stack: unknown
+} => {
+  return (
+    typeof details === 'object' &&
+    details !== null &&
+    'type' in details &&
+    'name' in details &&
+    'message' in details &&
+    'stack' in details
+  )
+}
+
+// Format error details for display
+const formatErrorDetails = (details: unknown) => {
+  if (isStructuredError(details)) {
+    return {
+      isStructured: true as const,
+      errorData: {
+        type: String(details.type),
+        name: String(details.name),
+        message: String(details.message),
+        stack: String(details.stack),
+      },
+    }
+  }
+
+  return {
+    isStructured: false as const,
+    rawDetails:
+      typeof details === 'string' ? details : JSON.stringify(details, null, 2),
+  }
+}
+
+const errorDetails = error.details ? formatErrorDetails(error.details) : null
+---
+
+<Layout
+  title={`${error.statusCode} - ${getTitle(error.statusCode)}`}
+  flexCenter
+>
+  <div class="error-container">
+    <div class="error-icon">
+      <Fragment set:html={IconWarning} />
+    </div>
+
+    <h1 class="error-code tint--type-display-sans-3">{error.statusCode}</h1>
+    <h2 class="error-title tint--type-title-sans-2">
+      {getTitle(error.statusCode)}
+    </h2>
+
+    <!-- Named slot for error message with fallback -->
+    <div class="error-message tint--type-body-sans">
+      <slot>
+        <p>{error.message}</p>
+      </slot>
+    </div>
+
+    {
+      Astro.slots.has('extra') && (
+        <div class="error-custom-content">
+          <slot name="extra" />
+        </div>
+      )
+    }
+
+    {
+      isDev && errorDetails && (
+        <details class="error-details">
+          <summary class="tint--type-ui-bold">
+            Debug Information (Development Mode)
+          </summary>
+          {errorDetails.isStructured && errorDetails.errorData ? (
+            <div class="error-details-structured">
+              <table class="error-table">
+                <tbody>
+                  <tr>
+                    <td class="error-table-label">Type:</td>
+                    <td class="error-table-value">
+                      {errorDetails.errorData.type}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="error-table-label">Name:</td>
+                    <td class="error-table-value">
+                      {errorDetails.errorData.name}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="error-table-label">Message:</td>
+                    <td class="error-table-value">
+                      {errorDetails.errorData.message}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="error-stack-container">
+                <strong class="error-stack-label">Stack Trace:</strong>
+                <pre class="error-details-content error-stack">
+                  {errorDetails.errorData.stack}
+                </pre>
+              </div>
+            </div>
+          ) : (
+            <pre class="error-details-content">{errorDetails.rawDetails}</pre>
+          )}
+        </details>
+      )
+    }
+
+    <div class="error-actions">
+      <Button variant="primary" href="/">Go Home</Button>
+    </div>
+  </div>
+</Layout>
+
+<style lang="sass">
+  .error-container
+    text-align: center
+    max-width: 600px
+    width: 100%
+
+  .error-icon
+    color: var(--tint-text-accent)
+    margin-block-end: tint.$size-12
+
+    :global(svg)
+      width: tint.$size-64
+      height: tint.$size-64
+
+  .error-code
+    color: var(--tint-text-accent)
+    margin-block-end: tint.$size-2
+    line-height: 1
+
+  .error-title
+    margin-block-end: tint.$size-32
+    color: var(--tint-text)
+
+  .error-message
+    color: var(--tint-text-secondary)
+    margin-block-end: tint.$size-16
+    line-height: 1.6
+
+  .error-custom-content
+    margin-block-end: tint.$size-16
+
+  .error-details
+    text-align: left
+    margin-block: tint.$size-16
+    padding: tint.$size-16
+    background: var(--tint-input-bg)
+    border-radius: tint.$size-16
+    border: 1px solid var(--tint-card-border)
+    summary
+      cursor: pointer
+      &:hover
+        color: var(--tint-text-link)
+    &[open] summary
+      margin-block-end: tint.$size-8
+
+  .error-details-content
+    background: var(--tint-action-primary)
+    color: var(--tint-action-primary-text)
+    padding-block: tint.$size-8
+    padding-inline: tint.$size-8
+    border-radius: tint.$size-8
+    line-height: 1.5
+    overflow: auto
+    font-family: 'Menlo', monospace
+    font-size: 12px
+
+  .error-details-structured
+    text-align: left
+
+  .error-table
+    width: 100%
+    margin-block-end: tint.$size-16
+    border-collapse: collapse
+    background: var(--tint-input-bg)
+    border-radius: tint.$size-8
+    overflow: hidden
+
+  .error-table-label
+    background: var(--tint-card-border)
+    color: var(--tint-text)
+    padding: tint.$size-8 tint.$size-12
+    font-weight: 600
+    width: 80px
+    vertical-align: top
+
+  .error-table-value
+    background: var(--tint-input-bg)
+    color: var(--tint-text)
+    padding: tint.$size-8 tint.$size-12
+    font-family: 'Menlo', monospace
+    font-size: 14px
+    word-break: break-word
+
+  .error-stack-container
+    margin-block-start: tint.$size-16
+
+  .error-stack-label
+    display: block
+    color: var(--tint-text)
+    margin-block-end: tint.$size-8
+    font-size: 14px
+
+  .error-stack
+    margin-block-start: 0
+    max-height: 300px
+    overflow-y: auto
+
+  .error-actions
+    display: flex
+    gap: tint.$size-8
+    justify-content: center
+    flex-wrap: wrap
+    margin-block-start: tint.$size-48
+
+  @media (max-width: 640px)
+    .error-actions
+      flex-direction: column
+      align-items: center
+
+      :global(.btn)
+        width: 100%
+        max-width: 200px
+</style>

@@ -1,5 +1,4 @@
 import {
-  GraphQLBoolean,
   GraphQLFieldConfig,
   GraphQLID,
   GraphQLInputObjectType,
@@ -8,12 +7,11 @@ import {
   GraphQLString,
 } from 'graphql'
 import GraphQLUpload from 'graphql-upload/GraphQLUpload.mjs'
-import KeywordType from '../keyword/KeywordType'
 import TaskType from '../task/TaskType'
 import ItemType, { itemHashType } from './ItemType'
 import HashId from '../../HashId'
 import Context from '@src/Context'
-import { Format, Language } from '../types'
+import { Format } from '../types'
 import { postHashType } from '../post/PostType'
 
 import ItemActions from '@src/actions/ItemActions'
@@ -44,7 +42,7 @@ const uploadItems: GraphQLFieldConfig<any, any, any> = {
       type: new GraphQLNonNull(GraphQLUpload),
     },
   },
-  resolve: async (parent, args, ctx: Context, resolveInfo) => {
+  resolve: async (_parent, args, ctx: Context, _resolveInfo) => {
     const postId = HashId.decode(postHashType, args.id)
     const { caption, description, type, file } = args
     ItemActions.mUpload(ctx, { postId, file, caption, description, type })
@@ -90,7 +88,7 @@ const editItem: GraphQLFieldConfig<any, any, any> = {
     description: EditItemInput.getFields().description,
     caption: EditItemInput.getFields().caption,
   },
-  resolve: async (parent, args, ctx: Context) => {
+  resolve: async (_parent, args, ctx: Context) => {
     const itemId = HashId.decode(postHashType, args.id)
     const { description, caption } = args
 
@@ -111,7 +109,7 @@ const deleteItems: GraphQLFieldConfig<any, any, any> = {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLID))),
     },
   },
-  resolve: async (parent, args, ctx: Context) => {
+  resolve: async (_parent, args, ctx: Context) => {
     const itemIds = args.ids.map((hashId: string) =>
       HashId.decode(itemHashType, hashId),
     )

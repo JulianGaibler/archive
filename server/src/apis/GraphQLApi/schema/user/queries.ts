@@ -13,7 +13,7 @@ import UserType, { userConnection } from './UserType'
 const me: GraphQLFieldConfig<any, any, any> = {
   description: 'Returns the currently authenticated user.',
   type: UserType,
-  resolve: async (parent, args, ctx: Context) => UserActions.qMe(ctx),
+  resolve: async (_parent, _args, ctx: Context) => UserActions.qMe(ctx),
 }
 
 const user: GraphQLFieldConfig<any, any, any> = {
@@ -25,7 +25,7 @@ const user: GraphQLFieldConfig<any, any, any> = {
       type: new GraphQLNonNull(GraphQLString),
     },
   },
-  resolve: async (parent, args, ctx: Context) => UserActions.qUser(ctx, args),
+  resolve: async (_parent, args, ctx: Context) => UserActions.qUser(ctx, args),
 }
 
 const users: GraphQLFieldConfig<any, any, any> = {
@@ -38,7 +38,7 @@ const users: GraphQLFieldConfig<any, any, any> = {
       type: GraphQLString,
     },
   },
-  resolve: async (parent, args, ctx: Context) => {
+  resolve: async (_parent, args, ctx: Context) => {
     const limit = args.first
     const offset = args.after ? cursorToOffset(args.after) + 1 : 0
 

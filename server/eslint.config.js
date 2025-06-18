@@ -34,16 +34,16 @@ export default ts.config(
       },
     },
   },
-  jsdoc.configs['flat/recommended'],
-  {
-    files: ['**/*.js', '**/*.ts'],
-    plugins: {
-      jsdoc,
-    },
-    rules: {
-      'jsdoc/require-description': 'warn'
-    }
-  },
+  // jsdoc.configs['flat/recommended'],
+  // {
+  //   files: ['**/*.js', '**/*.ts'],
+  //   plugins: {
+  //     jsdoc,
+  //   },
+  //   rules: {
+  //     'jsdoc/require-description': 'warn'
+  //   }
+  // },
   prettierConfig,
   {
     languageOptions: {

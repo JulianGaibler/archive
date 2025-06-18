@@ -22,7 +22,8 @@
     "graphql-ws": "^6.0.5",
     "sass": "^1.89.2",
     "svelte": "^5.34.3",
-    "tint": "file:../../tint"
+    "tint": "file:../../tint",
+    "yaml": "^2.8.0"
   },
   "devDependencies": {
     "@graphql-codegen/cli": "5.0.7",

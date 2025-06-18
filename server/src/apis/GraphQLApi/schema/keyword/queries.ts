@@ -1,4 +1,4 @@
-import { GraphQLFieldConfig, GraphQLString } from 'graphql'
+import { GraphQLFieldConfig, GraphQLString, GraphQLBoolean } from 'graphql'
 import {
   connectionFromArraySlice,
   cursorToOffset,
@@ -18,8 +18,12 @@ const keywords: GraphQLFieldConfig<any, any, any> = {
       description: 'Returns all keywords containing this string.',
       type: GraphQLString,
     },
+    sortByPostCount: {
+      description: 'Sort keywords by post count in descending order.',
+      type: GraphQLBoolean,
+    },
   },
-  resolve: async (parent, args, ctx: Context) => {
+  resolve: async (_parent, args, ctx: Context) => {
     const limit = args.first
     const offset = args.after ? cursorToOffset(args.after) + 1 : 0
 
@@ -27,6 +31,7 @@ const keywords: GraphQLFieldConfig<any, any, any> = {
       limit,
       offset,
       byName: args.byName,
+      sortByPostCount: args.sortByPostCount,
     })
 
     return {
@@ -34,6 +39,7 @@ const keywords: GraphQLFieldConfig<any, any, any> = {
         sliceStart: offset,
         arrayLength: totalCount,
       }),
+      totalCount,
     }
   },
 }

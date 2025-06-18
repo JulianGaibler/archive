@@ -100,6 +100,7 @@ export const Language = new GraphQLEnumType({
   },
 })
 
+/** @param hashIdType */
 export function globalIdField(hashIdType: any): GraphQLFieldConfig<any, any> {
   return {
     description: 'The ID of an object',

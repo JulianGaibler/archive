@@ -54,7 +54,7 @@
 {/if}
 
 <ul>
-  {#each sessions as session}
+  {#each sessions as session (session.id)}
     <li>
       <p class="tint--type-ui-bold">
         <span class="label tint--type-ui-small">Last device:</span><br />

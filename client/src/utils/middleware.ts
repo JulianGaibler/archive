@@ -82,14 +82,14 @@ export const uploadMiddleware: RequestMiddleware = (request) => {
     form.append(index.toString(), file.file)
   }
 
-  const { 'Content-Type': contentType, ...newHeaders } =
-    request.headers as Record<string, string>
-  newHeaders['Apollo-Require-Preflight'] = 'true'
+  const headers = new Headers(request.headers)
+  headers.delete('Content-Type') // Remove Content-Type as FormData will set it
+  headers.set('Apollo-Require-Preflight', 'true')
 
   return {
     ...request,
     body: form,
-    headers: newHeaders,
+    headers,
   }
 }
 

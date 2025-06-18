@@ -1,0 +1,13 @@
+---
+import ErrorPage from '@src/components/ErrorPage.astro'
+import { handleError } from '@src/utils/error-handling'
+
+const { error: astroError } = Astro.props
+
+// Set the 500 status for this page and handle the error
+const errorInfo = handleError(500, undefined, astroError)
+---
+
+<ErrorPage error={errorInfo}>
+  <p>Please try again in a few minutes.</p>
+</ErrorPage>

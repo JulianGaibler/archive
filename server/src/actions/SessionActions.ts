@@ -26,7 +26,11 @@ export default class {
     return buffer.toString('base64')
   }
 
-  /** Clean up expired sessions for a user and enforce session limits */
+  /**
+   * Clean up expired sessions for a user and enforce session limits
+   *
+   * @param userId
+   */
   private static async cleanupUserSessions(userId: number): Promise<void> {
     const now = Date.now()
 
@@ -56,7 +60,13 @@ export default class {
   // ** QUERIES
   // **
 
-  /** Get one session by id */
+  /**
+   * Get one session by id
+   *
+   * @param ctx
+   * @param fields
+   * @param fields.sessionId
+   */
   static async qSession(
     ctx: Context,
     fields: { sessionId: number },
@@ -65,7 +75,11 @@ export default class {
     return ctx.dataLoaders.session.getById.load(fields.sessionId)
   }
 
-  /** Get all sessions for the current user */
+  /**
+   * Get all sessions for the current user
+   *
+   * @param ctx
+   */
   static async qGetUserSessions(ctx: Context): Promise<SessionModel[]> {
     const userIId = ctx.isAuthenticated()
     const x = await ctx.dataLoaders.session.getByUser.load(userIId)
@@ -90,17 +104,28 @@ export default class {
     })
   }
 
-  /** Verify that the session is valid, and either return the userId or null */
+  /**
+   * Verify that the session is valid, and either return the userId or null
+   *
+   * @param fields
+   * @param fields.secureSessionId
+   * @param fields.token
+   * @param fields.userAgent
+   * @param fields.latestIp
+   */
   static async qVerify(fields: {
-    sessionId: string
+    secureSessionId: string
     token: string
     userAgent: string
     latestIp?: string
-  }): Promise<{ userId: number; rotatedToken?: string } | null> {
+  }): Promise<{
+    userId: number
+    sessionId: number
+    rotatedToken?: string
+  } | null> {
     try {
-      // Find the session by secure session ID (no longer using HashId decode)
       const session = await SessionModel.query().findOne({
-        secureSessionId: fields.sessionId,
+        secureSessionId: fields.secureSessionId,
       })
       if (!session) {
         return null
@@ -169,6 +194,7 @@ export default class {
 
       return {
         userId: updatedSession.userId,
+        sessionId: updatedSession.id,
         rotatedToken,
       }
     } catch (error) {
@@ -188,6 +214,10 @@ export default class {
    * Create a new session for the user and return the session info Server
    * internal function. Do not use expose to client without checking
    * permissions.
+   *
+   * @param ctx
+   * @param fields
+   * @param fields.userId
    */
   static async _mCreate(
     ctx: Context,
@@ -219,10 +249,16 @@ export default class {
     return { sessionId: secureSessionId, token }
   }
 
-  /** Revoke a session from a user */
+  /**
+   * Revoke a session from a user
+   *
+   * @param ctx
+   * @param fields
+   * @param fields.sessionId
+   */
   static async mRevoke(
     ctx: Context,
-    fields: { sessionId?: string },
+    fields: { sessionId?: number },
   ): Promise<boolean> {
     const currentUserIId = ctx.isAuthenticated()
 
@@ -232,12 +268,11 @@ export default class {
 
     try {
       // sessionId here is the database ID (for GraphQL API), not the secure session ID
-      const sessionDbId = parseInt(fields.sessionId, 10)
-      if (isNaN(sessionDbId)) {
+      if (isNaN(fields.sessionId)) {
         throw new NotFoundError('Invalid session ID.')
       }
 
-      const session = await SessionModel.query().findById(sessionDbId)
+      const session = await SessionModel.query().findById(fields.sessionId)
 
       // Check if session exists
       if (session === undefined) {
@@ -262,7 +297,11 @@ export default class {
     }
   }
 
-  /** Revoke the current session */
+  /**
+   * Revoke the current session
+   *
+   * @param sessionId
+   */
   static async mRevokeCurrent(sessionId: string): Promise<boolean> {
     try {
       // Find session by secure session ID

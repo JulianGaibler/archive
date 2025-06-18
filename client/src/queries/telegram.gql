@@ -17,3 +17,7 @@ mutation linkTelegram(
     hash: $hash
   )
 }
+
+mutation unlinkTelegram {
+  unlinkTelegram
+}

@@ -17,15 +17,15 @@ export const AUTH_COOKIE_NAME = 's-t'
 export default class AuthCookieUtils {
   static getAuthCookies(
     req: Request,
-  ): { sessionId: string; token: string } | null {
-    const sessionId = req.cookies[SESSION_COOKIE_NAME]
+  ): { secureSessionId: string; token: string } | null {
+    const secureSessionId = req.cookies[SESSION_COOKIE_NAME]
     const token = req.cookies[AUTH_COOKIE_NAME]
 
-    if (!sessionId || !token) {
+    if (!secureSessionId || !token) {
       return null
     }
 
-    return { sessionId, token }
+    return { secureSessionId: secureSessionId, token }
   }
 
   static setAuthCookies(res: Response, sessionId: string, token: string) {

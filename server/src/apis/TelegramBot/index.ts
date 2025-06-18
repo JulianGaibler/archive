@@ -1,6 +1,4 @@
-/* eslint-disable camelcase */
 import { createHash, createHmac, timingSafeEqual } from 'crypto'
-import { NextFunction, Request, Response } from 'express'
 import Telegraf from 'telegraf'
 
 import { RequestError } from '@src/errors'
@@ -52,6 +50,10 @@ async function middleware(
   return next(ctx, msgCtx)
 }
 
+/**
+ * @param ctx
+ * @param msgCtx
+ */
 async function checkStatus(ctx: Context, msgCtx: any) {
   if (ctx.userId) {
     msgCtx.reply(
@@ -75,8 +77,12 @@ async function checkStatus(ctx: Context, msgCtx: any) {
   )
 }
 
+/**
+ * @param ctx
+ * @param msgCtx
+ */
 async function inlineQuery(ctx: Context, msgCtx: any) {
-  const { id, from, query, offset: cursor } = msgCtx.inlineQuery
+  const { id, from: _from, query, offset: cursor } = msgCtx.inlineQuery
 
   if (!ctx.userId) {
     msgCtx.telegram.answerInlineQuery(id, [], {
@@ -89,7 +95,11 @@ async function inlineQuery(ctx: Context, msgCtx: any) {
   const limit = 10
   const offset = (cursor && cursorToOffset(cursor)) || 0
 
-  const { data, totalSearchCount, totalCount } = await ItemActions.qItems(ctx, {
+  const {
+    data,
+    totalSearchCount: _totalSearchCount,
+    totalCount: _totalCount,
+  } = await ItemActions.qItems(ctx, {
     limit,
     offset,
     byContent: query,
@@ -104,10 +114,12 @@ async function inlineQuery(ctx: Context, msgCtx: any) {
   // TODO .catch()
 }
 
+/** @param offset */
 function offsetToCursor(offset: number): string {
   return Buffer.from(offset.toString(), 'utf8').toString('base64')
 }
 
+/** @param cursor */
 function cursorToOffset(cursor: string): number {
   return parseInt(
     Buffer.from(cursor, 'base64').toString('utf8').substring(PREFIX.length),
@@ -115,6 +127,7 @@ function cursorToOffset(cursor: string): number {
   )
 }
 
+/** @param items */
 function convertToInlineQueryResult(items: ItemModel[]) {
   return items.map((item: ItemModel) => {
     const base = {
@@ -150,6 +163,10 @@ function convertToInlineQueryResult(items: ItemModel[]) {
   })
 }
 
+/**
+ * @param root0
+ * @param root0.hash
+ */
 export function validateAuth({ hash, ...data }) {
   // Current time minus two minutes
   const currentTime = Math.round(new Date().getTime() / 1000) - 120

@@ -75,7 +75,7 @@ export default class PostModel extends BaseModel {
   ): Promise<PostModel[][]> {
     const keywords = await KeywordModel.query()
       .findByIds(keywordIds as number[])
-      .select('Keyword.id', 'posts')
+      .select('keyword.id')
       .withGraphFetched('posts')
 
     const keywordMap: { [key: string]: any } = {}

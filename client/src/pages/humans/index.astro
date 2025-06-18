@@ -1,0 +1,28 @@
+---
+import Layout from '@src/layouts/Layout.astro'
+import Humans from './_humans.svelte'
+
+import {
+  UsersDocument,
+  type UsersQuery,
+  type UsersQueryVariables,
+} from '@src/generated/graphql'
+
+const ssrClient = Astro.locals.gqlClient
+
+// if there is a query param q, use it as the search term
+const byUsername = new URL(Astro.request.url).searchParams.get('q')
+
+const result = await ssrClient.request<UsersQuery, UsersQueryVariables>(
+  UsersDocument,
+  {
+    byUsername,
+  },
+)
+---
+
+<Layout title="Archive - Humans">
+  <Humans client:load results={result} {byUsername} />
+</Layout>
+
+<style lang="sass"></style>

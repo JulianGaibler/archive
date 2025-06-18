@@ -1,0 +1,109 @@
+#import "./fragments.gql"
+
+query Post($id: ID!) {
+  node(id: $id) {
+    ... on Post {
+      ...PostData
+    }
+  }
+}
+
+query Posts(
+  $after: String
+  $byContent: String
+  $byKeywords: [ID!]
+  $byUsers: [String!]
+) {
+  posts(
+    first: 40
+    after: $after
+    byContent: $byContent
+    byKeywords: $byKeywords
+    byUsers: $byUsers
+  ) {
+    ...PostsConnection
+  }
+}
+
+query PostsTextOnly($after: String, $byContent: String) {
+  posts(first: 20, after: $after, byContent: $byContent) {
+    edges {
+      node {
+        id
+        title
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+      startCursor
+    }
+  }
+}
+
+mutation createPost($title: String!, $language: Language!, $keywords: [ID!]) {
+  createPost(title: $title, language: $language, keywords: $keywords) {
+    ...PostData
+  }
+}
+
+mutation editPost(
+  $id: ID!
+  $title: String
+  $keywords: [ID!]
+  $language: Language
+  $items: [EditItemInput!]
+  $newItems: [NewItemInput!]
+) {
+  editPost(
+    id: $id
+    title: $title
+    keywords: $keywords
+    language: $language
+    items: $items
+    newItems: $newItems
+  ) {
+    ...PostData
+  }
+}
+
+mutation deleteItem($deleteItemId: ID!) {
+  deleteItem(id: $deleteItemId)
+}
+
+mutation deletePost($deletePostId: ID!) {
+  deletePost(id: $deletePostId)
+}
+
+mutation mergePost(
+  $sourcePostId: ID!
+  $targetPostId: ID!
+  $mergeKeywords: Boolean
+) {
+  mergePost(
+    sourcePostId: $sourcePostId
+    targetPostId: $targetPostId
+    mergeKeywords: $mergeKeywords
+  )
+}
+
+mutation reorderItem($itemIds: [ID!]!, $postId: ID!) {
+  reorderItems(itemIds: $itemIds, postId: $postId)
+}
+
+mutation moveItem($itemId: ID!, $targetPostId: ID!, $keepEmptyPost: Boolean) {
+  moveItem(
+    itemId: $itemId
+    targetPostId: $targetPostId
+    keepEmptyPost: $keepEmptyPost
+  )
+}
+
+subscription taskUpdates($ids: [String!]!) {
+  taskUpdates(ids: $ids) {
+    kind
+    item {
+      ...ItemData
+    }
+  }
+}

@@ -7,6 +7,8 @@ import {
 import Context from '@src/Context'
 
 import SessionActions from '@src/actions/SessionActions'
+import HashId from '../../HashId'
+import { sessionHashType } from './SessionType'
 
 const revokeSession: GraphQLFieldConfig<any, any, any> = {
   description: 'Revokes the session of a user.',
@@ -18,7 +20,9 @@ const revokeSession: GraphQLFieldConfig<any, any, any> = {
     },
   },
   resolve: async (_parent, args, ctx: Context) => {
-    return SessionActions.mRevoke(ctx, { sessionId: args.id })
+    return SessionActions.mRevoke(ctx, {
+      sessionId: HashId.decode(sessionHashType, args.id),
+    })
   },
 }
 

@@ -44,21 +44,21 @@ const TaskType = new GraphQLObjectType({
     },
     uploader: {
       type: UserType,
-      resolve: (task, args, ctx: Context) =>
+      resolve: (task, _args, ctx: Context) =>
         task.uploaderId
           ? UserActions.qUser(ctx, { userId: task.uploaderId })
           : null,
     },
     addToPost: {
       type: PostType,
-      resolve: (task, args, ctx: Context) =>
+      resolve: (task, _args, ctx: Context) =>
         task.createdPostId
           ? PostActions.qPost(ctx, { postId: task.addToPostId })
           : null,
     },
     createdItem: {
       type: ItemType,
-      resolve: (task, args, ctx: Context) =>
+      resolve: (task, _args, ctx: Context) =>
         task.createdPostId
           ? ItemActions.qItem(ctx, { itemId: task.createdItemId })
           : null,

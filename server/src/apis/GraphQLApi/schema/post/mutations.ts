@@ -158,6 +158,34 @@ const reorderItem: GraphQLFieldConfig<any, any, any> = {
   },
 }
 
+const reorderItems: GraphQLFieldConfig<any, any, any> = {
+  description:
+    'Reorders multiple items within a post to the specified order. Items not included will be placed after the reordered items maintaining their relative positions.',
+  type: new GraphQLNonNull(GraphQLBoolean),
+  args: {
+    itemIds: {
+      description: 'Array of item IDs in the desired order.',
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLID))),
+    },
+    postId: {
+      description: 'The ID of the post containing the items to reorder.',
+      type: new GraphQLNonNull(GraphQLID),
+    },
+  },
+  resolve: async (_parent, args, ctx: Context) => {
+    const itemIds = args.itemIds.map((hashId: string) =>
+      HashId.decode(itemHashType, hashId),
+    )
+    const postId = HashId.decode(postHashType, args.postId)
+
+    const result = await PostActions.mReorderItems(ctx, {
+      itemIds,
+      postId,
+    })
+    return result.success
+  },
+}
+
 const mergePost: GraphQLFieldConfig<any, any, any> = {
   description:
     'Merges one post into another, moving all items and optionally keywords.',
@@ -226,6 +254,7 @@ export default {
   deletePost,
   deleteItem,
   reorderItem,
+  reorderItems,
   mergePost,
   moveItem,
 }

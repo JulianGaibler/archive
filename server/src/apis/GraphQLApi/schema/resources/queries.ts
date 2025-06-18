@@ -10,7 +10,7 @@ const resourcePath = process.env.STORAGE_URL || 'content/'
 const resources: GraphQLFieldConfig<any, any, any> = {
   type: ResourceType,
   description: 'Returns information about the location of the actual files.',
-  resolve: async (parent, args, ctx: Context) => {
+  resolve: async (_parent, _args, _ctx: Context) => {
     return {
       resourceDomain,
       resourcePath,

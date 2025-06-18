@@ -1,7 +1,9 @@
 ---
+import ErrorPage from '@src/components/ErrorPage.astro'
+import { handleError } from '@src/utils/error-handling'
 
+// Set the 404 status for this page
+const error = handleError(404, Astro.response)
 ---
 
-<h1>404</h1>
-
-<style lang="sass"></style>
+<ErrorPage error={error} />

@@ -105,7 +105,7 @@ export default class UserModel extends UniqueModel {
       modelClass: 'post',
       join: {
         from: 'user.id',
-        to: 'post.uploaderId',
+        to: 'post.creatorId',
       },
     },
   }

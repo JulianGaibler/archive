@@ -27,7 +27,7 @@ export default class {
     fields: {
       limit?: number
       offset?: number
-      byUsers?: number[]
+      byUsers?: string[]
       byKeywords?: number[]
       byTypes?: string[]
       byLanguage?: string
@@ -46,7 +46,16 @@ export default class {
       query.whereIn('type', fields.byTypes)
     }
     if (fields.byUsers && fields.byUsers.length > 0) {
-      query.whereIn('uploaderId', fields.byUsers)
+      // Use DataLoader to resolve usernames to user IDs to avoid N+1 queries
+      const users = await Promise.all(
+        fields.byUsers.map((username) =>
+          ctx.dataLoaders.user.getByUsername.load(username),
+        ),
+      )
+      const userIds = users.filter((user) => user).map((user) => user.id)
+      if (userIds.length > 0) {
+        query.whereIn('creatorId', userIds)
+      }
     }
     if (fields.byKeywords && fields.byKeywords.length > 0) {
       query
@@ -311,9 +320,7 @@ export default class {
     return await knex
       .transaction(async (trx) => {
         // Get item with post information
-        const item = await ItemModel.query(trx)
-          .findById(fields.itemId)
-          .withGraphFetched('post')
+        const item = await ItemModel.query(trx).findById(fields.itemId)
 
         if (!item) {
           throw new NotFoundError('Item not found')
@@ -357,6 +364,116 @@ export default class {
       })
   }
 
+  static async mReorderItems(
+    ctx: Context,
+    fields: { itemIds: number[]; postId: number },
+  ) {
+    const userIId = ctx.isAuthenticated()
+    const knex = PostModel.knex()
+
+    return await knex
+      .transaction(async (trx) => {
+        // Validate input
+        if (!fields.itemIds || fields.itemIds.length === 0) {
+          throw new InputError('At least one item ID must be provided')
+        }
+
+        if (!fields.postId) {
+          throw new InputError('Post ID is required')
+        }
+
+        // Check for duplicate IDs
+        const uniqueItemIds = [...new Set(fields.itemIds)]
+        if (uniqueItemIds.length !== fields.itemIds.length) {
+          throw new InputError('Duplicate item IDs are not allowed')
+        }
+
+        // Get all items to reorder with their post information
+        const itemsToReorder =
+          await ItemModel.query(trx).findByIds(uniqueItemIds)
+
+        if (itemsToReorder.length === 0) {
+          throw new NotFoundError('No valid items found')
+        }
+
+        // Verify all items belong to the specified post
+        const itemsNotInPost = itemsToReorder.filter(
+          (item) => item.postId !== fields.postId,
+        )
+        if (itemsNotInPost.length > 0) {
+          throw new InputError(
+            `Items ${itemsNotInPost.map((item) => item.id).join(', ')} do not belong to the specified post`,
+          )
+        }
+
+        // Check authorization: user owns the post OR user owns all items
+        const post = itemsToReorder[0].post
+        const userOwnsPost = post?.creatorId === userIId
+        const userOwnsAllItems = itemsToReorder.every(
+          (item) => item.creatorId === userIId,
+        )
+
+        if (!userOwnsPost && !userOwnsAllItems) {
+          throw new AuthorizationError(
+            'You can only reorder items in your own posts or items you created.',
+          )
+        }
+
+        // Get all items in the post
+        const allItemsInPost = await ItemModel.query(trx)
+          .where('postId', fields.postId)
+          .orderBy('position', 'asc')
+
+        // Create a map for quick lookup of items to reorder
+        const itemsToReorderMap = new Map(
+          itemsToReorder.map((item) => [item.id, item]),
+        )
+
+        // Filter items: those to reorder vs those to keep in place
+        const itemsToKeepInPlace = allItemsInPost.filter(
+          (item) => !itemsToReorderMap.has(item.id),
+        )
+
+        // Create the new order: reordered items first, then remaining items maintaining their relative order
+        const newOrder: { id: number; newPosition: number }[] = []
+
+        // Add reordered items in the specified order
+        uniqueItemIds.forEach((itemId, index) => {
+          if (itemsToReorderMap.has(itemId)) {
+            newOrder.push({ id: itemId, newPosition: index + 1 })
+          }
+        })
+
+        // Add remaining items after the reordered ones, maintaining their relative order
+        itemsToKeepInPlace.forEach((item, index) => {
+          newOrder.push({
+            id: item.id,
+            newPosition: uniqueItemIds.length + index + 1,
+          })
+        })
+
+        // Update positions in batch
+        for (const { id, newPosition } of newOrder) {
+          await ItemModel.query(trx)
+            .patch({ position: newPosition })
+            .where('id', id)
+        }
+
+        return {
+          success: true,
+          reorderedItemIds: uniqueItemIds.filter((id) =>
+            itemsToReorderMap.has(id),
+          ),
+          totalItemsInPost: allItemsInPost.length,
+          postId: fields.postId,
+        }
+      })
+      .catch((error) => {
+        console.error('Error reordering items:', error)
+        throw error
+      })
+  }
+
   static async mReorderItem(
     ctx: Context,
     fields: { itemId: number; newPosition: number },
@@ -367,9 +484,7 @@ export default class {
     return await knex
       .transaction(async (trx) => {
         // Get item with post information
-        const item = await ItemModel.query(trx)
-          .findById(fields.itemId)
-          .withGraphFetched('post')
+        const item = await ItemModel.query(trx).findById(fields.itemId)
 
         if (!item) {
           throw new NotFoundError('Item not found')
@@ -464,7 +579,7 @@ export default class {
       mergeKeywords?: boolean
     },
   ) {
-    const userIId = ctx.isAuthenticated()
+    ctx.isAuthenticated()
     const knex = PostModel.knex()
 
     return await knex
@@ -486,14 +601,14 @@ export default class {
           throw new NotFoundError('Target post not found')
         }
 
-        if (sourcePost.creatorId !== userIId) {
-          throw new AuthorizationError('You can only merge your own posts.')
-        }
-        if (targetPost.creatorId !== userIId) {
-          throw new AuthorizationError(
-            'You can only merge into your own posts.',
-          )
-        }
+        // if (sourcePost.creatorId !== userIId) {
+        //   throw new AuthorizationError('You can only merge your own posts.')
+        // }
+        // if (targetPost.creatorId !== userIId) {
+        //   throw new AuthorizationError(
+        //     'You can only merge into your own posts.',
+        //   )
+        // }
 
         // Get the highest position in the target post
         const highestPositionResult = (await ItemModel.query(trx)
@@ -570,9 +685,7 @@ export default class {
     return await knex
       .transaction(async (trx) => {
         // Get item with its current post information
-        const item = await ItemModel.query(trx)
-          .findById(fields.itemId)
-          .withGraphFetched('post')
+        const item = await ItemModel.query(trx).findById(fields.itemId)
 
         if (!item) {
           throw new NotFoundError('Item not found')

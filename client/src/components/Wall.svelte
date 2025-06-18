@@ -9,11 +9,20 @@
   const sdk = getSdk(webClient)
 
   interface Props {
-    results: PostsQuery | undefined
+    results: PostsQuery | { posts: PostsQuery['posts'] } | undefined
     byContent?: string | null
+    byKeywords?: string[] | null
+    byUsers?: string[] | null
+    showAddPostButton?: boolean
   }
 
-  let { results = $bindable(), byContent = $bindable(null) }: Props = $props()
+  let {
+    results = $bindable(),
+    byContent = $bindable(null),
+    byKeywords = $bindable(null),
+    byUsers = $bindable(null),
+    showAddPostButton = false,
+  }: Props = $props()
   let columns = $state(4)
 
   type PostEdge = NonNullable<NonNullable<PostsQuery['posts']>['edges']>
@@ -33,7 +42,10 @@
 
   onMount(calculateColumns)
 
-  function sortIntoColumns(results: PostsQuery | undefined, columns: number) {
+  function sortIntoColumns(
+    results: PostsQuery | { posts: PostsQuery['posts'] } | undefined,
+    columns: number,
+  ) {
     // create an array initialized with 0, for each column
     const columnHeights = Array.from({ length: columns }, () => 0)
     // initialize an array of arrays, one for each column
@@ -42,8 +54,13 @@
     if (results?.posts?.edges === undefined) return columnPosts
     results.posts.edges!.forEach((postNode) => {
       const shortestColumn = columnHeights.indexOf(Math.min(...columnHeights))
-      columnHeights[shortestColumn] +=
-        postNode!.node?.items?.edges?.[0]?.node?.relativeHeight ?? 0
+      // Use 16:9 aspect ratio (56.25%) as fallback for posts without items or relative height
+      const firstItem = postNode!.node?.items?.edges?.[0]?.node
+      const relativeHeight =
+        firstItem && 'relativeHeight' in firstItem
+          ? firstItem.relativeHeight
+          : 56.25
+      columnHeights[shortestColumn] += relativeHeight
       columnPosts[shortestColumn].push(postNode)
     })
 
@@ -56,6 +73,8 @@
     const result = await sdk.Posts({
       after: results?.posts?.pageInfo?.endCursor,
       byContent,
+      byKeywords,
+      byUsers,
     })
     if (!results) {
       results = result.data
@@ -95,6 +114,8 @@
 
     const result = await sdk.Posts({
       byContent,
+      byKeywords,
+      byUsers,
     })
     results = result.data
   }
@@ -109,37 +130,56 @@
       value={byContent || ''}
       onsearch={onSearchChange}
     />
-    <Button variant="primary">New Post</Button>
+    {#if showAddPostButton}
+      <Button variant="primary" href="/new-post">New Post</Button>
+    {/if}
   </div>
 </div>
 <div>
   <div class="shrinkwrap columns">
-    {#each columnPosts as column}
+    {#if byContent}
+      <p class="search-results">
+        Search results for <strong>{byContent}</strong>
+      </p>
+    {/if}
+  </div>
+  <div class="shrinkwrap columns">
+    {#each columnPosts as column, i (i)}
       <div class="column">
-        {#each column as postNode}
+        {#each column as postNode (postNode?.node?.id)}
+          {@const firstItem = postNode?.node?.items?.edges?.[0]?.node}
+          {@const relativeHeight =
+            firstItem && 'relativeHeight' in firstItem
+              ? firstItem.relativeHeight
+              : 56.25}
+          {@const thumbnailPath =
+            firstItem && 'thumbnailPath' in firstItem
+              ? firstItem.thumbnailPath
+              : null}
           <a
             class="tint--tinted post"
             href={`/${postNode?.node?.id}`}
-            style="padding-bottom: {postNode?.node?.items?.edges?.[0]?.node
-              ?.relativeHeight}%"
+            style="padding-bottom: {relativeHeight}%"
           >
-            <picture>
-              <source
-                type="image/webp"
-                srcset={`//${import.meta.env.PUBLIC_RESOURCE_PATH}${
-                  postNode?.node?.items?.edges?.[0]?.node?.thumbnailPath
-                }.webp`}
-              />
-              <img
-                src={`//${import.meta.env.PUBLIC_RESOURCE_PATH}${
-                  postNode?.node?.items?.edges?.[0]?.node?.thumbnailPath
-                }.jpeg`}
-                alt="x"
-              />
-            </picture>
+            {#if thumbnailPath}
+              <picture>
+                <source
+                  type="image/webp"
+                  srcset={`//${import.meta.env.PUBLIC_RESOURCE_PATH}${thumbnailPath}.webp`}
+                />
+                <img
+                  src={`//${import.meta.env.PUBLIC_RESOURCE_PATH}${thumbnailPath}.jpeg`}
+                  alt="x"
+                />
+              </picture>
+            {:else}
+              <div class="placeholder">
+                <span>No preview available</span>
+              </div>
+            {/if}
             <div class="info">
               <span>{postNode?.node?.title}</span>
-              <div class="count">{postNode?.node?.items?.totalCount}</div>
+              <div class="count">{postNode?.node?.items?.totalCount ?? 0}</div>
               <div class="pfp">
                 {#if postNode?.node?.creator}
                   <UserPicture user={postNode?.node?.creator} />
@@ -151,9 +191,11 @@
       </div>
     {/each}
   </div>
-  <div class="shrinkwrap">
-    <Button onclick={loadMore}>Load more</Button>
-  </div>
+  {#if results?.posts?.pageInfo?.hasNextPage}
+    <div class="shrinkwrap">
+      <Button onclick={loadMore}>Load more</Button>
+    </div>
+  {/if}
 </div>
 
 <style lang="sass">
@@ -165,6 +207,9 @@
       gap: tint.$size-12
       > :global(button)
         flex-shrink: 0
+
+  .search-results
+    color: var(--tint-text-secondary)
 
   .columns
     display: flex
@@ -191,6 +236,20 @@
       display: block
       width: 100%
       pointer-events: none
+    .placeholder
+      top: 0
+      position: absolute
+      display: flex
+      align-items: center
+      justify-content: center
+      width: 100%
+      height: 100%
+      background: var(--tint-bg-secondary)
+      pointer-events: none
+      > span
+        color: var(--tint-text-secondary)
+        font-size: 0.9rem
+        text-align: center
     .info
       display: flex
       position: absolute

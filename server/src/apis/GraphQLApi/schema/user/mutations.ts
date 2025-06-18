@@ -29,7 +29,7 @@ const signup: GraphQLFieldConfig<any, any, any> = {
       type: new GraphQLNonNull(GraphQLString),
     },
   },
-  resolve: async (parent, args, ctx: Context) => {
+  resolve: async (_parent, args, ctx: Context) => {
     const { sessionId, token } = await UserActions.mSignup(ctx, args)
     AuthCookieUtils.setAuthCookies(ctx.res!, sessionId, token)
     return true
@@ -49,7 +49,7 @@ const login: GraphQLFieldConfig<any, any, any> = {
       type: new GraphQLNonNull(GraphQLString),
     },
   },
-  resolve: async (parent, args, ctx: Context) => {
+  resolve: async (_parent, args, ctx: Context) => {
     const { sessionId, token } = await UserActions.mLogin(ctx, args)
     AuthCookieUtils.setAuthCookies(ctx.res!, sessionId, token)
     return true
@@ -59,9 +59,9 @@ const login: GraphQLFieldConfig<any, any, any> = {
 const logout: GraphQLFieldConfig<any, any, any> = {
   description: 'Terminates the current users session.',
   type: new GraphQLNonNull(GraphQLBoolean),
-  resolve: async (parent, args, ctx: Context) => {
+  resolve: async (_parent, _args, ctx: Context) => {
     const rv = await SessionActions.mRevoke(ctx, {
-      sessionId: ctx.tmp.sessionId,
+      sessionId: ctx.sessionId || -1,
     })
     if (rv) {
       AuthCookieUtils.deleteAuthCookies(ctx.res!)
@@ -104,7 +104,7 @@ const linkTelegram: GraphQLFieldConfig<any, any, any> = {
       type: new GraphQLNonNull(GraphQLString),
     },
   },
-  resolve: async (parent, args, ctx: Context) => {
+  resolve: async (_parent, _args, _ctx: Context) => {
     // TODO
     // const telegramId = Bot.validateAuth(args)
     // return UserActions.mLinkTelegram(ctx, { telegramId })
@@ -114,7 +114,7 @@ const linkTelegram: GraphQLFieldConfig<any, any, any> = {
 const unlinkTelegram: GraphQLFieldConfig<any, any, any> = {
   description: 'Removed Telegram ID from Archive profile.',
   type: new GraphQLNonNull(GraphQLBoolean),
-  resolve: async (parent, args, ctx: Context) =>
+  resolve: async (_parent, _args, ctx: Context) =>
     UserActions.mUnlinkTelegram(ctx),
 }
 
@@ -127,14 +127,14 @@ const uploadProfilePicture: GraphQLFieldConfig<any, any, any> = {
       type: new GraphQLNonNull(GraphQLUpload),
     },
   },
-  resolve: async (parent, args, ctx: Context) =>
+  resolve: async (_parent, args, ctx: Context) =>
     UserActions.mUploadProfilePicture(ctx, args),
 }
 
 const clearProfilePicture: GraphQLFieldConfig<any, any, any> = {
   description: 'Deletes the profile picture of the current user.',
   type: new GraphQLNonNull(GraphQLBoolean),
-  resolve: async (parent, args, ctx: Context) =>
+  resolve: async (_parent, _args, ctx: Context) =>
     UserActions.mClearProfilePicture(ctx),
 }
 
@@ -147,7 +147,7 @@ const changeName: GraphQLFieldConfig<any, any, any> = {
     },
   },
   type: new GraphQLNonNull(GraphQLBoolean),
-  resolve: async (parent, args, ctx: Context) =>
+  resolve: async (_parent, args, ctx: Context) =>
     UserActions.mChangeName(ctx, args),
 }
 
@@ -160,7 +160,7 @@ const setDarkMode: GraphQLFieldConfig<any, any, any> = {
     },
   },
   type: new GraphQLNonNull(GraphQLBoolean),
-  resolve: async (parent, args, ctx: Context) =>
+  resolve: async (_parent, args, ctx: Context) =>
     UserActions.mSetDarkMode(ctx, args),
 }
 
@@ -177,7 +177,7 @@ const changePassword: GraphQLFieldConfig<any, any, any> = {
       type: new GraphQLNonNull(GraphQLString),
     },
   },
-  resolve: async (parent, args, ctx: Context) =>
+  resolve: async (_parent, args, ctx: Context) =>
     UserActions.mChangePassword(ctx, args),
 }
 

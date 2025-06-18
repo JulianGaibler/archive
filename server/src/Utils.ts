@@ -1,3 +1,4 @@
+/** @param promise */
 export function to(promise: Promise<any>) {
   return (
     promise
@@ -9,10 +10,18 @@ export function to(promise: Promise<any>) {
   )
 }
 
+/**
+ * @param value
+ * @param decimals
+ */
 export function round(value: number, decimals: number = 2) {
   return Number(Math.round(+`${value}e${decimals}`) + 'e-' + decimals)
 }
 
+/**
+ * @param array
+ * @param callback
+ */
 export async function asyncForEach<T>(
   array: T[],
   callback: (item: T, index: number, array: T[]) => Promise<void>,

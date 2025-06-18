@@ -48,7 +48,11 @@ export class SessionSecurityUtils {
     return CURRENT_SECRET_VERSION
   }
 
-  /** Get a secret by version */
+  /**
+   * Get a secret by version
+   *
+   * @param version
+   */
   static getSecretByVersion(version: number): string {
     const secret = SECRET_VERSIONS[version]
     if (!secret) {
@@ -57,18 +61,31 @@ export class SessionSecurityUtils {
     return secret
   }
 
-  /** Hash a token with a specific secret version */
+  /**
+   * Hash a token with a specific secret version
+   *
+   * @param token
+   * @param version
+   */
   static hashToken(token: string, version: number): string {
     const secret = this.getSecretByVersion(version)
     return createHmac('sha256', secret).update(token).digest('hex')
   }
 
-  /** Hash a token with the current secret version */
+  /**
+   * Hash a token with the current secret version
+   *
+   * @param token
+   */
   static hashTokenCurrent(token: string): string {
     return this.hashToken(token, CURRENT_SECRET_VERSION)
   }
 
-  /** Check if a session needs token rotation */
+  /**
+   * Check if a session needs token rotation
+   *
+   * @param lastRotation
+   */
   static needsTokenRotation(lastRotation: number): boolean {
     const now = Date.now()
     return now - lastRotation > TOKEN_ROTATION_INTERVAL

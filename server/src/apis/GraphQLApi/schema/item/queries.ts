@@ -1,17 +1,11 @@
 import {
   GraphQLFieldConfig,
-  GraphQLID,
   GraphQLList,
   GraphQLNonNull,
   GraphQLString,
 } from 'graphql'
-import {
-  connectionFromArraySlice,
-  cursorToOffset,
-  forwardConnectionArgs,
-} from 'graphql-relay'
-import { raw } from 'objection'
-import { Format, Language } from '../types'
+import { forwardConnectionArgs } from 'graphql-relay'
+import { Format } from '../types'
 import { itemConnection } from './ItemType'
 
 import Context from '@src/Context'
@@ -31,7 +25,7 @@ const items: GraphQLFieldConfig<any, any, any> = {
       type: GraphQLString,
     },
   },
-  resolve: async (parent, args, ctx: Context) => {
+  resolve: async (_parent, _args, _ctx: Context) => {
     // TODO
     return true
   },

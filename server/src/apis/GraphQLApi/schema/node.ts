@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
 import { nodeDefinitions } from 'graphql-relay'
 import Context from '@src/Context'
 import HashId, { HashIdTypes } from '../HashId'
@@ -10,15 +9,9 @@ import KeywordActions from '@src/actions/KeywordActions'
 import UserActions from '@src/actions/UserActions'
 import ItemActions from '@src/actions/ItemActions'
 
-import UserType from './user/UserType'
-import KeywordType from './keyword/KeywordType'
-import PostType from './post/PostType'
-import SessionType from './session/SessionType'
-import TaskType from './task/TaskType'
-import ItemType from './item/ItemType'
 import { GraphQLInterfaceType, GraphQLFieldConfig } from 'graphql'
 
-interface GraphQLNodeDefinitions<TContext> {
+interface _GraphQLNodeDefinitions<TContext> {
   nodeInterface: GraphQLInterfaceType
   nodeField: GraphQLFieldConfig<unknown, TContext>
   nodesField: GraphQLFieldConfig<unknown, TContext>

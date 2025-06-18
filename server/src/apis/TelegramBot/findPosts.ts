@@ -4,12 +4,12 @@ import { encodeHashId } from '../utils'
 const PREFIX = 'telegramcursor:'
 const origin = `${process.env.ORIGIN}/${process.env.STORAGE_URL}/`
 
-import { base64, unbase64 } from 'graphql-relay'
-
+/** @param offset */
 function offsetToCursor(offset: number): string {
   return Buffer.from(offset.toString(), 'utf8').toString('base64')
 }
 
+/** @param cursor */
 function cursorToOffset(cursor: string): number {
   return parseInt(
     Buffer.from(cursor, 'base64').toString('utf8').substring(PREFIX.length),
@@ -17,6 +17,10 @@ function cursorToOffset(cursor: string): number {
   )
 }
 
+/**
+ * @param message
+ * @param cursor
+ */
 export default async function (message: string, cursor: string) {
   const limit = 10
   const offset = (cursor && cursorToOffset(cursor)) || 0
@@ -59,6 +63,7 @@ export default async function (message: string, cursor: string) {
   return rs
 }
 
+/** @param posts */
 function convertToInlineQueryResult(posts: PostModel[]) {
   return posts.map((post: PostModel) => {
     const base = {

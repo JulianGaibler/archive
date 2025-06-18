@@ -1,0 +1,19 @@
+mutation changeName($newName: String!) {
+  changeName(newName: $newName)
+}
+
+mutation changePassword($oldPassword: String!, $newPassword: String!) {
+  changePassword(oldPassword: $oldPassword, newPassword: $newPassword)
+}
+
+mutation uploadPicture($file: Upload!) {
+  uploadProfilePicture(file: $file)
+}
+
+mutation clearProfilePicture {
+  clearProfilePicture
+}
+
+mutation setDarkMode($enabled: Boolean!) {
+  setDarkMode(enabled: $enabled)
+}

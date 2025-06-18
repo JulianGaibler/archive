@@ -18,6 +18,7 @@ import topics from '@src/pubsub/topics'
 
 /**
  * This class is responsible for handling all GraphQL requests.
+ *
  * @class GraphQLApi
  */
 export default class {
@@ -117,6 +118,7 @@ export default class {
    * Creates a context object for the GraphQL request. With a context object,
    * you can check if a user is authenticated, and have access to the
    * dataloaders.
+   *
    * @param {express.Request} req - The Express request object.
    * @param {express.Response} res - The Express response object.
    * @returns {Promise<Context>} A promise that resolves to the context object.

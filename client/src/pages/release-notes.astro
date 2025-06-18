@@ -1,0 +1,313 @@
+---
+import Layout from '@src/layouts/Layout.astro'
+import fs from 'fs'
+import path from 'path'
+import { parse } from 'yaml'
+import { createMarkdownProcessor } from '@astrojs/markdown-remark'
+import { formatDate } from '@src/utils'
+
+// TypeScript types for changelog structure
+interface ChangelogChange {
+  label: string
+  message: string
+  issue: string | null
+}
+
+interface ChangelogVersion {
+  date?: string
+  notes?: string
+  changes?: string[]
+}
+
+interface ProcessedChangelogRelease {
+  version: string
+  changes: ChangelogChange[]
+  date: string
+  notes: string | null
+}
+
+// Read changelog from the monorepo root
+const changelogPath = path.resolve(process.cwd(), '..', 'changelog.yaml')
+const changelogContent = fs.readFileSync(changelogPath, 'utf8')
+const changelogData = parse(changelogContent) as Record<
+  string,
+  ChangelogVersion | string[]
+>
+
+// Create markdown processor
+const processor = await createMarkdownProcessor({
+  syntaxHighlight: 'shiki',
+  shikiConfig: { theme: 'github-light' },
+  remarkPlugins: [],
+  rehypePlugins: [],
+  gfm: true,
+  smartypants: true,
+})
+
+// Use Astro's markdown processor
+async function processMarkdown(text: string): Promise<string> {
+  const result = await processor.render(text)
+  return result.code
+}
+
+// Transform the data into a more structured format
+const changelog: ProcessedChangelogRelease[] = await Promise.all(
+  Object.entries(changelogData).map(async ([version, versionData]) => {
+    // Handle both old format (array of strings) and new format (object with changes and notes)
+    let changes: string[]
+    let notes: string | null = null
+    let date: string | null = null
+
+    if (Array.isArray(versionData)) {
+      // Old format: just an array of changes
+      changes = versionData
+    } else {
+      // New format: object with changes, optional notes, and optional date
+      changes = versionData.changes || []
+      notes = versionData.notes || null
+      date = versionData.date || null
+    }
+
+    // Parse changes to extract label and message
+    const parsedChanges = changes.map((change) => {
+      const match = change.match(/^\[([^\]]+)\]\s*(.+)/)
+      if (match) {
+        const [, label, message] = match
+        // Extract GitHub issue number if present
+        const issueMatch = message.match(/(.+?)\s*-\s*#(\d+)$/)
+        if (issueMatch) {
+          return {
+            label: label.toLowerCase(),
+            message: issueMatch[1].trim(),
+            issue: issueMatch[2],
+          }
+        }
+        return {
+          label: label.toLowerCase(),
+          message: message.trim(),
+          issue: null,
+        }
+      }
+      return {
+        label: 'other',
+        message: change,
+        issue: null,
+      }
+    })
+
+    // Process notes with Astro's markdown renderer if they exist
+    let processedNotes = null
+    if (notes) {
+      const result = await processMarkdown(notes)
+      processedNotes = result
+    }
+
+    return {
+      version,
+      changes: parsedChanges,
+      date: date || `Version ${version}`,
+      notes: processedNotes,
+    }
+  }),
+)
+---
+
+<Layout title="Changelog">
+  <header class="page-header tint--tinted">
+    <div class="shrinkwrap">
+      <h1>Release notes</h1>
+    </div>
+  </header>
+
+  <div class="changelog-content">
+    <div class="shrinkwrap">
+      {
+        changelog.map((release) => (
+          <section class="release-section">
+            <header class="release-header">
+              <span class="tint--type-action version-badge">
+                {release.version}
+              </span>
+              <h2 class="tint--type release-date">
+                {formatDate(new Date(release.date))}
+              </h2>
+            </header>
+            {release.notes && (
+              <div class="release-notes" set:html={release.notes} />
+            )}
+            <ul class="changes-list">
+              {release.changes.map((change) => (
+                <li class="change-item">
+                  <div
+                    class={`tint--type-ui-small-bold change-badge change-badge--${change.label}`}
+                  >
+                    {change.label}
+                  </div>
+                  <div class="change-message">
+                    {change.message}
+                    {change.issue && (
+                      <Fragment>
+                        {' - '}
+                        <a
+                          href={`https://github.com/JulianGaibler/archive/issues/${change.issue}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="issue-link"
+                        >
+                          #{change.issue}
+                        </a>
+                      </Fragment>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      }
+    </div>
+  </div>
+</Layout>
+
+<style lang="sass">
+  .page-header
+    background: var(--tint-bg)
+    border-block-end: 1px solid var(--color-general-card-border)
+    padding: tint.$size-32 0
+    .shrinkwrap
+      max-width: 560px
+      h1
+        margin: 0
+        color: var(--tint-text)
+        font-size: tint.$size-32
+        font-weight: 600
+
+  .changelog-content
+    padding-block-start: tint.$size-8
+    padding-block-end: tint.$size-48
+
+  .release-section
+    position: relative
+    padding: tint.$size-40 0
+    max-width: 560px
+    margin: 0 auto
+    &:not(:last-child)
+      border-block-end: 1px solid var(--color-general-card-border)
+
+  .release-header
+    display: flex
+    align-items: center
+    margin-block-end: tint.$size-24
+    .version-badge
+      background: var(--tint-action-primary)
+      color: var(--tint-action-primary-text)
+      border-radius: tint.$size-4
+      width: tint.$size-64
+      padding: tint.$size-8 tint.$size-4
+      text-align: center
+      display: inline-block
+      margin-inline-end: tint.$size-8
+      .release-date
+        color: var(--tint-text)
+        margin: 0
+        flex: 1
+        overflow: hidden
+        white-space: nowrap
+        text-overflow: ellipsis
+
+  .changes-list
+    list-style: none
+    margin: 0
+    padding: 0
+    margin-inline-start: tint.$size-64
+    @media screen and (max-width: 640px)
+      margin-inline-start: 0
+
+  .change-item
+    display: flex
+    align-items: flex-start
+    margin-block-end: tint.$size-8
+
+  .change-badge
+    display: inline-block
+    flex: 0 0 tint.$size-80
+    margin-block-start: 1px
+    margin-inline-end: tint.$size-8
+    padding: tint.$size-4
+    text-align: center
+    border-radius: tint.$size-4
+    background-color: #4E4C62
+    color: white
+    text-transform: uppercase
+    &--added
+      background-color: #00B783
+      &--fixed
+        background-color: #007AFF
+      &--improved
+        background-color: #864FFF
+      &--removed, &--deprecated
+        background-color: #9F3B00
+
+  .change-message
+    margin-block-start: 0.1rem
+    color: var(--tint-text)
+    .issue-link
+      color: var(--tint-text-link)
+      text-decoration: none
+      &:hover
+        text-decoration: underline
+
+  .release-notes
+    margin-block-end: tint.$size-16
+    margin-inline-start: tint.$size-64
+    padding: tint.$size-16
+    background: var(--tint-input-bg)
+    border-radius: tint.$size-8
+    @media screen and (max-width: 640px)
+      margin-inline-start: 0
+      :global(h1, h2, h3, h4, h5, h6)
+        margin-block-start: tint.$size-8
+        margin-block-end: tint.$size-4
+      :global(p)
+        margin-block-end: tint.$size-16
+        &:last-child
+          margin-block-end: 0
+      :global(strong)
+        font-weight: 600
+      :global(em)
+        font-style: italic
+      :global(code)
+        background: rgba(0, 0, 0, 0.1)
+        padding: tint.$size-2 tint.$size-4
+        border-radius: tint.$size-2
+        font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace
+        font-size: tint.$size-12
+      :global(a)
+        color: var(--tint-text-link)
+        text-decoration: none
+        &:hover
+          text-decoration: underline
+      :global(ul), :global(ol)
+        margin: 0 0 tint.$size-8 0
+        padding-inline-start: tint.$size-24
+        &:last-child
+          margin-block-end: 0
+      :global(li)
+        margin-block-end: tint.$size-4
+        &:last-child
+          margin-block-end: 0
+
+  .release-header::before
+    content: ""
+    background-image: linear-gradient(to bottom, rgba(127,127,127,0.1), rgba(127,127,127,0.1))
+    width: 3px
+    position: absolute
+    inset-block-start: 0
+    inset-block-end: 0
+    inset-inline-start: calc(32px + 8px)
+    z-index: -1
+  .release-section:first-of-type .release-header::before
+    background-image: linear-gradient(to bottom, rgba(127,127,127,0), rgba(127,127,127,0.1) 50px)
+  .release-section:last-of-type .release-header::before
+    background-image: linear-gradient(to bottom, rgba(127,127,127,0.1), rgba(127,127,127,0))
+</style>

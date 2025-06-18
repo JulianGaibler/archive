@@ -31,6 +31,10 @@ export default class BaseModel extends Model {
   }
 }
 
+/**
+ * @param obj
+ * @param fieldName
+ */
 export function toDate(obj: any, fieldName: string): any {
   if (obj != null && typeof obj[fieldName] === 'string') {
     obj[fieldName] = new Date(parseInt(obj[fieldName], 10))
@@ -38,6 +42,10 @@ export function toDate(obj: any, fieldName: string): any {
   return obj
 }
 
+/**
+ * @param obj
+ * @param fieldName
+ */
 export function toTime(obj: any, fieldName: string): any {
   if (obj != null && obj[fieldName] != null && obj[fieldName].getTime) {
     obj[fieldName] = obj[fieldName].getTime()

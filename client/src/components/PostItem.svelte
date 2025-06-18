@@ -5,8 +5,9 @@
   import TextField from 'tint/components/TextField.svelte'
   import ItemMedia from '@src/components/ItemMedia.svelte'
   import ProcessingMediaStatus from '@src/components/ProcessingMediaStatus.svelte'
+  import Menu, { type ContextClickHandler } from 'tint/components/Menu.svelte'
   import IconMore from 'tint/icons/20-more.svg?raw'
-  import { getConvertedSrcPath, getPlainSrcPath } from '@src/utils'
+  import { formatDate, getConvertedSrcPath, getPlainSrcPath } from '@src/utils'
   import type { PostUpdate, UploadItem } from '@src/utils/edit-manager'
 
   type ExtractPost<T> = T extends { __typename?: 'Post' } ? T : never
@@ -21,6 +22,8 @@
     itemData?: PostItem
     editData?: PostUpdate
     uploadItemIndex?: string
+    onMoveItem?: (itemId: string) => void
+    onDeleteItem?: (itemId: string) => void
   }
 
   let {
@@ -28,6 +31,8 @@
     itemData = undefined,
     editData = $bindable(),
     uploadItemIndex = undefined,
+    onMoveItem,
+    onDeleteItem,
   }: Props = $props()
 
   function forceUpdateEditData() {
@@ -50,6 +55,28 @@
     if (editData) return editData.items[item.id]
     return undefined
   })
+
+  let buttonClick: ContextClickHandler | undefined = $state(undefined)
+
+  const itemActions = $derived([
+    ...(onMoveItem &&
+    '__typename' in item &&
+    item.__typename !== 'ProcessingItem'
+      ? [{ label: 'Move to another post', onClick: () => onMoveItem(item.id) }]
+      : []),
+    ...(onDeleteItem &&
+    '__typename' in item &&
+    item.__typename !== 'ProcessingItem'
+      ? [{ label: 'Delete item', onClick: () => onDeleteItem(item.id) }]
+      : []),
+  ])
+
+  function removeUploadItem() {
+    if (editData && uploadItemIndex !== undefined) {
+      delete editData.uploadItems[uploadItemIndex]
+      editData = { ...editData }
+    }
+  }
 </script>
 
 <article>
@@ -64,7 +91,7 @@
         <li>
           <UserPicture user={item.creator} size="16" showUsername={true} />
         </li>
-        <li>July 15, 2019</li>
+        <li>{formatDate(new Date(item.createdAt))}</li>
       </ul>
       <div class="actions">
         {#if 'originalPath' in item}
@@ -85,9 +112,15 @@
             )}>Compressed</Button
           >
         {/if}
-        <Button small={true} icon={true} title="Edit item"
-          >{@html IconMore}</Button
-        >
+        {#if itemActions.length > 0}
+          <Button
+            small={true}
+            icon={true}
+            title="Edit item"
+            onclick={buttonClick}
+            onmousedown={buttonClick}>{@html IconMore}</Button
+          >
+        {/if}
       </div>
     </div>
   {/if}
@@ -95,7 +128,7 @@
     <ItemMedia file={item.file} />
     <div class="info">
       <div class="actions standalone">
-        <Button small={true}>Remove</Button>
+        <Button small={true} onclick={removeUploadItem}>Remove</Button>
       </div>
     </div>
   {/if}
@@ -136,6 +169,10 @@
   </div>
 </article>
 
+{#if itemActions.length > 0}
+  <Menu variant="button" bind:contextClick={buttonClick} items={itemActions} />
+{/if}
+
 <style lang="sass">
   article
     display: flex
@@ -164,6 +201,8 @@
       background: var(--tint-bg)
       padding: tint.$size-12
       border-radius: tint.$card-radius
+      pre
+        white-space: pre-wrap
     h3
       line-height: 1
       color: var(--tint-text-secondary)

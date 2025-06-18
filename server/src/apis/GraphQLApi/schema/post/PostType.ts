@@ -7,7 +7,7 @@ import {
 } from 'graphql'
 import { HashIdTypes } from '../../HashId'
 import KeywordType from '../keyword/KeywordType'
-import ItemType, { itemConnection } from '../item/ItemType'
+import { itemConnection } from '../item/ItemType'
 import UserType from '../user/UserType'
 import {
   connectionArgs,
@@ -35,14 +35,14 @@ const PostType: GraphQLObjectType<any, Context> = new GraphQLObjectType({
     },
     creator: {
       type: new GraphQLNonNull(UserType),
-      resolve: (post, args, ctx: Context) =>
+      resolve: (post, _args, ctx: Context) =>
         UserActions.qUser(ctx, { userId: post.creatorId }),
     },
     keywords: {
       type: new GraphQLNonNull(
         new GraphQLList(new GraphQLNonNull(KeywordType)),
       ),
-      resolve: async (post, args, ctx: Context) =>
+      resolve: async (post, _args, ctx: Context) =>
         KeywordActions.qKeywordsByPost(ctx, { postId: post.id }),
     },
     items: {

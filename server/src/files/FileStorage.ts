@@ -298,7 +298,11 @@ export default class FileStorage {
     this.getFileKind(mimeType) // Will throw if unsupported
   }
 
-  /** Determines the file type enum from MIME type */
+  /**
+   * Determines the file type enum from MIME type
+   *
+   * @param mimeType
+   */
   private determineFileType(mimeType: string): FileType {
     if (mimeType === 'image/gif') {
       return FileType.GIF

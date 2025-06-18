@@ -1,0 +1,57 @@
+#import "./fragments.gql"
+
+query me {
+  me {
+    name
+    username
+    profilePicture
+    darkMode
+  }
+}
+
+query User($username: String!) {
+  user(username: $username) {
+    id
+    username
+    name
+    profilePicture
+    posts {
+      totalCount
+    }
+  }
+}
+
+query Users($after: String, $byUsername: String) {
+  users(first: 50, after: $after, byUsername: $byUsername) {
+    edges {
+      node {
+        id
+        username
+        name
+        profilePicture
+        posts {
+          totalCount
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+
+query UserWithPosts($username: String!, $after: String, $byContent: String) {
+  user(username: $username) {
+    id
+    username
+    name
+    profilePicture
+    posts {
+      totalCount
+    }
+  }
+  posts(first: 24, after: $after, byContent: $byContent, byUsers: [$username]) {
+    ...PostsConnection
+  }
+}

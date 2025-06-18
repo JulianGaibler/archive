@@ -1,9 +1,8 @@
 # ToDo
 
 - Telegram bot
-- User page
-- Keyword page
 - Why bug
+- Bug where videos cannot be shorter than 1 second
 
 - Move from objection to drizzle
 
@@ -14,5 +13,7 @@
 
 - Add PDF support
 - Add support for audio
+- Set GIF/video mode when uploading
 
 - Add support for captions
+- Download trimmed youtube videos

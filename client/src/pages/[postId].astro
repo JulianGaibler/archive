@@ -1,20 +1,69 @@
 ---
 import Layout from '@src/layouts/Layout.astro'
 import Post from '@src/components/Post.svelte'
+import ErrorPage from '@src/components/ErrorPage.astro'
 
-import type { PostQuery, PostQueryVariables } from '@src/generated/graphql'
-import POST from '@src/queries/postQuery.gql'
+import {
+  PostDocument,
+  type PostQuery,
+  type PostQueryVariables,
+} from '@src/generated/graphql'
+import { handleError } from '@src/utils/error-handling'
 
 const ssrClient = Astro.locals.gqlClient
 const { postId } = Astro.params
 
-const result = await ssrClient.request<PostQuery, PostQueryVariables>(POST, {
-  id: postId,
-})
+// Ensure postId is defined
+if (!postId) {
+  throw new Error('Post ID is required')
+}
+
+let result: PostQuery | null = null
+let error: ReturnType<typeof handleError> | null = null
+
+try {
+  result = await ssrClient.request<PostQuery, PostQueryVariables>(
+    PostDocument,
+    {
+      id: postId,
+    },
+  )
+
+  console.log('PostQuery result:', result)
+
+  // Check if the post was found
+  if (!result.node) {
+    error = handleError(404, Astro.response)
+  }
+} catch (graphqlError: unknown) {
+  console.error('GraphQL error in [postId].astro:', graphqlError)
+
+  // Determine appropriate status code based on error
+  // Most GraphQL errors should be 500, but check for "not found" patterns
+  let statusCode = 500
+  if (
+    graphqlError &&
+    typeof graphqlError === 'object' &&
+    'message' in graphqlError
+  ) {
+    const message = (graphqlError as { message: string }).message
+    if (message.toLowerCase().includes('not found')) {
+      statusCode = 404
+    }
+  }
+
+  error = handleError(statusCode, Astro.response, graphqlError)
+}
 ---
 
-<Layout title="Archive">
-  <Post client:load result={result.node} />
-</Layout>
+{
+  error ? (
+    <ErrorPage error={error} />
+  ) : (
+    <Layout title="Archive">
+      <Post client:load result={result!.node} />
+    </Layout>
+  )
+}
 
 <style lang="sass"></style>

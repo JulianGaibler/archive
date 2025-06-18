@@ -3,14 +3,12 @@ import {
   GraphQLID,
   GraphQLList,
   GraphQLNonNull,
-  GraphQLString,
 } from 'graphql'
 import {
   connectionFromArraySlice,
   cursorToOffset,
   forwardConnectionArgs,
 } from 'graphql-relay'
-import { raw } from 'objection'
 import { taskConnection, TaskStatus } from './TaskType'
 import { userHashType } from '../user/UserType'
 
@@ -33,7 +31,7 @@ const tasks: GraphQLFieldConfig<any, any, any> = {
       type: new GraphQLList(new GraphQLNonNull(TaskStatus)),
     },
   },
-  resolve: async (parent, args, ctx: Context) => {
+  resolve: async (_parent, args, ctx: Context) => {
     const limit = args.first
     const offset = args.after ? cursorToOffset(args.after) + 1 : 0
 

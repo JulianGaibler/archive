@@ -19,7 +19,7 @@ export const createKeyword: GraphQLFieldConfig<any, any, any> = {
       type: new GraphQLNonNull(GraphQLString),
     },
   },
-  resolve: async (parent, args, context: Context, resolveInfo) =>
+  resolve: async (_parent, args, context: Context, _resolveInfo) =>
     KeywordActions.mCreate(context, args),
 }
 
@@ -32,7 +32,7 @@ export const deleteKeyword: GraphQLFieldConfig<any, any, any> = {
       type: new GraphQLNonNull(GraphQLString),
     },
   },
-  resolve: async (parent, args, context: Context, resolveInfo) => {
+  resolve: async (_parent, args, context: Context, _resolveInfo) => {
     const keywordId = HashId.decode(keywordHashType, args.id)
     KeywordActions.mDelete(context, { keywordId })
   },

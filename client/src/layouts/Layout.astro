@@ -6,6 +6,7 @@ import Footer from '@src/components/Footer.astro'
 interface Props {
   title: string
   description?: string
+  flexCenter?: boolean
 }
 
 const { title, description } = Astro.props
@@ -35,12 +36,14 @@ const { title, description } = Astro.props
   </head>
   <body>
     <Header />
-    <main><slot /></main>
+    <main class:list={[Astro.props.flexCenter ? 'flex-center' : '']}>
+      <slot />
+    </main>
     <Footer />
   </body>
 </html>
 <style is:global lang="sass">
-  @import "../styles/global"
+  @use "../styles/global"
 
   body
     min-height: 100%
@@ -48,4 +51,9 @@ const { title, description } = Astro.props
     flex-direction: column
   main
     flex: 1
+    &.flex-center
+      display: flex
+      flex-direction: column
+      align-items: center
+      justify-content: center
 </style>

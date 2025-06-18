@@ -49,6 +49,8 @@ export default class Context {
   res: express.Response | null
   // Internal user ID
   private userIId: number | null
+  // Internal session ID (database ID, not secure session ID)
+  private sessionIId: number | null
   private lastAuthCheck: number | null
   // Object to store data for this context
   tmp: Record<string, any>
@@ -59,6 +61,7 @@ export default class Context {
     this.req = null
     this.res = null
     this.userIId = null
+    this.sessionIId = null
     this.lastAuthCheck = null
     this.tmp = {}
     this._dataloaders = {}
@@ -75,10 +78,8 @@ export default class Context {
           ? newContext.req.headers['user-agent']
           : ''
 
-        newContext.tmp.sessionId = cookies.sessionId
-        newContext.tmp.token = cookies.token
         const verifyResult = await SessionActions.qVerify({
-          sessionId: cookies.sessionId,
+          secureSessionId: cookies.secureSessionId,
           token: cookies.token,
           userAgent,
           latestIp: newContext.req.ip || '',
@@ -86,12 +87,12 @@ export default class Context {
 
         if (verifyResult) {
           newContext.userIId = verifyResult.userId
+          newContext.sessionIId = verifyResult.sessionId
           // If token was rotated, update the cookies
           if (verifyResult.rotatedToken) {
-            newContext.tmp.token = verifyResult.rotatedToken
             AuthCookieUtils.setAuthCookies(
               newContext.res!,
-              cookies.sessionId,
+              cookies.secureSessionId,
               verifyResult.rotatedToken,
             )
           }
@@ -111,18 +112,21 @@ export default class Context {
         const userAgent = agentIndex !== -1 ? headerArray[agentIndex + 1] : ''
 
         if (cookies?.[SESSION_COOKIE_NAME] && cookies?.[AUTH_COOKIE_NAME]) {
-          newContext.tmp.sessionId = cookies[SESSION_COOKIE_NAME]
+          // Store websocket auth credentials for reauthentication
+          newContext.tmp.secureSessionId = cookies[SESSION_COOKIE_NAME]
           newContext.tmp.token = cookies[AUTH_COOKIE_NAME]
           newContext.tmp.userAgent = userAgent
+
           const verifyResult = await SessionActions.qVerify({
-            sessionId: cookies.sessionId,
-            token: cookies.token,
+            secureSessionId: cookies[SESSION_COOKIE_NAME],
+            token: cookies[AUTH_COOKIE_NAME],
             userAgent,
             latestIp: undefined,
           })
 
           if (verifyResult) {
             newContext.userIId = verifyResult.userId
+            newContext.sessionIId = verifyResult.sessionId
             newContext.lastAuthCheck = Date.now()
             // For websockets, we can't update cookies, but we store the rotated token
             if (verifyResult.rotatedToken) {
@@ -179,7 +183,7 @@ export default class Context {
       throw new AuthenticationError()
     }
     // if this is a websocket context, we need to check the last auth check and if its over 5 minutes, recheck
-    if (!this.tmp.sessionId || !this.tmp.token) {
+    if (!this.tmp.secureSessionId || !this.tmp.token) {
       console.error(this)
       throw new Error(
         'Something went wrong with the auth check (no session credentials)',
@@ -193,7 +197,7 @@ export default class Context {
     if (Date.now() - this.lastAuthCheck > 5 * 60 * 1000) {
       // recheck the token
       const verifyResult = await SessionActions.qVerify({
-        sessionId: this.tmp.sessionId,
+        secureSessionId: this.tmp.secureSessionId,
         token: this.tmp.token,
         userAgent: this.tmp.userAgent,
         latestIp: undefined,
@@ -201,7 +205,8 @@ export default class Context {
       if (!verifyResult || verifyResult.userId !== this.userIId) {
         throw new AuthenticationError()
       }
-      // Update stored token if it was rotated
+      // Update stored sessionId and token if it was rotated
+      this.sessionIId = verifyResult.sessionId
       if (verifyResult.rotatedToken) {
         this.tmp.token = verifyResult.rotatedToken
       }
@@ -221,5 +226,10 @@ export default class Context {
   // Getter for userIId to allow read access
   get userId(): number | null {
     return this.userIId
+  }
+
+  // Getter for sessionIId to allow read access
+  get sessionId(): number | null {
+    return this.sessionIId
   }
 }

@@ -1,0 +1,53 @@
+#import "./fragments.gql"
+
+query Keywords($after: String, $byName: String) {
+  keywords(first: 50, after: $after, sortByPostCount: true, byName: $byName) {
+    edges {
+      node {
+        id
+        name
+        postCount
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+
+query keywordSearch($input: String) {
+  keywords(byName: $input) {
+    edges {
+      node {
+        id
+        name
+      }
+    }
+  }
+}
+
+query KeywordWithPosts($nodeId: ID!, $after: String, $byContent: String) {
+  keyword: node(id: $nodeId) {
+    __typename
+    ... on Keyword {
+      name
+      postCount
+    }
+  }
+  posts(
+    first: 24
+    after: $after
+    byContent: $byContent
+    byKeywords: [$nodeId]
+  ) {
+    ...PostsConnection
+  }
+}
+
+mutation createKeyword($name: String!) {
+  createKeyword(name: $name) {
+    id
+    name
+  }
+}

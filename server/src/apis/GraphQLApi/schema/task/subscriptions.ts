@@ -7,7 +7,7 @@ import {
 import { withFilter } from 'graphql-subscriptions'
 import HashId from '../../HashId'
 import Context from '@src/Context'
-import { TaskUpdate, taskHashType } from './TaskType'
+import { TaskUpdate } from './TaskType'
 
 import TaskActions from '@src/actions/TaskActions'
 import { itemHashType } from '../item/ItemType'

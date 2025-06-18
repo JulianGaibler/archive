@@ -1,0 +1,118 @@
+---
+import Layout from '@src/layouts/Layout.astro'
+import Wall from '@src/components/Wall.svelte'
+import ErrorPage from '@src/components/ErrorPage.astro'
+import UserPicture from '@src/components/UserPicture.svelte'
+
+import {
+  UserWithPostsDocument,
+  type UserWithPostsQuery,
+  type UserWithPostsQueryVariables,
+} from '@src/generated/graphql'
+import { handleError } from '@src/utils/error-handling'
+
+const ssrClient = Astro.locals.gqlClient
+const { username } = Astro.params
+
+// Ensure username is defined
+if (!username) {
+  throw new Error('Username is required')
+}
+
+let result: UserWithPostsQuery | null = null
+let error: ReturnType<typeof handleError> | null = null
+
+try {
+  result = await ssrClient.request<
+    UserWithPostsQuery,
+    UserWithPostsQueryVariables
+  >(UserWithPostsDocument, {
+    username: username,
+  })
+  console.log('UserWithPostsQuery result:', result)
+} catch (graphqlError: unknown) {
+  console.error('GraphQL error in [username].astro:', graphqlError)
+
+  // Determine appropriate status code based on error
+  let statusCode = 500
+  if (
+    graphqlError &&
+    typeof graphqlError === 'object' &&
+    'message' in graphqlError
+  ) {
+    const message = (graphqlError as { message: string }).message
+    if (message.toLowerCase().includes('not found')) {
+      statusCode = 404
+    }
+  }
+
+  error = handleError(statusCode, Astro.response, graphqlError)
+}
+---
+
+{
+  error ? (
+    <ErrorPage error={error} />
+  ) : (
+    <Layout
+      title={`Archive - ${result?.user?.name || result?.user?.username || 'User'}`}
+    >
+      <div class="tint--tinted nav">
+        <div class="shrinkwrap">
+          {result?.user && (
+            <>
+              <div class="user-header">
+                <UserPicture user={result.user} size="128" />
+                <div class="user-info">
+                  <h1 class="tint--type-title-serif-1 user-name">
+                    {result.user.name}
+                  </h1>
+                  <span class="username">@{result.user.username}</span>
+                  <span class="tint--type-body-sans post-count">
+                    {result.user.posts?.totalCount || 0} posts
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+      <Wall
+        client:load
+        results={{ posts: result!.posts }}
+        byUsers={[username]}
+      />
+    </Layout>
+  )
+}
+
+<style lang="sass">
+  .nav
+    background-color: var(--tint-bg)
+    padding-block: tint.$size-24
+    margin-block-end: tint.$size-2
+    .shrinkwrap
+      display: flex
+      align-items: center
+      gap: 0 tint.$size-16
+      flex-wrap: wrap
+
+  .user-header
+    display: flex
+    align-items: center
+    gap: tint.$size-16
+
+  .user-info
+    display: flex
+    flex-direction: column
+    gap: tint.$size-4
+
+  .user-name
+    margin: 0
+
+  .username
+    color: var(--tint-text-secondary)
+
+  .post-count
+    color: var(--tint-text-secondary)
+</style>

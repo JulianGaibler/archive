@@ -10,6 +10,7 @@ process.on('SIGUSR1', handleExit.bind(null, { exit: true }))
 process.on('SIGUSR2', handleExit.bind(null, { exit: true }))
 process.on('uncaughtException', handleExit.bind(null, { exit: true }))
 
+/** @param options */
 async function handleExit(options: any) {
   if (options.cleanup) {
     server.stop()

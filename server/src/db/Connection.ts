@@ -6,7 +6,7 @@ export default class {
   knexInstance: Knex
   private config: any
 
-  async connect(options = {}): Promise<void> {
+  async connect(_options = {}): Promise<void> {
     if (this.knexInstance) {
       return
     }

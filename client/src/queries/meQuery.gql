@@ -1,8 +1,0 @@
-query me {
-  me {
-    name
-    username
-    profilePicture
-    darkMode
-  }
-}

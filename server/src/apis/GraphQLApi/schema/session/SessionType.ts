@@ -1,6 +1,5 @@
 import { GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
 import { connectionDefinitions } from 'graphql-relay'
-import SessionModel from '@src/models/SessionModel'
 import Context from '@src/Context'
 import { HashIdTypes } from '../../HashId'
 import { nodeInterface } from '../node'
@@ -18,7 +17,7 @@ const SessionType = new GraphQLObjectType({
     user: {
       description: 'User associated with that session',
       type: UserType,
-      resolve: async (session, args, ctx: Context) =>
+      resolve: async (session, _args, ctx: Context) =>
         UserActions.qUser(ctx, { userId: session.userId }),
     },
     userAgent: {

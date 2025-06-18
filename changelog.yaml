@@ -1,16 +1,99 @@
 # Changelog
-# Labels: [Added], [Fixed], [Improved]
+# Labels: [Added], [Fixed], [Improved], [Removed], [Deprecated], [Security]
 
+2.0.0:
+  date: '2025-06-24'
+  notes: |
+    🎉 **5 years later, Archive hits 2.0.0!** 🎉
+
+    ### What's New?
+    - **New frontend** - Now a multi-page app instead of a single-page app
+    - **Improved security** - Passwords and sessions are handled in a safer manner
+    - **Multi-item posts** - Posts can now contain multiple items
+    - **Merging & Moving** - Posts can be merged into other posts, items can be moved to other posts
+    - **Reordering** - Items in posts can be reordered
+
+    ### What's Gone?
+    - **Collections** - nobody used them anyway, so... bye! 
+  changes:
+    - '[Added] Posts can now contain multiple items'
+    - '[Added] Keyword pages with search and filtering'
+    - '[Improved] Complete frontend rewrite'
+    - '[Improved] Password and session security has been vastly improved'
+    - '[Fixed] Fixed bug where removing tags from posts would remove the tag from all posts'
+    - '[Fixed] Fixed bug where common english words were not searchable'
+    - '[Removed] Collections have been removed'
+1.0.2:
+  date: '2020-06-24'
+  changes:
+    - '[Fixed] Prompts not showing correct words or having empty buttons'
+    - '[Fixed] Multiple styling issues'
 1.0.1:
-  - '[Added] Release notes view'
-  - '[Fixed] Color inconsistencies with dark-mode - #4'
-  - '[Fixed] Queue has horizontal overflow on small screens - #5'
-  - '[Fixed] Search on user- and collection-views does not save scroll state - #8'
-  - '[Fixed] Telegram-Bot search does not show all search results - #11'
-  - '[Improved] Added more user-facing error messages in upload view'
-  - '[Improved] More keyboard accessibilty and better dark-mode contrast'
+  date: '2020-02-15'
+  changes:
+    - '[Added] Release notes view'
+    - '[Fixed] Color inconsistencies with dark mode'
+    - '[Fixed] Horizontal scrolling issues on small screens'
+    - '[Fixed] Search results not preserving scroll position'
+    - '[Fixed] Telegram bot search not showing all results'
+    - '[Improved] Added more helpful error messages during upload'
+    - '[Improved] Better keyboard navigation and dark mode contrast'
 1.0.0:
-  - '[Added] Dark Mode'
-  - '[Fixed] Missing tag-icon'
-  - '[Fixed] Radio buttons and checkboxes not being updated after reload'
-  - '[Improved] GIFs start playing automatically and loop'
+  date: '2020-02-14'
+  notes: |
+    Archive was released as 1.0.0!
+0.0.8:
+  date: '2019-11-19'
+  changes:
+    - '[Added] Dark mode'
+    - '[Added] Missing tag icon'
+    - '[Fixed] Radio buttons and checkboxes not updating after page reload'
+    - '[Improved] GIFs now start playing automatically and loop'
+0.0.7:
+  date: '2019-10-17'
+  changes:
+    - '[Fixed] Grid view occasionally showing only one column'
+    - '[Improved] Images and videos no longer appear too tall on wide screens'
+0.0.6:
+  date: '2019-10-08'
+  changes:
+    - '[Fixed] Rotated images now display correctly'
+    - '[Fixed] Scrollbar flickering'
+0.0.5:
+  date: '2019-10-06'
+  changes:
+    - '[Added] Description fields now support markdown'
+    - '[Fixed] Empty captions and descriptions being rejected'
+    - '[Fixed] Upload queue stability improvements'
+0.0.4:
+  date: '2019-10-05'
+  changes:
+    - '[Added] Telegram bot and account linking'
+    - '[Added] Description field to posts'
+    - '[Fixed] Video uploads failing in queue'
+    - '[Fixed] Various search and upload issues'
+    - '[Fixed] Collection filtering errors'
+0.0.3:
+  date: '2019-10-03'
+  changes:
+    - '[Fixed] Search bar padding issues'
+    - '[Fixed] Input field height causing page jumps'
+    - '[Fixed] Page overflow issues'
+    - '[Fixed] Session management interface too wide on large screens'
+    - '[Improved] Upload now accepts ASF files'
+0.0.2:
+  date: '2019-10-02'
+  changes:
+    - '[Fixed] User pages showing posts from other users'
+    - '[Fixed] Case-sensitive login'
+    - '[Fixed] Page overflow with nested pop-ups'
+    - '[Fixed] Sidebar not closable on small screens'
+    - '[Fixed] Caption fields missing line breaks'
+    - '[Fixed] Menu button placement issues on small screens'
+    - '[Fixed] Downloaded files showing incorrect filename'
+    - '[Fixed] Collection display issues on smaller screens'
+    - '[Improved] Keyword search maintains focus after selecting options'
+0.0.1:
+  date: '2019-10-02'
+  notes: |
+    The day archive went live!

@@ -1,0 +1,28 @@
+---
+import Layout from '@src/layouts/Layout.astro'
+import Keywords from './_keywords.svelte'
+
+import {
+  KeywordsDocument,
+  type KeywordsQuery,
+  type KeywordsQueryVariables,
+} from '@src/generated/graphql'
+
+const ssrClient = Astro.locals.gqlClient
+
+// if there is a query param q, use it as the search term
+const byName = new URL(Astro.request.url).searchParams.get('q')
+
+const result = await ssrClient.request<KeywordsQuery, KeywordsQueryVariables>(
+  KeywordsDocument,
+  {
+    byName,
+  },
+)
+---
+
+<Layout title="Archive">
+  <Keywords client:load results={result} {byName} />
+</Layout>
+
+<style lang="sass"></style>
