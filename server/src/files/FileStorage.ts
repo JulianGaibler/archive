@@ -1,8 +1,9 @@
 import Context from '../Context'
 import { createId } from '@paralleldrive/cuid2'
 import FileProcessor from './FileProcessor'
-import { fileTypeFromStream } from 'file-type'
+import { fileTypeFromBuffer, fileTypeFromFile } from 'file-type'
 import fs from 'fs'
+import path from 'path'
 import stream from 'stream'
 import TaskActions from '@src/actions/TaskActions'
 import tmp from 'tmp'
@@ -42,17 +43,32 @@ export default class FileStorage {
     itemId: number,
   ): Promise<void> {
     const { createReadStream } = await upload
-    const typedStream = await fileTypeFromStream(createReadStream())
 
-    if (!typedStream) {
+    // Read the stream to a buffer to get file type
+    const chunks: Buffer[] = []
+    const stream = createReadStream()
+
+    for await (const chunk of stream) {
+      chunks.push(chunk)
+    }
+
+    const buffer = Buffer.concat(chunks)
+    const fileTypeResult = await fileTypeFromBuffer(buffer)
+
+    if (!fileTypeResult) {
       throw new InputError('File-Type not recognized')
     }
 
-    const { mime } = typedStream
+    const { mime } = fileTypeResult
     this.validateFileType(mime) // Throws if unsupported
 
     const queuePath = this.pathManager.getQueuePath(itemId)
-    await this.streamToFile(createReadStream(), queuePath)
+
+    // Ensure directory exists
+    await fs.promises.mkdir(path.dirname(queuePath), { recursive: true })
+
+    // Write buffer to file
+    await fs.promises.writeFile(queuePath, buffer)
   }
 
   /**
@@ -199,12 +215,12 @@ export default class FileStorage {
   ) {
     const processor = new FileProcessor(updateCallback)
 
-    const typedStream = await fileTypeFromStream(fs.createReadStream(filePath))
-    if (!typedStream) {
+    const fileTypeResult = await fileTypeFromFile(filePath)
+    if (!fileTypeResult) {
       throw new InputError('File-Type not recognized')
     }
 
-    const mime = typedStream.mime
+    const mime = fileTypeResult.mime
     const fileType = this.determineFileType(mime)
 
     let result

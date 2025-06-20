@@ -15,6 +15,14 @@ interface PgListenOptions {
 interface PostgresPubSubOptions extends PgListenOptions {
   topics?: string[]
   commonMessageHandler?: (message: any) => any
+  // Database connection options
+  host?: string
+  port?: number
+  database?: string
+  user?: string
+  password?: string
+  connectionString?: string
+  ssl?: any
   [key: string]: any
 }
 
@@ -27,10 +35,10 @@ interface PgListenInstance {
     once(eventName: string, listener: (event: any) => void): void
   }
   connect(): Promise<void>
-  listenTo(eventName: string): Promise<void>
-  notify(eventName: string, payload: any): Promise<void>
-  unlisten(eventName: string): Promise<void>
-  unlistenAll(): Promise<void>
+  listenTo(eventName: string): Promise<any> | undefined
+  notify(eventName: string, payload: any): Promise<any>
+  unlisten(eventName: string): Promise<any> | undefined
+  unlistenAll(): Promise<any>
   close(): Promise<void>
 }
 
@@ -55,21 +63,22 @@ export class PostgresPubSub extends PubSub {
    * @param {PostgresPubSubOptions} options - Configuration options
    */
   constructor(options: PostgresPubSubOptions = {}) {
-    const { commonMessageHandler, ...pgOptions } = options
+    const { commonMessageHandler, topics, ...pgListenOptions } = options
     super()
 
-    const pgListenOptions: PgListenOptions = {
-      native: options.native,
-      paranoidChecking: options.paranoidChecking,
-      retryInterval: options.retryInterval,
-      retryLimit: options.retryLimit,
-      retryTimeout: options.retryTimeout,
-      parse: options.parse,
-      serialize: options.serialize,
+    // Extract database connection options - pgListen expects ClientConfig as first param
+    const pgClientConfig = {
+      host: options.host,
+      port: options.port,
+      database: options.database,
+      user: options.user,
+      password: options.password,
+      connectionString: options.connectionString,
+      ssl: options.ssl,
     }
 
-    this.pgListen = pgListen(pgOptions, pgListenOptions) as PgListenInstance
-    this.triggers = (pgOptions.topics || []).concat(['error'])
+    this.pgListen = pgListen(pgClientConfig, pgListenOptions) as PgListenInstance
+    this.triggers = (topics || []).concat(['error'])
     this.events = this.pgListen.events
     this.pgSubscriptions = {}
     this.pgSubIdCounter = 0

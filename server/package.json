@@ -33,7 +33,7 @@
     "node-vibrant": "^4.0.3",
     "objection": "^3.1.5",
     "objection-unique": "^1.2.2",
-    "pg": "^8.16.0",
+    "pg": "^8.16.2",
     "pg-escape": "^0.2.0",
     "pg-ipc": "^1.0.5",
     "pg-listen": "^1.7.0",
@@ -53,14 +53,15 @@
     "@types/fluent-ffmpeg": "^2.1.27",
     "@types/graphql-upload": "^17.0.0",
     "@types/morgan": "^1.9.10",
-    "@types/node": "24.0.1",
+    "@types/node": "24.0.3",
+    "@types/pg": "^8.15.4",
     "@types/sharp": "^0.31.1",
     "@types/tmp": "^0.2.6",
     "@types/ws": "^8.18.1",
     "dotenv-cli": "8.0.0",
     "eslint": "^9.29.0",
     "eslint-config-prettier": "^10.1.5",
-    "eslint-plugin-jsdoc": "^51.0.1",
+    "eslint-plugin-jsdoc": "^51.0.3",
     "globals": "^16.2.0",
     "graphql-ws": "^6.0.5",
     "prettier": "^3.5.3",
@@ -70,6 +71,6 @@
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.20.3",
     "typescript": "5.8.3",
-    "typescript-eslint": "^8.34.0"
+    "typescript-eslint": "^8.34.1"
   }
 }

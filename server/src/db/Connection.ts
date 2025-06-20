@@ -2,8 +2,10 @@ import Knex from 'knex'
 import { Model, knexSnakeCaseMappers } from 'objection'
 import knexfile from '../../knexfile'
 
+type KnexInstance = Knex.Knex<any, unknown[]>
+
 export default class {
-  knexInstance: Knex
+  knexInstance: KnexInstance | null = null
   private config: any
 
   async connect(_options = {}): Promise<void> {
@@ -18,11 +20,13 @@ export default class {
     Model.knex(this.knexInstance)
   }
 
-  get query(): Knex {
+  get query(): KnexInstance {
     if (!this.knexInstance) {
       this.connect()
     }
-
+    if (!this.knexInstance) {
+      throw new Error('Database connection could not be established')
+    }
     return this.knexInstance
   }
 
