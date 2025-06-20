@@ -52,6 +52,7 @@
     border-radius: tint.$profile-picture-radius
     overflow: hidden
     background-color: var(--tint-input-bg)
+    flex-shrink: 0
     &.x16
       width: 16px
       height: 16px

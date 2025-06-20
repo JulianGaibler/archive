@@ -1,10 +1,33 @@
 ---
 import Layout from '@src/layouts/Layout.astro'
 import Post from '@src/components/Post.svelte'
+import ErrorPage from '@src/components/ErrorPage.astro'
+import { getSdk } from '@src/generated/graphql'
+import { handleError, hasAuthenticationError } from '@src/utils/error-handling'
+
+const ssrClient = Astro.locals.gqlClient
+const sdk = getSdk(ssrClient)
+
+// Simple authentication check - try to get the current user
+let result: Awaited<ReturnType<typeof sdk.me>> | null = null
+let error: ReturnType<typeof handleError> | null = null
+
+try {
+  result = await sdk.me()
+  error = hasAuthenticationError(result, Astro.response)
+} catch (graphqlError: unknown) {
+  error = handleError(500, Astro.response, graphqlError)
+}
 ---
 
-<Layout title="Archive - New Post">
-  <Post client:load isNewPost={true} />
-</Layout>
+{
+  error ? (
+    <ErrorPage error={error} />
+  ) : (
+    <Layout title="Archive - New Post">
+      <Post client:load isNewPost={true} />
+    </Layout>
+  )
+}
 
 <style lang="sass"></style>

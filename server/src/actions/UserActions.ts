@@ -37,21 +37,49 @@ export default class {
 
   static async qUsers(
     ctx: Context,
-    fields: { limit?: number; offset?: number; byUsername?: string },
+    fields: {
+      limit?: number
+      offset?: number
+      search?: string
+      sortByPostCount?: boolean
+    },
   ) {
     ctx.isAuthenticated()
     const { limit, offset } = ActionUtils.getLimitOffset(fields)
 
     const query = UserModel.query()
 
-    if (fields.byUsername) {
-      query.whereRaw('username ILIKE ?', `%${fields.byUsername}%`)
+    if (fields.search) {
+      query.where((builder) => {
+        builder
+          .whereRaw('username ILIKE ?', `%${fields.search}%`)
+          .orWhereRaw('name ILIKE ?', `%${fields.search}%`)
+      })
+    }
+
+    // If sorting by post count, join with posts and count them
+    if (fields.sortByPostCount) {
+      query
+        .leftJoinRelated('posts')
+        .groupBy(
+          'user.id',
+          'user.username',
+          'user.name',
+          'user.profile_picture',
+          'user.password',
+          'user.updated_at',
+          'user.created_at',
+          'user.telegram_id',
+          'user.dark_mode',
+        )
+        .orderByRaw('COUNT("posts"."id") DESC, "user"."created_at" DESC')
+    } else {
+      query.orderBy('createdAt', 'desc')
     }
 
     const [data, totalCount] = await Promise.all([
       query
         .clone()
-        .orderBy('createdAt', 'desc')
         .limit(limit)
         .offset(offset)
         .execute()
@@ -59,9 +87,25 @@ export default class {
           rows.forEach((x) => ctx.dataLoaders.user.getById.prime(x.id, x))
           return rows
         }),
-      query.count().then((x) => (x[0] as any).count),
+      // For count query, we need a separate query without GROUP BY and ORDER BY
+      (() => {
+        const countQuery = UserModel.query()
+        if (fields.search) {
+          countQuery.where((builder) => {
+            builder
+              .whereRaw('username ILIKE ?', `%${fields.search}%`)
+              .orWhereRaw('name ILIKE ?', `%${fields.search}%`)
+          })
+        }
+        return countQuery.count().then((x) => (x[0] as any).count)
+      })(),
     ])
     return { data, totalCount }
+  }
+
+  static async qPostCountByUser(ctx: Context, fields: { userId: number }) {
+    ctx.isAuthenticated()
+    return ctx.dataLoaders.user.getPostCountByUser.load(fields.userId)
   }
 
   /// Mutations
@@ -141,6 +185,8 @@ export default class {
     }
     // TODO: Check if this is the right way to unset a field with TS
     await user.$query().patch({ telegramId: null as any })
+
+    return true
   }
 
   static async mUploadProfilePicture(
@@ -259,7 +305,7 @@ function verifyPassword(hash: string, password: string): Promise<boolean> {
  *   otherwise
  */
 async function performTimingConstantAuth(
-  user: UserModel | null,
+  user: UserModel | null | undefined,
   password: string,
 ): Promise<boolean> {
   if (user) {

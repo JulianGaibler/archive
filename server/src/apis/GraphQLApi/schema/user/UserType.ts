@@ -1,5 +1,6 @@
 import {
   GraphQLBoolean,
+  GraphQLInt,
   GraphQLNonNull,
   GraphQLObjectType,
   GraphQLString,
@@ -16,6 +17,7 @@ import { globalIdField } from '../types'
 
 import { postConnection } from '../post/PostType'
 import PostActions from '@src/actions/PostActions'
+import UserActions from '@src/actions/UserActions'
 
 const UserType = new GraphQLObjectType({
   name: 'User',
@@ -39,12 +41,18 @@ const UserType = new GraphQLObjectType({
       description: 'Shows if the user has a connected Telegram Account.',
       type: GraphQLBoolean,
       resolve: (user) => {
-        return user.telegramid !== null
+        return user.telegramId !== undefined && user.telegramId !== null
       },
     },
     darkMode: {
       description: 'If the user prefers dark-mode.',
       type: GraphQLBoolean,
+    },
+    postCount: {
+      description: 'The number of posts created by this user.',
+      type: new GraphQLNonNull(GraphQLInt),
+      resolve: async (user, _args, ctx: Context) =>
+        UserActions.qPostCountByUser(ctx, { userId: user.id }),
     },
     posts: {
       type: postConnection,

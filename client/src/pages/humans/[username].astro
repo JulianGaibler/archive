@@ -4,14 +4,11 @@ import Wall from '@src/components/Wall.svelte'
 import ErrorPage from '@src/components/ErrorPage.astro'
 import UserPicture from '@src/components/UserPicture.svelte'
 
-import {
-  UserWithPostsDocument,
-  type UserWithPostsQuery,
-  type UserWithPostsQueryVariables,
-} from '@src/generated/graphql'
-import { handleError } from '@src/utils/error-handling'
+import { getSdk } from '@src/generated/graphql'
+import { handleError, hasAuthenticationError } from '@src/utils/error-handling'
 
 const ssrClient = Astro.locals.gqlClient
+const sdk = getSdk(ssrClient)
 const { username } = Astro.params
 
 // Ensure username is defined
@@ -19,17 +16,17 @@ if (!username) {
   throw new Error('Username is required')
 }
 
-let result: UserWithPostsQuery | null = null
+let result: Awaited<ReturnType<typeof sdk.UserWithPosts>> | null = null
 let error: ReturnType<typeof handleError> | null = null
 
 try {
-  result = await ssrClient.request<
-    UserWithPostsQuery,
-    UserWithPostsQueryVariables
-  >(UserWithPostsDocument, {
+  result = await sdk.UserWithPosts({
     username: username,
   })
-  console.log('UserWithPostsQuery result:', result)
+  error = hasAuthenticationError(result, Astro.response)
+  if (!error && !result.data?.user) {
+    error = handleError(404, Astro.response)
+  }
 } catch (graphqlError: unknown) {
   console.error('GraphQL error in [username].astro:', graphqlError)
 
@@ -55,31 +52,31 @@ try {
     <ErrorPage error={error} />
   ) : (
     <Layout
-      title={`Archive - ${result?.user?.name || result?.user?.username || 'User'}`}
+      title={`Archive - ${result!.data?.user?.name || result!.data?.user?.username || 'User'}`}
     >
       <div class="tint--tinted nav">
-        <div class="shrinkwrap">
-          {result?.user && (
-            <>
-              <div class="user-header">
-                <UserPicture user={result.user} size="128" />
-                <div class="user-info">
-                  <h1 class="tint--type-title-serif-1 user-name">
-                    {result.user.name}
-                  </h1>
-                  <span class="username">@{result.user.username}</span>
-                  <span class="tint--type-body-sans post-count">
-                    {result.user.posts?.totalCount || 0} posts
-                  </span>
-                </div>
+        {result!.data?.user && (
+          <>
+            <div class="shrinkwrap user-header">
+              <UserPicture user={result!.data.user} size="128" />
+              <div class="user-details">
+                <span class="name tint--type-body-sans-large">
+                  {result!.data.user.name}
+                </span>
+                <span class="username tint--type-body-sans">
+                  @{result!.data.user.username}
+                </span>
               </div>
-            </>
-          )}
-        </div>
+              <div class="badge tint--type-action">
+                {result!.data.user.postCount || 0} posts
+              </div>
+            </div>
+          </>
+        )}
       </div>
       <Wall
         client:load
-        results={{ posts: result!.posts }}
+        results={{ posts: result!.data.posts }}
         byUsers={[username]}
       />
     </Layout>
@@ -94,25 +91,37 @@ try {
     .shrinkwrap
       display: flex
       align-items: center
-      gap: 0 tint.$size-16
+      gap: tint.$size-16
       flex-wrap: wrap
 
   .user-header
     display: flex
     align-items: center
     gap: tint.$size-16
+    border-radius: tint.$card-radius
 
-  .user-info
+  .user-details
     display: flex
     flex-direction: column
     gap: tint.$size-4
+    flex-grow: 1
+    > span
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
+    .username
+      color: var(--tint-text-secondary)
 
-  .user-name
+  .name
     margin: 0
 
   .username
     color: var(--tint-text-secondary)
 
-  .post-count
+  .badge
     color: var(--tint-text-secondary)
+    border-radius: tint.$size-64
+    border: 1px solid
+    padding-inline: tint.$size-8
+    padding-block: tint.$size-4
 </style>

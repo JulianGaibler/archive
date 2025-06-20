@@ -60,9 +60,18 @@ export default class {
                 builder.whereRaw('name ILIKE ?', `%${fields.byName}%`)
               }
             })
+            .leftJoinRelated('posts')
+            .groupBy('keyword.id')
+            .count('keyword.id as count')
+            .then((rows) => rows.length)
+        : KeywordModel.query()
+            .modify((builder) => {
+              if (fields.byName) {
+                builder.whereRaw('name ILIKE ?', `%${fields.byName}%`)
+              }
+            })
             .count()
-            .then((x) => (x[0] as any).count)
-        : query.count().then((x) => (x[0] as any).count),
+            .then((x) => (x[0] as any).count),
     ])
     return { data, totalCount }
   }

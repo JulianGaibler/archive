@@ -66,7 +66,9 @@
       : []),
     ...(onDeleteItem &&
     '__typename' in item &&
-    item.__typename !== 'ProcessingItem'
+    (item.__typename !== 'ProcessingItem' ||
+      (item.__typename === 'ProcessingItem' &&
+        (item.taskStatus === 'FAILED' || item.taskStatus === 'DONE')))
       ? [{ label: 'Delete item', onClick: () => onDeleteItem(item.id) }]
       : []),
   ])
@@ -155,12 +157,12 @@
         />
       {/if}
     {:else}
-      <div class="tint--tinted">
+      <div>
         <h3 class="tint--type-ui-small">Description</h3>
         <q>{item.description}</q>
       </div>
       {#if 'caption' in item}
-        <div class="tint--tinted">
+        <div>
           <h3 class="tint--type-ui-small">Caption</h3>
           <q><pre>{item.caption}</pre></q>
         </div>
@@ -184,6 +186,7 @@
     display: flex
     align-items: center
     gap: tint.$size-8
+    flex-wrap: wrap
     ul
       flex: 1
     .actions
@@ -197,14 +200,17 @@
     display: grid
     grid-template-columns: 1fr 1fr
     gap: tint.$size-12
+    @media (max-width: tint.$breakpoint-sm)
+      grid-template-columns: 1fr
     > div
-      background: var(--tint-bg)
+      background: var(--tint-input-bg)
       padding: tint.$size-12
       border-radius: tint.$card-radius
+      h3
+        margin-block-end: tint.$size-2
       pre
         white-space: pre-wrap
     h3
-      line-height: 1
       color: var(--tint-text-secondary)
     q
       quotes: none

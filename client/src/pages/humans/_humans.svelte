@@ -9,15 +9,15 @@
 
   interface Props {
     results: UsersQuery | undefined
-    byUsername?: string | null
+    search?: string | null
   }
 
-  let { results = $bindable(), byUsername = $bindable(null) }: Props = $props()
+  let { results = $bindable(), search = $bindable(null) }: Props = $props()
 
   async function loadMore() {
     const result = await sdk.Users({
       after: results?.users?.pageInfo?.endCursor,
-      byUsername,
+      search,
     })
     if (!results) {
       results = result.data
@@ -37,12 +37,12 @@
   }
 
   async function onSearchChange(value: string) {
-    byUsername = value.trim()
-    byUsername = byUsername.length === 0 ? null : byUsername
+    search = value.trim()
+    search = search.length === 0 ? null : search
     // add, update or remove query parameter
     const params = new URLSearchParams(window.location.search)
-    if (byUsername) {
-      params.set('q', byUsername)
+    if (search) {
+      params.set('q', search)
     } else {
       params.delete('q')
     }
@@ -55,7 +55,7 @@
     )
 
     const result = await sdk.Users({
-      byUsername,
+      search,
     })
     results = result.data
   }
@@ -63,36 +63,34 @@
 
 <div class="tint--tinted nav">
   <div class="shrinkwrap">
-    <SearchField
-      id="search"
-      value={byUsername || ''}
-      onsearch={onSearchChange}
-    />
-    <Button variant="primary" href="/new-post">New Post</Button>
+    <h1 class="tint--type">Humans</h1>
+    <SearchField id="search" value={search || ''} onsearch={onSearchChange} />
   </div>
 </div>
 
 <div class="shrinkwrap">
-  {#if byUsername}
+  {#if search}
     <p class="search-results">
-      Search results for <strong>{byUsername}</strong>
+      Search results for <strong>{search}</strong>
     </p>
   {/if}
 
   <ul class="users-list">
     {#each results?.users?.edges || [] as userEdge (userEdge?.node?.id)}
       {#if userEdge?.node}
-        <li class="user-item">
+        <li class="user-item tint--card">
           <a href={`/humans/${userEdge.node.username}`} class="user-link">
-            <div class="user-info">
-              <UserPicture user={userEdge.node} size="128" />
-              <div class="user-details">
-                <span class="user-name">{userEdge.node.name}</span>
-                <span class="username">@{userEdge.node.username}</span>
-                <span class="post-count"
-                  >({userEdge.node.posts?.totalCount || 0} posts)</span
-                >
-              </div>
+            <UserPicture user={userEdge.node} size="128" />
+            <div class="user-details">
+              <span class="name tint--type-body-sans-large"
+                >{userEdge.node.name}</span
+              >
+              <span class="username tint--type-body-sans"
+                >{userEdge.node.username}</span
+              >
+            </div>
+            <div class="badge tint--type-action">
+              {userEdge.node.postCount || 0} posts
             </div>
           </a>
         </li>
@@ -108,13 +106,17 @@
 <style lang="sass">
   .nav
     background-color: var(--tint-bg)
-    padding-block: tint.$size-24
-    margin-block-end: tint.$size-2
+    padding-block: tint.$size-32
+    margin-block-end: tint.$size-12
     .shrinkwrap
       display: flex
       align-items: center
-      gap: 0 tint.$size-16
+      gap: tint.$size-32
       justify-content: space-between
+      @media (max-width: tint.$breakpoint-sm)
+        flex-direction: column
+        align-items: flex-start
+        gap: tint.$size-12
 
   .search-results
     margin-block-end: tint.$size-24
@@ -122,44 +124,41 @@
 
   .users-list
     list-style: none
-    padding: 0
-    margin: 0
-
-  .user-item
-    border-bottom: 1px solid var(--tint-border)
-    
-    &:last-child
-      border-bottom: none
+    display: grid
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr))
+    grid-auto-rows: 1fr
+    gap: tint.$size-16
 
   .user-link
-    display: block
-    padding: tint.$size-16
+    padding: tint.$size-24
     text-decoration: none
     color: inherit
-    transition: background-color 0.2s ease
-    
-    &:hover
-      background-color: var(--tint-bg-hover)
-
-  .user-info
     display: flex
+    flex-direction: column
     align-items: center
     gap: tint.$size-16
+    border-radius: tint.$card-radius
+    @include tint.effect-focus()
+    &:hover .name
+      text-decoration: underline
 
   .user-details
     display: flex
     flex-direction: column
     gap: tint.$size-4
+    text-align: center
+    flex-grow: 1
+    > span
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
+    .username
+      color: var(--tint-text-secondary)
 
-  .user-name
-    font-weight: 600
-    color: var(--tint-text-primary)
-
-  .username
+  .badge
     color: var(--tint-text-secondary)
-    font-size: 0.9em
-
-  .post-count
-    color: var(--tint-text-secondary)
-    font-size: 0.85em
+    border-radius: tint.$size-64
+    border: 1px solid
+    padding-inline: tint.$size-8
+    padding-block: tint.$size-4
 </style>

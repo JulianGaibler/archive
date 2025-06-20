@@ -117,7 +117,7 @@ export default class ItemModel extends BaseModel {
   static relationMappings: RelationMappings = {
     creator: {
       relation: Model.BelongsToOneRelation,
-      modelClass: 'user',
+      modelClass: 'UserModel',
       join: {
         from: 'item.creatorId',
         to: 'user.id',
@@ -125,7 +125,7 @@ export default class ItemModel extends BaseModel {
     },
     post: {
       relation: Model.BelongsToOneRelation,
-      modelClass: 'post',
+      modelClass: 'PostModel',
       join: {
         from: 'item.postId',
         to: 'post.id',

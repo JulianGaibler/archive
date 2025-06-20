@@ -46,7 +46,7 @@
   )
   const checkboxLabel = $derived(
     mode === 'move'
-      ? 'Delete post if empty after moving'
+      ? 'Keep post even if empty after moving'
       : 'Merge keywords from both posts',
   )
   const submitButtonText = $derived(

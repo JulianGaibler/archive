@@ -6,22 +6,21 @@
   notes: |
     🎉 **5 years later, Archive hits 2.0.0!** 🎉
 
-    ### What's New?
-    - **New frontend** - Now a multi-page app instead of a single-page app
-    - **Improved security** - Passwords and sessions are handled in a safer manner
-    - **Multi-item posts** - Posts can now contain multiple items
-    - **Merging & Moving** - Posts can be merged into other posts, items can be moved to other posts
-    - **Reordering** - Items in posts can be reordered
+    **The frontend has been completely rewritten**, moving from a single-page (SPA) to a multi-page application (MPA) architecture. **Password and session security has been enhanced**, with modern password hashing algorithms and fixed security issues around timing attacks.
+    
+    **Posts now support multiple items**, with additional functionality for merging posts and moving items between posts. Items within posts can also be reordered as needed. **Collections have been removed** since nobody was using them.
 
-    ### What's Gone?
-    - **Collections** - nobody used them anyway, so... bye! 
+    The long-standing **"why"-bug has finally been fixed**, along with the bug where **videos shorter than 1 second** caused the upload to fail.
+
   changes:
     - '[Added] Posts can now contain multiple items'
     - '[Added] Keyword pages with search and filtering'
     - '[Improved] Complete frontend rewrite'
+    - '[Improved] Search returns more results while still putting the most relevant first'
     - '[Improved] Password and session security has been vastly improved'
     - '[Fixed] Fixed bug where removing tags from posts would remove the tag from all posts'
-    - '[Fixed] Fixed bug where common english words were not searchable'
+    - '[Fixed] Fixed bug where common english words were not searchable ("why"-bug)'
+    - '[Fixed] Uploading videos shorter than 1 second now does not cause errors'
     - '[Removed] Collections have been removed'
 1.0.2:
   date: '2020-06-24'

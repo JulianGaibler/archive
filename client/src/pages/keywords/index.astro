@@ -1,28 +1,38 @@
 ---
 import Layout from '@src/layouts/Layout.astro'
 import Keywords from './_keywords.svelte'
+import ErrorPage from '@src/components/ErrorPage.astro'
 
-import {
-  KeywordsDocument,
-  type KeywordsQuery,
-  type KeywordsQueryVariables,
-} from '@src/generated/graphql'
+import { getSdk } from '@src/generated/graphql'
+import { handleError, hasAuthenticationError } from '@src/utils/error-handling'
 
 const ssrClient = Astro.locals.gqlClient
+const sdk = getSdk(ssrClient)
 
 // if there is a query param q, use it as the search term
 const byName = new URL(Astro.request.url).searchParams.get('q')
 
-const result = await ssrClient.request<KeywordsQuery, KeywordsQueryVariables>(
-  KeywordsDocument,
-  {
+let result: Awaited<ReturnType<typeof sdk.Keywords>> | null = null
+let error: ReturnType<typeof handleError> | null = null
+
+try {
+  result = await sdk.Keywords({
     byName,
-  },
-)
+  })
+  error = hasAuthenticationError(result, Astro.response)
+} catch (graphqlError: unknown) {
+  error = handleError(500, Astro.response, graphqlError)
+}
 ---
 
-<Layout title="Archive">
-  <Keywords client:load results={result} {byName} />
-</Layout>
+{
+  error ? (
+    <ErrorPage error={error} />
+  ) : (
+    <Layout title="Archive">
+      <Keywords client:load results={result!.data} {byName} />
+    </Layout>
+  )
+}
 
 <style lang="sass"></style>

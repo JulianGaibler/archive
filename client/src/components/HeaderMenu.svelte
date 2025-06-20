@@ -24,9 +24,9 @@
 
   const tabActions: MenuItem[] = [
     {
-      label: 'Me',
+      label: user.username,
       icon: IconCrown,
-      onClick: () => document.location.assign('/humans'),
+      onClick: () => document.location.assign(`/humans/${user.username}`),
     },
     MENU_SEPARATOR,
     {

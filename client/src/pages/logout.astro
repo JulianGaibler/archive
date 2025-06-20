@@ -1,0 +1,34 @@
+---
+import {
+  LogoutDocument,
+  type LogoutMutation,
+  type LogoutMutationVariables,
+} from '../generated/graphql'
+
+const ssrClient = Astro.locals.gqlClient
+
+// Handle logout on page load
+try {
+  await ssrClient.request<LogoutMutation, LogoutMutationVariables>(
+    LogoutDocument,
+    {},
+  )
+
+  // Clear authentication cookies
+  Astro.cookies.delete('s-t', { path: '/' })
+  Astro.cookies.delete('s-id', { path: '/' })
+
+  // Redirect to home page
+  return Astro.redirect('/')
+} catch (error) {
+  console.error('Logout error:', error)
+
+  // Even if logout fails on server, clear cookies and redirect
+  Astro.cookies.delete('s-t', { path: '/' })
+  Astro.cookies.delete('s-id', { path: '/' })
+
+  return Astro.redirect('/login')
+}
+---
+
+<!-- This page should never render as it always redirects -->

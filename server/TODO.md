@@ -1,8 +1,6 @@
 # ToDo
 
 - Telegram bot
-- Why bug
-- Bug where videos cannot be shorter than 1 second
 
 - Move from objection to drizzle
 
@@ -10,6 +8,7 @@
 
 - Validate item position everywhere
 - Ensure ValidationInputError is used everywhere
+- Clean up empty posts, keywords and old sessions
 
 - Add PDF support
 - Add support for audio

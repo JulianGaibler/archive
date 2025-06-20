@@ -1,0 +1,146 @@
+---
+import Layout from '../layouts/Layout.astro'
+import {
+  LoginDocument,
+  type LoginMutation,
+  type LoginMutationVariables,
+} from '../generated/graphql'
+import TextField from 'tint/components/TextField.svelte'
+import Button from 'tint/components/Button.svelte'
+import MessageBox from 'tint/components/MessageBox.svelte'
+import IconWarning from 'tint/icons/20-warning.svg?raw'
+
+const ssrClient = Astro.locals.gqlClient
+
+let error = ''
+
+// Handle POST request (form submission)
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData()
+    console.log('Form data:', formData)
+    const username = formData.get('username')?.toString()
+    const password = formData.get('password')?.toString()
+
+    if (!username || !password) {
+      error = 'Username and password are required'
+    } else {
+      const result = await ssrClient.request<
+        LoginMutation,
+        LoginMutationVariables
+      >(LoginDocument, {
+        username,
+        password,
+      })
+
+      if (result.login) {
+        return Astro.redirect('/')
+      } else {
+        error = 'Invalid username or password'
+      }
+    }
+  } catch (err) {
+    console.error('Login error:', err)
+    error = 'Login failed. Please try again.'
+  }
+}
+
+// Get redirect URL from query params and validate it's safe
+const requestedRedirect = new URL(Astro.request.url).searchParams.get(
+  'redirect',
+)
+const redirectUrl = requestedRedirect || '/'
+
+const slogan = [
+  "Da, wo d'Memes zum Sterbn hi'geh",
+  'Where memes go to die',
+  'Là où les mèmes vont mourir',
+  'Ubi memes morituri eunt',
+  'Donde los memes van a morir',
+  'ミームが死にに行く場所',
+  "Where th' memes be walkin' the plank!",
+  "Dört, wo d'Memes sterbe gönd",
+].sort(() => Math.random() - 0.5)[0]
+---
+
+<Layout title="Login - Archive" flexCenter>
+  <div class="background">
+    <div class="brand">
+      <h1 class="tint--type-display-sans-3">Archive</h1>
+      <p class="tint--type-title-serif-3">{slogan}</p>
+    </div>
+    <div class="card tint--card">
+      <h2 class="tint--type-title-serif-2">Login</h2>
+      <form method="POST">
+        {
+          error && (
+            <MessageBox class="error" icon={IconWarning}>
+              <h2>Error</h2>
+              <p>{error}</p>
+            </MessageBox>
+          )
+        }
+        <TextField
+          client:load
+          type="text"
+          id="username"
+          name="username"
+          label="Username"
+          required
+          autocomplete="username"
+        />
+
+        <TextField
+          client:load
+          type="password"
+          id="password"
+          name="password"
+          label="Password"
+          required
+          autocomplete="current-password"
+        />
+
+        <div class="form-actions">
+          <Button submit={true}>Login</Button>
+        </div>
+
+        <input type="hidden" name="redirect" value={redirectUrl} />
+      </form>
+    </div>
+  </div>
+</Layout>
+
+<style lang="sass">
+  .background
+    background: var(--tint-text-accent)
+    align-self: stretch
+    justify-self: stretch
+    display: flex
+    align-items: center
+    justify-content: center
+    flex: 1
+    gap: 80px
+    padding: tint.$size-16
+    @media (max-width: tint.$breakpoint-md)
+      flex-direction: column
+      justify-content: flex-start
+      gap: tint.$size-32
+  .brand
+    color: white
+    padding: tint.$size-32
+  .card
+    padding: tint.$size-32
+    width: 100%
+    box-sizing: border-box
+    max-width: 400px
+  .card, .card > form
+    display: flex
+    flex-direction: column
+    gap: tint.$size-16
+  .card > form
+    gap: tint.$size-12
+    align-items: flex-end
+    :global(.error)
+      width: 100%
+      box-sizing: border-box
+</style>

@@ -119,10 +119,22 @@ export default class FileProcessor {
     const tmpDir = tmp.dirSync()
     const tmpFilename = 'thumb.png'
 
+    // Probe video duration
+    const duration = await new Promise<number>((resolve, reject) => {
+      ffmpeg.ffprobe(filePath, (err, metadata) => {
+        if (err) return reject(err)
+        resolve(metadata.format.duration || 0)
+      })
+    })
+    let screenshotTime = 1
+    if (duration > 0 && duration < 1) {
+      screenshotTime = duration / 2
+    }
+
     await new Promise<void>((resolve, reject) => {
       ffmpeg(filePath)
         .screenshots({
-          timestamps: [1],
+          timestamps: [screenshotTime],
           filename: tmpFilename,
           folder: tmpDir.name,
         })

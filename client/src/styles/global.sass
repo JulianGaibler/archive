@@ -4,6 +4,8 @@
 
 
 @include bootstrap.generate-color-variables(colors.$colors)
+@media (prefers-color-scheme: dark)
+  @include bootstrap.generate-color-variables(colors.$colors-dark)
 
 @include bootstrap.generate-font-faces("~tint/fonts")
 

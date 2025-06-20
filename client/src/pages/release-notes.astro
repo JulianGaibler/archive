@@ -207,13 +207,13 @@ const changelog: ProcessedChangelogRelease[] = await Promise.all(
       text-align: center
       display: inline-block
       margin-inline-end: tint.$size-8
-      .release-date
-        color: var(--tint-text)
-        margin: 0
-        flex: 1
-        overflow: hidden
-        white-space: nowrap
-        text-overflow: ellipsis
+    .release-date
+      color: var(--tint-text)
+      margin: 0
+      flex: 1
+      overflow: hidden
+      white-space: nowrap
+      text-overflow: ellipsis
 
   .changes-list
     list-style: none
@@ -241,12 +241,12 @@ const changelog: ProcessedChangelogRelease[] = await Promise.all(
     text-transform: uppercase
     &--added
       background-color: #00B783
-      &--fixed
-        background-color: #007AFF
-      &--improved
-        background-color: #864FFF
-      &--removed, &--deprecated
-        background-color: #9F3B00
+    &--fixed
+      background-color: #007AFF
+    &--improved
+      background-color: #864FFF
+    &--removed, &--deprecated
+      background-color: #9F3B00
 
   .change-message
     margin-block-start: 0.1rem
@@ -265,37 +265,37 @@ const changelog: ProcessedChangelogRelease[] = await Promise.all(
     border-radius: tint.$size-8
     @media screen and (max-width: 640px)
       margin-inline-start: 0
-      :global(h1, h2, h3, h4, h5, h6)
-        margin-block-start: tint.$size-8
-        margin-block-end: tint.$size-4
-      :global(p)
-        margin-block-end: tint.$size-16
-        &:last-child
-          margin-block-end: 0
-      :global(strong)
-        font-weight: 600
-      :global(em)
-        font-style: italic
-      :global(code)
-        background: rgba(0, 0, 0, 0.1)
-        padding: tint.$size-2 tint.$size-4
-        border-radius: tint.$size-2
-        font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace
-        font-size: tint.$size-12
-      :global(a)
-        color: var(--tint-text-link)
-        text-decoration: none
-        &:hover
-          text-decoration: underline
-      :global(ul), :global(ol)
-        margin: 0 0 tint.$size-8 0
-        padding-inline-start: tint.$size-24
-        &:last-child
-          margin-block-end: 0
-      :global(li)
-        margin-block-end: tint.$size-4
-        &:last-child
-          margin-block-end: 0
+    :global(h1, h2, h3, h4, h5, h6)
+      margin-block-start: tint.$size-8
+      margin-block-end: tint.$size-4
+    :global(p)
+      margin-block-end: tint.$size-16
+      &:last-child
+        margin-block-end: 0
+    :global(strong)
+      font-weight: 600
+    :global(em)
+      font-style: italic
+    :global(code)
+      background: rgba(0, 0, 0, 0.1)
+      padding: tint.$size-2 tint.$size-4
+      border-radius: tint.$size-2
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace
+      font-size: tint.$size-12
+    :global(a)
+      color: var(--tint-text-link)
+      text-decoration: none
+      &:hover
+        text-decoration: underline
+    :global(ul), :global(ol)
+      margin: 0 0 tint.$size-8 0
+      padding-inline-start: tint.$size-24
+      &:last-child
+        margin-block-end: 0
+    :global(li)
+      margin-block-end: tint.$size-4
+      &:last-child
+        margin-block-end: 0
 
   .release-header::before
     content: ""

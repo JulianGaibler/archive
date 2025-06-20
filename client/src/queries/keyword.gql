@@ -1,7 +1,7 @@
 #import "./fragments.gql"
 
 query Keywords($after: String, $byName: String) {
-  keywords(first: 50, after: $after, sortByPostCount: true, byName: $byName) {
+  keywords(first: 48, after: $after, sortByPostCount: true, byName: $byName) {
     edges {
       node {
         id

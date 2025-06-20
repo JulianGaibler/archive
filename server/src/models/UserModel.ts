@@ -45,8 +45,11 @@ export default class UserModel extends UniqueModel {
     const getByTelegramId = new DataLoader<string, UserModel>(
       UserModel.usersByTelegramId,
     )
+    const getPostCountByUser = new DataLoader<number, number>(
+      UserModel.postCountsByUsers,
+    )
 
-    return { getById, getByUsername, getByTelegramId }
+    return { getById, getByUsername, getByTelegramId, getPostCountByUser }
   }
 
   private static async usersByIds(
@@ -98,11 +101,29 @@ export default class UserModel extends UniqueModel {
     return telegramIds.map((id) => userMap[id])
   }
 
+  private static async postCountsByUsers(
+    userIds: readonly number[],
+  ): Promise<number[]> {
+    const counts = await UserModel.query()
+      .findByIds(userIds as number[])
+      .select('user.id')
+      .leftJoinRelated('posts')
+      .groupBy('user.id')
+      .count('posts.id as postCount')
+
+    const countMap: { [key: string]: number } = {}
+    counts.forEach((result: any) => {
+      countMap[result.id] = parseInt(result.postCount, 10)
+    })
+
+    return userIds.map((id) => countMap[id] || 0)
+  }
+
   /// Relations
   static relationMappings: RelationMappings = {
     posts: {
       relation: Model.HasManyRelation,
-      modelClass: 'post',
+      modelClass: 'PostModel',
       join: {
         from: 'user.id',
         to: 'post.creatorId',

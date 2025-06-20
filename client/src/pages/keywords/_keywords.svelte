@@ -31,7 +31,6 @@
       results.keywords!.pageInfo = {
         hasNextPage: result.data.keywords.pageInfo?.hasNextPage,
         endCursor: result.data.keywords.pageInfo?.endCursor,
-        startCursor: results.keywords!.pageInfo?.startCursor,
       }
     }
   }
@@ -63,8 +62,8 @@
 
 <div class="tint--tinted nav">
   <div class="shrinkwrap">
+    <h1 class="tint--type">Keywords</h1>
     <SearchField id="search" value={byName || ''} onsearch={onSearchChange} />
-    <Button variant="primary" href="/new-post">New Post</Button>
   </div>
 </div>
 
@@ -75,21 +74,20 @@
     </p>
   {/if}
 
-  <ul class="keywords-list">
+  <ul class="keywords-grid">
     {#each results?.keywords?.edges || [] as keywordEdge (keywordEdge?.node?.id)}
       {#if keywordEdge?.node}
-        <li class="keyword-item">
+        <li class="keyword-chip">
           <a href={`/keywords/${keywordEdge.node.id}`} class="keyword-link">
             <span class="keyword-name">{keywordEdge.node.name}</span>
-            <span class="keyword-count"
-              >({keywordEdge.node.postCount} posts)</span
-            >
+            <span class="keyword-count">{keywordEdge.node.postCount}</span>
           </a>
         </li>
       {/if}
     {/each}
   </ul>
-
+</div>
+<div class="shrinkwrap more">
   {#if results?.keywords?.pageInfo?.hasNextPage}
     <Button onclick={loadMore}>Load more</Button>
   {/if}
@@ -97,43 +95,69 @@
 
 <style lang="sass">
   .nav
-    background: var(--tint-bg)
-    padding-block: tint.$size-12
-    > div
+    background-color: var(--tint-bg)
+    padding-block: tint.$size-32
+    margin-block-end: tint.$size-12
+    .shrinkwrap
       display: flex
-      gap: tint.$size-12
-      > :global(button)
-        flex-shrink: 0
+      align-items: center
+      gap: tint.$size-32
+      justify-content: space-between
+      @media (max-width: tint.$breakpoint-sm)
+        flex-direction: column
+        align-items: flex-start
+        gap: tint.$size-12
 
   .search-results
     color: var(--tint-text-secondary)
     margin-block: tint.$size-16
 
-  .keywords-list
+  .keywords-grid
+    display: grid
+    grid-template-columns: repeat(auto-fill, minmax(256px, 1fr))
+    gap: tint.$size-8
+    margin-block: tint.$size-16
     list-style: none
-    padding: 0
-    margin: 0
 
-  .keyword-item
-    margin-bottom: tint.$size-4
-
-  .keyword-link
-    padding: tint.$size-8
+  .keyword-chip
+    padding: tint.$size-8 tint.$size-12
     background: var(--tint-bg)
-    border-radius: tint.$size-4
+    border: 1px solid
+    border-radius: tint.$size-24
     display: flex
-    justify-content: space-between
+    min-width: 0
+    &:has(.keyword-link:focus-visible)
+      @include tint.effect-focus-base()
+  
+  .keyword-link
+    flex: 1
+    display: inline-flex
     align-items: center
+    gap: tint.$size-4
     text-decoration: none
     color: inherit
-    transition: background-color 0.2s ease
-    &:hover
-      background: var(--tint-bg-secondary)
+    white-space: nowrap
+    min-width: 0
+    &:focus
+      outline: none
 
   .keyword-name
-    font-weight: 500
+    flex: 1
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+    min-width: 0
 
   .keyword-count
-    color: var(--tint-text-secondary)
-    font-size: 0.9rem
+    background: var(--tint-text-secondary)
+    color: var(--tint-bg)
+    padding: tint.$size-2 tint.$size-8
+    border-radius: tint.$size-12
+    min-width: 20px
+    text-align: center
+
+  .more
+    display: flex
+    justify-content: center
+    margin-block: tint.$size-16
 </style>

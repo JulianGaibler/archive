@@ -508,8 +508,9 @@ export type QueryUserArgs = {
 
 export type QueryUsersArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
-  byUsername?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  sortByPostCount?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 /** A keyword for categorizing Posts. */
@@ -635,6 +636,8 @@ export type User = Node & {
   linkedTelegram?: Maybe<Scalars['Boolean']['output']>;
   /** The user's profile name. */
   name: Scalars['String']['output'];
+  /** The number of posts created by this user. */
+  postCount: Scalars['Int']['output'];
   /** All Posts associated with this user. */
   posts?: Maybe<PostConnection>;
   /** Name of the user's profile picture. */
@@ -697,7 +700,7 @@ export type VisualMediaItem = {
 export type SettingsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type SettingsQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, darkMode?: boolean | null } | null, userSessions: Array<{ __typename?: 'Session', createdAt: any, firstIp: string, id: string, latestIp: string, userAgent: string, updatedAt: any }> };
+export type SettingsQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, darkMode?: boolean | null, linkedTelegram?: boolean | null } | null, userSessions: Array<{ __typename?: 'Session', createdAt: any, firstIp: string, id: string, latestIp: string, userAgent: string, updatedAt: any }> };
 
 export type LoginMutationVariables = Exact<{
   username: Scalars['String']['input'];
@@ -919,7 +922,7 @@ export type UnlinkTelegramMutation = { __typename?: 'Mutation', unlinkTelegram: 
 export type MeQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type MeQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, darkMode?: boolean | null } | null };
+export type MeQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, darkMode?: boolean | null, linkedTelegram?: boolean | null } | null };
 
 export type UserQueryVariables = Exact<{
   username: Scalars['String']['input'];
@@ -930,11 +933,11 @@ export type UserQuery = { __typename?: 'Query', user?: { __typename?: 'User', id
 
 export type UsersQueryVariables = Exact<{
   after?: InputMaybe<Scalars['String']['input']>;
-  byUsername?: InputMaybe<Scalars['String']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 
-export type UsersQuery = { __typename?: 'Query', users?: { __typename?: 'UserConnection', edges?: Array<{ __typename?: 'UserEdge', node: { __typename?: 'User', id: string, username: string, name: string, profilePicture?: string | null, posts?: { __typename?: 'PostConnection', totalCount: number } | null } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } | null };
+export type UsersQuery = { __typename?: 'Query', users?: { __typename?: 'UserConnection', edges?: Array<{ __typename?: 'UserEdge', node: { __typename?: 'User', id: string, username: string, name: string, profilePicture?: string | null, postCount: number } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } | null };
 
 export type UserWithPostsQueryVariables = Exact<{
   username: Scalars['String']['input'];
@@ -943,7 +946,7 @@ export type UserWithPostsQueryVariables = Exact<{
 }>;
 
 
-export type UserWithPostsQuery = { __typename?: 'Query', user?: { __typename?: 'User', id: string, username: string, name: string, profilePicture?: string | null, posts?: { __typename?: 'PostConnection', totalCount: number } | null } | null, posts?: { __typename?: 'PostConnection', edges?: Array<{ __typename?: 'PostEdge', node: { __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string } } | null> | null } } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null } } | null };
+export type UserWithPostsQuery = { __typename?: 'Query', user?: { __typename?: 'User', id: string, username: string, name: string, profilePicture?: string | null, postCount: number } | null, posts?: { __typename?: 'PostConnection', edges?: Array<{ __typename?: 'PostEdge', node: { __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string } } | null> | null } } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null } } | null };
 
 export const ItemDataFragmentDoc = gql`
     fragment ItemData on Item {
@@ -1039,6 +1042,7 @@ export const SettingsDocument = gql`
     username
     profilePicture
     darkMode
+    linkedTelegram
   }
   userSessions {
     createdAt
@@ -1062,7 +1066,7 @@ export const LogoutDocument = gql`
     `;
 export const KeywordsDocument = gql`
     query Keywords($after: String, $byName: String) {
-  keywords(first: 50, after: $after, sortByPostCount: true, byName: $byName) {
+  keywords(first: 48, after: $after, sortByPostCount: true, byName: $byName) {
     edges {
       node {
         id
@@ -1277,6 +1281,7 @@ export const MeDocument = gql`
     username
     profilePicture
     darkMode
+    linkedTelegram
   }
 }
     `;
@@ -1294,17 +1299,15 @@ export const UserDocument = gql`
 }
     `;
 export const UsersDocument = gql`
-    query Users($after: String, $byUsername: String) {
-  users(first: 50, after: $after, byUsername: $byUsername) {
+    query Users($after: String, $search: String) {
+  users(first: 50, after: $after, search: $search, sortByPostCount: true) {
     edges {
       node {
         id
         username
         name
         profilePicture
-        posts {
-          totalCount
-        }
+        postCount
       }
     }
     pageInfo {
@@ -1321,9 +1324,7 @@ export const UserWithPostsDocument = gql`
     username
     name
     profilePicture
-    posts {
-      totalCount
-    }
+    postCount
   }
   posts(first: 24, after: $after, byContent: $byContent, byUsers: [$username]) {
     ...PostsConnection

@@ -1,28 +1,37 @@
 ---
 import Layout from '@src/layouts/Layout.astro'
 import Wall from '@src/components/Wall.svelte'
-
-import {
-  PostsDocument,
-  type PostsQuery,
-  type PostsQueryVariables,
-} from '@src/generated/graphql'
+import ErrorPage from '@src/components/ErrorPage.astro'
+import { getSdk } from '@src/generated/graphql'
+import { handleError, hasAuthenticationError } from '@src/utils/error-handling'
 
 const ssrClient = Astro.locals.gqlClient
+const sdk = getSdk(ssrClient)
 
 // if there is a query param q, use it as the search term
 const byContent = new URL(Astro.request.url).searchParams.get('q')
 
-const result = await ssrClient.request<PostsQuery, PostsQueryVariables>(
-  PostsDocument,
-  {
+let result: Awaited<ReturnType<typeof sdk.Posts>> | null = null
+let error: ReturnType<typeof handleError> | null = null
+
+try {
+  result = await sdk.Posts({
     byContent,
-  },
-)
+  })
+  error = hasAuthenticationError(result, Astro.response)
+} catch (graphqlError: unknown) {
+  error = handleError(500, Astro.response, graphqlError)
+}
 ---
 
-<Layout title="Archive">
-  <Wall client:load results={result} {byContent} showAddPostButton />
-</Layout>
+{
+  error ? (
+    <ErrorPage error={error} />
+  ) : (
+    <Layout title="Archive">
+      <Wall client:load results={result!.data} {byContent} showAddPostButton />
+    </Layout>
+  )
+}
 
 <style lang="sass"></style>

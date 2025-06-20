@@ -292,7 +292,7 @@
       </div>
     {:else if !$isInNewPostMode && $postObject}
       <div>
-        <h1 class="tint--type">{$postObject.title}</h1>
+        <h1 class="title tint--type">{$postObject.title}</h1>
 
         <ul class="info pipelist">
           <li>
@@ -307,7 +307,7 @@
         </ul>
         <ul class="tags">
           {#each $postObject.keywords as keyword (keyword.id)}
-            <li><a href={keyword.id}>{keyword.name}</a></li>
+            <li><a href="/keywords/{keyword.id}">{keyword.name}</a></li>
           {/each}
         </ul>
       </div>
@@ -461,15 +461,21 @@
   background: var(--tint-bg)
   padding-block: tint.$size-32
   position: relative
+  .title
+    word-break: break-word
   .split
     display: flex
     align-items: flex-start
     gap: tint.$size-12
+    @media (max-width: tint.$breakpoint-md)
+      flex-direction: column
+      align-items: stretch
     > :first-child
       flex-grow: 1
     .actions
       display: flex
       gap: tint.$size-8
+      justify-content: flex-end
   &::before
     content: ""
     inset: 0 0 (tint.$size-64 * -2)
@@ -478,7 +484,11 @@
     z-index: -1
   
   ul.info, ul.tags
-    margin-block: tint.$size-8
+    margin-block-start: tint.$size-16
+
+  ul.info
+    margin-block-start: 0
+    color: var(--tint-text-secondary)
 
   ul.tags
     list-style: none

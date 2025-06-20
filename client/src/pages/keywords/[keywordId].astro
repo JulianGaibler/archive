@@ -3,14 +3,11 @@ import Layout from '@src/layouts/Layout.astro'
 import Wall from '@src/components/Wall.svelte'
 import ErrorPage from '@src/components/ErrorPage.astro'
 
-import {
-  KeywordWithPostsDocument,
-  type KeywordWithPostsQuery,
-  type KeywordWithPostsQueryVariables,
-} from '@src/generated/graphql'
-import { handleError } from '@src/utils/error-handling'
+import { getSdk } from '@src/generated/graphql'
+import { handleError, hasAuthenticationError } from '@src/utils/error-handling'
 
 const ssrClient = Astro.locals.gqlClient
+const sdk = getSdk(ssrClient)
 const { keywordId } = Astro.params
 
 // Ensure keywordId is defined
@@ -18,16 +15,17 @@ if (!keywordId) {
   throw new Error('Keyword ID is required')
 }
 
-let result: KeywordWithPostsQuery | null = null
+let result: Awaited<ReturnType<typeof sdk.KeywordWithPosts>> | null = null
 let error: ReturnType<typeof handleError> | null = null
 
 try {
-  result = await ssrClient.request<
-    KeywordWithPostsQuery,
-    KeywordWithPostsQueryVariables
-  >(KeywordWithPostsDocument, {
+  result = await sdk.KeywordWithPosts({
     nodeId: keywordId,
   })
+  error = hasAuthenticationError(result, Astro.response)
+  if (!error && !result.data?.keyword) {
+    error = handleError(404, Astro.response)
+  }
 } catch (graphqlError: unknown) {
   console.error('GraphQL error in [keywordId].astro:', graphqlError)
 
@@ -53,17 +51,17 @@ try {
     <ErrorPage error={error} />
   ) : (
     <Layout
-      title={`Archive - ${result?.keyword?.__typename === 'Keyword' ? result.keyword.name : 'Keyword'}`}
+      title={`Archive - ${result!.data?.keyword?.__typename === 'Keyword' ? result!.data.keyword.name : 'Keyword'}`}
     >
       <div class="tint--tinted nav">
         <div class="shrinkwrap">
-          {result?.keyword?.__typename === 'Keyword' && (
+          {result!.data?.keyword?.__typename === 'Keyword' && (
             <>
               <h1 class="tint--type-title-serif-1 keyword-title">
-                {result.keyword.name}
+                {result!.data.keyword.name}
               </h1>
               <span class="tint--type-body-sans post-count">
-                {result.keyword.postCount} posts
+                {result!.data.keyword.postCount} posts
               </span>
             </>
           )}
@@ -71,7 +69,7 @@ try {
       </div>
       <Wall
         client:load
-        results={{ posts: result!.posts }}
+        results={{ posts: result!.data.posts }}
         byKeywords={[keywordId]}
       />
     </Layout>

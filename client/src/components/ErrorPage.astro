@@ -61,6 +61,12 @@ const formatErrorDetails = (details: unknown) => {
 }
 
 const errorDetails = error.details ? formatErrorDetails(error.details) : null
+
+// Check if this is a 401 error to show login button
+const is401Error = error.statusCode === 401
+
+// Get current URL for redirect parameter
+const currentUrl = Astro.url.pathname + Astro.url.search
 ---
 
 <Layout
@@ -137,7 +143,19 @@ const errorDetails = error.details ? formatErrorDetails(error.details) : null
     }
 
     <div class="error-actions">
-      <Button variant="primary" href="/">Go Home</Button>
+      {
+        is401Error && (
+          <Button
+            variant="primary"
+            href={`/login?redirect=${encodeURIComponent(currentUrl)}`}
+          >
+            Login
+          </Button>
+        )
+      }
+      <Button variant={is401Error ? 'secondary' : 'primary'} href="/"
+        >Go Home</Button
+      >
     </div>
   </div>
 </Layout>

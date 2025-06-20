@@ -58,14 +58,6 @@
   {#if isImage}
     <picture>
       {#if item}
-        <source
-          type="image/webp"
-          srcset={getConvertedSrcPath(
-            item.compressedPath,
-            item.__typename,
-            false,
-          )}
-        />
         <img
           src={getConvertedSrcPath(item.compressedPath, item.__typename, true)}
           alt="No alt text provided"
@@ -78,10 +70,6 @@
     <!-- svelte-ignore a11y_media_has_caption -->
     <video controls={isVideo} loop={isGif}>
       {#if item}
-        <source
-          src={getConvertedSrcPath(item.compressedPath, item.__typename, false)}
-          type="video/webm"
-        />
         <source
           src={getConvertedSrcPath(item.compressedPath, item.__typename, true)}
           type="video/mp4"

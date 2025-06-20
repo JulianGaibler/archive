@@ -4,41 +4,64 @@ import ChangePassword from './_change-password.svelte'
 import ChangeName from './_change-name.svelte'
 import ChangeProfilePicture from './_change-profile-picture.svelte'
 import ManageSessions from './_manage-sessions.svelte'
+import TelegramConnection from './_telegram-connection.svelte'
+import ErrorPage from '@src/components/ErrorPage.astro'
 
 import { getSdk } from '@src/generated/graphql'
+import { handleError, hasAuthenticationError } from '@src/utils/error-handling'
 
 const ssrClient = Astro.locals.gqlClient
 
 const sdk = getSdk(ssrClient)
 
-const result = await sdk.settings()
+let result: Awaited<ReturnType<typeof sdk.settings>> | null = null
+let error: ReturnType<typeof handleError> | null = null
+
+try {
+  result = await sdk.settings()
+  error = hasAuthenticationError(result, Astro.response)
+} catch (graphqlError: unknown) {
+  error = handleError(500, Astro.response, graphqlError)
+}
 ---
 
-<Layout title="Account settings">
-  <div class="tint--tinted head">
-    <div class="shrinkwrap">
-      <h2 class="tint--type-title-serif-2">Account settings</h2>
-    </div>
-  </div>
-  <div>
-    <div class="shrinkwrap">
-      <div class="cards">
-        <section class="card tint--tinted">
-          <ChangePassword client:load />
-        </section>
-        <section class="card tint--tinted">
-          <ChangeProfilePicture client:load user={result.data.me} />
-        </section>
-        <section class="card tint--tinted">
-          <ChangeName client:load user={result.data.me} />
-        </section>
-        <section class="card tint--tinted">
-          <ManageSessions client:load sessions={result.data.userSessions} />
-        </section>
+{
+  error ? (
+    <ErrorPage error={error} />
+  ) : (
+    <Layout title="Account settings">
+      <div class="tint--tinted head">
+        <div class="shrinkwrap">
+          <h2 class="tint--type-title-serif-2">Account settings</h2>
+        </div>
       </div>
-    </div>
-  </div>
-</Layout>
+      <div>
+        <div class="shrinkwrap">
+          <div class="cards">
+            <section class="card tint--tinted">
+              <ChangePassword client:load />
+            </section>
+            <section class="card tint--tinted">
+              <ChangeProfilePicture client:load user={result!.data.me} />
+            </section>
+            <section class="card tint--tinted">
+              <ChangeName client:load user={result!.data.me} />
+            </section>
+            <section class="card tint--tinted">
+              <TelegramConnection client:load user={result!.data.me} />
+            </section>
+            <section class="card tint--tinted">
+              <ManageSessions
+                client:load
+                sessions={result!.data.userSessions}
+              />
+            </section>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  )
+}
 
 <style lang="sass">
   .head

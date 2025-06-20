@@ -66,16 +66,47 @@ export default class {
     }
     if (fields.byContent && fields.byContent.trim().length > 0) {
       const tsQuery = fields.byContent
+
       query
         .joinRaw(
-          "INNER JOIN ( SELECT post_id, text FROM item_search_view WHERE text @@ websearch_to_tsquery('english_nostop', ?)) b ON b.post_id = post.id",
-          tsQuery,
+          `
+        INNER JOIN (
+          -- Optimized approach using LEFT JOIN instead of NOT IN
+          WITH ts_results AS (
+            SELECT
+              post_id,
+              text,
+              plain_text,
+              1 as search_type,
+              ts_rank(text, websearch_to_tsquery('english_nostop', ?)) as rank_score
+            FROM item_search_view
+            WHERE text @@ websearch_to_tsquery('english_nostop', ?)
+          )
+          -- Combine ts_vector results with ILIKE results
+          SELECT * FROM ts_results
+          UNION ALL
+          SELECT
+            v.post_id,
+            v.text,
+            v.plain_text,
+            2 as search_type,
+            0.1 as rank_score
+          FROM item_search_view v
+          LEFT JOIN ts_results t ON v.post_id = t.post_id
+          WHERE v.plain_text ILIKE ?
+          AND t.post_id IS NULL  -- Exclude posts already found by ts_vector
+        ) b ON b.post_id = post.id
+        `,
+          [tsQuery, tsQuery, `%${tsQuery}%`],
         )
-        .groupBy('post.id', 'b.text')
-        .orderByRaw(
-          "ts_rank(b.text, websearch_to_tsquery('english_nostop',?)) desc",
-          tsQuery,
+        .groupBy(
+          'post.id',
+          'b.text',
+          'b.plain_text',
+          'b.search_type',
+          'b.rank_score',
         )
+        .orderByRaw('b.search_type, b.rank_score DESC')
     }
 
     const [data, totalSearchCount, totalCount] = await Promise.all([

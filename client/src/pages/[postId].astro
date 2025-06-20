@@ -3,43 +3,35 @@ import Layout from '@src/layouts/Layout.astro'
 import Post from '@src/components/Post.svelte'
 import ErrorPage from '@src/components/ErrorPage.astro'
 
-import {
-  PostDocument,
-  type PostQuery,
-  type PostQueryVariables,
-} from '@src/generated/graphql'
-import { handleError } from '@src/utils/error-handling'
+import { getSdk } from '@src/generated/graphql'
+import { handleError, hasAuthenticationError } from '@src/utils/error-handling'
 
 const ssrClient = Astro.locals.gqlClient
 const { postId } = Astro.params
+
+const sdk = getSdk(ssrClient)
 
 // Ensure postId is defined
 if (!postId) {
   throw new Error('Post ID is required')
 }
 
-let result: PostQuery | null = null
+let result: Awaited<ReturnType<typeof sdk.Post>> | null = null
 let error: ReturnType<typeof handleError> | null = null
 
 try {
-  result = await ssrClient.request<PostQuery, PostQueryVariables>(
-    PostDocument,
-    {
-      id: postId,
-    },
-  )
-
-  console.log('PostQuery result:', result)
-
-  // Check if the post was found
-  if (!result.node) {
+  result = await sdk.Post({
+    id: postId,
+  })
+  error = hasAuthenticationError(result, Astro.response)
+  if (!error && !result.data?.node) {
     error = handleError(404, Astro.response)
   }
 } catch (graphqlError: unknown) {
   console.error('GraphQL error in [postId].astro:', graphqlError)
 
   // Determine appropriate status code based on error
-  // Most GraphQL errors should be 500, but check for "not found" patterns
+  // Most GraphQL errors should be 500, but check for specific patterns
   let statusCode = 500
   if (
     graphqlError &&
@@ -52,6 +44,7 @@ try {
     }
   }
 
+  // handleError will automatically detect authentication errors and set 401
   error = handleError(statusCode, Astro.response, graphqlError)
 }
 ---
@@ -61,7 +54,7 @@ try {
     <ErrorPage error={error} />
   ) : (
     <Layout title="Archive">
-      <Post client:load result={result!.node} />
+      <Post client:load result={result!.data.node} />
     </Layout>
   )
 }

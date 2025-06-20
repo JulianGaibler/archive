@@ -4,6 +4,7 @@ query settings {
     username
     profilePicture
     darkMode
+    linkedTelegram
   }
   userSessions {
     createdAt

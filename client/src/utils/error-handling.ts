@@ -10,6 +10,80 @@ export interface ErrorPageProps {
   isDev?: boolean
 }
 
+/** Check if GraphQL error contains authentication error */
+export function isAuthenticationError(
+  errorOrGraphqlResponse: unknown,
+): boolean {
+  if (
+    typeof errorOrGraphqlResponse === 'object' &&
+    errorOrGraphqlResponse !== null
+  ) {
+    const response = errorOrGraphqlResponse as Record<string, unknown>
+
+    // Check for ClientError from graphql-request
+    if (
+      'response' in response &&
+      typeof response.response === 'object' &&
+      response.response !== null
+    ) {
+      const nestedResponse = response.response as Record<string, unknown>
+      if ('errors' in nestedResponse && Array.isArray(nestedResponse.errors)) {
+        return nestedResponse.errors.some(
+          (error: Record<string, unknown>) =>
+            error?.extensions &&
+            typeof error.extensions === 'object' &&
+            error.extensions !== null &&
+            (error.extensions as Record<string, unknown>).code ===
+              'AUTHENTICATION_ERROR',
+        )
+      }
+    }
+
+    // Check for direct GraphQL errors
+    if ('errors' in response && Array.isArray(response.errors)) {
+      return response.errors.some(
+        (error: Record<string, unknown>) =>
+          error?.extensions &&
+          typeof error.extensions === 'object' &&
+          error.extensions !== null &&
+          (error.extensions as Record<string, unknown>).code ===
+            'AUTHENTICATION_ERROR',
+      )
+    }
+  }
+
+  return false
+}
+
+/**
+ * Check if GraphQL response contains authentication errors and return ErrorInfo
+ * if found. This combines authentication checking and error handling into one
+ * simple function.
+ *
+ * @param result - The GraphQL response result
+ * @param astroResponse - Optional Astro response object to set status
+ * @returns ErrorInfo if authentication error found, null otherwise
+ */
+export function hasAuthenticationError(
+  result: {
+    data?: unknown
+    errors?: Array<{ extensions?: { code?: string }; message?: string }>
+  },
+  astroResponse?: ResponseInit & { readonly headers: Headers },
+): ErrorInfo | null {
+  // Check for authentication errors in the errors array
+  const hasAuthError =
+    result.errors?.some(
+      (error) => error?.extensions?.code === 'AUTHENTICATION_ERROR',
+    ) || false
+
+  if (hasAuthError) {
+    return handleError(401, astroResponse, result.errors?.[0])
+  }
+
+  return null
+}
+
 /** Simple error handler that sets response status and returns error info */
 export function handleError(
   statusCode: number,
@@ -17,6 +91,13 @@ export function handleError(
   errorOrGraphqlResponse?: unknown,
 ): ErrorInfo {
   const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV
+
+  console.error('Error occurred:', errorOrGraphqlResponse)
+
+  // Check for authentication errors and override status code
+  if (errorOrGraphqlResponse && isAuthenticationError(errorOrGraphqlResponse)) {
+    statusCode = 401
+  }
 
   // Determine status category (4xx, 5xx)
   const statusCategory = Math.floor(statusCode / 100) * 100

@@ -230,7 +230,9 @@ export async function up(knex) {
                 SELECT
                   p.id AS post_id,
                   to_tsvector(
-                    'english_nostop', p.title || ' ' || coalesce(string_agg(coalesce(i.caption, '') || ' ' || coalesce(i.description, ''), ' '), '') || ' ' || coalesce(string_agg(k.name, ' '), '')) AS text
+                    'english_nostop', p.title || ' ' || coalesce(string_agg(coalesce(i.caption, '') || ' ' || coalesce(i.description, ''), ' '), '') || ' ' || coalesce(string_agg(k.name, ' '), '')) AS text,
+                  -- Add plain text column for ILIKE searches
+                  p.title || ' ' || coalesce(string_agg(coalesce(i.caption, '') || ' ' || coalesce(i.description, ''), ' '), '') || ' ' || coalesce(string_agg(k.name, ' '), '') AS plain_text
                 FROM
                   post p
                   -- left join the item table on the post_id column
@@ -244,8 +246,10 @@ export async function up(knex) {
                   p.id,
                   p.title;
 
-                CREATE index idx_text ON item_search_view USING GIN(text);
+                -- Keep existing GIN index for ts_vector
+                CREATE INDEX idx_text ON item_search_view USING GIN(text);
 
+                -- Keep existing trigger function and triggers unchanged
                 CREATE OR REPLACE FUNCTION refresh_item_search_view_fn() RETURNS trigger AS $function$
                 BEGIN
                   REFRESH MATERIALIZED VIEW item_search_view;
@@ -253,17 +257,20 @@ export async function up(knex) {
                 END;
                 $function$ LANGUAGE plpgsql;
 
-                CREATE TRIGGER refresh_item_search_view_trigger
+                CREATE TRIGGER refresh_item_search_view_trigger_post
                 AFTER INSERT OR UPDATE OR DELETE ON "post"
                 FOR EACH STATEMENT
                 EXECUTE PROCEDURE refresh_item_search_view_fn();
 
-                CREATE TRIGGER refresh_item_search_view_trigger
+                CREATE TRIGGER refresh_item_search_view_trigger_item
                 AFTER INSERT OR UPDATE OR DELETE ON "item"
                 FOR EACH STATEMENT
                 EXECUTE PROCEDURE refresh_item_search_view_fn();
 
                 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+                DROP INDEX IF EXISTS idx_plain_text_trgm;
+                CREATE INDEX idx_plain_text_trgm ON item_search_view USING GIN (plain_text gin_trgm_ops);
 
                 CREATE INDEX post_title_trgm_idx ON "post" USING gin(title gin_trgm_ops);
                 CREATE INDEX item_description_trgm_idx ON "item" USING gin(description gin_trgm_ops);

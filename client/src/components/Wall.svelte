@@ -2,6 +2,7 @@
   import Button from 'tint/components/Button.svelte'
   import SearchField from 'tint/components/SearchField.svelte'
   import UserPicture from '@src/components/UserPicture.svelte'
+  import IconAdd from 'tint/icons/20-add.svg?raw'
   import { onMount } from 'svelte'
   import { getSdk, type PostsQuery } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
@@ -68,29 +69,35 @@
   }
 
   let columnPosts = $derived(sortIntoColumns(results, columns))
+  let loading = $state(false)
 
   async function loadMore() {
-    const result = await sdk.Posts({
-      after: results?.posts?.pageInfo?.endCursor,
-      byContent,
-      byKeywords,
-      byUsers,
-    })
-    if (!results) {
-      results = result.data
-      return
-    }
-
-    if (result.data?.posts?.edges) {
-      results.posts!.edges = [
-        ...results.posts!.edges!,
-        ...result.data.posts.edges,
-      ]
-      results.posts!.pageInfo = {
-        hasNextPage: result.data.posts.pageInfo?.hasNextPage,
-        endCursor: result.data.posts.pageInfo?.endCursor,
-        startCursor: results.posts!.pageInfo?.startCursor,
+    loading = true
+    try {
+      const result = await sdk.Posts({
+        after: results?.posts?.pageInfo?.endCursor,
+        byContent,
+        byKeywords,
+        byUsers,
+      })
+      if (!results) {
+        results = result.data
+        return
       }
+
+      if (result.data?.posts?.edges) {
+        results.posts!.edges = [
+          ...results.posts!.edges!,
+          ...result.data.posts.edges,
+        ]
+        results.posts!.pageInfo = {
+          hasNextPage: result.data.posts.pageInfo?.hasNextPage,
+          endCursor: result.data.posts.pageInfo?.endCursor,
+          startCursor: results.posts!.pageInfo?.startCursor,
+        }
+      }
+    } finally {
+      loading = false
     }
   }
 
@@ -112,12 +119,18 @@
       `${window.location.pathname}${paramsString.length > 0 ? `?${paramsString}` : ''}`,
     )
 
-    const result = await sdk.Posts({
-      byContent,
-      byKeywords,
-      byUsers,
-    })
-    results = result.data
+    loading = true
+    try {
+      const result = await sdk.Posts({
+        byContent,
+        byKeywords,
+        byUsers,
+      })
+      console.log('Search results:', result)
+      results = result.data
+    } finally {
+      loading = false
+    }
   }
 </script>
 
@@ -131,7 +144,16 @@
       onsearch={onSearchChange}
     />
     {#if showAddPostButton}
-      <Button variant="primary" href="/new-post">New Post</Button>
+      <Button class="add-large" variant="primary" href="/new-post"
+        >New Post</Button
+      >
+      <Button
+        class="add-small"
+        variant="primary"
+        title="New Post"
+        icon
+        href="/new-post">{@html IconAdd}</Button
+      >
     {/if}
   </div>
 </div>
@@ -163,13 +185,9 @@
           >
             {#if thumbnailPath}
               <picture>
-                <source
-                  type="image/webp"
-                  srcset={`//${import.meta.env.PUBLIC_RESOURCE_PATH}${thumbnailPath}.webp`}
-                />
                 <img
                   src={`//${import.meta.env.PUBLIC_RESOURCE_PATH}${thumbnailPath}.jpeg`}
-                  alt="x"
+                  alt="Preview of {postNode?.node?.title}"
                 />
               </picture>
             {:else}
@@ -192,8 +210,8 @@
     {/each}
   </div>
   {#if results?.posts?.pageInfo?.hasNextPage}
-    <div class="shrinkwrap">
-      <Button onclick={loadMore}>Load more</Button>
+    <div class="shrinkwrap more">
+      <Button onclick={loadMore} {loading}>Load more</Button>
     </div>
   {/if}
 </div>
@@ -202,6 +220,13 @@
   .nav
     background: var(--tint-bg)
     padding-block: tint.$size-12
+    :global(.add-small)
+      display: none
+    @media (max-width: tint.$breakpoint-sm)
+      :global(.add-large)
+        display: none
+      :global(.add-small)
+        display: inherit
     > div
       display: flex
       gap: tint.$size-12
@@ -291,4 +316,9 @@
     &:hover
       .info
         opacity: 1
+
+  .more
+    display: flex
+    justify-content: center
+    margin-block-start: tint.$size-24
 </style>

@@ -1,0 +1,54 @@
+---
+import Layout from '@src/layouts/Layout.astro'
+import TelegramLinking from '@src/components/TelegramLinking.svelte'
+import { getSdk } from '@src/generated/graphql'
+import { handleError, hasAuthenticationError } from '@src/utils/error-handling'
+import ErrorPage from '@src/components/ErrorPage.astro'
+
+const ssrClient = Astro.locals.gqlClient
+const sdk = getSdk(ssrClient)
+
+let result: Awaited<ReturnType<typeof sdk.settings>> | null = null
+let error: ReturnType<typeof handleError> | null = null
+
+try {
+  result = await sdk.settings()
+  error = hasAuthenticationError(result, Astro.response)
+} catch (graphqlError: unknown) {
+  console.error('GraphQL error in link-telegram.astro:', graphqlError)
+  error = handleError(500, Astro.response, graphqlError)
+}
+---
+
+{
+  error ? (
+    <ErrorPage error={error} />
+  ) : (
+    <Layout title="Archive - Link Telegram">
+      <div class="tint--tinted nav">
+        <div class="shrinkwrap">
+          <h1 class="tint--type">Link Telegram</h1>
+        </div>
+      </div>
+
+      <div class="shrinkwrap content">
+        <TelegramLinking
+          client:load
+          isLinked={result!.data?.me?.linkedTelegram || false}
+        />
+      </div>
+    </Layout>
+  )
+}
+
+<style lang="sass">
+  .nav
+    background-color: var(--tint-bg)
+    padding-block: tint.$size-24
+    margin-block-end: tint.$size-16
+
+  .content
+    display: flex
+    flex-direction: column
+    gap: tint.$size-24
+</style>

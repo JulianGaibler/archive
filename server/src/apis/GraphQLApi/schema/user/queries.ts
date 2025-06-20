@@ -1,4 +1,9 @@
-import { GraphQLFieldConfig, GraphQLNonNull, GraphQLString } from 'graphql'
+import {
+  GraphQLBoolean,
+  GraphQLFieldConfig,
+  GraphQLNonNull,
+  GraphQLString,
+} from 'graphql'
 import {
   connectionFromArraySlice,
   cursorToOffset,
@@ -33,9 +38,14 @@ const users: GraphQLFieldConfig<any, any, any> = {
   description: 'Returns a list of users.',
   args: {
     ...forwardConnectionArgs,
-    byUsername: {
-      description: 'Returns all users whose user name contains this string.',
+    search: {
+      description:
+        'Returns all users whose username or name contains this string.',
       type: GraphQLString,
+    },
+    sortByPostCount: {
+      description: 'Sort users by number of posts in descending order.',
+      type: GraphQLBoolean,
     },
   },
   resolve: async (_parent, args, ctx: Context) => {
@@ -45,7 +55,8 @@ const users: GraphQLFieldConfig<any, any, any> = {
     const { data, totalCount } = await UserActions.qUsers(ctx, {
       limit,
       offset,
-      byUsername: args.byUsername,
+      search: args.search,
+      sortByPostCount: args.sortByPostCount,
     })
 
     return {
