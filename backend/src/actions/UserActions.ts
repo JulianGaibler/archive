@@ -199,7 +199,6 @@ export default class {
     if (!user) {
       throw new AuthenticationError('This should not have happened.')
     }
-    console.log('Uploading profile picture', fields)
     const filename = await Context.fileStorage.setProfilePicture(fields.file)
 
     if (user.profilePicture !== null) {

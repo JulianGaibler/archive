@@ -6,7 +6,6 @@ import {
 } from 'graphql'
 import GraphQLUpload from 'graphql-upload/GraphQLUpload.mjs'
 
-
 export const EditItemInput = new GraphQLInputObjectType({
   name: 'EditItemInput',
   fields: {
@@ -38,6 +37,4 @@ export const NewItemInput = new GraphQLInputObjectType({
   },
 })
 
-export default {
-
-}
+export default {}

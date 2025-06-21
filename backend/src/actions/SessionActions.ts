@@ -1,6 +1,10 @@
 import SessionModel from '@src/models/SessionModel.js'
 import Context from '@src/Context.js'
-import { AuthenticationError, InputError, NotFoundError } from '@src/errors/index.js'
+import {
+  AuthenticationError,
+  InputError,
+  NotFoundError,
+} from '@src/errors/index.js'
 import { randomBytes, timingSafeEqual } from 'crypto'
 import { UAParser } from 'ua-parser-js'
 import { SessionSecurityUtils } from '@src/utils/SessionSecurityUtils.js'

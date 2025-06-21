@@ -1,10 +1,10 @@
-import type { Knex } from 'knex';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import type { Knex } from 'knex'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import env from './utils/env.js'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const config: Knex.Config = {
   client: 'postgresql',
@@ -22,6 +22,6 @@ const config: Knex.Config = {
   seeds: {
     directory: path.resolve(__dirname, '../db/seeds'),
   },
-};
+}
 
-export default config;
+export default config

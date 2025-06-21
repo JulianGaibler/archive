@@ -27,30 +27,11 @@ const RESTART_DELAYS = [
 const HEALTH_CHECK_INTERVAL = 10 * 60 * 1000 // 10 minutes
 const HEALTH_CHECK_TIMEOUT = 30 * 1000 // 30 seconds
 
-// Bot statistics for monitoring
-interface BotStats {
-  startTime: number
-  restartCount: number
-  lastRestart: number | null
-  totalRequests: number
-  lastActivity: number
-  healthCheckFailures: number
-}
-
 export default class TelegramBot {
   private bot: Telegraf | null = null
   private restartAttempts = 0
   private isShuttingDown = false
   private healthCheckInterval: NodeJS.Timeout | null = null
-  private statsInterval: NodeJS.Timeout | null = null
-  private stats: BotStats = {
-    startTime: Date.now(),
-    restartCount: 0,
-    lastRestart: null,
-    totalRequests: 0,
-    lastActivity: Date.now(),
-    healthCheckFailures: 0,
-  }
 
   constructor() {
     // Constructor only initializes, doesn't start the bot
@@ -58,28 +39,15 @@ export default class TelegramBot {
 
   async start(): Promise<void> {
     if (BOT_TOKEN === '') {
-      console.log(
-        '🤖 Telegram bot: Skipping init; no token.'
-      )
+      console.log('🤖 Telegram bot: Skipping init; no token.')
       return Promise.resolve()
     }
 
     console.log('🤖 Starting Telegram bot...')
 
-    // Reset stats on start
-    this.stats = {
-      startTime: Date.now(),
-      restartCount: 0,
-      lastRestart: null,
-      totalRequests: 0,
-      lastActivity: Date.now(),
-      healthCheckFailures: 0,
-    }
-
     try {
       await this.startBot()
       this.startHealthCheck()
-      this.startStatsLogging()
       console.log('🤖 Telegram bot started successfully')
     } catch (error) {
       console.error('Failed to start Telegram bot:', error)
@@ -87,9 +55,8 @@ export default class TelegramBot {
         '🤖 Telegram bot will continue attempting to start in the background',
       )
       // Don't throw the error - let the bot handle restarts internally
-      // Start the health check and stats logging even if initial start failed
+      // Start the health check even if initial start failed
       this.startHealthCheck()
-      this.startStatsLogging()
       // Trigger a restart attempt
       await this.handleStartupError()
     }
@@ -121,9 +88,6 @@ export default class TelegramBot {
 
       // Add connection monitoring
       this.bot.use(async (_ctx, next) => {
-        // Update stats and last health check on any activity
-        this.stats.totalRequests++
-        this.stats.lastActivity = Date.now()
         return next()
       })
 
@@ -169,7 +133,6 @@ export default class TelegramBot {
         console.log(`Telegram bot health check passed (${responseTime}ms)`)
       } catch (error) {
         console.error('Telegram bot health check failed:', error)
-        this.stats.healthCheckFailures++
         console.log('Restarting bot due to health check failure...')
         await this.restartBot()
       }
@@ -181,8 +144,6 @@ export default class TelegramBot {
     }
 
     console.log('Restarting Telegram bot due to health check failure...')
-    this.stats.restartCount++
-    this.stats.lastRestart = Date.now()
 
     // Stop current bot
     if (this.bot) {
@@ -194,14 +155,10 @@ export default class TelegramBot {
       this.bot = null
     }
 
-    // Stop health check and stats intervals
+    // Stop health check intervals
     if (this.healthCheckInterval) {
       clearInterval(this.healthCheckInterval)
       this.healthCheckInterval = null
-    }
-    if (this.statsInterval) {
-      clearInterval(this.statsInterval)
-      this.statsInterval = null
     }
 
     // Start new bot with error handling
@@ -233,7 +190,6 @@ export default class TelegramBot {
         try {
           await this.startBot()
           this.startHealthCheck()
-          this.startStatsLogging()
           console.log('🤖 Telegram bot restarted successfully')
         } catch (error) {
           console.error('Failed to restart Telegram bot:', error)
@@ -241,26 +197,6 @@ export default class TelegramBot {
         }
       }
     }, delay)
-  }
-  private startStatsLogging() {
-    // Clear existing interval if any
-    if (this.statsInterval) {
-      clearInterval(this.statsInterval)
-    }
-
-    // Log bot statistics every hour
-    this.statsInterval = setInterval(
-      () => {
-        const uptime = Date.now() - this.stats.startTime
-        const uptimeHours = Math.floor(uptime / (1000 * 60 * 60))
-        const lastActivityAgo = Date.now() - this.stats.lastActivity
-
-        console.log(
-          `Telegram Bot Stats - Uptime: ${uptimeHours}h, Restarts: ${this.stats.restartCount}, Requests: ${this.stats.totalRequests}, Last Activity: ${Math.floor(lastActivityAgo / 1000)}s ago, Health Failures: ${this.stats.healthCheckFailures}`,
-        )
-      },
-      60 * 60 * 1000,
-    ) // Every hour
   }
 
   private async shutdown(signal: string): Promise<void> {
@@ -273,11 +209,6 @@ export default class TelegramBot {
       this.healthCheckInterval = null
     }
 
-    if (this.statsInterval) {
-      clearInterval(this.statsInterval)
-      this.statsInterval = null
-    }
-
     // Stop the bot
     if (this.bot) {
       try {
@@ -288,11 +219,6 @@ export default class TelegramBot {
       }
       this.bot = null
     }
-  }
-
-  // Public method to get bot statistics for monitoring
-  public getStats(): BotStats {
-    return { ...this.stats }
   }
 
   // Public method to check if bot is healthy
@@ -338,7 +264,7 @@ async function middleware(
       })
     } catch (_error) {
       // User not found - this is ok, they just need to link their account
-      console.log(`User with Telegram ID ${fromUser.id} not found in database`)
+      console.warn(`User with Telegram ID ${fromUser.id} not found in database`)
     }
 
     // Create context - if user exists, create authenticated context, otherwise unauthenticated
@@ -445,12 +371,6 @@ async function inlineQuery(ctx: Context, msgCtx: any) {
     })
 
     const newCursor = data.length < limit ? '' : offsetToCursor(offset + limit)
-
-    console.log(
-      `Inline query from user ${_from.id} with query "${query}" and offset "${cursor}"`,
-      convertToInlineQueryResult(data),
-      newCursor,
-    )
 
     await msgCtx.telegram.answerInlineQuery(
       id,

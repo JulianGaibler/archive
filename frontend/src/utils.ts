@@ -58,7 +58,9 @@ export function getConvertedSrcPath(
 
   const suffix = formats[format as keyof typeof formats]
 
-  return getResourceUrl(`${path}.${commonFormat ? suffix?.common : suffix?.nextGen}`)
+  return getResourceUrl(
+    `${path}.${commonFormat ? suffix?.common : suffix?.nextGen}`,
+  )
 }
 
 // same function but without adding the suffix

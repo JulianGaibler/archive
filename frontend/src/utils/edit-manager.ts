@@ -99,8 +99,6 @@ export function createEditManager(
       subscriptionUnsubscribe = undefined
     }
 
-    console.log('Starting subscription for processing items:', processingIds)
-
     // Set up new subscription
     const subscription = webSubscriptionsClient.iterate({
       query: print(TaskUpdatesDocument),
@@ -109,10 +107,8 @@ export function createEditManager(
 
     // Process subscription results
     const processSubscription = async () => {
-      console.log('Processing subscription for item updates...')
       try {
         for await (const result of subscription) {
-          console.log('Received update for item:', result.data)
           if (result.errors) {
             console.error('Subscription errors:', result.errors)
           }

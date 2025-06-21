@@ -1,4 +1,3 @@
-
 /**
  * Centralized Environment Variable Configuration (BACKEND)
  *
@@ -218,11 +217,18 @@ function processEnvVariables(): EnvConfig {
       if ('fallback' in currentVar && currentVar.fallback !== undefined) {
         result[currentVar.name] = currentVar.fallback
       } else {
-        missing.push({ name: currentVar.name, description: currentVar.description })
+        missing.push({
+          name: currentVar.name,
+          description: currentVar.description,
+        })
       }
     } else {
       try {
-        result[currentVar.name] = parseValue(value, currentVar.type, currentVar.name)
+        result[currentVar.name] = parseValue(
+          value,
+          currentVar.type,
+          currentVar.name,
+        )
       } catch (error) {
         throw new Error(`Failed to parse environment variable: ${error}`)
       }

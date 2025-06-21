@@ -2,6 +2,7 @@ import nodejs from '@astrojs/node'
 import svelte from '@astrojs/svelte'
 import { defineConfig } from 'astro/config'
 import graphqlLoader from 'vite-plugin-graphql-loader'
+import envVarsIntegration from './integrations/env-vars.js'
 
 // https://astro.build/config
 export default defineConfig({
@@ -37,5 +38,5 @@ export default defineConfig({
       },
     },
   },
-  integrations: [svelte()],
+  integrations: [svelte(), envVarsIntegration()],
 })

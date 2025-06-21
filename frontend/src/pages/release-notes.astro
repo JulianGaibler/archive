@@ -6,6 +6,8 @@ import { parse } from 'yaml'
 import { createMarkdownProcessor } from '@astrojs/markdown-remark'
 import { formatDate } from '@src/utils'
 
+export const prerender = true
+
 // TypeScript types for changelog structure
 interface ChangelogChange {
   label: string

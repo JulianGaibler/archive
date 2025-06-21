@@ -229,11 +229,7 @@
 
   // Delete item functionality
   async function handleDeleteItem(itemId: string) {
-    const success = await editManager.deleteItem(itemId)
-    if (success) {
-      // Item successfully deleted, no redirect needed as it updates the current post
-      console.log('Item deleted successfully')
-    }
+    await editManager.deleteItem(itemId)
   }
 
   const moreActions: MenuItem[] = [

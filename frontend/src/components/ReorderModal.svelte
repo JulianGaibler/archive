@@ -77,10 +77,7 @@
           <div class="item-content">
             <div class="thumbnail {item.thumbnail ? '' : 'placeholder'}">
               {#if item.thumbnail}
-                <img
-                  src={getResourceUrl(`${item.thumbnail}.jpeg`)}
-                  alt=""
-                />
+                <img src={getResourceUrl(`${item.thumbnail}.jpeg`)} alt="" />
               {/if}
             </div>
             <div class="description">

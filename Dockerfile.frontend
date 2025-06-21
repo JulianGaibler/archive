@@ -12,6 +12,31 @@ RUN npm ci
 # Copy frontend source
 COPY frontend/ ./
 
+# Copy changelog.yaml to parent directory structure expected by the app
+COPY changelog.yaml ../changelog.yaml
+
+# Build arguments for environment variables needed during build
+# These are required because Astro processes environment variables at build time
+# to inject them into the client bundle according to the env-vars integration
+ARG NODE_ENV
+ARG CORS_ORIGIN
+ARG FRONTEND_PUBLIC_API_BASE_URL
+ARG FRONTEND_PUBLIC_GRAPHQL_ENDPOINT
+ARG FRONTEND_PUBLIC_WS_ENDPOINT
+ARG FRONTEND_FILES_BASE_URL
+ARG FRONTEND_PRIVATE_API_BASE_URL
+ARG FRONTEND_PRIVATE_GRAPHQL_ENDPOINT
+
+# Set environment variables for build
+ENV NODE_ENV=${NODE_ENV}
+ENV CORS_ORIGIN=${CORS_ORIGIN}
+ENV FRONTEND_PUBLIC_API_BASE_URL=${FRONTEND_PUBLIC_API_BASE_URL}
+ENV FRONTEND_PUBLIC_GRAPHQL_ENDPOINT=${FRONTEND_PUBLIC_GRAPHQL_ENDPOINT}
+ENV FRONTEND_PUBLIC_WS_ENDPOINT=${FRONTEND_PUBLIC_WS_ENDPOINT}
+ENV FRONTEND_FILES_BASE_URL=${FRONTEND_FILES_BASE_URL}
+ENV FRONTEND_PRIVATE_API_BASE_URL=${FRONTEND_PRIVATE_API_BASE_URL}
+ENV FRONTEND_PRIVATE_GRAPHQL_ENDPOINT=${FRONTEND_PRIVATE_GRAPHQL_ENDPOINT}
+
 # Build the frontend
 RUN npm run build
 
@@ -32,12 +57,19 @@ RUN npm ci --omit=dev && npm cache clean --force
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
 
+# Copy startup script
+COPY start-frontend.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 -G nodejs
 
 # Change ownership
 RUN chown -R nodejs:nodejs /app
+
+# Create the static files directory with proper permissions
+RUN mkdir -p /static-files && chown -R nodejs:nodejs /static-files
 
 # Switch to non-root user
 USER nodejs
@@ -48,4 +80,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 EXPOSE 4321
 
-CMD ["sh", "-c", "HOST=0.0.0.0 PORT=${FRONTEND_PORT:-4321} node dist/server/entry.mjs"]
+CMD ["/app/start.sh"]

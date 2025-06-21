@@ -127,7 +127,6 @@
         byKeywords,
         byUsers,
       })
-      console.log('Search results:', result)
       results = result.data
     } finally {
       loading = false

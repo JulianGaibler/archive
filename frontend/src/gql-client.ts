@@ -4,11 +4,12 @@ import { GraphQLClient } from 'graphql-request'
 import { createProgressFetch } from './utils/custom-fetch'
 import type { APIContext, AstroCookieSetOptions } from 'astro'
 import * as cookie from 'cookie'
-import env from './utils/env'
+import serverEnv from 'virtual:env/server'
+import clientEnv from 'virtual:env/client'
 
-const PUBLIC_URL = `${env.FRONTEND_PUBLIC_API_BASE_URL}${env.FRONTEND_PUBLIC_GRAPHQL_ENDPOINT}`
-const PUBLIC_URL_WS = `${env.FRONTEND_PUBLIC_API_BASE_URL}${env.FRONTEND_PUBLIC_WS_ENDPOINT}`
-const PRIVATE_URL = `${env.FRONTEND_PRIVATE_API_BASE_URL}${env.FRONTEND_PRIVATE_GRAPHQL_ENDPOINT}`
+const PUBLIC_URL = `${clientEnv.FRONTEND_PUBLIC_API_BASE_URL}${clientEnv.FRONTEND_PUBLIC_GRAPHQL_ENDPOINT}`
+const PUBLIC_URL_WS = `${clientEnv.FRONTEND_PUBLIC_API_BASE_URL}${clientEnv.FRONTEND_PUBLIC_WS_ENDPOINT}`
+const PRIVATE_URL = `${serverEnv.FRONTEND_PRIVATE_API_BASE_URL}${serverEnv.FRONTEND_PRIVATE_GRAPHQL_ENDPOINT}`
 
 export const getSsrClient = (
   token: string | undefined,
@@ -41,7 +42,6 @@ export const getSsrClient = (
 
     // Cookie handling
     const setCookieHeaders = response.headers.getSetCookie?.() || []
-    console.log('Set-Cookie headers:', setCookieHeaders)
     setCookieHeaders.forEach((cookieHeader) => {
       // Parse the cookie header using the cookie library for safe parsing
       const parsed = cookie.parse(cookieHeader)

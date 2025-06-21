@@ -42,7 +42,9 @@ export default class Connection {
         Connection.knexInstance = null
       }
 
-      throw new Error(`Database connection failed: ${error instanceof Error ? error.message : String(error)}`)
+      throw new Error(
+        `Database connection failed: ${error instanceof Error ? error.message : String(error)}`,
+      )
     }
   }
 
@@ -108,7 +110,9 @@ export default class Connection {
         Connection.pubSubInstance = null
       }
 
-      throw new Error(`PubSub connection failed: ${error instanceof Error ? error.message : String(error)}`)
+      throw new Error(
+        `PubSub connection failed: ${error instanceof Error ? error.message : String(error)}`,
+      )
     }
   }
 
@@ -143,7 +147,9 @@ export default class Connection {
       }
     } catch (error) {
       console.error('Error creating test database:', error)
-      throw new Error(`Test database creation failed: ${error instanceof Error ? error.message : String(error)}`)
+      throw new Error(
+        `Test database creation failed: ${error instanceof Error ? error.message : String(error)}`,
+      )
     } finally {
       if (nullKnexInstance) {
         try {

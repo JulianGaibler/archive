@@ -77,7 +77,10 @@ export class PostgresPubSub extends PubSub {
       ssl: options.ssl,
     }
 
-    this.pgListen = pgListen(pgClientConfig, pgListenOptions) as PgListenInstance
+    this.pgListen = pgListen(
+      pgClientConfig,
+      pgListenOptions,
+    ) as PgListenInstance
     this.triggers = (topics || []).concat(['error'])
     this.events = this.pgListen.events
     this.pgSubscriptions = {}

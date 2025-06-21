@@ -24,8 +24,8 @@ const OPTIONS = {
 export type ServerOptions = typeof OPTIONS
 
 /**
- * Creates a new express server that serves the GraphQL API and optionally files from the
- * public directory (only in development).
+ * Creates a new express server that serves the GraphQL API and optionally files
+ * from the public directory (only in development).
  *
  * @class Server
  */
@@ -54,8 +54,13 @@ export default class {
 
     // Serve static files only if enabled (development mode)
     if (env.NODE_ENV === 'development') {
-      console.log(`📁 Serving files from ${OPTIONS.fileStorageDir} at ${OPTIONS.fileServePath}`)
-      this.app.use(OPTIONS.fileServePath, express.static(path.resolve(OPTIONS.fileStorageDir)))
+      console.log(
+        `📁 Serving files from ${OPTIONS.fileStorageDir} at ${OPTIONS.fileServePath}`,
+      )
+      this.app.use(
+        OPTIONS.fileServePath,
+        express.static(path.resolve(OPTIONS.fileStorageDir)),
+      )
     }
 
     // Health check endpoint

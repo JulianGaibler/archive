@@ -90,7 +90,12 @@
   helperText="Reach out if you want to change your username"
 />
 <form onsubmit={tryChangePicture} class="update">
-  <TextField id="display-name" label="Name" bind:value={newName} error={inputError} />
+  <TextField
+    id="display-name"
+    label="Name"
+    bind:value={newName}
+    error={inputError}
+  />
   <div class="flex-center">
     <Button small variant="primary" submit={true} {loading}>Update name</Button>
   </div>

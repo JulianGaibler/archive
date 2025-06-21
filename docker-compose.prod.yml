@@ -67,6 +67,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        NODE_ENV: ${NODE_ENV}
+        CORS_ORIGIN: ${CORS_ORIGIN}
+        FRONTEND_PUBLIC_API_BASE_URL: ${FRONTEND_PUBLIC_API_BASE_URL}
+        FRONTEND_PUBLIC_GRAPHQL_ENDPOINT: ${FRONTEND_PUBLIC_GRAPHQL_ENDPOINT}
+        FRONTEND_PUBLIC_WS_ENDPOINT: ${FRONTEND_PUBLIC_WS_ENDPOINT}
+        FRONTEND_FILES_BASE_URL: ${FRONTEND_FILES_BASE_URL}
+        FRONTEND_PRIVATE_API_BASE_URL: ${FRONTEND_PRIVATE_API_BASE_URL}
+        FRONTEND_PRIVATE_GRAPHQL_ENDPOINT: ${FRONTEND_PRIVATE_GRAPHQL_ENDPOINT}
     container_name: archive-frontend
     restart: unless-stopped
     environment:
@@ -81,6 +90,8 @@ services:
       FRONTEND_PRIVATE_GRAPHQL_ENDPOINT: ${FRONTEND_PRIVATE_GRAPHQL_ENDPOINT}
     depends_on:
       - backend
+    volumes:
+      - frontend_static:/static-files:rw
     networks:
       - archive-network
     healthcheck:
@@ -109,6 +120,7 @@ services:
       BACKEND_GRAPHQL_PATH: ${BACKEND_GRAPHQL_PATH}
     volumes:
       - backend_uploads:/var/www/archive/files:ro
+      - frontend_static:/var/www/archive/static:ro
       - nginx_cache:/var/cache/nginx
       - nginx_logs:/var/log/nginx
     networks:
@@ -123,6 +135,8 @@ volumes:
   postgres_data:
     driver: local
   backend_uploads:
+    driver: local
+  frontend_static:
     driver: local
   nginx_cache:
     driver: local

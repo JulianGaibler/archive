@@ -1,9 +1,9 @@
-import env from './env'
+import clientEnv from 'virtual:env/client'
 
-const baseUrl = env.FRONTEND_FILES_BASE_URL.replace(/\/$/, '') + '/'
+const baseUrl = clientEnv.FRONTEND_FILES_BASE_URL.replace(/\/$/, '') + '/'
 
 export function getResourceUrl(path: string): string {
-      // Remove leading slash from path to avoid double slashes
-    const cleanPath = path.replace(/^\//, '')
-    return `${baseUrl}${cleanPath}`
+  // Remove leading slash from path to avoid double slashes
+  const cleanPath = path.replace(/^\//, '')
+  return `${baseUrl}${cleanPath}`
 }

@@ -18,7 +18,6 @@ let error = ''
 if (Astro.request.method === 'POST') {
   try {
     const formData = await Astro.request.formData()
-    console.log('Form data:', formData)
     const username = formData.get('username')?.toString()
     const password = formData.get('password')?.toString()
 

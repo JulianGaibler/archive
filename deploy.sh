@@ -68,57 +68,12 @@ echo ""
 echo "🔍 Service status:"
 docker compose -f docker-compose.prod.yml ps
 echo ""
-echo "� Application available at: http://localhost:8080"
-echo "�📋 To view logs: docker compose -f docker-compose.prod.yml logs -f [service]"
-echo "🛑 To stop: docker compose -f docker-compose.prod.yml down"
-echo "🗑️  To remove volumes: docker compose -f docker-compose.prod.yml down -v"
-
-# Run database migrations
-print_status "Running database migrations..."
-cd server
-if [ -f ".env.production" ]; then
-    npm run knex -- migrate:latest --env=production
-else
-    print_warning "No .env.production found, skipping migrations"
-fi
-cd ..
-
-# Create logs directory if it doesn't exist
-mkdir -p logs
-
-# Start or restart services
-if [ "$IS_UPDATE" = true ]; then
-    print_status "Restarting services..."
-    pm2 restart archive-server archive-client
-    print_success "Services restarted successfully!"
-else
-    print_status "Starting services for the first time..."
-    # Check if ecosystem.config.js has been configured
-    if grep -q "/path/to/your/archive" ecosystem.config.js; then
-        print_error "Please update the 'cwd' path in ecosystem.config.js before first deployment"
-        exit 1
-    fi
-    
-    pm2 start ecosystem.config.js
-    pm2 save
-    print_success "Services started successfully!"
-fi
-
-print_success "Deployment completed successfully!"
+print_success "Application is available at: http://localhost:8080"
+echo "You can manage the container with the following npm commands:"
+echo -e "  - ${BLUE}\`npm run docker:logs\`${NC} to view logs"
+echo -e "  - ${BLUE}\`npm run docker:logs:backend\`${NC} for backend logs"
+echo -e "  - ${BLUE}\`npm run docker:logs:frontend\`${NC} for frontend logs"
+echo -e "  - ${BLUE}\`npm run docker:logs:postgres\`${NC} for PostgreSQL logs"
 echo ""
-echo -e "${BLUE}📊 Service Status:${NC}"
-pm2 status
-
-echo ""
-echo -e "${BLUE}📋 Next steps:${NC}"
-if [ "$IS_UPDATE" = false ]; then
-    echo "  1. Configure nginx to proxy requests"
-    echo "  2. Set up SSL certificates"
-    echo "  3. Configure firewall rules"
-    echo ""
-fi
-echo -e "${BLUE}📱 Management Commands:${NC}"
-echo "  pm2 logs           # View logs"
-echo "  pm2 monit          # Monitor resources" 
-echo "  pm2 restart all    # Restart services"
-echo "  pm2 stop all       # Stop services"
+echo -e "  To stop the application, run: ${BLUE}\`npm run docker:stop\`"
+echo -e "  To restart the application, run: ${BLUE}\`npm run docker:restart\`"
