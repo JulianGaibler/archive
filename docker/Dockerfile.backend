@@ -33,7 +33,7 @@ COPY --from=builder /app/dist ./dist
 COPY backend/db ./db
 
 # Copy entrypoint script
-COPY backend/docker-entrypoint.sh ./
+COPY backend/docker-scripts/docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
 # Create storage directories with proper structure

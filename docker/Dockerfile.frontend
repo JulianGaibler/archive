@@ -58,7 +58,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=builder /app/dist ./dist
 
 # Copy startup script
-COPY start-frontend.sh /app/start.sh
+COPY frontend/docker-scripts/start-frontend.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 # Create non-root user
