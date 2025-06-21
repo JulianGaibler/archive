@@ -1,0 +1,32 @@
+# Development Docker Compose - Only Database
+# For local development where frontend and backend run on host
+
+services:
+  postgres-dev:
+    image: postgres:16.0
+    container_name: archive-postgres-dev
+    ports:
+      - "${BACKEND_POSTGRES_PORT:-5432}:5432"
+    restart: unless-stopped
+    environment:
+      # PostgreSQL image specific variables
+      POSTGRES_DB: ${POSTGRES_DB:-archive}
+      POSTGRES_USER: ${POSTGRES_USER:-archive}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-archive}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./backend/db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-archive} -d ${POSTGRES_DB:-archive}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_dev_data:
+    driver: local
+
+networks:
+  default:
+    name: archive-dev

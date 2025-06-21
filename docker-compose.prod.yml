@@ -1,0 +1,132 @@
+# Production Docker Compose - Full Stack
+# Complete containerized setup for production deployment
+
+services:
+  # PostgreSQL Database
+  database:
+    image: postgres:16.0
+    container_name: archive-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/db/init:/docker-entrypoint-initdb.d
+    networks:
+      - archive-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: archive-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      BACKEND_PORT: ${BACKEND_PORT}
+      BACKEND_GRAPHQL_PATH: ${BACKEND_GRAPHQL_PATH}
+      BACKEND_WEBSOCKET_PATH: ${BACKEND_WEBSOCKET_PATH}
+      BACKEND_FILE_STORAGE_DIR: ${BACKEND_FILE_STORAGE_DIR}
+      BACKEND_UPLOAD_MAX_FILE_SIZE: ${BACKEND_UPLOAD_MAX_FILE_SIZE}
+      BACKEND_UPLOAD_MAX_FILES: ${BACKEND_UPLOAD_MAX_FILES}
+      BACKEND_TELEGRAM_BOT_TOKEN: ${BACKEND_TELEGRAM_BOT_TOKEN}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      BACKEND_SESSION_SECRETS: ${BACKEND_SESSION_SECRETS}
+      BACKEND_POSTGRES_HOST: ${BACKEND_POSTGRES_HOST}
+      BACKEND_POSTGRES_PORT: ${BACKEND_POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      FRONTEND_FILES_BASE_URL: ${FRONTEND_FILES_BASE_URL}
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - backend_uploads:${BACKEND_FILE_STORAGE_DIR}
+    networks:
+      - archive-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${BACKEND_PORT}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: archive-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      FRONTEND_PORT: ${FRONTEND_PORT}
+      FRONTEND_PUBLIC_API_BASE_URL: ${FRONTEND_PUBLIC_API_BASE_URL}
+      FRONTEND_PUBLIC_GRAPHQL_ENDPOINT: ${FRONTEND_PUBLIC_GRAPHQL_ENDPOINT}
+      FRONTEND_PUBLIC_WS_ENDPOINT: ${FRONTEND_PUBLIC_WS_ENDPOINT}
+      FRONTEND_FILES_BASE_URL: ${FRONTEND_FILES_BASE_URL}
+      FRONTEND_PRIVATE_API_BASE_URL: ${FRONTEND_PRIVATE_API_BASE_URL}
+      FRONTEND_PRIVATE_GRAPHQL_ENDPOINT: ${FRONTEND_PRIVATE_GRAPHQL_ENDPOINT}
+    depends_on:
+      - backend
+    networks:
+      - archive-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${FRONTEND_PORT}/health.json"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx Reverse Proxy
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+    container_name: archive-nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - frontend
+      - backend
+    environment:
+      DOCKER_FRONTEND_HOST: ${DOCKER_FRONTEND_HOST}
+      FRONTEND_PORT: ${FRONTEND_PORT}
+      DOCKER_BACKEND_HOST: ${DOCKER_BACKEND_HOST}
+      BACKEND_PORT: ${BACKEND_PORT}
+      BACKEND_GRAPHQL_PATH: ${BACKEND_GRAPHQL_PATH}
+    volumes:
+      - backend_uploads:/var/www/archive/files:ro
+      - nginx_cache:/var/cache/nginx
+      - nginx_logs:/var/log/nginx
+    networks:
+      - archive-network
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  backend_uploads:
+    driver: local
+  nginx_cache:
+    driver: local
+  nginx_logs:
+    driver: local
+
+networks:
+  archive-network:
+    driver: bridge
+    name: archive-prod

@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "removeComments": true,
+    "allowSyntheticDefaultImports": true,
+    "noEmitOnError": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@src/*": ["src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"],
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
+  }
+}

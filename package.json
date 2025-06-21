@@ -1,0 +1,33 @@
+{
+  "name": "archive",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:setup": "npm run dev:db:start && npm run dev:migrate",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:db:start": "docker compose -f docker-compose.dev.yml --env-file .env.dev up -d",
+    "dev:db:stop": "docker compose -f docker-compose.dev.yml down",
+    "dev:migrate": "wait-port localhost:5432 -t 30000 && cd backend && npm run migrate:latest",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "build:backend": "cd backend && npm install && npm run build",
+    "docker:deploy": "./deploy.sh",
+    "docker:build": "docker compose -f docker-compose.prod.yml build",
+    "docker:start": "docker compose -f docker-compose.prod.yml up -d",
+    "docker:stop": "docker compose -f docker-compose.prod.yml down",
+    "docker:restart": "npm run docker:stop && npm run docker:start",
+    "docker:logs": "docker compose -f docker-compose.prod.yml logs -f",
+    "docker:logs:backend": "docker compose -f docker-compose.prod.yml logs -f backend",
+    "docker:logs:frontend": "docker compose -f docker-compose.prod.yml logs -f frontend",
+    "docker:logs:postgres": "docker compose -f docker-compose.prod.yml logs -f postgres",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "dotenv-cli": "^8.0.0",
+    "wait-port": "^1.1.0"
+  }
+}

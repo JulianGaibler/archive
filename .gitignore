@@ -1,6 +1,10 @@
 # Normal stuff
-
 .DS_Store
-server/.env
-.idea/
-server/public/
+backend/public/
+
+node_modules/
+
+# Environment files
+.env
+.env.dev
+.env.prod

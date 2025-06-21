@@ -1,0 +1,43 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Server",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/server/node_modules/.bin/tsx",
+      "args": ["watch", "src"],
+      "cwd": "${workspaceFolder}/server",
+      "envFile": "${workspaceFolder}/.env.dev",
+      "console": "integratedTerminal",
+      "restart": true,
+      "runtimeExecutable": "node",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Debug Client",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/client/node_modules/.bin/astro",
+      "args": ["dev"],
+      "cwd": "${workspaceFolder}/client",
+      "envFile": "${workspaceFolder}/.env.dev",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Debug Both (Client + Server)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/.bin/concurrently",
+      "args": [
+        "\"npm run dev:server\"",
+        "\"npm run dev:client\""
+      ],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env.dev",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ]
+}
