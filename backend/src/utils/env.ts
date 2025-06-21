@@ -90,7 +90,7 @@ const ENV_VARIABLES = [
     name: 'BACKEND_WEBSOCKET_PATH',
     description: 'WebSocket path',
     type: 'string',
-    fallback: '/ws',
+    fallback: '/websocket',
   },
 
   // File serving configuration

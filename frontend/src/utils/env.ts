@@ -1,11 +1,10 @@
-
 /**
  * Centralized Environment Variable Configuration (FRONTEND)
- * 
+ *
  * This file serves as the single source of truth for all environment variables
  * used by the client application. It provides type-safe access to environment
  * variables with validation, fallback values, and clear documentation.
- * 
+ *
  * IMPORTANT: When modifying this file, ensure parity is maintained with the
  * backend's env.ts file. Both files should follow the same structure and
  * patterns for consistency across the codebase.
@@ -127,19 +126,42 @@ function processEnvVariables(): EnvConfig {
   const missing: Array<{ name: string; description: string }> = []
   const result: Record<string, string | number | boolean> = {}
 
+  // for debugging print all environment variables
+  if (typeof process !== 'undefined' && process.env) {
+    console.log('Environment Variables:')
+    for (const [key, value] of Object.entries(process.env)) {
+      console.log(`  ${key}: ${value}`)
+    }
+  } else if (import.meta.env) {
+    console.log('Environment Variables (import.meta.env):')
+    for (const [key, value] of Object.entries(import.meta.env)) {
+      console.log(`  ${key}: ${value}`)
+    }
+  }
+
   for (const envVar of ENV_VARIABLES) {
     const currentVar = envVar as EnvVariable
-    const value = import.meta.env[currentVar.name]
+    const value =
+      typeof process !== 'undefined' && process.env
+        ? process.env[currentVar.name]
+        : import.meta.env[currentVar.name]
 
     if (value === undefined) {
       if ('fallback' in currentVar && currentVar.fallback !== undefined) {
         result[currentVar.name] = currentVar.fallback
       } else {
-        missing.push({ name: currentVar.name, description: currentVar.description })
+        missing.push({
+          name: currentVar.name,
+          description: currentVar.description,
+        })
       }
     } else {
       try {
-        result[currentVar.name] = parseValue(value, currentVar.type, currentVar.name)
+        result[currentVar.name] = parseValue(
+          value,
+          currentVar.type,
+          currentVar.name,
+        )
       } catch (error) {
         throw new Error(`Failed to parse environment variable: ${error}`)
       }
@@ -156,7 +178,6 @@ function processEnvVariables(): EnvConfig {
 
     throw new Error(errorMessage)
   }
-
   return result as EnvConfig
 }
 

@@ -15,7 +15,7 @@ wait_for_db() {
     attempt=1
 
     while [ $attempt -le $max_attempts ]; do
-        if npx knex migrate:status --knexfile=./knexfile.prod.js > /dev/null 2>&1; then
+        if npx tsx ./node_modules/.bin/knex migrate:status --knexfile=dist/knexfile.js > /dev/null 2>&1; then
             echo "✅ Database is ready!"
             return 0
         fi
@@ -33,7 +33,7 @@ wait_for_db() {
 run_migrations() {
     echo "🔄 Running database migrations..."
 
-    if npx knex migrate:latest --knexfile=./knexfile.prod.js; then
+    if npx tsx ./node_modules/.bin/knex migrate:latest --knexfile=dist/knexfile.js; then
         echo "✅ Migrations completed successfully!"
     else
         echo "❌ Migration failed!"
@@ -44,7 +44,7 @@ run_migrations() {
 # Function to start server
 start_server() {
     echo "🚀 Starting server..."
-    exec node dist/src/index.js
+    exec node dist/index.js
 }
 
 # Main execution

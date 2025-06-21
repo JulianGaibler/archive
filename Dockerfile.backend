@@ -20,8 +20,6 @@ WORKDIR /app
 
 # Copy package files
 COPY backend/package*.json ./
-COPY backend/knexfile.ts ./
-COPY backend/knexfile.prod.js ./
 
 # Install only production dependencies + migration dependencies
 RUN npm ci --only=production && \
@@ -39,14 +37,14 @@ COPY backend/docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
 # Create storage directories with proper structure
-RUN mkdir -p public/original public/compressed public/thumbnail public/upic public/queue
+RUN mkdir -p files/original files/compressed files/thumbnail files/upic files/queue
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 -G nodejs
 
 # Change ownership of storage directories
-RUN chown -R nodejs:nodejs public/
+RUN chown -R nodejs:nodejs files/
 
 # Switch to non-root user
 USER nodejs

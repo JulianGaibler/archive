@@ -19,10 +19,11 @@ server {
     # Main application routes - proxy to Astro client
     location / {
         proxy_pass http://${DOCKER_FRONTEND_HOST}:${FRONTEND_PORT};
-        proxy_set_header Host $host;
+        proxy_set_header Host $http_host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $http_host;
         proxy_redirect off;
         
         # WebSocket support for Astro dev features
@@ -47,7 +48,7 @@ server {
         limit_req zone=api burst=20 nodelay;
         
         proxy_pass http://${DOCKER_BACKEND_HOST}:${BACKEND_PORT}${BACKEND_GRAPHQL_PATH};
-        proxy_set_header Host $host;
+        proxy_set_header Host $http_host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;

@@ -48,4 +48,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 EXPOSE 4321
 
-CMD ["node", "dist/server/entry.mjs"]
+CMD ["sh", "-c", "HOST=0.0.0.0 PORT=${FRONTEND_PORT:-4321} node dist/server/entry.mjs"]

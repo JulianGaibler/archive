@@ -54,22 +54,6 @@ until docker compose -f docker-compose.prod.yml exec -T database pg_isready -U $
 done
 print_success "PostgreSQL is ready"
 
-# Wait for server
-print_status "Waiting for server..."
-until docker compose -f docker-compose.prod.yml exec -T server wget --spider -q http://localhost:${BACKEND_PORT}/health 2>/dev/null; do
-  echo "   Server not ready yet..."
-  sleep 2
-done
-print_success "Server is ready"
-
-# Wait for client
-print_status "Waiting for client..."
-until docker compose -f docker-compose.prod.yml exec -T client wget --spider -q http://localhost:${FRONTEND_PORT}/health.json 2>/dev/null; do
-  echo "   Client not ready yet..."
-  sleep 2
-done
-print_success "Client is ready"
-
 # Wait for nginx
 print_status "Waiting for nginx..."
 until docker compose -f docker-compose.prod.yml exec -T nginx nginx -t 2>/dev/null; do

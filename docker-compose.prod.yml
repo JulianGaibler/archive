@@ -7,6 +7,8 @@ services:
     image: postgres:16.0
     container_name: archive-postgres
     restart: unless-stopped
+    ports:
+      - "50432:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -70,6 +72,7 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV}
       FRONTEND_PORT: ${FRONTEND_PORT}
+      CORS_ORIGIN: ${CORS_ORIGIN}
       FRONTEND_PUBLIC_API_BASE_URL: ${FRONTEND_PUBLIC_API_BASE_URL}
       FRONTEND_PUBLIC_GRAPHQL_ENDPOINT: ${FRONTEND_PUBLIC_GRAPHQL_ENDPOINT}
       FRONTEND_PUBLIC_WS_ENDPOINT: ${FRONTEND_PUBLIC_WS_ENDPOINT}

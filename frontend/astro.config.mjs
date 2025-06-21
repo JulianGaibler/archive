@@ -5,6 +5,7 @@ import graphqlLoader from 'vite-plugin-graphql-loader'
 
 // https://astro.build/config
 export default defineConfig({
+  site: process.env.CORS_ORIGIN || undefined,
   output: 'server',
   adapter: nodejs({
     mode: 'standalone',
@@ -17,7 +18,6 @@ export default defineConfig({
     ssr: {
       noExternal: ['tint*'],
     },
-    envPrefix: ['VITE_', 'PUBLIC_', 'FRONTEND_PUBLIC_', 'FRONTEND_FILES_', 'SSR', 'BASE_URL'],
     resolve: {
       alias: {
         '~tint': 'node_modules/tint/dist',
