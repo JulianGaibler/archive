@@ -62,8 +62,8 @@ COPY frontend/docker-scripts/start-frontend.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 # Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 -G nodejs
+RUN addgroup -g 101 -S nodejs && \
+    adduser -S nodejs -u 101 -G nodejs
 
 # Change ownership
 RUN chown -R nodejs:nodejs /app
