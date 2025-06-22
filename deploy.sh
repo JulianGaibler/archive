@@ -39,7 +39,9 @@ if [ ! -f ".env.prod" ]; then
 fi
 
 # Load environment variables from .env.prod
-export $(grep -v '^#' .env.prod | grep -v '^$' | sed 's/[[:space:]]*#.*$//' | xargs)
+set -a  # automatically export all variables
+source .env.prod
+set +a  # disable automatic export
 
 # Function to create directories for bind mounts
 create_bind_mount_dirs() {
