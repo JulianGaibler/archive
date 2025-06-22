@@ -30,6 +30,8 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.backend
+      args:
+        BACKEND_FILE_STORAGE_DIR: ${BACKEND_FILE_STORAGE_DIR}
     container_name: archive-backend
     restart: unless-stopped
     environment:

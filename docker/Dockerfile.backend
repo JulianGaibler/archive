@@ -37,14 +37,16 @@ COPY backend/docker-scripts/docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
 # Create storage directories with proper structure
-RUN mkdir -p files/original files/compressed files/thumbnail files/upic files/queue
+ARG BACKEND_FILE_STORAGE_DIR
+ENV BACKEND_FILE_STORAGE_DIR=${BACKEND_FILE_STORAGE_DIR}
+RUN mkdir -p "$BACKEND_FILE_STORAGE_DIR"
 
 # Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 -G nodejs
+RUN addgroup -g 101 -S nodejs && \
+    adduser -S nodejs -u 101 -G nodejs
 
 # Change ownership of storage directories
-RUN chown -R nodejs:nodejs files/
+RUN chown -R nodejs:nodejs "$BACKEND_FILE_STORAGE_DIR"
 
 # Switch to non-root user
 USER nodejs
