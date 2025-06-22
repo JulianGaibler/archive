@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "dotenv -e ../.env.dev -- astro dev",
-    "build": "dotenv -e ../.env.dev -- astro build",
+    "build": "dotenv -e ../.env.prod -- astro build",
     "start": "dotenv -e ../.env.prod -- node ./dist/server/entry.mjs",
     "preview": "dotenv -e ../.env.dev -- astro preview",
     "astro": "dotenv -e ../.env.dev -- astro",

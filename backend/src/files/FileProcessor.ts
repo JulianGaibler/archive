@@ -4,7 +4,7 @@ import sharp from 'sharp'
 import stream, { Readable } from 'stream'
 import tmp from 'tmp'
 import util from 'util'
-import { asyncForEach, round, to } from '../utils.js'
+import { asyncForEach, round, to } from '../Utils.js'
 import * as fileUtils from './file-utils.js'
 import { InputError } from '@src/errors/index.js'
 import {
