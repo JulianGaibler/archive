@@ -39,7 +39,7 @@ if [ ! -f ".env.prod" ]; then
 fi
 
 # Load environment variables from .env.prod
-export $(grep -v '^#' .env.prod | xargs)
+export $(grep -v '^#' .env.prod | sed 's/#.*//' | grep -v '^$' | xargs)
 
 # Function to create directories for bind mounts
 create_bind_mount_dirs() {
