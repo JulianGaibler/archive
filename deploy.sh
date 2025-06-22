@@ -41,6 +41,42 @@ fi
 # Load environment variables from .env.prod
 export $(grep -v '^#' .env.prod | xargs)
 
+# Function to create directories for bind mounts
+create_bind_mount_dirs() {
+    local path="$1"
+    local description="$2"
+    
+    # Only create if it's an absolute path (bind mount)
+    if [[ "$path" == /* ]]; then
+        if [ ! -d "$path" ]; then
+            print_status "Creating $description directory: $path"
+            sudo mkdir -p "$path"
+            # Set appropriate ownership
+            if [[ "$description" == "PostgreSQL data" ]]; then
+                # PostgreSQL runs as user 999 in the container
+                sudo chown 999:999 "$path"
+                sudo chmod 700 "$path"
+            else
+                # For uploads and other directories
+                sudo chown $(whoami):$(whoami) "$path"
+                sudo chmod 755 "$path"
+            fi
+            print_success "Created $description directory"
+        else
+            print_status "$description directory already exists: $path"
+        fi
+    fi
+}
+
+# Create necessary directories if using bind mounts
+if [ -n "$POSTGRES_DATA_PATH" ]; then
+    create_bind_mount_dirs "$POSTGRES_DATA_PATH" "PostgreSQL data"
+fi
+
+if [ -n "$BACKEND_UPLOADS_PATH" ]; then
+    create_bind_mount_dirs "$BACKEND_UPLOADS_PATH" "Backend uploads"
+fi
+
 print_status "Building and starting all services..."
 docker compose -f docker-compose.prod.yml up -d --build
 

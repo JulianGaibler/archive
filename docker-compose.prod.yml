@@ -15,7 +15,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ${POSTGRES_DATA_PATH:-postgres_data}:/var/lib/postgresql/data
       - ./backend/db/init:/docker-entrypoint-initdb.d
     networks:
       - archive-network
@@ -53,7 +53,7 @@ services:
       database:
         condition: service_healthy
     volumes:
-      - backend_uploads:${BACKEND_FILE_STORAGE_DIR}
+      - ${BACKEND_UPLOADS_PATH:-backend_uploads}:${BACKEND_FILE_STORAGE_DIR}
     networks:
       - archive-network
     healthcheck:
@@ -119,7 +119,7 @@ services:
       BACKEND_PORT: ${BACKEND_PORT}
       BACKEND_GRAPHQL_PATH: ${BACKEND_GRAPHQL_PATH}
     volumes:
-      - backend_uploads:/var/www/archive/files:ro
+      - ${BACKEND_UPLOADS_PATH:-backend_uploads}:/var/www/archive/files:ro
       - frontend_static:/var/www/archive/static:ro
       - nginx_cache:/var/cache/nginx
       - nginx_logs:/var/log/nginx
@@ -132,10 +132,12 @@ services:
       retries: 3
 
 volumes:
+  # Persistent data volumes (configurable for production)
   postgres_data:
     driver: local
   backend_uploads:
     driver: local
+  # Temporary/cache volumes (managed by Docker)
   frontend_static:
     driver: local
   nginx_cache:
