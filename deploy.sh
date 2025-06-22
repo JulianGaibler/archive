@@ -38,26 +38,8 @@ if [ ! -f ".env.prod" ]; then
     exit 1
 fi
 
-set -o allexport
-while IFS= read -r line; do
-    # Skip comments and empty lines
-    case "$line" in
-        \#*|'') continue ;;
-    esac
-    # Remove inline comments
-    line="${line%%#*}"
-    # Skip if line becomes empty after removing comments
-    [ -z "${line// }" ] && continue
-    
-    # Parse variable name and value separately for ash compatibility
-    if [ "${line#*=}" != "$line" ]; then
-        var_name="${line%%=*}"
-        var_value="${line#*=}"
-        # Use eval for safe assignment in ash
-        eval "${var_name}=\${var_value}" 2>/dev/null || echo "Warning: Could not export: $line"
-    fi
-done < .env.prod
-set +o allexport
+# Load environment variables from .env.prod
+export $(grep -v '^#' .env.prod | xargs)
 
 # Function to create directories for bind mounts
 create_bind_mount_dirs() {
@@ -65,25 +47,41 @@ create_bind_mount_dirs() {
     local description="$2"
     
     # Only create if it's an absolute path (bind mount)
-    if [[ "$path" == /* ]]; then
-        if [ ! -d "$path" ]; then
-            print_status "Creating $description directory: $path"
-            sudo mkdir -p "$path"
-            # Set appropriate ownership
-            if [[ "$description" == "PostgreSQL data" ]]; then
-                # PostgreSQL runs as user 999 in the container
-                sudo chown 999:999 "$path"
-                sudo chmod 700 "$path"
+    case "$path" in
+        /*) 
+            if [ ! -d "$path" ]; then
+                print_status "Creating $description directory: $path"
+                mkdir -p "$path" || {
+                    echo "Failed to create directory with regular permissions, trying with sudo..."
+                    sudo mkdir -p "$path"
+                }
+                # Set appropriate ownership
+                if [[ "$description" == "PostgreSQL data" ]]; then
+                    # PostgreSQL runs as user 999 in the container
+                    if ! chown 999:999 "$path" 2>/dev/null; then
+                        echo "Failed to set ownership without sudo, trying with sudo..."
+                        sudo chown 999:999 "$path"
+                    fi
+                    if ! chmod 700 "$path" 2>/dev/null; then
+                        echo "Failed to set permissions without sudo, trying with sudo..."
+                        sudo chmod 700 "$path"
+                    fi
+                else
+                    # For uploads and other directories
+                    if ! chmod 755 "$path" 2>/dev/null; then
+                        echo "Failed to set permissions without sudo, trying with sudo..."
+                        sudo chmod 755 "$path"
+                    fi
+                fi
+                print_success "Created $description directory"
             else
-                # For uploads and other directories
-                sudo chown $(whoami):$(whoami) "$path"
-                sudo chmod 755 "$path"
+                print_status "$description directory already exists: $path"
             fi
-            print_success "Created $description directory"
-        else
-            print_status "$description directory already exists: $path"
-        fi
-    fi
+            ;;
+        *)
+            # Skip relative paths (not bind mounts)
+            ;;
+    esac
 }
 
 # Create necessary directories if using bind mounts
@@ -129,5 +127,5 @@ echo -e "  - ${BLUE}\`npm run docker:logs:backend\`${NC} for backend logs"
 echo -e "  - ${BLUE}\`npm run docker:logs:frontend\`${NC} for frontend logs"
 echo -e "  - ${BLUE}\`npm run docker:logs:postgres\`${NC} for PostgreSQL logs"
 echo ""
-echo -e "  To stop the application, run: ${BLUE}\`npm run docker:stop\`"
-echo -e "  To restart the application, run: ${BLUE}\`npm run docker:restart\`"
+echo -e "  To stop the application, run: ${BLUE}\`npm run docker:stop\`${NC}"
+echo -e "  To restart the application, run: ${BLUE}\`npm run docker:restart\`${NC}"
