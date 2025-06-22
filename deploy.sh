@@ -41,58 +41,6 @@ fi
 # Load environment variables from .env.prod
 export $(grep -v '^#' .env.prod | sed 's/#.*//' | grep -v '^$' | xargs)
 
-# Function to create directories for bind mounts
-create_bind_mount_dirs() {
-    local path="$1"
-    local description="$2"
-    
-    # Only create if it's an absolute path (bind mount)
-    case "$path" in
-        /*) 
-            if [ ! -d "$path" ]; then
-                print_status "Creating $description directory: $path"
-                mkdir -p "$path" || {
-                    echo "Failed to create directory with regular permissions, trying with sudo..."
-                    sudo mkdir -p "$path"
-                }
-                # Set appropriate ownership
-                if [[ "$description" == "PostgreSQL data" ]]; then
-                    # PostgreSQL runs as user 999 in the container
-                    if ! chown 999:999 "$path" 2>/dev/null; then
-                        echo "Failed to set ownership without sudo, trying with sudo..."
-                        sudo chown 999:999 "$path"
-                    fi
-                    if ! chmod 700 "$path" 2>/dev/null; then
-                        echo "Failed to set permissions without sudo, trying with sudo..."
-                        sudo chmod 700 "$path"
-                    fi
-                else
-                    # For uploads and other directories
-                    if ! chmod 755 "$path" 2>/dev/null; then
-                        echo "Failed to set permissions without sudo, trying with sudo..."
-                        sudo chmod 755 "$path"
-                    fi
-                fi
-                print_success "Created $description directory"
-            else
-                print_status "$description directory already exists: $path"
-            fi
-            ;;
-        *)
-            # Skip relative paths (not bind mounts)
-            ;;
-    esac
-}
-
-# Create necessary directories if using bind mounts
-if [ -n "$POSTGRES_DATA_PATH" ]; then
-    create_bind_mount_dirs "$POSTGRES_DATA_PATH" "PostgreSQL data"
-fi
-
-if [ -n "$BACKEND_UPLOADS_PATH" ]; then
-    create_bind_mount_dirs "$BACKEND_UPLOADS_PATH" "Backend uploads"
-fi
-
 print_status "Building and starting all services..."
 docker compose -f docker-compose.prod.yml up -d --build
 
