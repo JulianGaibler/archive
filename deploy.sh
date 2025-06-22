@@ -38,10 +38,26 @@ if [ ! -f ".env.prod" ]; then
     exit 1
 fi
 
-# Load environment variables from .env.prod
-set -a  # automatically export all variables
-source .env.prod
-set +a  # disable automatic export
+set -o allexport
+while IFS= read -r line; do
+    # Skip comments and empty lines
+    case "$line" in
+        \#*|'') continue ;;
+    esac
+    # Remove inline comments
+    line="${line%%#*}"
+    # Skip if line becomes empty after removing comments
+    [ -z "${line// }" ] && continue
+    
+    # Parse variable name and value separately for ash compatibility
+    if [ "${line#*=}" != "$line" ]; then
+        var_name="${line%%=*}"
+        var_value="${line#*=}"
+        # Use eval for safe assignment in ash
+        eval "${var_name}=\${var_value}" 2>/dev/null || echo "Warning: Could not export: $line"
+    fi
+done < .env.prod
+set +o allexport
 
 # Function to create directories for bind mounts
 create_bind_mount_dirs() {
