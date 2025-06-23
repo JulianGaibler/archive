@@ -1,6 +1,7 @@
 # ToDo
 
-- Telegram bot
+- New tags are not shown in list menu
+- Format Error in backend server
 
 - Move from objection to drizzle
 

@@ -9,11 +9,16 @@ import UserActions from '@src/actions/UserActions.js'
 import ItemActions from '@src/actions/ItemActions.js'
 import Context from '@src/Context.js'
 import env from '@src/utils/env.js'
+import HashId from '../GraphQLApi/HashId'
+import { itemHashType } from '../GraphQLApi/schema/item/ItemType'
 
 const BOT_TOKEN = env.BACKEND_TELEGRAM_BOT_TOKEN
 const SECRET = BOT_TOKEN ? createHash('sha256').update(BOT_TOKEN).digest() : ''
 const PREFIX = 'telegramcursor:'
-const ORIGIN = `${env.FRONTEND_FILES_BASE_URL}/`
+const ORIGIN =
+  env.NODE_ENV === 'development' && env.BACKEND_DEV_TELEGRAM_BOT_RESOURCE_URL
+    ? env.BACKEND_DEV_TELEGRAM_BOT_RESOURCE_URL
+    : `${env.FRONTEND_FILES_BASE_URL}/`
 
 // Restart configuration
 const MAX_RESTART_ATTEMPTS = 5
@@ -357,6 +362,18 @@ async function inlineQuery(ctx: Context, msgCtx: any) {
     // Check if user is authenticated
     ctx.isAuthenticated()
 
+    const trimmedQuery = query ? query.trim() : ''
+
+    // at least one character is required for inline queries
+    if (!query || trimmedQuery.length < 1) {
+      await msgCtx.telegram.answerInlineQuery(id, [], {
+        is_personal: true,
+        next_offset: '',
+        switch_pm_text: 'Enter at least one character',
+        switch_pm_parameter: 'search',
+      })
+    }
+
     const limit = 10
     const offset = (cursor && cursorToOffset(cursor)) || 0
 
@@ -367,16 +384,28 @@ async function inlineQuery(ctx: Context, msgCtx: any) {
     } = await ItemActions.qItems(ctx, {
       limit,
       offset,
-      byContent: query,
+      byContent: trimmedQuery,
     })
 
-    const newCursor = data.length < limit ? '' : offsetToCursor(offset + limit)
+    if (data.length === 0) {
+      await msgCtx.telegram.answerInlineQuery(id, [], {
+        is_personal: true,
+        next_offset: '',
+        switch_pm_text: 'No results found',
+        switch_pm_parameter: 'search',
+      })
+      return
+    }
+
+    const newCursor =
+      data.length < limit ? undefined : offsetToCursor(offset + limit)
 
     await msgCtx.telegram.answerInlineQuery(
       id,
       convertToInlineQueryResult(data),
       {
         is_personal: true,
+        cache_time: env.NODE_ENV === 'development' ? 0 : 60,
         next_offset: newCursor,
       },
     )
@@ -425,10 +454,41 @@ function convertToInlineQueryResult(items: ItemModel[]) {
   return items.map((item: ItemModel) => {
     // Use post title as the main title, with item description as secondary info
     const title = item.post?.title || item.description || 'Untitled'
-    const description = item.description || item.caption || ''
+
+    // Build keywords part
+    const keywords = item.post?.keywords
+      ?.slice(0, 3)
+      .map((k) => k.name)
+      .filter(Boolean)
+    const keywordsStr =
+      keywords && keywords.length > 0 ? keywords.join(' • ') : ''
+
+    // Helper to clean and truncate text
+    function cleanAndTruncate(text?: string, maxLength = 100): string {
+      if (!text) return ''
+      const clean = text.replace(/\n/g, ' ')
+      return clean.length > maxLength
+        ? clean.slice(0, maxLength) + '...'
+        : clean
+    }
+
+    const cap = cleanAndTruncate(item.caption)
+    const desc = !cap ? cleanAndTruncate(item.description) : ''
+
+    // Compose final description: prefer caption, fallback to description, else undefined
+    let description: string | undefined
+    if (keywordsStr) {
+      description = cap
+        ? `${keywordsStr}\n${cap}`
+        : desc
+          ? `${keywordsStr}\n${desc}`
+          : keywordsStr
+    } else {
+      description = cap || desc || undefined
+    }
 
     const base = {
-      id: `#${item.id}`,
+      id: HashId.encode(itemHashType, item.id),
       title,
       description,
     }

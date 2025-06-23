@@ -6,7 +6,7 @@ import { ApolloServer } from '@apollo/server'
 import { expressMiddleware } from '@as-integrations/express5'
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer'
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default'
-// import { ApolloServerPluginLandingPageDisabled } from '@apollo/server/plugin/disabled'
+import { ApolloServerPluginLandingPageDisabled } from '@apollo/server/plugin/disabled'
 import graphqlUploadExpress from 'graphql-upload/graphqlUploadExpress.mjs'
 import FileStorage from '@src/files/FileStorage.js'
 import { WebSocketServer } from 'ws'
@@ -70,13 +70,15 @@ export default class {
       //   return err
       // },
       plugins: [
+        env.NODE_ENV === 'development'
+          ? ApolloServerPluginLandingPageLocalDefault({
+              includeCookies: true,
+              embed: {
+                endpointIsEditable: true,
+              },
+            })
+          : ApolloServerPluginLandingPageDisabled(),
         ApolloServerPluginDrainHttpServer({ httpServer }),
-        // ApolloServerPluginLandingPageDisabled(),
-        ApolloServerPluginLandingPageLocalDefault({
-          embed: {
-            endpointIsEditable: true,
-          },
-        }),
         {
           async serverWillStart() {
             return {

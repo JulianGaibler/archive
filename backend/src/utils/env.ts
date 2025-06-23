@@ -141,6 +141,13 @@ const ENV_VARIABLES = [
     type: 'string',
     fallback: '',
   },
+  {
+    name: 'BACKEND_DEV_TELEGRAM_BOT_RESOURCE_URL',
+    description:
+      'During development, another URL for telegram bot resources can be set',
+    type: 'string',
+    fallback: '',
+  },
 ] as const
 
 // Type conversion functions

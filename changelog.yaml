@@ -21,6 +21,7 @@
     - '[Fixed] Fixed bug where removing tags from posts would remove the tag from all posts'
     - '[Fixed] Fixed bug where common english words were not searchable ("why"-bug)'
     - '[Fixed] Uploading videos shorter than 1 second now does not cause errors'
+    - '[Fixed] Telegram bot no longer returns an inifinite list of results'
     - '[Removed] Collections have been removed'
 1.0.2:
   date: '2020-06-24'

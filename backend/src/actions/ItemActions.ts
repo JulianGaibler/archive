@@ -26,54 +26,62 @@ export default class {
     const { limit, offset } = ActionUtils.getLimitOffset(fields)
 
     const query = ItemModel.query()
-      .withGraphFetched('post')
+      .withGraphFetched('post.[keywords]')
       .joinRelated('post')
       .orderBy('item.createdAt', 'desc')
+
+    let countQuery = ItemModel.query().joinRelated('post')
 
     if (fields.byContent && fields.byContent.trim().length > 0) {
       const tsQuery = fields.byContent
 
-      query
-        .joinRaw(
-          `
-        INNER JOIN (
-          -- Use the existing item_search_view for searching
-          WITH ts_results AS (
-            SELECT
-              post_id,
-              text,
-              plain_text,
-              1 as search_type,
-              ts_rank(text, websearch_to_tsquery('english_nostop', ?)) as rank_score
-            FROM item_search_view
-            WHERE text @@ websearch_to_tsquery('english_nostop', ?)
-          )
-          -- Combine ts_vector results with ILIKE results
-          SELECT * FROM ts_results
-          UNION ALL
+      const searchJoin = `
+      INNER JOIN (
+        -- Use the existing item_search_view for searching
+        WITH ts_results AS (
+          SELECT
+            post_id,
+            MAX(ts_rank(text, websearch_to_tsquery('english_nostop', ?))) as rank_score
+          FROM item_search_view
+          WHERE text @@ websearch_to_tsquery('english_nostop', ?)
+          GROUP BY post_id
+        ),
+        ilike_results AS (
           SELECT
             v.post_id,
-            v.text,
-            v.plain_text,
-            2 as search_type,
             0.1 as rank_score
           FROM item_search_view v
           LEFT JOIN ts_results t ON v.post_id = t.post_id
           WHERE v.plain_text ILIKE ?
           AND t.post_id IS NULL  -- Exclude posts already found by ts_vector
-        ) b ON b.post_id = post.id
-        `,
-          [tsQuery, tsQuery, `%${tsQuery}%`],
+          GROUP BY v.post_id
         )
-        .groupBy(
-          'item.id',
-          'post.id',
-          'b.text',
-          'b.plain_text',
-          'b.search_type',
-          'b.rank_score',
-        )
+        -- Combine results with proper search type assignment
+        SELECT
+          post_id,
+          1 as search_type,
+          rank_score
+        FROM ts_results
+        UNION ALL
+        SELECT
+          post_id,
+          2 as search_type,
+          rank_score
+        FROM ilike_results
+      ) b ON b.post_id = post.id
+    `
+
+      query
+        .joinRaw(searchJoin, [tsQuery, tsQuery, `%${tsQuery}%`])
         .orderByRaw('b.search_type, b.rank_score DESC')
+
+      // For count query, we need to count distinct items after the search join
+      countQuery = countQuery
+        .joinRaw(searchJoin, [tsQuery, tsQuery, `%${tsQuery}%`])
+        .countDistinct('item.id as count')
+    } else {
+      // Simple count when no search
+      countQuery = countQuery.count('item.id as count')
     }
 
     const [data, totalSearchCount, totalCount] = await Promise.all([
@@ -86,15 +94,15 @@ export default class {
           rows.forEach((x) => ctx.dataLoaders.item.getById.prime(x.id, x))
           return rows
         }),
-      query
-        .count('item.id')
-        .execute()
-        .then((x) =>
-          (x as any).reduce(
-            (acc: any, val: any) => acc + parseInt(val.count, 10),
-            0,
-          ),
-        ),
+      countQuery.execute().then((x) => {
+        if (fields.byContent && fields.byContent.trim().length > 0) {
+          return parseInt((x[0] as any).count, 10)
+        }
+        return (x as any).reduce(
+          (acc: any, val: any) => acc + parseInt(val.count, 10),
+          0,
+        )
+      }),
       ItemModel.query()
         .count()
         .then((x) => (x[0] as any).count),

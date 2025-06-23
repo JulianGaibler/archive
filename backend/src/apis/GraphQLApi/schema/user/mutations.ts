@@ -11,6 +11,7 @@ import AuthCookieUtils from '../../AuthCookieUtils.js'
 import Context from '@src/Context.js'
 import UserActions from '@src/actions/UserActions.js'
 import SessionActions from '@src/actions/SessionActions.js'
+import { validateAuth } from '@src/apis/TelegramBot/index.js'
 
 const signup: GraphQLFieldConfig<any, any, any> = {
   description: 'Creates a new user and performs a login.',
@@ -104,10 +105,9 @@ const linkTelegram: GraphQLFieldConfig<any, any, any> = {
       type: new GraphQLNonNull(GraphQLString),
     },
   },
-  resolve: async (_parent, _args, _ctx: Context) => {
-    // TODO
-    // const telegramId = Bot.validateAuth(args)
-    // return UserActions.mLinkTelegram(ctx, { telegramId })
+  resolve: async (_parent, args, ctx: Context) => {
+    const telegramId = validateAuth(args)
+    return UserActions.mLinkTelegram(ctx, { telegramId })
   },
 }
 

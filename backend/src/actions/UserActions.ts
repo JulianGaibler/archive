@@ -176,6 +176,7 @@ export default class {
       throw new AuthenticationError('This should not have happened.')
     }
     await user.$query().patch({ telegramId: fields.telegramId })
+    return true
   }
 
   static async mUnlinkTelegram(ctx: Context) {
@@ -184,7 +185,6 @@ export default class {
     if (!user) {
       throw new AuthenticationError('This should not have happened.')
     }
-    // TODO: Check if this is the right way to unset a field with TS
     await user.$query().patch({ telegramId: null as any })
 
     return true
