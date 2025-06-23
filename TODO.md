@@ -4,6 +4,7 @@
 - Format Error in backend server
 - Make /settings/link-telegram support login params
 - Add support for login forwarding
+- Favicon
 
 - Move from objection to drizzle
 
