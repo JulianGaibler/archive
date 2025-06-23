@@ -15,10 +15,7 @@ import { itemHashType } from '@src/apis/GraphQLApi/schema/item/ItemType.js'
 const BOT_TOKEN = env.BACKEND_TELEGRAM_BOT_TOKEN
 const SECRET = BOT_TOKEN ? createHash('sha256').update(BOT_TOKEN).digest() : ''
 const PREFIX = 'telegramcursor:'
-const ORIGIN =
-  env.NODE_ENV === 'development' && env.BACKEND_DEV_TELEGRAM_BOT_RESOURCE_URL
-    ? env.BACKEND_DEV_TELEGRAM_BOT_RESOURCE_URL
-    : `${env.FRONTEND_FILES_BASE_URL}/`
+const ORIGIN = env.BACKEND_TELEGRAM_BOT_RESOURCE_URL
 
 // Restart configuration
 const MAX_RESTART_ATTEMPTS = 5
@@ -46,6 +43,12 @@ export default class TelegramBot {
     if (BOT_TOKEN === '') {
       console.log('🤖 Telegram bot: Skipping init; no token.')
       return Promise.resolve()
+    }
+
+    if (!ORIGIN) {
+      console.error(
+        '🤖 Telegram bot: No resource URL configured. Please set BACKEND_TELEGRAM_BOT_RESOURCE_URL for the bot to start',
+      )
     }
 
     console.log('🤖 Starting Telegram bot...')
@@ -534,37 +537,55 @@ function convertToInlineQueryResult(items: ItemModel[]) {
  * @param root0
  * @param root0.hash
  */
-export function validateAuth({
-  hash,
-  ...data
-}: {
-  hash: string
-  [key: string]: any
-}) {
-  // Current time minus two minutes
-  const currentTime = Math.round(new Date().getTime() / 1000) - 120
+export function validateAuth(apiResponse: string) {
+  let dataObj: { [key: string]: string | number } = {}
+  try {
+    dataObj = JSON.parse(apiResponse)
+  } catch (error) {
+    console.error('Failed to parse Telegram data:', error)
+    throw new RequestError('Telegram data was not valid JSON!')
+  }
 
-  const checkString = Object.keys(data)
-    .sort()
-    .map((k) => `${k}=${data[k]}`)
-    .join('\n')
-  const hmac = createHmac('sha256', SECRET).update(checkString).digest('hex')
+  if (!BOT_TOKEN) {
+    throw new RequestError('Telegram bot has not been configured!')
+  }
 
-  // Use timing-safe comparison to prevent timing attacks
-  const hashBuffer = Buffer.from(hash, 'hex')
-  const hmacBuffer = Buffer.from(hmac, 'hex')
+  const { hash, ...data } = dataObj
 
-  if (
-    hashBuffer.length !== hmacBuffer.length ||
-    !timingSafeEqual(hashBuffer, hmacBuffer)
-  ) {
+  // Build data-check-string: sort keys, join as key=value with \n, exclude hash
+  const dataCheckArr = Object.keys(data).map((k) => `${k}=${data[k]}`)
+  dataCheckArr.sort()
+  const dataCheckString = dataCheckArr.join('\n')
+
+  // Secret key is SHA256(bot_token), raw binary
+  const secretKey = createHash('sha256').update(BOT_TOKEN).digest()
+
+  // HMAC-SHA256 of data-check-string, using secretKey, output as hex (default)
+  const hmac = createHmac('sha256', secretKey)
+    .update(dataCheckString)
+    .digest('hex')
+
+  if (hmac !== hash) {
+    console.error(
+      'Telegram data validation failed:',
+      `Expected hash: ${hmac}, received hash: ${hash}`,
+    )
     throw new RequestError('Telegram data was not valid!')
   }
 
-  const timestamp = parseInt(data.auth_date, 10)
-  if (currentTime > timestamp) {
+  const now = Math.floor(Date.now() / 1000)
+
+  const authDate =
+    typeof data.auth_date === 'number'
+      ? data.auth_date
+      : parseInt(data.auth_date, 10)
+  if (isNaN(authDate) || now - authDate > 86400) {
+    console.error(
+      'Telegram data validation failed: auth_date is too old',
+      `Received auth_date: ${data.auth_date}, current time: ${now}`,
+    )
     throw new RequestError('Telegram data was too old!')
   }
 
-  return data.id
+  return data.id.toString()
 }

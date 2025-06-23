@@ -142,9 +142,8 @@ const ENV_VARIABLES = [
     fallback: '',
   },
   {
-    name: 'BACKEND_DEV_TELEGRAM_BOT_RESOURCE_URL',
-    description:
-      'During development, another URL for telegram bot resources can be set',
+    name: 'BACKEND_TELEGRAM_BOT_RESOURCE_URL',
+    description: 'The base URL for serving files to the Telegram API',
     type: 'string',
     fallback: '',
   },

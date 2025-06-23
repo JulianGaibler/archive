@@ -76,37 +76,13 @@ const linkTelegram: GraphQLFieldConfig<any, any, any> = {
     'Associates the Telegram ID of a user with their Archive Profil.',
   type: new GraphQLNonNull(GraphQLBoolean),
   args: {
-    id: {
-      description: 'Unique id of Telegram user.',
-      type: new GraphQLNonNull(GraphQLString),
-    },
-    first_name: {
-      description: 'First Name of Telegram user.',
-      type: GraphQLString,
-    },
-    last_name: {
-      description: 'Last name of Telegram user.',
-      type: GraphQLString,
-    },
-    username: {
-      description: 'Username of Telegram user.',
-      type: GraphQLString,
-    },
-    photo_url: {
-      description: 'Profile photo url of Telegram user.',
-      type: GraphQLString,
-    },
-    auth_date: {
-      description: 'Authentication date from telegram request.',
-      type: new GraphQLNonNull(GraphQLString),
-    },
-    hash: {
-      description: 'Validation hash from telegram request.',
+    apiResponse: {
+      description: 'Response from the Telegram API containing user data.',
       type: new GraphQLNonNull(GraphQLString),
     },
   },
   resolve: async (_parent, args, ctx: Context) => {
-    const telegramId = validateAuth(args)
+    const telegramId = validateAuth(args.apiResponse)
     return UserActions.mLinkTelegram(ctx, { telegramId })
   },
 }

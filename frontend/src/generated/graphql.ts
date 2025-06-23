@@ -288,13 +288,7 @@ export type MutationEditPostArgs = {
 
 
 export type MutationLinkTelegramArgs = {
-  auth_date: Scalars['String']['input'];
-  first_name?: InputMaybe<Scalars['String']['input']>;
-  hash: Scalars['String']['input'];
-  id: Scalars['String']['input'];
-  last_name?: InputMaybe<Scalars['String']['input']>;
-  photo_url?: InputMaybe<Scalars['String']['input']>;
-  username?: InputMaybe<Scalars['String']['input']>;
+  apiResponse: Scalars['String']['input'];
 };
 
 
@@ -451,8 +445,6 @@ export type Query = {
   nodes: Array<Maybe<Node>>;
   /** Returns a list of posts. */
   posts?: Maybe<PostConnection>;
-  /** Returns information about the location of the actual files. */
-  resources?: Maybe<Resources>;
   /** Returns a list of tasks. */
   tasks?: Maybe<TaskConnection>;
   /** Returns user based on username */
@@ -511,15 +503,6 @@ export type QueryUsersArgs = {
   first?: InputMaybe<Scalars['Int']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
   sortByPostCount?: InputMaybe<Scalars['Boolean']['input']>;
-};
-
-/** A keyword for categorizing Posts. */
-export type Resources = {
-  __typename?: 'Resources';
-  /** The domain on which the resources are stored */
-  resourceDomain: Scalars['String']['output'];
-  /** The path that leads to the resources. */
-  resourcePath: Scalars['String']['output'];
 };
 
 /** Represents a Session object of an user. */
@@ -896,19 +879,8 @@ export type RevokeSessionMutationVariables = Exact<{
 
 export type RevokeSessionMutation = { __typename?: 'Mutation', revokeSession: boolean };
 
-export type ResourcesQueryVariables = Exact<{ [key: string]: never; }>;
-
-
-export type ResourcesQuery = { __typename?: 'Query', resources?: { __typename?: 'Resources', resourceDomain: string, resourcePath: string } | null };
-
 export type LinkTelegramMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  first_name?: InputMaybe<Scalars['String']['input']>;
-  last_name?: InputMaybe<Scalars['String']['input']>;
-  username?: InputMaybe<Scalars['String']['input']>;
-  photo_url?: InputMaybe<Scalars['String']['input']>;
-  auth_date: Scalars['String']['input'];
-  hash: Scalars['String']['input'];
+  apiResponse: Scalars['String']['input'];
 }>;
 
 
@@ -1248,25 +1220,9 @@ export const RevokeSessionDocument = gql`
   revokeSession(id: $id)
 }
     `;
-export const ResourcesDocument = gql`
-    query resources {
-  resources {
-    resourceDomain
-    resourcePath
-  }
-}
-    `;
 export const LinkTelegramDocument = gql`
-    mutation linkTelegram($id: String!, $first_name: String, $last_name: String, $username: String, $photo_url: String, $auth_date: String!, $hash: String!) {
-  linkTelegram(
-    id: $id
-    first_name: $first_name
-    last_name: $last_name
-    username: $username
-    photo_url: $photo_url
-    auth_date: $auth_date
-    hash: $hash
-  )
+    mutation linkTelegram($apiResponse: String!) {
+  linkTelegram(apiResponse: $apiResponse)
 }
     `;
 export const UnlinkTelegramDocument = gql`
@@ -1360,7 +1316,6 @@ const UploadPictureDocumentString = print(UploadPictureDocument);
 const ClearProfilePictureDocumentString = print(ClearProfilePictureDocument);
 const SetDarkModeDocumentString = print(SetDarkModeDocument);
 const RevokeSessionDocumentString = print(RevokeSessionDocument);
-const ResourcesDocumentString = print(ResourcesDocument);
 const LinkTelegramDocumentString = print(LinkTelegramDocument);
 const UnlinkTelegramDocumentString = print(UnlinkTelegramDocument);
 const MeDocumentString = print(MeDocument);
@@ -1440,9 +1395,6 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     revokeSession(variables: RevokeSessionMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: RevokeSessionMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<RevokeSessionMutation>(RevokeSessionDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'revokeSession', 'mutation', variables);
-    },
-    resources(variables?: ResourcesQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ResourcesQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ResourcesQuery>(ResourcesDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'resources', 'query', variables);
     },
     linkTelegram(variables: LinkTelegramMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: LinkTelegramMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<LinkTelegramMutation>(LinkTelegramDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'linkTelegram', 'mutation', variables);

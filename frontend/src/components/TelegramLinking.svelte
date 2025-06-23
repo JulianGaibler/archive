@@ -7,6 +7,7 @@
   import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
 
   import { onMount } from 'svelte'
+  import { getOperationResultError } from '@src/utils'
 
   interface Props {
     isLinked: boolean
@@ -33,15 +34,17 @@
     loading = true
     error = null
     try {
-      await sdk.linkTelegram({
-        id: String(user.id),
-        first_name: user.first_name || null,
-        last_name: user.last_name || null,
-        username: user.username || null,
-        photo_url: user.photo_url || null,
-        auth_date: String(user.auth_date),
-        hash: user.hash,
+      const result = await sdk.linkTelegram({
+        apiResponse: JSON.stringify(user),
       })
+      loading = false
+
+      error = getOperationResultError(result) || null
+      if (error) {
+        console.error('Error linking Telegram account:', error)
+        return
+      }
+
       isLinked = true
     } catch (err) {
       console.error('Failed to link Telegram account:', err)
@@ -116,6 +119,9 @@
       Click the button below to authenticate with Telegram and link your
       accounts.
     </p>
+    <Button variant="secondary" onclick={onTelegramAuth}>
+      Link Telegram Account
+    </Button>
     <div class="telegram-login-wrapper">
       <div id="telegram-login-button"></div>
     </div>

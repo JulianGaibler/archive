@@ -1,6 +1,0 @@
-query resources {
-  resources {
-    resourceDomain
-    resourcePath
-  }
-}
