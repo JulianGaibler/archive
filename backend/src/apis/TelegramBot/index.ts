@@ -9,7 +9,7 @@ import UserActions from '@src/actions/UserActions.js'
 import ItemActions from '@src/actions/ItemActions.js'
 import Context from '@src/Context.js'
 import env from '@src/utils/env.js'
-import HashId from '../GraphQLApi/HashId'
+import HashId from '../GraphQLApi/HashId.js'
 import { itemHashType } from '../GraphQLApi/schema/item/ItemType'
 
 const BOT_TOKEN = env.BACKEND_TELEGRAM_BOT_TOKEN
