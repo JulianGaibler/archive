@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from 'crypto'
+import { createHash, createHmac } from 'crypto'
 import { Telegraf } from 'telegraf'
 
 import { RequestError } from '@src/errors/index.js'
@@ -246,7 +246,7 @@ export default class TelegramBot {
  */
 async function middleware(
   msgCtx: any,
-  next: (ctx: Context, msgCtx: any) => any,
+  next: (ctx: Context | null, msgCtx: any) => any,
 ) {
   try {
     const serverCtx = Context.createPrivilegedContext()
@@ -276,9 +276,7 @@ async function middleware(
     }
 
     // Create context - if user exists, create authenticated context, otherwise unauthenticated
-    const ctx = user
-      ? Context.createPrivilegedContextWithUser(user.id)
-      : Context.createPrivilegedContext()
+    const ctx = user ? Context.createPrivilegedContextWithUser(user.id) : null
 
     return await next(ctx, msgCtx)
   } catch (error) {
@@ -317,23 +315,27 @@ async function middleware(
  * @param ctx
  * @param msgCtx
  */
-async function checkStatus(ctx: Context, msgCtx: any) {
+async function checkStatus(ctx: Context | null, msgCtx: any) {
   try {
     // Check if user exists and is authenticated
-    try {
-      ctx.isAuthenticated()
-      await msgCtx.reply(
-        'You are already connected to Archive. Go to archive.jwels.berlin/settings if you want to unlink your Account.',
-      )
-      return
-    } catch {
-      // User is not authenticated
+
+    // TODO: clean this up
+    if (ctx) {
+      try {
+        ctx.isAuthenticated()
+        await msgCtx.reply(
+          'You are already connected to Archive. Go to archive.jwels.berlin/settings if you want to unlink your Account.',
+        )
+        return
+      } catch {
+        // User is not authenticated
+      }
     }
 
     const buttonObj = {
       text: 'Login to Archive',
       login_url: {
-        url: 'https://archive.jwels.berlin/arnoldbot',
+        url: 'https://archive.jwels.berlin/settings/link-telegram',
       },
     }
     await msgCtx.reply(
@@ -358,12 +360,16 @@ async function checkStatus(ctx: Context, msgCtx: any) {
  * @param ctx
  * @param msgCtx
  */
-async function inlineQuery(ctx: Context, msgCtx: any) {
+async function inlineQuery(ctx: Context | null, msgCtx: any) {
   const { id, from: _from, query, offset: cursor } = msgCtx.inlineQuery
 
   try {
     // Check if user is authenticated
-    ctx.isAuthenticated()
+    if (ctx) {
+      ctx.isAuthenticated()
+    } else {
+      throw new RequestError('User is not authenticated')
+    }
 
     const trimmedQuery = query ? query.trim() : ''
 
@@ -557,11 +563,8 @@ export function validateAuth(apiResponse: string) {
   dataCheckArr.sort()
   const dataCheckString = dataCheckArr.join('\n')
 
-  // Secret key is SHA256(bot_token), raw binary
-  const secretKey = createHash('sha256').update(BOT_TOKEN).digest()
-
-  // HMAC-SHA256 of data-check-string, using secretKey, output as hex (default)
-  const hmac = createHmac('sha256', secretKey)
+  // HMAC-SHA256 of data-check-string, using SECRET, output as hex (default)
+  const hmac = createHmac('sha256', SECRET)
     .update(dataCheckString)
     .digest('hex')
 

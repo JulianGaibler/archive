@@ -2,6 +2,8 @@
 
 - New tags are not shown in list menu
 - Format Error in backend server
+- Make /settings/link-telegram support login params
+- Add support for login forwarding
 
 - Move from objection to drizzle
 
