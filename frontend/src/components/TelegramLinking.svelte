@@ -119,9 +119,6 @@
       Click the button below to authenticate with Telegram and link your
       accounts.
     </p>
-    <Button variant="secondary" onclick={onTelegramAuth}>
-      Link Telegram Account
-    </Button>
     <div class="telegram-login-wrapper">
       <div id="telegram-login-button"></div>
     </div>
