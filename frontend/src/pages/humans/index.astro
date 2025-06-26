@@ -29,7 +29,7 @@ try {
   error ? (
     <ErrorPage error={error} />
   ) : (
-    <Layout title="Archive - Humans">
+    <Layout title="Humans">
       <Humans client:load results={result!.data} {search} />
     </Layout>
   )

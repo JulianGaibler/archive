@@ -464,7 +464,7 @@ function convertToInlineQueryResult(items: ItemModel[]) {
     // Use post title as the main title, with item description as secondary info
     const title = item.post?.title || item.description || 'Untitled'
 
-    // Build keywords part
+    // Build keywords part (first line)
     const keywords = item.post?.keywords
       ?.slice(0, 3)
       .map((k) => k.name)
@@ -473,27 +473,39 @@ function convertToInlineQueryResult(items: ItemModel[]) {
       keywords && keywords.length > 0 ? keywords.join(' • ') : ''
 
     // Helper to clean and truncate text
-    function cleanAndTruncate(text?: string, maxLength = 100): string {
-      if (!text) return ''
+    function cleanAndTruncate(text: string, maxLength: number): string {
       const clean = text.replace(/\n/g, ' ')
       return clean.length > maxLength
         ? clean.slice(0, maxLength) + '...'
         : clean
     }
 
-    const cap = cleanAndTruncate(item.caption)
-    const desc = !cap ? cleanAndTruncate(item.description) : ''
+    // Build second line from caption and description
+    let secondLine = ''
+    const cap = item.caption || ''
+    const desc = item.description || ''
 
-    // Compose final description: prefer caption, fallback to description, else undefined
+    if (cap && desc) {
+      // Both present: truncate to 50 chars each and separate with —
+      const truncatedCap = cleanAndTruncate(cap, 50)
+      const truncatedDesc = cleanAndTruncate(desc, 50)
+      secondLine = `${truncatedCap} — ${truncatedDesc}`
+    } else if (cap || desc) {
+      // Only one present: use it, truncated to 100 chars
+      const singleText = cap || desc
+      secondLine = cleanAndTruncate(singleText, 100)
+    }
+
+    // Compose final description
     let description: string | undefined
-    if (keywordsStr) {
-      description = cap
-        ? `${keywordsStr}\n${cap}`
-        : desc
-          ? `${keywordsStr}\n${desc}`
-          : keywordsStr
+    if (keywordsStr && secondLine) {
+      description = `${keywordsStr}\n${secondLine}`
+    } else if (keywordsStr) {
+      description = keywordsStr
+    } else if (secondLine) {
+      description = secondLine
     } else {
-      description = cap || desc || undefined
+      description = undefined
     }
 
     const base = {

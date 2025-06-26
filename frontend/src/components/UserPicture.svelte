@@ -34,17 +34,24 @@
     alt={user.username}
   />
 {:else}
-  <span aria-label={user.username}>
+  <a href={`/humans/${user.username}`}>
     <img
       class={`x${size}`}
       src={getResourceUrl(`upic/${user.profilePicture}-${pictureSize}.jpeg`)}
       alt={user.username}
+      aria-hidden="true"
     />
     {user.username}
-  </span>
+  </a>
 {/if}
 
 <style lang="sass">
+  a
+    text-decoration: none
+    border-radius: tint.$size-12
+    @include tint.effect-focus()
+    &:hover
+      text-decoration: underline
   img
     border-radius: tint.$profile-picture-radius
     overflow: hidden

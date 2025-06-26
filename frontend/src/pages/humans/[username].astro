@@ -52,7 +52,7 @@ try {
     <ErrorPage error={error} />
   ) : (
     <Layout
-      title={`Archive - ${result!.data?.user?.name || result!.data?.user?.username || 'User'}`}
+      title={result!.data?.user?.name || result!.data?.user?.username || 'User'}
     >
       <div class="tint--tinted nav">
         {result!.data?.user && (

@@ -1,4 +1,9 @@
-import { GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql'
+import {
+  GraphQLBoolean,
+  GraphQLNonNull,
+  GraphQLObjectType,
+  GraphQLString,
+} from 'graphql'
 import { connectionDefinitions } from 'graphql-relay'
 import Context from '@src/Context.js'
 import { HashIdTypes } from '../../HashId.js'
@@ -19,6 +24,10 @@ const SessionType = new GraphQLObjectType({
       type: UserType,
       resolve: async (session, _args, ctx: Context) =>
         UserActions.qUser(ctx, { userId: session.userId }),
+    },
+    current: {
+      description: 'Indicates if this is the current session.',
+      type: new GraphQLNonNull(GraphQLBoolean),
     },
     userAgent: {
       description: 'Last known User-Agent string of this session.',

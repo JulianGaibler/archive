@@ -79,7 +79,7 @@ export const getSsrClient = (
   return new GraphQLClient(PRIVATE_URL, {
     errorPolicy: 'all',
     headers,
-    fetch: customFetch,
+    fetch: astroContext.isPrerendered ? undefined : customFetch,
   })
 }
 

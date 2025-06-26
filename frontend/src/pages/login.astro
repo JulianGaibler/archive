@@ -14,12 +14,40 @@ const ssrClient = Astro.locals.gqlClient
 
 let error = ''
 
+if (Astro.locals.me.signedIn) {
+  return Astro.redirect('/')
+}
+
+// Get redirect URL from query params and validate it's safe
+const requestedRedirect = new URL(Astro.request.url).searchParams.get(
+  'redirect',
+)
+let redirectUrl = '/'
+// Only allow redirects to the same origin and not to external sites
+if (
+  requestedRedirect &&
+  requestedRedirect.startsWith('/') &&
+  !requestedRedirect.startsWith('//')
+) {
+  redirectUrl = requestedRedirect
+}
+
 // Handle POST request (form submission)
 if (Astro.request.method === 'POST') {
   try {
     const formData = await Astro.request.formData()
     const username = formData.get('username')?.toString()
     const password = formData.get('password')?.toString()
+    // Get redirect from form, validate again
+    const formRedirect = formData.get('redirect')?.toString()
+    let safeRedirect = '/'
+    if (
+      formRedirect &&
+      formRedirect.startsWith('/') &&
+      !formRedirect.startsWith('//')
+    ) {
+      safeRedirect = formRedirect
+    }
 
     if (!username || !password) {
       error = 'Username and password are required'
@@ -33,7 +61,7 @@ if (Astro.request.method === 'POST') {
       })
 
       if (result.login) {
-        return Astro.redirect('/')
+        return Astro.redirect(safeRedirect)
       } else {
         error = 'Invalid username or password'
       }
@@ -43,12 +71,6 @@ if (Astro.request.method === 'POST') {
     error = 'Login failed. Please try again.'
   }
 }
-
-// Get redirect URL from query params and validate it's safe
-const requestedRedirect = new URL(Astro.request.url).searchParams.get(
-  'redirect',
-)
-const redirectUrl = requestedRedirect || '/'
 
 const slogan = [
   "Da, wo d'Memes zum Sterbn hi'geh",
@@ -62,7 +84,7 @@ const slogan = [
 ].sort(() => Math.random() - 0.5)[0]
 ---
 
-<Layout title="Login - Archive" flexCenter>
+<Layout title="Login" flexCenter>
   <div class="background">
     <div class="brand">
       <h1 class="tint--type-display-sans-3">Archive</h1>

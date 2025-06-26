@@ -1,21 +1,9 @@
 ---
 import Button from 'tint/components/Button.svelte'
 
-import { getSdk } from '@src/generated/graphql'
 import HeaderMenu from './HeaderMenu.svelte'
 
-const ssrClient = Astro.locals.gqlClient
-
-const sdk = getSdk(ssrClient)
-
-let result: Awaited<ReturnType<typeof sdk.me>> | null = null
-let error = false
-try {
-  result = await sdk.me()
-} catch (_error) {
-  result = null
-  error = true
-}
+const { signedIn, me, error } = Astro.locals.me
 ---
 
 <header>
@@ -24,8 +12,8 @@ try {
   </div>
   <div>
     {
-      error ? null : result?.data?.me ? (
-        <HeaderMenu client:load user={result.data.me} />
+      error || Astro.isPrerendered ? null : signedIn ? (
+        <HeaderMenu client:idle user={me?.data.me} />
       ) : (
         <Button small={true} href="/login">
           Log in

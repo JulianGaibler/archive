@@ -1,6 +1,23 @@
 # Changelog
 # Labels: [Added], [Fixed], [Improved], [Removed], [Deprecated], [Security]
 
+2.0.1:
+  date: '2025-06-26'
+  changes:
+    - '[Improved] Clicking on usernames now navigates to their page'
+    - '[Improved] Pages now have proper and consistent titles'
+    - '[Improved] After logging in to access a restricted page, the original page is now displayed after login'
+    - '[Improved] The reordering interface now shows captions alongisde the description'
+    - '[Improved] Current session is now highlighted in the session management interface'
+    - '[Improved] Smaller performance improvements related to initial page load'
+    - '[Improved] Updated telegram bot to show both the caption and description if available'
+    - '[Fixed] GIFs now autoplay and loop on post pages'
+    - '[Fixed] Newly added keywords are now shown in the keyword list'
+    - '[Fixed] Keyword list does not offer to create existing keywords anymore'
+    - '[Fixed] When editing posts, the labels won''t overlap with the input fields anymore'
+    - '[Fixed] Opening the login page while already authenticated now forwards to the home page'
+    - '[Fixed] Post meta information now wraps correctly on small screens'
+    - '[Fixed] Added back favicon and app icon'
 2.0.0:
   date: '2025-06-23'
   notes: |
@@ -21,7 +38,7 @@
     - '[Fixed] Fixed bug where removing tags from posts would remove the tag from all posts'
     - '[Fixed] Fixed bug where common english words were not searchable ("why"-bug)'
     - '[Fixed] Uploading videos shorter than 1 second now does not cause errors'
-    - '[Fixed] Telegram bot no longer returns an inifinite list of results'
+    - '[Fixed] Telegram bot no longer returns an infinite list of results'
     - '[Removed] Collections have been removed'
 1.0.2:
   date: '2020-06-24'

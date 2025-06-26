@@ -69,10 +69,7 @@ const is401Error = error.statusCode === 401
 const currentUrl = Astro.url.pathname + Astro.url.search
 ---
 
-<Layout
-  title={`${error.statusCode} - ${getTitle(error.statusCode)}`}
-  flexCenter
->
+<Layout title={getTitle(error.statusCode)} flexCenter>
   <div class="error-container">
     <div class="error-icon">
       <Fragment set:html={IconWarning} />

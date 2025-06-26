@@ -101,8 +101,10 @@ export default class {
           : [browser, browserMajor, os]
               .filter((x) => x !== undefined)
               .join(' ')) || 'Unknown'
+
       return Object.assign(new SessionModel(), {
         ...session,
+        current: session.id === ctx.sessionId,
         userAgent: userAgentString,
       })
     })

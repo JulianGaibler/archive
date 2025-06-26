@@ -3,6 +3,7 @@
 declare namespace App {
   interface Locals {
     gqlClient: import('graphql-request').GraphQLClient
+    me: import('./middleware').MeData
   }
 }
 

@@ -33,6 +33,7 @@
   let error = $state<string | undefined>(undefined)
 
   async function searchKeywords(search: string) {
+    const trimmedSearch = search.trim().toLowerCase()
     const result = await sdk.keywordSearch({
       input: search,
     } as KeywordSearchQueryVariables)
@@ -45,23 +46,27 @@
       }
     }
 
-    items = [
-      ...items,
-      ...(result.data.keywords?.edges
+    const fetchedItems =
+      result.data.keywords?.edges
         ?.map((edge) => ({
-          id: edge?.node?.id ?? '', // Ensure id is a string
+          id: edge?.node?.id ?? '',
           name: edge?.node?.name ?? '',
         }))
-        .filter((item) => item.id !== '') ?? []), // Filter out invalid items
-    ]
+        .filter((item) => item.id !== '') ?? []
+
+    items = [...items, ...fetchedItems]
     error = undefined
+
+    const exists = fetchedItems.some(
+      (item) => item.name.trim().toLowerCase() === trimmedSearch,
+    )
+
     return {
-      items:
-        result.data.keywords?.edges?.map((edge) => ({
-          value: edge?.node?.id,
-          label: edge?.node?.name ?? '',
-        })) ?? [],
-      allowAdd: true,
+      items: fetchedItems.map((item) => ({
+        value: item.id,
+        label: item.name,
+      })),
+      allowAdd: !exists && trimmedSearch.length > 2,
     }
   }
 
@@ -87,8 +92,7 @@
         name: result.data.createKeyword.name,
       },
     ]
-    // add to the list of items
-    value.push(result.data.createKeyword.id)
+    value = [...value, result.data.createKeyword.id]
   }
 </script>
 

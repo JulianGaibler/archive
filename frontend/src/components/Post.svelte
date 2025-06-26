@@ -136,6 +136,7 @@
         return {
           id: node.id,
           description: node.description || 'No description',
+          caption: 'caption' in node ? node.caption : undefined,
           thumbnail,
         }
       })
@@ -481,6 +482,7 @@
   
   ul.info, ul.tags
     margin-block-start: tint.$size-16
+    flex-wrap: wrap
 
   ul.info
     margin-block-start: 0
@@ -490,8 +492,8 @@
     list-style: none
     display: flex
     gap: tint.$size-8
-    flex-wrap: wrap
     a
+      @include tint.effect-focus()
       border-radius: tint.$button-radius-small
       border: 1px solid
       text-decoration: none

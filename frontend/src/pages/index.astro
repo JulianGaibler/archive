@@ -32,7 +32,7 @@ try {
   error ? (
     <ErrorPage error={error} />
   ) : (
-    <Layout title="Archive">
+    <Layout>
       <Wall client:load results={result!.data} {byContent} showAddPostButton />
     </Layout>
   )

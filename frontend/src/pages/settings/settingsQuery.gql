@@ -11,6 +11,7 @@ query settings {
     firstIp
     id
     latestIp
+    current
     userAgent
     updatedAt
   }

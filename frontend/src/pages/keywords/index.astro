@@ -29,7 +29,7 @@ try {
   error ? (
     <ErrorPage error={error} />
   ) : (
-    <Layout title="Archive">
+    <Layout title="Keywords">
       <Keywords client:load results={result!.data} {byName} />
     </Layout>
   )

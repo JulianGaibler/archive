@@ -184,12 +184,11 @@
             style="padding-bottom: {relativeHeight}%"
           >
             {#if thumbnailPath}
-              <picture>
-                <img
-                  src={getResourceUrl(`${thumbnailPath}.jpeg`)}
-                  alt="Preview of {postNode?.node?.title}"
-                />
-              </picture>
+              <img
+                loading="lazy"
+                src={getResourceUrl(`${thumbnailPath}.jpeg`)}
+                alt="Preview of {postNode?.node?.title}"
+              />
             {:else}
               <div class="placeholder">
                 <span>No preview available</span>

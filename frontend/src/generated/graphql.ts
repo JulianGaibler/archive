@@ -510,6 +510,8 @@ export type Session = Node & {
   __typename?: 'Session';
   /** Identifies the date and time when the session was created. */
   createdAt: Scalars['DateTime']['output'];
+  /** Indicates if this is the current session. */
+  current: Scalars['Boolean']['output'];
   /** IP with which the session was created. */
   firstIp: Scalars['String']['output'];
   /** The ID of an object */
@@ -683,7 +685,7 @@ export type VisualMediaItem = {
 export type SettingsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type SettingsQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, darkMode?: boolean | null, linkedTelegram?: boolean | null } | null, userSessions: Array<{ __typename?: 'Session', createdAt: any, firstIp: string, id: string, latestIp: string, userAgent: string, updatedAt: any }> };
+export type SettingsQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, darkMode?: boolean | null, linkedTelegram?: boolean | null } | null, userSessions: Array<{ __typename?: 'Session', createdAt: any, firstIp: string, id: string, latestIp: string, current: boolean, userAgent: string, updatedAt: any }> };
 
 export type LoginMutationVariables = Exact<{
   username: Scalars['String']['input'];
@@ -1021,6 +1023,7 @@ export const SettingsDocument = gql`
     firstIp
     id
     latestIp
+    current
     userAgent
     updatedAt
   }

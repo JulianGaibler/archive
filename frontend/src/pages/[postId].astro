@@ -3,8 +3,10 @@ import Layout from '@src/layouts/Layout.astro'
 import Post from '@src/components/Post.svelte'
 import ErrorPage from '@src/components/ErrorPage.astro'
 
-import { getSdk } from '@src/generated/graphql'
+import { getSdk, type PostQuery } from '@src/generated/graphql'
 import { handleError, hasAuthenticationError } from '@src/utils/error-handling'
+
+type PostNode = Extract<NonNullable<PostQuery['node']>, { __typename?: 'Post' }>
 
 const ssrClient = Astro.locals.gqlClient
 const { postId } = Astro.params
@@ -16,17 +18,19 @@ if (!postId) {
   throw new Error('Post ID is required')
 }
 
-let result: Awaited<ReturnType<typeof sdk.Post>> | null = null
+let post: PostNode | null = null
 let error: ReturnType<typeof handleError> | null = null
 
 try {
-  result = await sdk.Post({
+  const result = await sdk.Post({
     id: postId,
   })
   error = hasAuthenticationError(result, Astro.response)
   if (!error && !result.data?.node) {
     error = handleError(404, Astro.response)
   }
+
+  post = result.data.node as PostNode
 } catch (graphqlError: unknown) {
   console.error('GraphQL error in [postId].astro:', graphqlError)
 
@@ -52,10 +56,12 @@ try {
 {
   error ? (
     <ErrorPage error={error} />
-  ) : (
-    <Layout title="Archive">
-      <Post client:load result={result!.data.node} />
+  ) : post ? (
+    <Layout title={post.title}>
+      <Post client:idle={{ timeout: 1000 }} result={post} />
     </Layout>
+  ) : (
+    <ErrorPage error={handleError(404, Astro.response)} />
   )
 }
 

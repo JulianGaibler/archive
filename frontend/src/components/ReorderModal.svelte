@@ -7,6 +7,7 @@
   interface ReorderItem {
     id: string
     description: string
+    caption?: string
     thumbnail?: string
   }
 
@@ -80,8 +81,9 @@
                 <img src={getResourceUrl(`${item.thumbnail}.jpeg`)} alt="" />
               {/if}
             </div>
-            <div class="description">
-              {item.description}
+            <div class="meta">
+              <p>{item.description}</p>
+              {#if item.caption}<p class="caption">{item.caption}</p>{/if}
             </div>
           </div>
         </li>
@@ -110,13 +112,8 @@
   flex-direction: column
   padding: tint.$size-32
   max-height: 80vh
-
   h2
     margin: 0
-
-  p
-    margin: 0
-    color: var(--tint-text-secondary)
 
 .reorder-list
   list-style: none
@@ -168,26 +165,16 @@
   &.placeholder
     background: var(--tint-bg-quaternary)
 
-.description
+.meta
   flex: 1
-  font-size: var(--tint-type-body-size)
-  line-height: 1.4
   color: var(--tint-text)
-  overflow: hidden
-  text-overflow: ellipsis
-  white-space: nowrap
-
-.drag-handle
-  color: var(--tint-text-tertiary)
-  padding: tint.$size-4
-  border-radius: tint.$size-4
-  transition: color 0.2s ease
-
-  .reorder-item:hover &
-    color: var(--tint-text-secondary)
-
-  svg
-    display: block
+  min-width: 0
+  p
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+    &.caption
+      color: var(--tint-text-secondary)
 
 .actions
   display: flex

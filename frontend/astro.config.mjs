@@ -21,7 +21,7 @@ export default defineConfig({
     },
     resolve: {
       alias: {
-        '~tint': 'node_modules/tint/dist',
+        '~tint': '/node_modules/tint/dist',
         '@src': '/src',
       },
     },

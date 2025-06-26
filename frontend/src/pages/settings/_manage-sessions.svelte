@@ -38,6 +38,10 @@
       .then((res) => {
         globalError = getOperationResultError(res)
         if (!globalError) {
+          if (sessions.find((s) => s.id === sessionId)?.current) {
+            window.location.href = '/login'
+            return
+          }
           sessions = sessions.filter((session) => session.id !== sessionId)
         }
       })
@@ -85,12 +89,17 @@
           onclick={() => revokeSession(session.id)}>Revoke session</Button
         >
       </div>
+      {#if session.current}
+        <p class="current-badge">
+          <span class="tint--type-ui-bold">Current session</span> You will get logged
+          out if you revoke this session.
+        </p>
+      {/if}
     </li>
   {/each}
 </ul>
 
 <style lang="sass">
-
 ul
   display: flex
   flex-direction: column
@@ -112,5 +121,11 @@ li
   display: flex
   margin-block-start: tint.$size-4
   justify-content: center
+
+.current-badge
+  color: var(--tint-text-secondary)
+  display: inline-block
+  text-align: center
+
 
 </style>

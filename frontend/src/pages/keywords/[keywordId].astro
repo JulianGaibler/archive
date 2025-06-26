@@ -51,7 +51,11 @@ try {
     <ErrorPage error={error} />
   ) : (
     <Layout
-      title={`Archive - ${result!.data?.keyword?.__typename === 'Keyword' ? result!.data.keyword.name : 'Keyword'}`}
+      title={
+        result!.data?.keyword?.__typename === 'Keyword'
+          ? result!.data.keyword.name
+          : 'Keyword'
+      }
     >
       <div class="tint--tinted nav">
         <div class="shrinkwrap">

@@ -67,8 +67,7 @@
       {/if}
     </picture>
   {:else if isVideo || isGif}
-    <!-- svelte-ignore a11y_media_has_caption -->
-    <video controls={isVideo} loop={isGif}>
+    <video controls={isVideo} loop={isGif} autoplay={isGif} muted={isGif}>
       {#if item}
         <source
           src={getConvertedSrcPath(item.compressedPath, item.__typename, true)}

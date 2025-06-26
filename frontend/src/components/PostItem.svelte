@@ -51,8 +51,8 @@
   })
   let editItem = $derived.by(() => {
     if (editData && uploadItemIndex !== undefined)
-      return editData.uploadItems[uploadItemIndex]
-    if (editData) return editData.items[item.id]
+      return { ...editData.uploadItems[uploadItemIndex] }
+    if (editData) return { ...editData.items[item.id] }
     return undefined
   })
 
