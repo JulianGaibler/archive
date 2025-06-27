@@ -5,6 +5,7 @@ import {
   AuthorizationError,
   InputError,
   NotFoundError,
+  RequestError,
 } from '@src/errors/index.js'
 import { FileUpload } from 'graphql-upload/processRequest.mjs'
 import { ItemModel } from '@src/models/index.js'
@@ -635,6 +636,9 @@ export default class {
         if (!targetPost) {
           throw new NotFoundError('Target post not found')
         }
+        if (fields.sourcePostId === fields.targetPostId) {
+          throw new InputError('Cannot merge a post into itself')
+        }
 
         // if (sourcePost.creatorId !== userIId) {
         //   throw new AuthorizationError('You can only merge your own posts.')
@@ -645,25 +649,63 @@ export default class {
         //   )
         // }
 
-        // Get the highest position in the target post
-        const highestPositionResult = (await ItemModel.query(trx)
-          .where('postId', fields.targetPostId)
-          .max('position as maxPosition')
-          .first()) as any
-
-        const highestPosition = highestPositionResult?.maxPosition || 0
+        let mergedItemsCount = 0
+        let mergedKeywordsCount = 0
 
         // Move all items from source to target post
         if (sourcePost.items && sourcePost.items.length > 0) {
-          for (let i = 0; i < sourcePost.items.length; i++) {
-            const item = sourcePost.items[i]
-            await ItemModel.query(trx)
-              .patch({
-                postId: fields.targetPostId,
-                position: highestPosition + i + 1,
-              })
-              .where('id', item.id)
+          // Get the highest position in the target post
+          const highestPositionResult = (await ItemModel.query(trx)
+            .where('postId', fields.targetPostId)
+            .max('position as maxPosition')
+            .first()) as any
+
+          const highestPosition = highestPositionResult?.maxPosition || 0
+
+          // Get fresh list of item IDs to ensure they still exist and belong to source post
+          const sourceItemIds = sourcePost.items.map((item) => item.id)
+
+          // Verify all items still exist and belong to the source post
+          const existingItems = await ItemModel.query(trx)
+            .whereIn('id', sourceItemIds)
+            .andWhere('postId', fields.sourcePostId)
+
+          if (existingItems.length !== sourcePost.items.length) {
+            throw new RequestError(
+              `Expected ${sourcePost.items.length} items but found ${existingItems.length}. ` +
+                'Some items may have been modified or deleted by another process.',
+            )
           }
+
+          // Move items in bulk first (without position updates)
+          const movedCount = await ItemModel.query(trx)
+            .patch({ postId: fields.targetPostId })
+            .whereIn('id', sourceItemIds)
+            .andWhere('postId', fields.sourcePostId) // Extra safety check
+
+          if (movedCount !== sourcePost.items.length) {
+            throw new RequestError(
+              `Failed to move all items. Expected to move ${sourcePost.items.length} ` +
+                `items but only moved ${movedCount}`,
+            )
+          }
+
+          // Now update positions for the moved items
+          for (let i = 0; i < existingItems.length; i++) {
+            const item = existingItems[i]
+            const positionUpdateCount = await ItemModel.query(trx)
+              .patch({ position: highestPosition + i + 1 })
+              .where('id', item.id)
+              .andWhere('postId', fields.targetPostId) // Ensure it was actually moved
+
+            if (positionUpdateCount === 0) {
+              throw new RequestError(
+                `Failed to update position for item ${item.id}`,
+              )
+            }
+          }
+
+          mergedItemsCount = movedCount
         }
 
         // Merge keywords if requested
@@ -673,19 +715,43 @@ export default class {
           sourcePost.keywords.length > 0
         ) {
           const targetKeywordIds = targetPost.keywords?.map((k) => k.id) || []
-          const keywordsToAdd = sourcePost.keywords
-            .map((k) => k.id)
-            .filter((id) => !targetKeywordIds.includes(id))
+          const sourceKeywordIds = sourcePost.keywords.map((k) => k.id)
+          const keywordsToAdd = sourceKeywordIds.filter(
+            (id) => !targetKeywordIds.includes(id),
+          )
 
           if (keywordsToAdd.length > 0) {
             await PostModel.relatedQuery('keywords', trx)
               .for(fields.targetPostId)
               .relate(keywordsToAdd)
+
+            mergedKeywordsCount = keywordsToAdd.length
           }
         }
 
-        // Delete the source post
-        await PostModel.query(trx).deleteById(fields.sourcePostId)
+        // Final safety check: Verify no items are left attached to source post
+        const remainingItemsResult = (await ItemModel.query(trx)
+          .where('postId', fields.sourcePostId)
+          .count('* as count')
+          .first()) as any
+
+        const remainingItemsCount = remainingItemsResult?.count || 0
+        if (remainingItemsCount > 0) {
+          throw new RequestError(
+            `Cannot delete source post - ${remainingItemsCount} items are still attached. ` +
+              'This indicates the item moving process failed.',
+          )
+        }
+
+        // Delete the source post (safe now that we've verified no items remain)
+        const deletedCount = await PostModel.query(trx).deleteById(
+          fields.sourcePostId,
+        )
+        if (deletedCount === 0) {
+          throw new RequestError(
+            'Failed to delete source post - it may have been deleted by another process',
+          )
+        }
 
         // Reorder items in target post to ensure sequential positions
         await this._reorderItemPositions(trx, fields.targetPostId)
@@ -694,10 +760,8 @@ export default class {
           success: true,
           sourcePostId: fields.sourcePostId,
           targetPostId: fields.targetPostId,
-          mergedItemsCount: sourcePost.items?.length || 0,
-          mergedKeywordsCount: fields.mergeKeywords
-            ? sourcePost.keywords?.length || 0
-            : 0,
+          mergedItemsCount,
+          mergedKeywordsCount,
         }
       })
       .catch((error) => {
@@ -763,6 +827,19 @@ export default class {
           }
         }
 
+        // Verify the item still exists and belongs to the expected source post
+        // (protection against race conditions)
+        const currentItem = await ItemModel.query(trx)
+          .findById(fields.itemId)
+          .where('postId', sourcePostId)
+
+        if (!currentItem) {
+          throw new RequestError(
+            `One item no longer exists in source post. ` +
+              'It may have been moved or deleted by another process.',
+          )
+        }
+
         // Get the highest position in the target post
         const highestPositionResult = (await ItemModel.query(trx)
           .where('postId', fields.targetPostId)
@@ -771,13 +848,32 @@ export default class {
 
         const newPosition = (highestPositionResult?.maxPosition || 0) + 1
 
-        // Move the item to the target post
-        await ItemModel.query(trx)
+        // Move the item to the target post with verification
+        const updatedCount = await ItemModel.query(trx)
           .patch({
             postId: fields.targetPostId,
             position: newPosition,
           })
           .where('id', fields.itemId)
+          .andWhere('postId', sourcePostId) // Extra safety: only update if still in source post
+
+        if (updatedCount === 0) {
+          throw new RequestError(
+            `Failed to move one item. The item may have been ` +
+              'modified or deleted by another process.',
+          )
+        }
+
+        // Verify the item was actually moved to the target post
+        const movedItem = await ItemModel.query(trx)
+          .findById(fields.itemId)
+          .where('postId', fields.targetPostId)
+
+        if (!movedItem) {
+          throw new RequestError(
+            `One Item was not successfully moved to target post`,
+          )
+        }
 
         // Reorder items in the source post
         await this._reorderItemPositions(trx, sourcePostId)
@@ -785,12 +881,31 @@ export default class {
         // Check if source post is now empty and should be deleted
         let sourcePostDeleted = false
         if (!fields.keepEmptyPost) {
+          // Double-check that our specific item is no longer in the source post
+          const itemStillInSource = await ItemModel.query(trx)
+            .findById(fields.itemId)
+            .where('postId', sourcePostId)
+
+          if (itemStillInSource) {
+            throw new RequestError(
+              `An Item is still in source post after move operation`,
+            )
+          }
+
+          // Count remaining items in source post
           const remainingItemsCount = await ItemModel.query(trx)
             .where('postId', sourcePostId)
             .resultSize()
 
           if (remainingItemsCount === 0) {
-            await PostModel.query(trx).deleteById(sourcePostId)
+            const deletedCount =
+              await PostModel.query(trx).deleteById(sourcePostId)
+            if (deletedCount === 0) {
+              throw new RequestError(
+                `Failed to delete empty source post. ` +
+                  'It may have been deleted by another process.',
+              )
+            }
             sourcePostDeleted = true
           }
         }

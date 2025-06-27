@@ -464,14 +464,6 @@ function convertToInlineQueryResult(items: ItemModel[]) {
     // Use post title as the main title, with item description as secondary info
     const title = item.post?.title || item.description || 'Untitled'
 
-    // Build keywords part (first line)
-    const keywords = item.post?.keywords
-      ?.slice(0, 3)
-      .map((k) => k.name)
-      .filter(Boolean)
-    const keywordsStr =
-      keywords && keywords.length > 0 ? keywords.join(' • ') : ''
-
     // Helper to clean and truncate text
     function cleanAndTruncate(text: string, maxLength: number): string {
       const clean = text.replace(/\n/g, ' ')
@@ -480,30 +472,20 @@ function convertToInlineQueryResult(items: ItemModel[]) {
         : clean
     }
 
-    // Build second line from caption and description
-    let secondLine = ''
+    // Build lines from description and caption
     const cap = item.caption || ''
     const desc = item.description || ''
 
-    if (cap && desc) {
-      // Both present: truncate to 50 chars each and separate with —
-      const truncatedCap = cleanAndTruncate(cap, 50)
-      const truncatedDesc = cleanAndTruncate(desc, 50)
-      secondLine = `${truncatedCap} — ${truncatedDesc}`
-    } else if (cap || desc) {
-      // Only one present: use it, truncated to 100 chars
-      const singleText = cap || desc
-      secondLine = cleanAndTruncate(singleText, 100)
-    }
-
-    // Compose final description
     let description: string | undefined
-    if (keywordsStr && secondLine) {
-      description = `${keywordsStr}\n${secondLine}`
-    } else if (keywordsStr) {
-      description = keywordsStr
-    } else if (secondLine) {
-      description = secondLine
+    if (desc && cap) {
+      // Both present: line 1 = description (100 chars), line 2 = caption (100 chars)
+      const line1 = cleanAndTruncate(desc, 100)
+      const line2 = cleanAndTruncate(cap, 100)
+      description = `${line1}\n${line2}`
+    } else if (desc || cap) {
+      // Only one present: use it, truncated to 100 chars
+      const singleText = desc || cap
+      description = cleanAndTruncate(singleText, 100)
     } else {
       description = undefined
     }

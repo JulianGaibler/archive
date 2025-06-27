@@ -441,6 +441,7 @@
 <MergePostModal
   open={showMergeModal}
   loading={mergeLoading}
+  currentPostId={$postObject?.id}
   onCancel={handleMergeCancel}
   onSubmit={handleMergeSubmit}
 />
@@ -448,6 +449,7 @@
 <MergePostModal
   open={showMoveModal}
   loading={moveLoading}
+  currentPostId={$postObject?.id}
   onCancel={handleMoveCancel}
   onSubmit={handleMoveSubmit}
   mode="move"

@@ -14,18 +14,18 @@
   interface Props {
     open: boolean
     loading?: boolean
+    currentPostId?: string
     onCancel: () => void
     onSubmit: (targetPostId: string, secondaryOption: boolean) => void
-    initialPost?: PostItem
     mode?: 'merge' | 'move'
   }
 
   let {
     open,
     loading = false,
+    currentPostId,
     onCancel,
     onSubmit,
-    initialPost,
     mode = 'merge',
   }: Props = $props()
 
@@ -91,10 +91,14 @@
       const newPosts = searchResults.filter((post) => !existingIds.has(post.id))
       posts = [...posts, ...newPosts]
 
-      const items = searchResults.map((post) => ({
-        value: post.id,
-        label: post.title,
-      }))
+      const items = searchResults
+        .map((post) => ({
+          value: post.id,
+          label: post.title,
+        }))
+        .filter(
+          (item) => item.value !== currentPostId, // Exclude current post if it exists
+        )
 
       return {
         items,
@@ -123,13 +127,6 @@
     if (!open) {
       selectedPostId = undefined
       secondaryOption = false
-    }
-  })
-
-  // Initialize posts with initial post if provided
-  $effect(() => {
-    if (initialPost && !posts.find((p) => p.id === initialPost.id)) {
-      posts = [initialPost, ...posts]
     }
   })
 

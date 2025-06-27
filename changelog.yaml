@@ -1,6 +1,13 @@
 # Changelog
 # Labels: [Added], [Fixed], [Improved], [Removed], [Deprecated], [Security]
 
+2.0.2:
+  date: '2025-06-27'
+  changes:
+    - '[Improved] Telegram bot now only shows the description and caption if available'
+    - '[Fixed] Added more safeguard that items cannot be lost when merging posts'
+    - '[Fixed] Posts can no longer be merged into themselves'
+    - '[Fixed] UI for merging or moving items does not suggest current post as target anymore'
 2.0.1:
   date: '2025-06-26'
   changes:
