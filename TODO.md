@@ -1,19 +1,16 @@
 # ToDo
 
-## 2.0
-
-- Format Error in backend server
-- Make /settings/link-telegram support login params
-
 ## 2.1
 
 - Move from objection to drizzle
-
 - Make post titles unique
+- Ensure errors are handled properly
 
 # 2.2
 
 - Move to blobstorage system
+- Passkeys? (simplewebauthn)
+- OTP support
 
 # 2.3
 
@@ -31,3 +28,4 @@
 
 - Add support for captions
 - Download trimmed youtube videos
+- imgproxy?

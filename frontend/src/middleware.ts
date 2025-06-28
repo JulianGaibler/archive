@@ -18,7 +18,7 @@ export type MeData =
   | {
       error: false
       signedIn: false
-      me: null
+      me: MeType
     }
 
 export const onRequest = defineMiddleware(async (ctx, next) => {
@@ -43,7 +43,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
       meQuery = {
         error: false,
         signedIn: false,
-        me: null,
+        me,
       } as const satisfies MeData
     }
   } catch (_error) {

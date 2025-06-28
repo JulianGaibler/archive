@@ -107,11 +107,8 @@
           <Button
             small={true}
             download={`archive-${item.id}-original`}
-            href={getConvertedSrcPath(
-              item.compressedPath,
-              item.__typename,
-              true,
-            )}>Compressed</Button
+            href={getConvertedSrcPath(item.compressedPath, item.__typename)}
+            >Compressed</Button
           >
         {/if}
         {#if itemActions.length > 0}
@@ -137,7 +134,7 @@
   <div class="content">
     {#if editItem}
       <TextField
-        id="input"
+        id="description"
         label="Description"
         variant="textarea"
         disabled={loading}
@@ -147,7 +144,7 @@
       />
       {#if editItem.caption !== undefined}
         <TextField
-          id="input"
+          id="caption"
           label="Caption"
           variant="textarea"
           disabled={loading}

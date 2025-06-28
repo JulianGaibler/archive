@@ -1,28 +1,65 @@
 ---
 import Layout from '@src/layouts/Layout.astro'
-import TelegramLinking from '@src/components/TelegramLinking.svelte'
-import { getSdk } from '@src/generated/graphql'
-import { handleError, hasAuthenticationError } from '@src/utils/error-handling'
+import TelegramLinking, {
+  type TelegramUser,
+} from '@src/components/TelegramLinking.svelte'
+import { hasAuthenticationError, handleError } from '@src/utils/error-handling'
 import ErrorPage from '@src/components/ErrorPage.astro'
 
-const ssrClient = Astro.locals.gqlClient
-const sdk = getSdk(ssrClient)
+const searchParams = new URL(Astro.request.url).searchParams
+const { me } = Astro.locals.me
 
-let result: Awaited<ReturnType<typeof sdk.settings>> | null = null
-let error: ReturnType<typeof handleError> | null = null
+// Parse and validate Telegram user data from searchParams
+function parseTelegramUserFromParams(
+  params: URLSearchParams,
+): TelegramUser | null {
+  const id = params.get('id')
+  const auth_date = params.get('auth_date')
+  const hash = params.get('hash')
 
-try {
-  result = await sdk.settings()
-  error = hasAuthenticationError(result, Astro.response)
-} catch (graphqlError: unknown) {
-  console.error('GraphQL error in link-telegram.astro:', graphqlError)
-  error = handleError(500, Astro.response, graphqlError)
+  // Check if all required fields are present
+  if (!id || !auth_date || !hash) {
+    return null
+  }
+
+  const first_name = params.get('first_name')
+  const last_name = params.get('last_name')
+  const username = params.get('username')
+  const photo_url = params.get('photo_url')
+
+  // Validate that id and auth_date are valid numbers
+  const parsedId = parseInt(id, 10)
+  const parsedAuthDate = parseInt(auth_date, 10)
+
+  if (isNaN(parsedId) || isNaN(parsedAuthDate)) {
+    return null
+  }
+
+  return {
+    id: parsedId,
+    first_name: first_name || undefined,
+    last_name: last_name || undefined,
+    username: username || undefined,
+    photo_url: photo_url || undefined,
+    auth_date: parsedAuthDate,
+    hash,
+  }
 }
+
+const telegramUserData = parseTelegramUserFromParams(searchParams)
+
+// Create the auth URL for Telegram widget redirect
+const authUrl = new URL(Astro.request.url)
+authUrl.search = '' // Clear existing params for clean redirect URL
+
+const pageError = me
+  ? hasAuthenticationError(me, Astro.response)
+  : handleError(500, Astro.response)
 ---
 
 {
-  error ? (
-    <ErrorPage error={error} />
+  pageError ? (
+    <ErrorPage error={pageError} />
   ) : (
     <Layout title="Link Telegram">
       <div class="tint--tinted nav">
@@ -34,7 +71,9 @@ try {
       <div class="shrinkwrap content">
         <TelegramLinking
           client:load
-          isLinked={result!.data?.me?.linkedTelegram || false}
+          me={me!.data?.me}
+          telegramUserData={telegramUserData}
+          authUrl={authUrl.toString()}
         />
       </div>
     </Layout>

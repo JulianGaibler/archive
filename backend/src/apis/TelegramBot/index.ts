@@ -570,13 +570,17 @@ export function validateAuth(apiResponse: string) {
     throw new RequestError('Telegram data was not valid!')
   }
 
+  // Auth date is a Unix timestamp
+  // it should not be older than maxAge seconds
+  const maxAge = 10 * 60 // 10 minutes
+
   const now = Math.floor(Date.now() / 1000)
 
   const authDate =
     typeof data.auth_date === 'number'
       ? data.auth_date
       : parseInt(data.auth_date, 10)
-  if (isNaN(authDate) || now - authDate > 86400) {
+  if (isNaN(authDate) || now - authDate > maxAge) {
     console.error(
       'Telegram data validation failed: auth_date is too old',
       `Received auth_date: ${data.auth_date}, current time: ${now}`,

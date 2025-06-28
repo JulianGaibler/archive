@@ -165,9 +165,9 @@ export default class {
     ctx: Context,
     fields: {
       postId: number
-      title?: string
-      language?: string
-      keywords?: number[]
+      title: string
+      language: string
+      keywords: number[]
       items?: { id: number; caption?: string; description?: string }[]
       newItems?: {
         file: Promise<FileUpload>
@@ -180,22 +180,35 @@ export default class {
     const knex = PostModel.knex()
     const postData = {
       id: fields.postId,
-      title: fields.title || undefined,
-      language: fields.language || undefined,
+      title: fields.title,
+      language: fields.language,
     }
 
+    // Prepare items data with proper empty string handling
     const itemsData =
       fields.items && fields.items.length > 0
         ? fields.items.map((item) => ({
             id: item.id,
-            caption: item.caption || undefined,
-            description: item.description || undefined,
+            caption: item.caption !== undefined ? item.caption : undefined,
+            description:
+              item.description !== undefined ? item.description : undefined,
             postId: fields.postId, // Ensure items are associated with the post
           }))
         : []
 
     const updatedPost = await knex
       .transaction(async (trx) => {
+        // Verify post exists and user has permission
+        const existingPost = await PostModel.query(trx).findById(fields.postId)
+        if (!existingPost) {
+          throw new NotFoundError('Post not found')
+        }
+
+        // Add authorization check here if needed
+        // if (existingPost.creatorId !== userIId) {
+        //   throw new AuthorizationError('You can only edit your own posts')
+        // }
+
         // Update the post
         const updatedPost = await PostModel.query(trx).patchAndFetchById(
           fields.postId,
@@ -203,58 +216,89 @@ export default class {
         )
 
         // Update the keyword-post relationships
-        if (fields.keywords !== undefined) {
-          const existingKeywords = await PostModel.relatedQuery('keywords', trx)
+        const existingKeywords = await PostModel.relatedQuery('keywords', trx)
+          .for(fields.postId)
+          .select('id')
+
+        const existingKeywordIds = existingKeywords.map((k) => k.id)
+        const keywordsToAdd = fields.keywords.filter(
+          (id) => !existingKeywordIds.includes(id),
+        )
+        const keywordsToRemove = existingKeywordIds.filter(
+          (id) => !fields.keywords?.includes(id),
+        )
+
+        if (keywordsToAdd.length > 0) {
+          await PostModel.relatedQuery('keywords', trx)
             .for(fields.postId)
-            .select('id')
+            .relate(keywordsToAdd)
+        }
 
-          const existingKeywordIds = existingKeywords.map((k) => k.id)
-          const keywordsToAdd = fields.keywords.filter(
-            (id) => !existingKeywordIds.includes(id),
-          )
-          const keywordsToRemove = existingKeywordIds.filter(
-            (id) => !fields.keywords?.includes(id),
-          )
+        if (keywordsToRemove.length > 0) {
+          await PostModel.relatedQuery('keywords', trx)
+            .for(fields.postId)
+            .unrelate()
+            .whereIn('id', keywordsToRemove)
+        }
 
-          if (keywordsToAdd.length > 0) {
-            await PostModel.relatedQuery('keywords', trx)
-              .for(fields.postId)
-              .relate(keywordsToAdd)
+        // Update existing items with verification
+        if (itemsData.length > 0) {
+          // First, verify all items exist and belong to this post
+          const itemIds = itemsData.map((item) => item.id)
+          const existingItems = await ItemModel.query(trx)
+            .whereIn('id', itemIds)
+            .andWhere('postId', fields.postId)
+
+          if (existingItems.length !== itemIds.length) {
+            const foundIds = existingItems.map((item) => item.id)
+            const missingIds = itemIds.filter((id) => !foundIds.includes(id))
+            throw new RequestError(
+              `Items not found or don't belong to this post: ${missingIds.join(', ')}`,
+            )
           }
 
-          if (keywordsToRemove.length > 0) {
-            await PostModel.relatedQuery('keywords', trx)
-              .for(fields.postId)
-              .unrelate()
-              .whereIn('id', keywordsToRemove)
+          // Update each item with verification
+          for (const item of itemsData) {
+            // Create update object, only including defined fields
+            const updateData: any = {}
+            if (item.caption !== undefined) updateData.caption = item.caption
+            if (item.description !== undefined)
+              updateData.description = item.description
+
+            // Only update if there are fields to update
+            if (Object.keys(updateData).length > 0) {
+              const updatedCount = await ItemModel.query(trx)
+                .patch(updateData)
+                .where('id', item.id)
+                .andWhere('postId', fields.postId) // Extra safety check
+
+              if (updatedCount === 0) {
+                throw new RequestError(
+                  `Failed to update item ${item.id}. It may have been deleted or moved.`,
+                )
+              }
+            }
           }
         }
 
-        // Update the items
-        for (const item of itemsData) {
-          await PostModel.relatedQuery('items', trx)
-            .for(fields.postId)
-            .patch(item)
-            .where('id', item.id)
-        }
-
+        // Handle new items
         if (fields.newItems && fields.newItems.length > 0) {
-          // create new items
-          const existingItems = await PostModel.relatedQuery('items', trx)
-            .for(fields.postId)
-            .select('position')
-            .orderBy('position', 'desc')
-            .limit(1)
+          // Get current highest position atomically
+          const highestPositionResult = (await ItemModel.query(trx)
+            .where('postId', fields.postId)
+            .max('position as maxPosition')
+            .first()) as any
 
-          const highestPosition =
-            existingItems.length > 0 ? existingItems[0].position : 0
+          const highestPosition = highestPositionResult?.maxPosition || 0
 
+          // Create new items
+          const newItemsToCreate = []
           for (let index = 0; index < fields.newItems.length; index++) {
             const item = fields.newItems[index]
             const newItemData = {
               type: 'PROCESSING',
-              caption: item.caption,
-              description: item.description,
+              caption: item.caption || '',
+              description: item.description || '',
               postId: fields.postId,
               creatorId: userIId,
               taskStatus: 'QUEUED',
@@ -262,24 +306,52 @@ export default class {
               taskNotes: '',
               position: highestPosition + index + 1,
             }
-            const newItem = await ItemModel.query(trx).insert(newItemData)
-            await Context.fileStorage.storeFile(ctx, item.file, newItem.id)
+            newItemsToCreate.push({ data: newItemData, file: item.file })
           }
+
+          // Insert new items and store files
+          const createdItems: { item: ItemModel; file: Promise<FileUpload> }[] =
+            []
+          for (const itemToCreate of newItemsToCreate) {
+            const newItem = await ItemModel.query(trx).insert(itemToCreate.data)
+            createdItems.push({ item: newItem, file: itemToCreate.file })
+          }
+
+          // Store files after transaction commits successfully
+          // Note: This is still a potential issue - if file storage fails,
+          // the database records will exist but files won't be stored
+          trx.executionPromise
+            .then(async () => {
+              for (const { item, file } of createdItems) {
+                try {
+                  await Context.fileStorage.storeFile(ctx, file, item.id)
+                } catch (error) {
+                  console.error(
+                    `Failed to store file for item ${item.id}:`,
+                    error,
+                  )
+                  // Consider implementing a retry mechanism or cleanup here
+                }
+              }
+            })
+            .catch(() => {
+              // Transaction failed, no need to store files
+            })
         }
 
         // Reorder items to eliminate gaps
         await trx.raw(
           `
-          WITH ordered_items AS (
-            SELECT id, ROW_NUMBER() OVER (ORDER BY position ASC) as new_position
-            FROM item
-            WHERE "post_id" = ?
-          )
-          UPDATE item
-          SET position = ordered_items.new_position
-          FROM ordered_items
-          WHERE item.id = ordered_items.id
-        `,
+        WITH ordered_items AS (
+          SELECT id, ROW_NUMBER() OVER (ORDER BY position ASC) as new_position
+          FROM item
+          WHERE "post_id" = ?
+        )
+        UPDATE item
+        SET position = ordered_items.new_position
+        FROM ordered_items
+        WHERE item.id = ordered_items.id
+      `,
           [fields.postId],
         )
 
@@ -288,10 +360,10 @@ export default class {
       .catch((error) => {
         console.error('Error updating post:', error)
         console.error('Stack trace:', error.stack)
-
         throw error
       })
 
+    // Trigger file processing queue
     Context.fileStorage.checkQueue()
 
     return updatedPost

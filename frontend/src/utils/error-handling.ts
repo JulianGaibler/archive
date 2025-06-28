@@ -92,11 +92,11 @@ export function handleError(
 ): ErrorInfo {
   const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV
 
-  console.error('Error occurred:', errorOrGraphqlResponse)
-
   // Check for authentication errors and override status code
   if (errorOrGraphqlResponse && isAuthenticationError(errorOrGraphqlResponse)) {
     statusCode = 401
+  } else {
+    console.error('Error occurred:', errorOrGraphqlResponse)
   }
 
   // Determine status category (4xx, 5xx)

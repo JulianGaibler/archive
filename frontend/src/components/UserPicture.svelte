@@ -2,7 +2,7 @@
   import type { User } from '@src/generated/graphql'
   import { getResourceUrl } from '@src/utils/resource-urls'
 
-  type Sizes = '16' | '32' | '128'
+  type Sizes = '16' | '32' | '64' | '128'
 
   interface Props {
     // only need profilePicture and username
@@ -19,6 +19,8 @@
         return '32'
       case '32':
         return '80'
+      case '64':
+        return '256'
       case '128':
         return '256'
     }
@@ -63,6 +65,9 @@
     &.x32
       width: 32px
       height: 32px
+    &.x64
+      width: 64px
+      height: 64px
     &.x128
       width: 128px
       height: 128px

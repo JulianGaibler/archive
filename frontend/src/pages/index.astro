@@ -19,7 +19,7 @@ try {
     byContent,
   })
   error = hasAuthenticationError(result, Astro.response)
-  // if there is an authenciation error, redirect to the login page
+  // if there is an authentication error, redirect to the login page
   if (error) {
     return Astro.redirect('/login')
   }

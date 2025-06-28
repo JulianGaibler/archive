@@ -59,7 +59,7 @@
     <picture>
       {#if item}
         <img
-          src={getConvertedSrcPath(item.compressedPath, item.__typename, true)}
+          src={getConvertedSrcPath(item.compressedPath, item.__typename)}
           alt="No alt text provided"
         />
       {:else if file}
@@ -70,7 +70,7 @@
     <video controls={isVideo} loop={isGif} autoplay={isGif} muted={isGif}>
       {#if item}
         <source
-          src={getConvertedSrcPath(item.compressedPath, item.__typename, true)}
+          src={getConvertedSrcPath(item.compressedPath, item.__typename)}
           type="video/mp4"
         />
       {:else if file}

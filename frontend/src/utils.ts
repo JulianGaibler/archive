@@ -35,21 +35,11 @@ export function getOperationResultError(
 export function getConvertedSrcPath(
   path: string | undefined | null,
   format: string,
-  commonFormat: boolean,
 ) {
   const formats = {
-    ImageItem: {
-      nextGen: 'webp',
-      common: 'jpeg',
-    },
-    VideoItem: {
-      nextGen: 'webm',
-      common: 'mp4',
-    },
-    GifItem: {
-      nextGen: 'webm',
-      common: 'mp4',
-    },
+    ImageItem: 'jpeg',
+    VideoItem: 'mp4',
+    GifItem: 'mp4',
   }
 
   if (!path) {
@@ -58,9 +48,7 @@ export function getConvertedSrcPath(
 
   const suffix = formats[format as keyof typeof formats]
 
-  return getResourceUrl(
-    `${path}.${commonFormat ? suffix?.common : suffix?.nextGen}`,
-  )
+  return getResourceUrl(`${path}.${suffix}`)
 }
 
 // same function but without adding the suffix

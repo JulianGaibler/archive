@@ -49,26 +49,34 @@ export default class {
 
     const apollo = new ApolloServer<Context>({
       schema,
-      // formatError: (err) => {
-      //   if (err.originalError instanceof ValidationError) {
-      //     const newErr = new ValidationInputError(err.originalError)
-      //     return new GraphQLError(
-      //       newErr.message,
-      //       err.nodes,
-      //       err.source,
-      //       err.positions,
-      //       err.path,
-      //       newErr,
-      //       newErr.extensions,
-      //     )
-      //   }
+      formatError: (err) => {
+        console.error('--------- formatError ---------')
+        // if (err.originalError instanceof ValidationError) {
+        //   const newErr = new ValidationInputError(err.originalError)
+        //   return new GraphQLError(
+        //     newErr.message,
+        //     err.nodes,
+        //     err.source,
+        //     err.positions,
+        //     err.path,
+        //     newErr,
+        //     newErr.extensions,
+        //   )
+        // }
 
-      //   if (process.env.NODE_ENV !== 'development') {
-      //     delete err.extensions.exception
-      //   }
+        if (process.env.NODE_ENV !== 'development' && err.extensions) {
+          delete err.extensions.stacktrace
+        }
 
-      //   return err
-      // },
+        console.error('GraphQL Error:', JSON.stringify(err, null, 2))
+        console.error(
+          'GraphQL originalError:',
+          'originalError' in err && JSON.stringify(err.originalError, null, 2),
+        )
+
+        console.error('--------- END ---------')
+        return err
+      },
       plugins: [
         env.NODE_ENV === 'development'
           ? ApolloServerPluginLandingPageLocalDefault({
