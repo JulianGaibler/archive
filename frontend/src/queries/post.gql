@@ -49,9 +49,9 @@ mutation createPost($title: String!, $language: Language!, $keywords: [ID!]) {
 
 mutation editPost(
   $id: ID!
-  $title: String
-  $keywords: [ID!]
-  $language: Language
+  $title: String!
+  $keywords: [ID!]!
+  $language: Language!
   $items: [EditItemInput!]
   $newItems: [NewItemInput!]
 ) {

@@ -280,10 +280,10 @@ export type MutationDeletePostArgs = {
 export type MutationEditPostArgs = {
   id: Scalars['ID']['input'];
   items?: InputMaybe<Array<EditItemInput>>;
-  keywords?: InputMaybe<Array<Scalars['ID']['input']>>;
-  language?: InputMaybe<Language>;
+  keywords: Array<Scalars['ID']['input']>;
+  language: Language;
   newItems?: InputMaybe<Array<NewItemInput>>;
-  title?: InputMaybe<Scalars['String']['input']>;
+  title: Scalars['String']['input'];
 };
 
 
@@ -783,9 +783,9 @@ export type CreatePostMutation = { __typename?: 'Mutation', createPost: { __type
 
 export type EditPostMutationVariables = Exact<{
   id: Scalars['ID']['input'];
-  title?: InputMaybe<Scalars['String']['input']>;
-  keywords?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
-  language?: InputMaybe<Language>;
+  title: Scalars['String']['input'];
+  keywords: Array<Scalars['ID']['input']> | Scalars['ID']['input'];
+  language: Language;
   items?: InputMaybe<Array<EditItemInput> | EditItemInput>;
   newItems?: InputMaybe<Array<NewItemInput> | NewItemInput>;
 }>;
@@ -1137,7 +1137,7 @@ export const CreatePostDocument = gql`
 }
     ${PostDataFragmentDoc}`;
 export const EditPostDocument = gql`
-    mutation editPost($id: ID!, $title: String, $keywords: [ID!], $language: Language, $items: [EditItemInput!], $newItems: [NewItemInput!]) {
+    mutation editPost($id: ID!, $title: String!, $keywords: [ID!]!, $language: Language!, $items: [EditItemInput!], $newItems: [NewItemInput!]) {
   editPost(
     id: $id
     title: $title

@@ -56,13 +56,13 @@ const editPost: GraphQLFieldConfig<any, any, any> = {
       type: new GraphQLNonNull(GraphQLID),
     },
     title: {
-      type: GraphQLString,
+      type: new GraphQLNonNull(GraphQLString),
     },
     keywords: {
-      type: new GraphQLList(new GraphQLNonNull(GraphQLID)),
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLID))),
     },
     language: {
-      type: Language,
+      type: new GraphQLNonNull(Language),
     },
     items: {
       description: 'Optional array of items with description and caption.',
@@ -75,8 +75,8 @@ const editPost: GraphQLFieldConfig<any, any, any> = {
     },
   },
   resolve: async (_parent, args, ctx: Context) => {
-    let keywords = args.keywords !== undefined ? [] : undefined
-    if (args.keywords !== undefined && args.keywords.length > 0) {
+    let keywords = []
+    if (args.keywords.length > 0) {
       keywords = args.keywords.map((hashId: string) =>
         HashId.decode(keywordHashType, hashId),
       )
