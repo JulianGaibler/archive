@@ -1,6 +1,6 @@
 import { nodeDefinitions } from 'graphql-relay'
 import Context from '@src/Context.js'
-import HashId, { HashIdTypes } from '../HashId.js'
+import HashId, { HashIdTypes } from '../../../models/HashId.js'
 
 import PostActions from '@src/actions/PostActions.js'
 import SessionActions from '@src/actions/SessionActions.js'

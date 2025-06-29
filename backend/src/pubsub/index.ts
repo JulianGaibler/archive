@@ -77,7 +77,7 @@ export class PostgresPubSub extends PubSub {
       ssl: options.ssl,
     }
 
-    this.pgListen = pgListen(
+    this.pgListen = (pgListen as any)(
       pgClientConfig,
       pgListenOptions,
     ) as PgListenInstance

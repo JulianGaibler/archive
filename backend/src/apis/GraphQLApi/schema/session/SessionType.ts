@@ -6,7 +6,7 @@ import {
 } from 'graphql'
 import { connectionDefinitions } from 'graphql-relay'
 import Context from '@src/Context.js'
-import { HashIdTypes } from '../../HashId.js'
+import { HashIdTypes } from '../../../../models/HashId.js'
 import { nodeInterface } from '../node.js'
 import { DateTime, globalIdField } from '../types.js'
 import UserType from '../user/UserType.js'

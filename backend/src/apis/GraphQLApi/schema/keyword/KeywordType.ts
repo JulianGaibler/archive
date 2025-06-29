@@ -10,7 +10,7 @@ import {
   connectionFromArraySlice,
   cursorToOffset,
 } from 'graphql-relay'
-import { HashIdTypes } from '../../HashId.js'
+import { HashIdTypes } from '../../../../models/HashId.js'
 import { nodeInterface } from '../node.js'
 import { postConnection } from '../post/PostType.js'
 import { globalIdField } from '../types.js'

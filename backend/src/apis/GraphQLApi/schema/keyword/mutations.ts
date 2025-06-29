@@ -7,7 +7,7 @@ import {
 
 import KeywordType, { keywordHashType } from './KeywordType.js'
 import Context from '@src/Context.js'
-import HashId from '../../HashId.js'
+import HashId from '../../../../models/HashId.js'
 import KeywordActions from '@src/actions/KeywordActions.js'
 
 export const createKeyword: GraphQLFieldConfig<any, any, any> = {

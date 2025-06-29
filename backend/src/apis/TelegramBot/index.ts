@@ -3,14 +3,15 @@ import { Telegraf } from 'telegraf'
 
 import { RequestError } from '@src/errors/index.js'
 
-import ItemModel from '@src/models/ItemModel.js'
+import { ItemExternal } from '@src/models/ItemModel.js'
 
 import UserActions from '@src/actions/UserActions.js'
 import ItemActions from '@src/actions/ItemActions.js'
 import Context from '@src/Context.js'
 import env from '@src/utils/env.js'
-import HashId from '@src/apis/GraphQLApi/HashId.js'
+import HashId from '@src/models/HashId.js'
 import { itemHashType } from '@src/apis/GraphQLApi/schema/item/ItemType.js'
+import UserModel from '@src/models/UserModel.js'
 
 const BOT_TOKEN = env.BACKEND_TELEGRAM_BOT_TOKEN
 const SECRET = BOT_TOKEN ? createHash('sha256').update(BOT_TOKEN).digest() : ''
@@ -276,7 +277,9 @@ async function middleware(
     }
 
     // Create context - if user exists, create authenticated context, otherwise unauthenticated
-    const ctx = user ? Context.createPrivilegedContextWithUser(user.id) : null
+    const ctx = user
+      ? Context.createPrivilegedContextWithUser(UserModel.decodeId(user.id))
+      : null
 
     return await next(ctx, msgCtx)
   } catch (error) {
@@ -459,8 +462,8 @@ function cursorToOffset(cursor: string): number {
 }
 
 /** @param items */
-function convertToInlineQueryResult(items: ItemModel[]) {
-  return items.map((item: ItemModel) => {
+function convertToInlineQueryResult(items: ItemExternal[]) {
+  return items.map((item: ItemExternal) => {
     // Use post title as the main title, with item description as secondary info
     const title = item.post?.title || item.description || 'Untitled'
 

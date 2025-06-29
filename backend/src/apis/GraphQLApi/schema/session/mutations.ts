@@ -7,7 +7,7 @@ import {
 import Context from '@src/Context.js'
 
 import SessionActions from '@src/actions/SessionActions.js'
-import HashId from '../../HashId.js'
+import HashId from '../../../../models/HashId.js'
 import { sessionHashType } from './SessionType.js'
 
 const revokeSession: GraphQLFieldConfig<any, any, any> = {

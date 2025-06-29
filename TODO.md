@@ -5,6 +5,7 @@
 - Move from objection to drizzle
 - Make post titles unique
 - Ensure errors are handled properly
+- Move hashID to the model / action layer
 
 # 2.2
 

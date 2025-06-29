@@ -12,7 +12,7 @@ import PostType, { postHashType } from './PostType.js'
 import { Language } from '../types.js'
 import Context from '@src/Context.js'
 
-import HashId from '../../HashId.js'
+import HashId from '../../../../models/HashId.js'
 import PostActions from '@src/actions/PostActions.js'
 import { EditItemInput, NewItemInput } from '../item/mutations.js'
 import { itemHashType } from '../item/ItemType.js'

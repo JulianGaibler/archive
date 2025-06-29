@@ -1,92 +1,115 @@
 import DataLoader from 'dataloader'
-import { Model, RelationMappings } from 'objection'
-import BaseModel from './BaseModel.js'
+import { z } from 'zod/v4'
+import { createInsertSchema } from 'drizzle-zod'
+import Con from '@src/Connection.js'
+import { session } from '@db/schema.js'
+import { inArray, sql, and } from 'drizzle-orm'
 import { SESSION_EXPIRY_TIME } from '@src/constants/SessionConstants.js'
+import { InferSelectModel } from 'drizzle-orm'
+import HashId, { HashIdTypes } from './HashId.js'
 
-import UserModel from './UserModel.js'
+// --- Types ---
 
-export default class SessionModel extends BaseModel {
-  /// Config
-  static tableName = 'session'
+export type SessionInternal = InferSelectModel<typeof session>
+export type SessionExternal = Omit<
+  SessionInternal,
+  | 'id'
+  | 'userId'
+  | 'tokenHash'
+  | 'secretVersion'
+  | 'lastTokenRotation'
+  | 'secureSessionId'
+> & { id: string; userId: string; current: boolean }
 
-  /// Attributes
-  readonly id!: number
-  readonly secureSessionId!: string
-  readonly tokenHash!: string
-  readonly secretVersion!: number
-  readonly lastTokenRotation!: number
-  readonly userId!: number
-  readonly userAgent!: string
-  readonly firstIp!: string
-  readonly latestIp!: string
+// --- Schema and Validation ---
 
-  user!: UserModel | null
+const insertSchema = createInsertSchema(session, {
+  secureSessionId: z.string(),
+  tokenHash: z.string(),
+  secretVersion: z.number(),
+  lastTokenRotation: z.number(),
+  userId: z.number().nullable(),
+  userAgent: z.string(),
+  firstIp: z.string(),
+  latestIp: z.string(),
+})
 
-  /// Schema
-  static jsonSchema = {
-    type: 'object',
-
-    properties: {
-      id: { type: 'number' },
-      secureSessionId: { type: 'string' },
-      tokenHash: { type: 'string' },
-      secretVersion: { type: 'number' },
-      lastTokenRotation: { type: 'number' },
-      userId: { type: ['number', 'null'] },
-      userAgent: { type: 'string' },
-      firstIP: { type: 'string' },
-      latestIP: { type: 'string' },
-    },
+function decodeId(stringId: string): number {
+  return HashId.decode(HashIdTypes.SESSION, stringId)
+}
+function encodeId(id: number): string {
+  return HashId.encode(HashIdTypes.SESSION, id)
+}
+function makeExternal(session: SessionInternal): SessionExternal {
+  const {
+    id,
+    tokenHash,
+    secretVersion,
+    lastTokenRotation,
+    secureSessionId,
+    ...externalSession
+  } = session
+  return {
+    current: false,
+    ...externalSession,
+    id: encodeId(id),
+    userId: HashId.encode(HashIdTypes.USER, session.userId),
   }
+}
 
-  /// Relations
-  static relationMappings: RelationMappings = {
-    user: {
-      relation: Model.BelongsToOneRelation,
-      modelClass: 'UserModel',
-      join: {
-        from: 'session.userId',
-        to: 'user.id',
-      },
-    },
-  }
+export default {
+  table: session,
+  insertSchema,
+  decodeId,
+  encodeId,
+  makeExternal,
+}
 
-  /// Loaders
-  static getLoaders() {
-    const getById = new DataLoader<number, SessionModel>(
-      SessionModel.sessionsByIds,
+// --- Loaders ---
+
+export function getLoaders() {
+  const getById = new DataLoader<number, SessionInternal | undefined>(
+    sessionsByIds,
+  )
+  const getByUser = new DataLoader<number, SessionInternal[]>(sessionsByUsers)
+  return { getById, getByUser }
+}
+
+async function sessionsByIds(
+  sessionIds: readonly number[],
+): Promise<(SessionInternal | undefined)[]> {
+  const db = Con.getDB()
+  const sessions = await db
+    .select()
+    .from(session)
+    .where(inArray(session.id, sessionIds as number[]))
+
+  const sessionMap: { [key: string]: SessionInternal } = {}
+  sessions.forEach((s) => {
+    sessionMap[s.id] = s
+  })
+
+  return sessionIds.map((id) => sessionMap[id])
+}
+
+async function sessionsByUsers(
+  userIds: readonly number[],
+): Promise<SessionInternal[][]> {
+  const db = Con.getDB()
+  const now = Date.now()
+  const minUpdatedAt = now - SESSION_EXPIRY_TIME
+  const sessions = await db
+    .select()
+    .from(session)
+    .where(
+      and(
+        inArray(session.userId, userIds as number[]),
+        sql`${session.updatedAt} >= ${minUpdatedAt}`,
+      ),
     )
-    const getByUser = new DataLoader<number, SessionModel[]>(
-      SessionModel.sessionsByUsers,
-    )
-    return { getById, getByUser }
-  }
+    .orderBy(sql`${session.updatedAt} DESC`)
 
-  private static async sessionsByIds(
-    sessionIds: readonly number[],
-  ): Promise<SessionModel[]> {
-    const sessions = await SessionModel.query().findByIds(
-      sessionIds as number[],
-    )
-
-    const sessionMap: { [key: string]: SessionModel } = {}
-    sessions.forEach((session) => {
-      sessionMap[session.id] = session
-    })
-
-    return sessionIds.map((id) => sessionMap[id])
-  }
-
-  private static async sessionsByUsers(
-    userIds: readonly number[],
-  ): Promise<SessionModel[][]> {
-    const sessions = await SessionModel.query()
-      .orderBy('updatedAt', 'desc')
-      .whereIn('userId', userIds as number[])
-      .andWhere('updatedAt', '>=', Date.now() - SESSION_EXPIRY_TIME)
-
-    return userIds.map((id) => sessions.filter((s) => s.userId === id))
-  }
-
-  static modelPaths = [new URL('.', import.meta.url).pathname]
+  return userIds.map((id) =>
+    sessions.filter((s: SessionInternal) => s.userId === id),
+  )
 }

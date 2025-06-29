@@ -1,8 +1,8 @@
 import { GraphQLError } from 'graphql'
-import { ValidationError } from 'objection'
 
 export default class ValidationInputError extends GraphQLError {
-  constructor(validationError: ValidationError) {
+  constructor(validationError: any) {
+    throw new Error('ValidationInputError has to be updated.')
     super(validationError.message, {
       extensions: {
         code: 'INPUT_ERROR',

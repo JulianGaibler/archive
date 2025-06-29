@@ -5,7 +5,7 @@ import {
   GraphQLObjectType,
   GraphQLString,
 } from 'graphql'
-import { HashIdTypes } from '../../HashId.js'
+import { HashIdTypes } from '../../../../models/HashId.js'
 import { connectionDefinitions } from 'graphql-relay'
 import { nodeInterface } from '../node.js'
 import PostType from '../post/PostType.js'

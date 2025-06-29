@@ -5,7 +5,7 @@ import {
   GraphQLString,
 } from 'graphql'
 import { withFilter } from 'graphql-subscriptions'
-import HashId from '../../HashId.js'
+import HashId from '../../../../models/HashId.js'
 import Context from '@src/Context.js'
 import { TaskUpdate } from './TaskType.js'
 

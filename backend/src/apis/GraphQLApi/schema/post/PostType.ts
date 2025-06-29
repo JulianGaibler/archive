@@ -5,7 +5,7 @@ import {
   GraphQLObjectType,
   GraphQLString,
 } from 'graphql'
-import { HashIdTypes } from '../../HashId.js'
+import { HashIdTypes } from '../../../../models/HashId.js'
 import KeywordType from '../keyword/KeywordType.js'
 import { itemConnection } from '../item/ItemType.js'
 import UserType from '../user/UserType.js'

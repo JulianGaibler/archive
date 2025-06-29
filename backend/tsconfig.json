@@ -4,8 +4,8 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "baseUrl": ".",
     "outDir": "./dist",
     "removeComments": true,
@@ -14,7 +14,8 @@
     "strict": true,
     "skipLibCheck": true,
     "paths": {
-      "@src/*": ["src/*"]
+      "@src/*": ["src/*"],
+      "@db/*": ["db/*"]
     }
   },
   "include": ["src/**/*"],

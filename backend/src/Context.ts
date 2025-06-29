@@ -1,6 +1,7 @@
 import { AuthenticationError } from './errors/index.js'
 import express from 'express'
 import cookie from 'cookie'
+import { DbConnection } from '@src/Connection.js'
 
 import {
   ItemModel,
@@ -43,10 +44,12 @@ type ConstructorObj =
 export default class Context {
   static fileStorage: FileStorage
   static pubSub: PostgresPubSub
+  static db: DbConnection
 
   type: 'http' | 'websocket' | 'privileged'
   req: express.Request | null
   res: express.Response | null
+  db: DbConnection
   // Internal user ID
   private userIId: number | null
   // Internal session ID (database ID, not secure session ID)
@@ -65,6 +68,7 @@ export default class Context {
     this.lastAuthCheck = null
     this.tmp = {}
     this._dataloaders = {}
+    this.db = Context.db
   }
 
   static async createContext(args: ConstructorObj) {
@@ -78,12 +82,15 @@ export default class Context {
           ? newContext.req.headers['user-agent']
           : ''
 
-        const verifyResult = await SessionActions.qVerify({
-          secureSessionId: cookies.secureSessionId,
-          token: cookies.token,
-          userAgent,
-          latestIp: newContext.req.ip || '',
-        })
+        const verifyResult = await SessionActions._qVerify(
+          {
+            secureSessionId: cookies.secureSessionId,
+            token: cookies.token,
+            userAgent,
+            latestIp: newContext.req.ip || '',
+          },
+          Context.db,
+        )
 
         if (verifyResult) {
           newContext.userIId = verifyResult.userId
@@ -117,12 +124,15 @@ export default class Context {
           newContext.tmp.token = cookies[AUTH_COOKIE_NAME]
           newContext.tmp.userAgent = userAgent
 
-          const verifyResult = await SessionActions.qVerify({
-            secureSessionId: cookies[SESSION_COOKIE_NAME],
-            token: cookies[AUTH_COOKIE_NAME],
-            userAgent,
-            latestIp: undefined,
-          })
+          const verifyResult = await SessionActions._qVerify(
+            {
+              secureSessionId: cookies[SESSION_COOKIE_NAME],
+              token: cookies[AUTH_COOKIE_NAME],
+              userAgent,
+              latestIp: undefined,
+            },
+            Context.db,
+          )
 
           if (verifyResult) {
             newContext.userIId = verifyResult.userId
@@ -196,12 +206,15 @@ export default class Context {
     }
     if (Date.now() - this.lastAuthCheck > 5 * 60 * 1000) {
       // recheck the token
-      const verifyResult = await SessionActions.qVerify({
-        secureSessionId: this.tmp.secureSessionId,
-        token: this.tmp.token,
-        userAgent: this.tmp.userAgent,
-        latestIp: undefined,
-      })
+      const verifyResult = await SessionActions._qVerify(
+        {
+          secureSessionId: this.tmp.secureSessionId,
+          token: this.tmp.token,
+          userAgent: this.tmp.userAgent,
+          latestIp: undefined,
+        },
+        Context.db,
+      )
       if (!verifyResult || verifyResult.userId !== this.userIId) {
         throw new AuthenticationError()
       }

@@ -1,17 +1,41 @@
+import { eq, sql } from 'drizzle-orm'
+import { item } from '@db/schema.js'
+import ItemModel, { ItemExternal, ItemInternal } from '@src/models/ItemModel.js'
 import Context from '@src/Context.js'
 import ActionUtils from './ActionUtils.js'
-import ItemModel from '@src/models/ItemModel.js'
 
-export default class {
+export default class ItemActions {
   /// Queries
-  static async qItem(ctx: Context, fields: { itemId: number }) {
+  static async qItem(
+    ctx: Context,
+    fields: { itemId: ItemExternal['id'] },
+  ): Promise<ItemExternal | undefined> {
     ctx.isAuthenticated()
-    return ctx.dataLoaders.item.getById.load(fields.itemId)
+    const id = ItemModel.decodeId(fields.itemId)
+    const db = ctx.db
+    const [itm] = await db.select().from(item).where(eq(item.id, id))
+    if (!itm) return undefined
+    ctx.dataLoaders.item.getById.prime(itm.id, itm)
+    return ItemModel.makeExternal(itm)
   }
 
-  static async qItemsByPost(ctx: Context, fields: { postId: number }) {
+  static async qItemsByPost(
+    ctx: Context,
+    fields: { postId: string },
+  ): Promise<ItemExternal[]> {
     ctx.isAuthenticated()
-    return ctx.dataLoaders.item.getByPost.load(fields.postId)
+    // Assume postId is external string, decode to number
+    const postId = parseInt(fields.postId, 10)
+    const db = ctx.db
+    const itemsResult = await db
+      .select()
+      .from(item)
+      .where(eq(item.postId, postId))
+      .orderBy(item.position)
+    itemsResult.forEach((itm) =>
+      ctx.dataLoaders.item.getById.prime(itm.id, itm),
+    )
+    return itemsResult.map(ItemModel.makeExternal)
   }
 
   static async qItems(
@@ -21,143 +45,95 @@ export default class {
       offset?: number
       byContent?: string
     },
-  ) {
+  ): Promise<{
+    data: ItemExternal[]
+    totalSearchCount: number
+    totalCount: number
+  }> {
     ctx.isAuthenticated()
     const { limit, offset } = ActionUtils.getLimitOffset(fields)
-
-    const query = ItemModel.query()
-      .withGraphFetched('post.[keywords]')
-      .joinRelated('post')
-      .orderBy('item.createdAt', 'desc')
-
-    let countQuery = ItemModel.query().joinRelated('post')
-
+    const db = ctx.db
+    let itemsResult: ItemInternal[] = []
+    let totalSearchCount = 0
+    let totalCount = 0
     if (fields.byContent && fields.byContent.trim().length > 0) {
       const tsQuery = fields.byContent
-
-      const searchJoin = `
-      INNER JOIN (
-        -- Use the existing item_search_view for searching
-        WITH ts_results AS (
-          SELECT
-            post_id,
-            MAX(ts_rank(text, websearch_to_tsquery('english_nostop', ?))) as rank_score
-          FROM item_search_view
-          WHERE text @@ websearch_to_tsquery('english_nostop', ?)
-          GROUP BY post_id
-        ),
-        ilike_results AS (
-          SELECT
-            v.post_id,
-            0.1 as rank_score
-          FROM item_search_view v
-          LEFT JOIN ts_results t ON v.post_id = t.post_id
-          WHERE v.plain_text ILIKE ?
-          AND t.post_id IS NULL  -- Exclude posts already found by ts_vector
-          GROUP BY v.post_id
-        )
-        -- Combine results with proper search type assignment
-        SELECT
-          post_id,
-          1 as search_type,
-          rank_score
-        FROM ts_results
-        UNION ALL
-        SELECT
-          post_id,
-          2 as search_type,
-          rank_score
-        FROM ilike_results
-      ) b ON b.post_id = post.id
-    `
-
-      query
-        .joinRaw(searchJoin, [tsQuery, tsQuery, `%${tsQuery}%`])
-        .orderByRaw('b.search_type, b.rank_score DESC')
-
-      // For count query, we need to count distinct items after the search join
-      countQuery = countQuery
-        .joinRaw(searchJoin, [tsQuery, tsQuery, `%${tsQuery}%`])
-        .countDistinct('item.id as count')
+      // Use raw SQL for full-text search on item_search_view
+      const searchStatement = sql`SELECT i.* FROM item i
+        JOIN post p ON i.post_id = p.id
+        JOIN (
+          WITH ts_results AS (
+            SELECT post_id, MAX(ts_rank(text, websearch_to_tsquery('english_nostop', ${tsQuery}))) as rank_score
+            FROM item_search_view
+            WHERE text @@ websearch_to_tsquery('english_nostop', ${tsQuery})
+            GROUP BY post_id
+          ),
+          ilike_results AS (
+            SELECT v.post_id, 0.1 as rank_score
+            FROM item_search_view v
+            LEFT JOIN ts_results t ON v.post_id = t.post_id
+            WHERE v.plain_text ILIKE ${`%${tsQuery}%`} AND t.post_id IS NULL
+            GROUP BY v.post_id
+          )
+          SELECT post_id, 1 as search_type, rank_score FROM ts_results
+          UNION ALL
+          SELECT post_id, 2 as search_type, rank_score FROM ilike_results
+        ) b ON b.post_id = p.id
+        ORDER BY b.search_type, b.rank_score DESC, i.created_at DESC
+        LIMIT ${limit} OFFSET ${offset}`
+      const searchResults = await db.execute(searchStatement)
+      itemsResult = searchResults.rows as ItemInternal[]
+      // Get totalSearchCount
+      const countStatement = sql`SELECT COUNT(DISTINCT i.id) as count FROM item i
+        JOIN post p ON i.post_id = p.id
+        JOIN (
+          WITH ts_results AS (
+            SELECT post_id, MAX(ts_rank(text, websearch_to_tsquery('english_nostop', ${tsQuery}))) as rank_score
+            FROM item_search_view
+            WHERE text @@ websearch_to_tsquery('english_nostop', ${tsQuery})
+            GROUP BY post_id
+          ),
+          ilike_results AS (
+            SELECT v.post_id, 0.1 as rank_score
+            FROM item_search_view v
+            LEFT JOIN ts_results t ON v.post_id = t.post_id
+            WHERE v.plain_text ILIKE ${`%${tsQuery}%`} AND t.post_id IS NULL
+            GROUP BY v.post_id
+          )
+          SELECT post_id, 1 as search_type, rank_score FROM ts_results
+          UNION ALL
+          SELECT post_id, 2 as search_type, rank_score FROM ilike_results
+        ) b ON b.post_id = p.id`
+      const countResult = await db.execute(countStatement)
+      totalSearchCount = parseInt(
+        (countResult.rows[0]?.count as string) || '0',
+        10,
+      )
+      // Get totalCount (all items)
+      const totalCountResult = await db
+        .select({ count: sql`count(*)::int` })
+        .from(item)
+      totalCount = Number(totalCountResult[0]?.count || 0)
     } else {
-      // Simple count when no search
-      countQuery = countQuery.count('item.id as count')
-    }
-
-    const [data, totalSearchCount, totalCount] = await Promise.all([
-      query
-        .clone()
+      itemsResult = await db
+        .select()
+        .from(item)
+        .orderBy(sql`${item.createdAt} desc`)
         .limit(limit)
         .offset(offset)
-        .execute()
-        .then((rows) => {
-          rows.forEach((x) => ctx.dataLoaders.item.getById.prime(x.id, x))
-          return rows
-        }),
-      countQuery.execute().then((x) => {
-        if (fields.byContent && fields.byContent.trim().length > 0) {
-          return parseInt((x[0] as any).count, 10)
-        }
-        return (x as any).reduce(
-          (acc: any, val: any) => acc + parseInt(val.count, 10),
-          0,
-        )
-      }),
-      ItemModel.query()
-        .count()
-        .then((x) => (x[0] as any).count),
-    ])
-
-    return { data, totalSearchCount, totalCount }
+      const countResult = await db
+        .select({ count: sql`count(*)::int` })
+        .from(item)
+      totalCount = Number(countResult[0]?.count || 0)
+      totalSearchCount = totalCount
+    }
+    itemsResult.forEach((itm) =>
+      ctx.dataLoaders.item.getById.prime(itm.id, itm),
+    )
+    return {
+      data: itemsResult.map(ItemModel.makeExternal),
+      totalSearchCount,
+      totalCount,
+    }
   }
-
-  // static async mCreate(
-  //   ctx: Context,
-  //   fields: {
-  //     postId: number
-  //     caption?: string
-  //     description?: string
-  //     type?: string
-  //     relHeight: number
-  //     compressedPath: string
-  //     thumbnailPath: string
-  //     originalPath: string
-  //   },
-  // ) {
-  //   ctx.isPrivileged()
-  //   return ItemModel.query().insert({
-  //     postId: fields.postId,
-  //     caption: fields.caption,
-  //     description: fields.description,
-  //     type: fields.type,
-  //     relativeHeight: fields.relHeight,
-  //     compressedPath: fields.compressedPath,
-  //     thumbnailPath: fields.thumbnailPath,
-  //     originalPath: fields.originalPath,
-  //   })
-  // }
-
-  // static async mUpdate(ctx: Context, fields: { itemId: number; changes: any }) {
-  //   ctx.isAuthenticated()
-  //   return ItemModel.query()
-  //     .findById(fields.itemId)
-  //     .patchAndFetch(fields.changes)
-  // }
-
-  // static async mDelete(ctx: Context, fields: { itemIds: number[] }) {
-  //   const userIId = ctx.isAuthenticated()
-
-  //   const items = await ItemModel.query()
-  //     .findByIds(fields.itemIds)
-  //     .withGraphFetched('post')
-  //   items.forEach((item: ItemModel) => {
-  //     if (item.post?.id !== userIId) {
-  //       throw new AuthorizationError('You cannot delete posts of other users.')
-  //     }
-  //   })
-  //   await Context.fileStorage.deleteFiles(items)
-
-  //   await ItemModel.query().findByIds(fields.itemIds).delete()
-  //   return true
-  // }
 }

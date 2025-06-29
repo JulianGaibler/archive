@@ -31,7 +31,10 @@ const signup: GraphQLFieldConfig<any, any, any> = {
     },
   },
   resolve: async (_parent, args, ctx: Context) => {
-    const { sessionId, token } = await UserActions.mSignup(ctx, args)
+    const { secureSessionId: sessionId, token } = await UserActions.mSignup(
+      ctx,
+      args,
+    )
     AuthCookieUtils.setAuthCookies(ctx.res!, sessionId, token)
     return true
   },
@@ -51,7 +54,10 @@ const login: GraphQLFieldConfig<any, any, any> = {
     },
   },
   resolve: async (_parent, args, ctx: Context) => {
-    const { sessionId, token } = await UserActions.mLogin(ctx, args)
+    const { secureSessionId: sessionId, token } = await UserActions.mLogin(
+      ctx,
+      args,
+    )
     AuthCookieUtils.setAuthCookies(ctx.res!, sessionId, token)
     return true
   },

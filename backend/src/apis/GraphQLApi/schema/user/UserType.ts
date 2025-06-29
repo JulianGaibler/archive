@@ -10,7 +10,7 @@ import {
   connectionDefinitions,
   connectionFromArray,
 } from 'graphql-relay'
-import { HashIdTypes } from '../../HashId.js'
+import { HashIdTypes } from '../../../../models/HashId.js'
 import Context from '@src/Context.js'
 import { nodeInterface } from '../node.js'
 import { globalIdField } from '../types.js'

@@ -6,7 +6,7 @@ import {
   GraphQLScalarType,
   Kind,
 } from 'graphql'
-import HashId from '../HashId.js'
+import HashId from '../../../models/HashId.js'
 /// /
 // Scalars
 

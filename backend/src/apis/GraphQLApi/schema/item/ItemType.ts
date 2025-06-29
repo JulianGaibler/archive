@@ -8,7 +8,7 @@ import {
   GraphQLInterfaceType,
   GraphQLFieldResolver,
 } from 'graphql'
-import { HashIdTypes } from '../../HashId.js'
+import { HashIdTypes } from '../../../../models/HashId.js'
 import PostType from '../post/PostType.js'
 import { connectionDefinitions } from 'graphql-relay'
 import { DateTime, globalIdField } from '../types.js'
@@ -19,21 +19,25 @@ import PostActions from '@src/actions/PostActions.js'
 import UserActions from '@src/actions/UserActions.js'
 import UserType from '../user/UserType.js'
 import { TaskStatus } from '../task/TaskType.js'
+import { Post } from '@src/models/Post.js'
+import { User } from '@src/models/User.js'
 
 export const itemHashType = HashIdTypes.ITEM
 
 // Resolvers
-export const resolvePost: GraphQLFieldResolver<any, Context> = (
-  item,
-  _args,
-  ctx,
-) => PostActions.qPost(ctx, item.postId)
+export const resolvePost: GraphQLFieldResolver<
+  { postId: string },
+  Context,
+  unknown,
+  Promise<Post | null>
+> = (item, _args, ctx) => PostActions.qPost(ctx, item.postId)
 
-export const resolveCreator: GraphQLFieldResolver<any, Context> = (
-  item,
-  _args,
-  ctx,
-) => UserActions.qUser(ctx, { userId: item.creatorId })
+export const resolveCreator: GraphQLFieldResolver<
+  { creatorId: string },
+  Context,
+  unknown,
+  Promise<User | null>
+> = (item, _args, ctx) => UserActions.qUser(ctx, { userId: item.creatorId })
 
 // Item Interface
 export const ItemInterface: GraphQLInterfaceType = new GraphQLInterfaceType({
@@ -55,7 +59,7 @@ export const ItemInterface: GraphQLInterfaceType = new GraphQLInterfaceType({
     updatedAt: { type: new GraphQLNonNull(DateTime) },
     createdAt: { type: new GraphQLNonNull(DateTime) },
   }),
-  resolveType: (item) => {
+  resolveType: (item: { type: string }) => {
     switch (item.type) {
       case 'PROCESSING':
         return 'ProcessingItem'

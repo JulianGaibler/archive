@@ -14,7 +14,7 @@ import { Format, Language } from '../types.js'
 import { postConnection } from './PostType.js'
 import { keywordHashType } from '../keyword/KeywordType.js'
 
-import HashId from '../../HashId.js'
+import HashId from '../../../../models/HashId.js'
 import Context from '@src/Context.js'
 
 import PostActions from '@src/actions/PostActions.js'

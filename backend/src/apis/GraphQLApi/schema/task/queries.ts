@@ -12,7 +12,7 @@ import {
 import { taskConnection, TaskStatus } from './TaskType.js'
 import { userHashType } from '../user/UserType.js'
 
-import HashId from '../../HashId.js'
+import HashId from '../../../../models/HashId.js'
 import Context from '@src/Context.js'
 
 import TaskActions from '@src/actions/TaskActions.js'

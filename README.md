@@ -8,7 +8,7 @@ Archive is structured as a monorepo containing:
 
 - **Backend** (`/backend`): Node.js/TypeScript GraphQL API server
   - Express.js with Apollo Server
-  - PostgreSQL database with Knex.js/Objection.js ORM
+  - PostgreSQL database with Drizzle ORM and node-pg-migrate
   - File processing with Sharp and FFmpeg
   - GraphQL subscriptions via WebSockets
 
