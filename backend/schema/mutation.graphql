@@ -1,0 +1,283 @@
+input EditItemInput {
+  """
+  The ID of the item to edit.
+  """
+  id: ID!
+  description: String
+  caption: String
+}
+
+input NewItemInput {
+  """
+  The file to upload.
+  """
+  file: Upload!
+  description: String
+  caption: String
+}
+
+type Mutation {
+  """
+  Creates a new keyword.
+  """
+  createKeyword(
+    """
+    Name of the keyword.
+    """
+    name: String!
+  ): Keyword!
+
+  """
+  Deleted a keyword.
+  """
+  deleteKeyword(
+    """
+    The ID of the keyword to delete.
+    """
+    keywordId: String!
+  ): Boolean!
+
+  """
+  Creates a new Post
+  """
+  createPost(
+    """
+    Title of the post.
+    """
+    title: String!
+
+    """
+    Language in which title and caption are written in.
+    """
+    language: Language!
+
+    """
+    Optional keyword-IDs to be associated with that post.
+    """
+    keywords: [ID!]
+  ): Post!
+
+  """
+  Edits a post.
+  """
+  editPost(
+    """
+    The ID of the post to edit.
+    """
+    postId: ID!
+    title: String!
+    keywords: [ID!]!
+    language: Language!
+
+    """
+    Optional array of items with description and caption.
+    """
+    items: [EditItemInput!]
+
+    """
+    Optional array of new items with file, description and caption.
+    """
+    newItems: [NewItemInput!]
+  ): Post!
+
+  """
+  Deletes a post and all its associated items and files.
+  Returns the ID of the deleted post.
+  """
+  deletePost(
+    """
+    The ID of the post to delete.
+    """
+    postId: ID!
+  ): ID!
+
+  """
+  Deletes an item from a post and reorders remaining items.
+  Returns the ID of the deleted item.
+  """
+  deleteItem(
+    """
+    The ID of the item to delete.
+    """
+    itemId: ID!
+  ): ID!
+
+  """
+  Reorders an item within a post to a new position.
+  Returns the new position of the item.
+  """
+  reorderItem(
+    """
+    The ID of the item to reorder.
+    """
+    itemId: ID!
+
+    """
+    The new position for the item (1-based index).
+    """
+    newPosition: Int!
+  ): Int!
+
+  """
+  Reorders multiple items within a post to the specified order. Items not included will be placed after the reordered items maintaining their relative positions.
+  Return all item ids on the post in the new order.
+  """
+  reorderItems(
+    """
+    Array of item IDs in the desired order.
+    """
+    itemIds: [ID!]!
+
+    """
+    The ID of the post containing the items to reorder.
+    """
+    postId: ID!
+  ): [ID!]!
+
+  """
+  Merges one post into another, moving all items and optionally keywords.
+  Returns the number of items merged.
+  """
+  mergePost(
+    """
+    The ID of the post to be merged (will be deleted).
+    """
+    sourcePostId: ID!
+
+    """
+    The ID of the post that will receive the items.
+    """
+    targetPostId: ID!
+
+    """
+    Whether to merge keywords from source to target post.
+    """
+    mergeKeywords: Boolean = false
+  ): Int!
+
+  """
+  Moves an item from one post to another.
+  Returns whether the source post was deleted.
+  """
+  moveItem(
+    """
+    The ID of the item to move.
+    """
+    itemId: ID!
+
+    """
+    The ID of the post to move the item to.
+    """
+    targetPostId: ID!
+
+    """
+    Whether to keep the source post if it becomes empty after moving the item.
+    """
+    keepEmptyPost: Boolean = false
+  ): Boolean!
+
+  """
+  Revokes the session of a user.
+  """
+  revokeSession(
+    """
+    The ID of the session to revoke.
+    """
+    sessionId: ID!
+  ): Boolean!
+
+  """
+  Creates a new user and performs a login.
+  """
+  signup(
+    """
+    The username used to login.
+    """
+    username: String!
+
+    """
+    The user's profile name.
+    """
+    name: String!
+
+    """
+    Password of the user.
+    """
+    password: String!
+  ): Boolean!
+
+  """
+  Creates a new session for the user.
+  """
+  login(
+    """
+    The username used to login.
+    """
+    username: String!
+
+    """
+    Password of the user.
+    """
+    password: String!
+  ): Boolean!
+
+  """
+  Terminates the current users session.
+  """
+  logout: Boolean!
+
+  """
+  Associates the Telegram ID of a user with their Archive Profil.
+  """
+  linkTelegram(
+    """
+    Response from the Telegram API containing user data.
+    """
+    apiResponse: String!
+  ): Boolean!
+
+  """
+  Removed Telegram ID from Archive profile.
+  """
+  unlinkTelegram: Boolean!
+
+  """
+  Sets the profile picture of the current user.
+  """
+  uploadProfilePicture(
+    """
+    Profile picture file.
+    """
+    file: Upload!
+  ): Boolean!
+
+  """
+  Deletes the profile picture of the current user.
+  """
+  clearProfilePicture: Boolean!
+
+  """
+  Changes the name of the current user.
+  """
+  changeName(
+    """
+    New name of the user
+    """
+    newName: String!
+  ): Boolean!
+
+  """
+  Changes the password of the current user.
+  """
+  changePassword(
+    """
+    Current password of the user
+    """
+    oldPassword: String!
+
+    """
+    New password of the user.
+    """
+    newPassword: String!
+  ): Boolean!
+}

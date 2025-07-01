@@ -1,119 +1,298 @@
-import KeywordModel from '@src/models/KeywordModel.js'
+import { eq, sql, inArray, and } from 'drizzle-orm'
+import KeywordModel, {
+  KeywordExternal,
+  KeywordInternal,
+} from '@src/models/KeywordModel.js'
+import PostModel, { PostExternal } from '@src/models/PostModel.js'
 import Context from '@src/Context.js'
-import ActionUtils from './ActionUtils.js'
+import NotFoundError from '@src/errors/NotFoundError.js'
+import PaginationUtils, {
+  PaginationArgs,
+  Connection,
+} from './PaginationUtils.js'
+import AuthenticationError from '@src/errors/AuthenticationError.js'
+import { validateInput } from '@src/errors/index.js'
+import z from 'zod/v4'
 
-export default class {
+const postTable = PostModel.table
+const keywordTable = KeywordModel.table
+const keywordToPost = KeywordModel.keywordToPostTable
+
+const KeywordActions = {
   /// Queries
-  static async qKeyword(ctx: Context, fields: { keywordId: number }) {
+  async qKeyword(
+    ctx: Context,
+    fields: { keywordId: KeywordExternal['id'] },
+  ): Promise<KeywordExternal> {
     ctx.isAuthenticated()
-    return ctx.dataLoaders.keyword.getById.load(fields.keywordId)
-  }
+    const id = KeywordModel.decodeId(fields.keywordId)
+    const [kw] = await ctx.db
+      .select()
+      .from(keywordTable)
+      .where(eq(keywordTable.id, id))
+    if (!kw) {
+      throw new NotFoundError('Keyword not found.')
+    }
+    ctx.dataLoaders.keyword.getById.prime(kw.id, kw)
+    return KeywordModel.makeExternal(kw)
+  },
 
-  static async qKeywordsByPost(ctx: Context, fields: { postId: number }) {
-    ctx.isAuthenticated()
-    return ctx.dataLoaders.keyword.getByPost.load(fields.postId)
-  }
-
-  static async qKeywords(
+  async qKeywordsByPost(
     ctx: Context,
     fields: {
-      limit?: number
-      offset?: number
-      byName?: string
-      sortByPostCount?: boolean
+      postId: PostExternal['id']
     },
-  ) {
+  ): Promise<KeywordExternal[]> {
     ctx.isAuthenticated()
-    const { limit, offset } = ActionUtils.getLimitOffset(fields)
+    const postId = PostModel.decodeId(fields.postId)
+    // Join keywordToPost and keyword
+    const keywordsResult = await ctx.db
+      .select()
+      .from(keywordTable)
+      .innerJoin(keywordToPost, eq(keywordTable.id, keywordToPost.keywordId))
+      .where(eq(keywordToPost.postId, postId))
+    // keywordsResult is an array of { keyword: ..., keywordToPost: ... }
+    const keywords = keywordsResult.map((row) => row.keyword)
+    keywords.forEach((kw) => ctx.dataLoaders.keyword.getById.prime(kw.id, kw))
+    return keywords.map(KeywordModel.makeExternal)
+  },
 
-    const query = KeywordModel.query()
-
-    if (fields.byName) {
-      query.whereRaw('name ILIKE ?', `%${fields.byName}%`)
-    }
-
-    // If sorting by post count, join with posts and count them
-    if (fields.sortByPostCount) {
-      query
-        .leftJoinRelated('posts')
-        .groupBy('keyword.id')
-        .orderByRaw('COUNT(posts.id) DESC, keyword.created_at DESC')
-    } else {
-      query.orderBy('createdAt', 'desc')
-    }
-
-    const [data, totalCount] = await Promise.all([
-      query
-        .clone()
-        .limit(limit)
-        .offset(offset)
-        .execute()
-        .then((rows) => {
-          rows.forEach((x) => ctx.dataLoaders.keyword.getById.prime(x.id, x))
-          return rows
-        }),
-      // For count query, we need to handle the groupBy case differently
-      fields.sortByPostCount
-        ? KeywordModel.query()
-            .modify((builder) => {
-              if (fields.byName) {
-                builder.whereRaw('name ILIKE ?', `%${fields.byName}%`)
-              }
-            })
-            .leftJoinRelated('posts')
-            .groupBy('keyword.id')
-            .count('keyword.id as count')
-            .then((rows) => rows.length)
-        : KeywordModel.query()
-            .modify((builder) => {
-              if (fields.byName) {
-                builder.whereRaw('name ILIKE ?', `%${fields.byName}%`)
-              }
-            })
-            .count()
-            .then((x) => (x[0] as any).count),
-    ])
-    return { data, totalCount }
-  }
-
-  static async qPostsByKeyword(
+  async qKeywords(
     ctx: Context,
-    fields: { keywordId: number; limit?: number; offset?: number },
-  ) {
+    fields: {
+      postId?: PostExternal['id'] | null
+      byName?: string | null
+      sortByPostCount?: boolean | null
+    } & PaginationArgs,
+  ): Promise<Connection<KeywordExternal>> {
     ctx.isAuthenticated()
-    // Use dataloader to efficiently fetch all posts for this keyword
-    const allPosts = await ctx.dataLoaders.post.getByKeyword.load(
-      fields.keywordId,
+
+    const paginationInfo = PaginationUtils.parsePaginationArgs(fields)
+    const { limit, offset } = paginationInfo
+
+    let keywordsResult: KeywordInternal[] = []
+    let totalCount = 0
+    const whereClauses = []
+
+    // Handle postId filter
+    let needsPostJoin = false
+    if (fields.postId) {
+      const postId = PostModel.decodeId(fields.postId)
+      whereClauses.push(eq(keywordToPost.postId, postId))
+      needsPostJoin = true
+    }
+
+    // Handle byName filter
+    if (fields.byName) {
+      const search = `%${fields.byName}%`
+      whereClauses.push(sql`lower(${keywordTable.name}) like lower(${search})`)
+    }
+
+    if (fields.sortByPostCount) {
+      // Build dynamic query for sortByPostCount
+      const baseQuery = ctx.db
+        .select({
+          id: keywordTable.id,
+          name: keywordTable.name,
+          updatedAt: keywordTable.updatedAt,
+          createdAt: keywordTable.createdAt,
+          postCount: sql`count(${keywordToPost.postId})::int`,
+        })
+        .from(keywordTable)
+        .leftJoin(keywordToPost, eq(keywordToPost.keywordId, keywordTable.id))
+        .groupBy(
+          keywordTable.id,
+          keywordTable.name,
+          keywordTable.updatedAt,
+          keywordTable.createdAt,
+        )
+        .orderBy(
+          sql`count(${keywordToPost.postId}) desc, ${keywordTable.createdAt} desc`,
+        )
+
+      const dynamicQuery = baseQuery.$dynamic()
+
+      if (whereClauses.length) {
+        dynamicQuery.where(and(...whereClauses))
+      }
+
+      keywordsResult = await dynamicQuery.limit(limit).offset(offset)
+
+      // Count query for sortByPostCount
+      const countQuery = ctx.db
+        .select({ count: sql`count(distinct ${keywordTable.id})::int` })
+        .from(keywordTable)
+        .leftJoin(keywordToPost, eq(keywordToPost.keywordId, keywordTable.id))
+
+      const countDynamicQuery = countQuery.$dynamic()
+      if (whereClauses.length) {
+        countDynamicQuery.where(and(...whereClauses))
+      }
+
+      const countResult = await countDynamicQuery
+      totalCount = Number(countResult[0]?.count || 0)
+    } else {
+      // Build dynamic query for regular case
+      let baseQuery
+
+      if (needsPostJoin) {
+        // Need inner join when filtering by postId
+        baseQuery = ctx.db
+          .select()
+          .from(keywordTable)
+          .innerJoin(
+            keywordToPost,
+            eq(keywordTable.id, keywordToPost.keywordId),
+          )
+          .orderBy(sql`${keywordTable.createdAt} desc`)
+      } else {
+        // No join needed for simple keyword queries
+        baseQuery = ctx.db
+          .select()
+          .from(keywordTable)
+          .orderBy(sql`${keywordTable.createdAt} desc`)
+      }
+
+      const dynamicQuery = baseQuery.$dynamic()
+
+      if (whereClauses.length) {
+        dynamicQuery.where(and(...whereClauses))
+      }
+
+      const rawResult = await dynamicQuery.limit(limit).offset(offset)
+
+      // Extract keywords from joined result if needed
+      if (needsPostJoin) {
+        keywordsResult = rawResult.map(
+          (row: Record<string, unknown>) =>
+            (row as { keyword: KeywordInternal }).keyword,
+        )
+      } else {
+        keywordsResult = rawResult as KeywordInternal[]
+      }
+
+      // Count query for regular case
+      let countQuery
+
+      if (needsPostJoin) {
+        countQuery = ctx.db
+          .select({ count: sql`count(distinct ${keywordTable.id})::int` })
+          .from(keywordTable)
+          .innerJoin(
+            keywordToPost,
+            eq(keywordTable.id, keywordToPost.keywordId),
+          )
+      } else {
+        countQuery = ctx.db
+          .select({ count: sql`count(*)::int` })
+          .from(keywordTable)
+      }
+
+      const countDynamicQuery = countQuery.$dynamic()
+      if (whereClauses.length) {
+        countDynamicQuery.where(and(...whereClauses))
+      }
+
+      const countResult = await countDynamicQuery
+      totalCount = Number(countResult[0]?.count || 0)
+    }
+
+    keywordsResult.forEach((kw) =>
+      ctx.dataLoaders.keyword.getById.prime(kw.id, kw),
     )
 
+    const nodes = keywordsResult.map(KeywordModel.makeExternal)
+    return PaginationUtils.createConnection(nodes, totalCount, paginationInfo)
+  },
+
+  async qPostsByKeyword(
+    ctx: Context,
+    fields: {
+      keywordId: KeywordExternal['id']
+      limit?: number
+      offset?: number
+    },
+  ): Promise<{ data: PostExternal[]; totalCount: number }> {
+    ctx.isAuthenticated()
+    const keywordId = KeywordModel.decodeId(fields.keywordId)
+    // Get all postIds for this keyword
+    const ktpRows = await ctx.db
+      .select()
+      .from(keywordToPost)
+      .where(eq(keywordToPost.keywordId, keywordId))
+    const postIds = ktpRows.map((row) => row.postId)
+    if (!postIds.length) return { data: [], totalCount: 0 }
+    const allPosts = await ctx.db
+      .select()
+      .from(postTable)
+      .where(inArray(postTable.id, postIds))
     const limit = fields.limit || 10
     const offset = fields.offset || 0
-
-    // Apply pagination to the loaded results
-    const data = allPosts.slice(offset, offset + limit)
+    const data = allPosts
+      .slice(offset, offset + limit)
+      .map(PostModel.makeExternal)
     const totalCount = allPosts.length
-
     return { data, totalCount }
-  }
+  },
 
-  static async qPostCountByKeyword(
+  async qPostCountByKeyword(
     ctx: Context,
-    fields: { keywordId: number },
-  ) {
+    fields: { keywordId: KeywordExternal['id'] },
+  ): Promise<number> {
     ctx.isAuthenticated()
-    return ctx.dataLoaders.keyword.getPostCountByKeyword.load(fields.keywordId)
-  }
+    const keywordId = KeywordModel.decodeId(fields.keywordId)
+    const countResult = await ctx.db
+      .select({ count: sql`count(${keywordToPost.postId})::int` })
+      .from(keywordToPost)
+      .where(eq(keywordToPost.keywordId, keywordId))
+    return Number(countResult[0]?.count || 0)
+  },
+
+  async qPostCountWithThisKeyword(
+    ctx: Context,
+    fields: { postId: KeywordExternal['id'] },
+  ): Promise<number> {
+    ctx.isAuthenticated()
+    const keywordId = KeywordModel.decodeId(fields.postId)
+    const result =
+      await ctx.dataLoaders.keyword.getKeywordCountOnPost.load(keywordId)
+    if (result === undefined) {
+      throw new NotFoundError('Keyword not found.')
+    }
+    return result
+  },
 
   /// Mutations
-  static async mCreate(ctx: Context, fields: { name: string }) {
+  async mCreate(
+    ctx: Context,
+    fields: { name: string },
+  ): Promise<KeywordExternal> {
     ctx.isAuthenticated()
-    const keyword = await KeywordModel.query().insert({ name: fields.name })
-    return ctx.dataLoaders.keyword.getById.load(keyword.id)
-  }
 
-  static async mDelete(ctx: Context, fields: { keywordId: number }) {
+    const vFields = validateInput(createKeywordSchema, fields)
+
+    const [inserted] = await ctx.db
+      .insert(keywordTable)
+      .values({ name: vFields.name })
+      .returning()
+    return KeywordModel.makeExternal(inserted)
+  },
+
+  async mDelete(
+    ctx: Context,
+    _fields: { keywordId: KeywordExternal['id'] },
+  ): Promise<boolean> {
     ctx.isAuthenticated()
-    const deletedRows = await KeywordModel.query().deleteById(fields.keywordId)
-    return deletedRows > 0
-  }
+
+    throw new AuthenticationError('Deleting keywords is currently disabled.')
+    // const id = KeywordModel.decodeId(fields.keywordId)
+    // const result = await ctx.db.delete(keywordTable).where(eq(keywordTable.id, id))
+    // return !!result.rowCount
+  },
 }
+
+export default KeywordActions
+
+const createKeywordSchema = z.object({
+  name: KeywordModel.schema.shape.name,
+})

@@ -4,6 +4,8 @@ import { defineConfig } from 'astro/config'
 import graphqlLoader from 'vite-plugin-graphql-loader'
 import envVarsIntegration from './integrations/env-vars.js'
 
+const isDev = process.env.NODE_ENV === 'development'
+
 // https://astro.build/config
 export default defineConfig({
   site: process.env.CORS_ORIGIN || undefined,
@@ -19,6 +21,12 @@ export default defineConfig({
     ssr: {
       noExternal: ['tint*'],
     },
+    ...(isDev && {
+      optimizeDeps: {
+        exclude: ['tint'],
+        include: ['remove-accents'],
+      },
+    }),
     resolve: {
       alias: {
         '~tint': '/node_modules/tint/dist',
@@ -38,5 +46,8 @@ export default defineConfig({
       },
     },
   },
-  integrations: [svelte(), envVarsIntegration()],
+  integrations: [
+    svelte(),
+    envVarsIntegration(),
+  ],
 })

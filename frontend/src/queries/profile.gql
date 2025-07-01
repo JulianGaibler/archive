@@ -13,7 +13,3 @@ mutation uploadPicture($file: Upload!) {
 mutation clearProfilePicture {
   clearProfilePicture
 }
-
-mutation setDarkMode($enabled: Boolean!) {
-  setDarkMode(enabled: $enabled)
-}

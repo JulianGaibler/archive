@@ -3,7 +3,7 @@ import Layout from '@src/layouts/Layout.astro'
 import TelegramLinking, {
   type TelegramUser,
 } from '@src/components/TelegramLinking.svelte'
-import { hasAuthenticationError, handleError } from '@src/utils/error-handling'
+import { hasAuthenticationError, handleError } from '@src/utils/page-errors'
 import ErrorPage from '@src/components/ErrorPage.astro'
 
 const searchParams = new URL(Astro.request.url).searchParams

@@ -15,7 +15,7 @@
 
   async function loadMore() {
     const result = await sdk.Keywords({
-      after: results?.keywords?.pageInfo?.endCursor,
+      after: results?.keywords?.endCursor,
       byName,
     })
     if (!results) {
@@ -23,15 +23,13 @@
       return
     }
 
-    if (result.data?.keywords?.edges) {
-      results.keywords!.edges = [
-        ...results.keywords!.edges!,
-        ...result.data.keywords.edges,
+    if (result.data?.keywords?.nodes) {
+      results.keywords!.nodes = [
+        ...results.keywords!.nodes!,
+        ...result.data.keywords.nodes,
       ]
-      results.keywords!.pageInfo = {
-        hasNextPage: result.data.keywords.pageInfo?.hasNextPage,
-        endCursor: result.data.keywords.pageInfo?.endCursor,
-      }
+      results.keywords!.hasNextPage = result.data.keywords.hasNextPage
+      results.keywords!.endCursor = result.data.keywords.endCursor
     }
   }
 
@@ -75,12 +73,12 @@
   {/if}
 
   <ul class="keywords-grid">
-    {#each results?.keywords?.edges || [] as keywordEdge (keywordEdge?.node?.id)}
-      {#if keywordEdge?.node}
+    {#each results?.keywords?.nodes || [] as keyword (keyword?.id)}
+      {#if keyword}
         <li class="keyword-chip">
-          <a href={`/keywords/${keywordEdge.node.id}`} class="keyword-link">
-            <span class="keyword-name">{keywordEdge.node.name}</span>
-            <span class="keyword-count">{keywordEdge.node.postCount}</span>
+          <a href={`/keywords/${keyword.id}`} class="keyword-link">
+            <span class="keyword-name">{keyword.name}</span>
+            <span class="keyword-count">{keyword.postCount}</span>
           </a>
         </li>
       {/if}
@@ -88,7 +86,7 @@
   </ul>
 </div>
 <div class="shrinkwrap more">
-  {#if results?.keywords?.pageInfo?.hasNextPage}
+  {#if results?.keywords?.hasNextPage}
     <Button onclick={loadMore}>Load more</Button>
   {/if}
 </div>

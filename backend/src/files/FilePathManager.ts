@@ -1,3 +1,4 @@
+import { ItemExternal } from '@src/models/ItemModel.js'
 import { storageOptions } from './config.js'
 import * as fileUtils from './file-utils.js'
 
@@ -26,11 +27,11 @@ export class FilePathManager {
     )
   }
 
-  getQueuePath(itemId: number): string {
+  getQueuePath(itemId: ItemExternal['id']): string {
     return fileUtils.resolvePath(
       this.options.dist,
       this.options.directories.queue,
-      itemId.toString(),
+      itemId,
     )
   }
 

@@ -109,20 +109,18 @@ export type Item = {
 /** A connection to a list of items. */
 export type ItemConnection = {
   __typename?: 'ItemConnection';
-  /** A list of edges. */
-  edges?: Maybe<Array<Maybe<ItemEdge>>>;
-  /** Information to aid in pagination. */
-  pageInfo: PageInfo;
+  /** When paginating forwards, the cursor to continue. */
+  endCursor?: Maybe<Scalars['String']['output']>;
+  /** When paginating forwards, are there more items? */
+  hasNextPage: Scalars['Boolean']['output'];
+  /** When paginating backwards, are there more items? */
+  hasPreviousPage: Scalars['Boolean']['output'];
+  /** List of items. */
+  nodes: Array<Item>;
+  /** When paginating backwards, the cursor to continue. */
+  startCursor?: Maybe<Scalars['String']['output']>;
+  /** Total number of items. */
   totalCount: Scalars['Int']['output'];
-};
-
-/** An edge in a connection. */
-export type ItemEdge = {
-  __typename?: 'ItemEdge';
-  /** A cursor for use in pagination */
-  cursor: Scalars['String']['output'];
-  /** The item at the end of the edge */
-  node: Item;
 };
 
 /** A keyword for categorizing Posts. */
@@ -147,22 +145,21 @@ export type KeywordPostsArgs = {
   last?: InputMaybe<Scalars['Int']['input']>;
 };
 
-/** A connection to a list of items. */
+/** A connection to a list of keywords. */
 export type KeywordConnection = {
   __typename?: 'KeywordConnection';
-  /** A list of edges. */
-  edges?: Maybe<Array<Maybe<KeywordEdge>>>;
-  /** Information to aid in pagination. */
-  pageInfo: PageInfo;
-};
-
-/** An edge in a connection. */
-export type KeywordEdge = {
-  __typename?: 'KeywordEdge';
-  /** A cursor for use in pagination */
-  cursor: Scalars['String']['output'];
-  /** The item at the end of the edge */
-  node: Keyword;
+  /** When paginating forwards, the cursor to continue. */
+  endCursor?: Maybe<Scalars['String']['output']>;
+  /** When paginating forwards, are there more items? */
+  hasNextPage: Scalars['Boolean']['output'];
+  /** When paginating backwards, are there more items? */
+  hasPreviousPage: Scalars['Boolean']['output'];
+  /** List of keywords. */
+  nodes: Array<Keyword>;
+  /** When paginating backwards, the cursor to continue. */
+  startCursor?: Maybe<Scalars['String']['output']>;
+  /** Total number of keywords. */
+  totalCount: Scalars['Int']['output'];
 };
 
 /** Possible languages that an object can have. */
@@ -204,12 +201,18 @@ export type Mutation = {
   createKeyword: Keyword;
   /** Creates a new Post */
   createPost: Post;
-  /** Deletes an item from a post and reorders remaining items. */
-  deleteItem: Scalars['Boolean']['output'];
+  /**
+   * Deletes an item from a post and reorders remaining items.
+   * Returns the ID of the deleted item.
+   */
+  deleteItem: Scalars['ID']['output'];
   /** Deleted a keyword. */
   deleteKeyword: Scalars['Boolean']['output'];
-  /** Deletes a post and all its associated items and files. */
-  deletePost: Scalars['Boolean']['output'];
+  /**
+   * Deletes a post and all its associated items and files.
+   * Returns the ID of the deleted post.
+   */
+  deletePost: Scalars['ID']['output'];
   /** Edits a post. */
   editPost: Post;
   /** Associates the Telegram ID of a user with their Archive Profil. */
@@ -218,18 +221,28 @@ export type Mutation = {
   login: Scalars['Boolean']['output'];
   /** Terminates the current users session. */
   logout: Scalars['Boolean']['output'];
-  /** Merges one post into another, moving all items and optionally keywords. */
-  mergePost: Scalars['Boolean']['output'];
-  /** Moves an item from one post to another. */
+  /**
+   * Merges one post into another, moving all items and optionally keywords.
+   * Returns the number of items merged.
+   */
+  mergePost: Scalars['Int']['output'];
+  /**
+   * Moves an item from one post to another.
+   * Returns whether the source post was deleted.
+   */
   moveItem: Scalars['Boolean']['output'];
-  /** Reorders an item within a post to a new position. */
+  /**
+   * Reorders an item within a post to a new position.
+   * Returns the new position of the item.
+   */
   reorderItem: Scalars['Int']['output'];
-  /** Reorders multiple items within a post to the specified order. Items not included will be placed after the reordered items maintaining their relative positions. */
-  reorderItems: Scalars['Boolean']['output'];
+  /**
+   * Reorders multiple items within a post to the specified order. Items not included will be placed after the reordered items maintaining their relative positions.
+   * Return all item ids on the post in the new order.
+   */
+  reorderItems: Array<Scalars['ID']['output']>;
   /** Revokes the session of a user. */
   revokeSession: Scalars['Boolean']['output'];
-  /** Sets the user's dark-mode preference. */
-  setDarkMode: Scalars['Boolean']['output'];
   /** Creates a new user and performs a login. */
   signup: Scalars['Boolean']['output'];
   /** Removed Telegram ID from Archive profile. */
@@ -263,26 +276,26 @@ export type MutationCreatePostArgs = {
 
 
 export type MutationDeleteItemArgs = {
-  id: Scalars['ID']['input'];
+  itemId: Scalars['ID']['input'];
 };
 
 
 export type MutationDeleteKeywordArgs = {
-  id: Scalars['String']['input'];
+  keywordId: Scalars['String']['input'];
 };
 
 
 export type MutationDeletePostArgs = {
-  id: Scalars['ID']['input'];
+  postId: Scalars['ID']['input'];
 };
 
 
 export type MutationEditPostArgs = {
-  id: Scalars['ID']['input'];
   items?: InputMaybe<Array<EditItemInput>>;
   keywords: Array<Scalars['ID']['input']>;
   language: Language;
   newItems?: InputMaybe<Array<NewItemInput>>;
+  postId: Scalars['ID']['input'];
   title: Scalars['String']['input'];
 };
 
@@ -313,7 +326,7 @@ export type MutationMoveItemArgs = {
 
 
 export type MutationReorderItemArgs = {
-  id: Scalars['ID']['input'];
+  itemId: Scalars['ID']['input'];
   newPosition: Scalars['Int']['input'];
 };
 
@@ -325,12 +338,7 @@ export type MutationReorderItemsArgs = {
 
 
 export type MutationRevokeSessionArgs = {
-  id: Scalars['ID']['input'];
-};
-
-
-export type MutationSetDarkModeArgs = {
-  enabled: Scalars['Boolean']['input'];
+  sessionId: Scalars['ID']['input'];
 };
 
 
@@ -356,19 +364,6 @@ export type NewItemInput = {
 export type Node = {
   /** The id of the object. */
   id: Scalars['ID']['output'];
-};
-
-/** Information about pagination in a connection. */
-export type PageInfo = {
-  __typename?: 'PageInfo';
-  /** When paginating forwards, the cursor to continue. */
-  endCursor?: Maybe<Scalars['String']['output']>;
-  /** When paginating forwards, are there more items? */
-  hasNextPage: Scalars['Boolean']['output'];
-  /** When paginating backwards, are there more items? */
-  hasPreviousPage: Scalars['Boolean']['output'];
-  /** When paginating backwards, the cursor to continue. */
-  startCursor?: Maybe<Scalars['String']['output']>;
 };
 
 /** A post. */
@@ -398,23 +393,21 @@ export type PostItemsArgs = {
   last?: InputMaybe<Scalars['Int']['input']>;
 };
 
-/** A connection to a list of items. */
+/** A connection to a list of posts. */
 export type PostConnection = {
   __typename?: 'PostConnection';
-  /** A list of edges. */
-  edges?: Maybe<Array<Maybe<PostEdge>>>;
-  /** Information to aid in pagination. */
-  pageInfo: PageInfo;
+  /** When paginating forwards, the cursor to continue. */
+  endCursor?: Maybe<Scalars['String']['output']>;
+  /** When paginating forwards, are there more items? */
+  hasNextPage: Scalars['Boolean']['output'];
+  /** When paginating backwards, are there more items? */
+  hasPreviousPage: Scalars['Boolean']['output'];
+  /** List of posts. */
+  nodes: Array<Post>;
+  /** When paginating backwards, the cursor to continue. */
+  startCursor?: Maybe<Scalars['String']['output']>;
+  /** Total number of posts. */
   totalCount: Scalars['Int']['output'];
-};
-
-/** An edge in a connection. */
-export type PostEdge = {
-  __typename?: 'PostEdge';
-  /** A cursor for use in pagination */
-  cursor: Scalars['String']['output'];
-  /** The item at the end of the edge */
-  node: Post;
 };
 
 /** An item that is being processed. */
@@ -440,13 +433,11 @@ export type Query = {
   /** Returns the currently authenticated user. */
   me?: Maybe<User>;
   /** Fetches an object given its ID */
-  node?: Maybe<Node>;
+  node: Node;
   /** Fetches objects given their IDs */
   nodes: Array<Maybe<Node>>;
   /** Returns a list of posts. */
   posts?: Maybe<PostConnection>;
-  /** Returns a list of tasks. */
-  tasks?: Maybe<TaskConnection>;
   /** Returns user based on username */
   user?: Maybe<User>;
   /** Returns a list of sessions of the the currently authenticated user. */
@@ -481,14 +472,6 @@ export type QueryPostsArgs = {
   byLanguage?: InputMaybe<Language>;
   byTypes?: InputMaybe<Array<Format>>;
   byUsers?: InputMaybe<Array<Scalars['String']['input']>>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-};
-
-
-export type QueryTasksArgs = {
-  after?: InputMaybe<Scalars['String']['input']>;
-  byStatus?: InputMaybe<Array<TaskStatus>>;
-  byUsers?: InputMaybe<Array<Scalars['ID']['input']>>;
   first?: InputMaybe<Scalars['Int']['input']>;
 };
 
@@ -537,46 +520,6 @@ export type SubscriptionTaskUpdatesArgs = {
   ids: Array<Scalars['String']['input']>;
 };
 
-/** A task for an uploaded item. */
-export type Task = Node & {
-  __typename?: 'Task';
-  addToPost?: Maybe<Post>;
-  /** Identifies the date and time when the object was created. */
-  createdAt: Scalars['DateTime']['output'];
-  createdItem?: Maybe<Item>;
-  /** File Extension of original File */
-  ext: Scalars['String']['output'];
-  /** The ID of an object */
-  id: Scalars['ID']['output'];
-  /** Notes created while processing, usually used for debugging. */
-  notes: Scalars['String']['output'];
-  /** Current progress of the task. */
-  progress?: Maybe<Scalars['Int']['output']>;
-  /** Current status of the task. */
-  status: TaskStatus;
-  /** Identifies the date and time when the object was last updated.. */
-  updatedAt: Scalars['DateTime']['output'];
-  uploader?: Maybe<User>;
-};
-
-/** A connection to a list of items. */
-export type TaskConnection = {
-  __typename?: 'TaskConnection';
-  /** A list of edges. */
-  edges?: Maybe<Array<Maybe<TaskEdge>>>;
-  /** Information to aid in pagination. */
-  pageInfo: PageInfo;
-};
-
-/** An edge in a connection. */
-export type TaskEdge = {
-  __typename?: 'TaskEdge';
-  /** A cursor for use in pagination */
-  cursor: Scalars['String']['output'];
-  /** The item at the end of the edge */
-  node: Task;
-};
-
 /** The possible states of a task. */
 export enum TaskStatus {
   /** The processing was successful. */
@@ -613,8 +556,6 @@ export enum UpdateKind {
 /** A user is an account that can make new content. */
 export type User = Node & {
   __typename?: 'User';
-  /** If the user prefers dark-mode. */
-  darkMode?: Maybe<Scalars['Boolean']['output']>;
   /** The ID of an object */
   id: Scalars['ID']['output'];
   /** Shows if the user has a connected Telegram Account. */
@@ -627,7 +568,7 @@ export type User = Node & {
   posts?: Maybe<PostConnection>;
   /** Name of the user's profile picture. */
   profilePicture?: Maybe<Scalars['String']['output']>;
-  /**  The username used to login. */
+  /** The username used to login. */
   username: Scalars['String']['output'];
 };
 
@@ -640,22 +581,21 @@ export type UserPostsArgs = {
   last?: InputMaybe<Scalars['Int']['input']>;
 };
 
-/** A connection to a list of items. */
+/** A connection to a list of users. */
 export type UserConnection = {
   __typename?: 'UserConnection';
-  /** A list of edges. */
-  edges?: Maybe<Array<Maybe<UserEdge>>>;
-  /** Information to aid in pagination. */
-  pageInfo: PageInfo;
-};
-
-/** An edge in a connection. */
-export type UserEdge = {
-  __typename?: 'UserEdge';
-  /** A cursor for use in pagination */
-  cursor: Scalars['String']['output'];
-  /** The item at the end of the edge */
-  node: User;
+  /** When paginating forwards, the cursor to continue. */
+  endCursor?: Maybe<Scalars['String']['output']>;
+  /** When paginating forwards, are there more items? */
+  hasNextPage: Scalars['Boolean']['output'];
+  /** When paginating backwards, are there more items? */
+  hasPreviousPage: Scalars['Boolean']['output'];
+  /** List of users. */
+  nodes: Array<User>;
+  /** When paginating backwards, the cursor to continue. */
+  startCursor?: Maybe<Scalars['String']['output']>;
+  /** Total number of users. */
+  totalCount: Scalars['Int']['output'];
 };
 
 /** A video item. */
@@ -676,7 +616,7 @@ export type VideoItem = Item & MediaItem & Node & VisualMediaItem & {
   updatedAt: Scalars['DateTime']['output'];
 };
 
-/** Interface for media items. */
+/** Interface for visual media items. */
 export type VisualMediaItem = {
   relativeHeight: Scalars['Float']['output'];
   thumbnailPath?: Maybe<Scalars['String']['output']>;
@@ -685,7 +625,7 @@ export type VisualMediaItem = {
 export type SettingsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type SettingsQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, darkMode?: boolean | null, linkedTelegram?: boolean | null } | null, userSessions: Array<{ __typename?: 'Session', createdAt: any, firstIp: string, id: string, latestIp: string, current: boolean, userAgent: string, updatedAt: any }> };
+export type SettingsQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, linkedTelegram?: boolean | null } | null, userSessions: Array<{ __typename?: 'Session', createdAt: any, firstIp: string, id: string, latestIp: string, current: boolean, userAgent: string, updatedAt: any }> };
 
 export type LoginMutationVariables = Exact<{
   username: Scalars['String']['input'];
@@ -712,9 +652,9 @@ type ItemData_VideoItem_Fragment = { __typename: 'VideoItem', caption: string, o
 
 export type ItemDataFragment = ItemData_AudioItem_Fragment | ItemData_GifItem_Fragment | ItemData_ImageItem_Fragment | ItemData_ProcessingItem_Fragment | ItemData_VideoItem_Fragment;
 
-export type PostDataFragment = { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } };
+export type PostDataFragment = { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', nodes: Array<{ __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } }> } };
 
-export type PostsConnectionFragment = { __typename?: 'PostConnection', edges?: Array<{ __typename?: 'PostEdge', node: { __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string } } | null> | null } } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null } };
+export type PostsConnectionFragment = { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, nodes: Array<{ __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string }> } }> };
 
 export type KeywordsQueryVariables = Exact<{
   after?: InputMaybe<Scalars['String']['input']>;
@@ -722,14 +662,14 @@ export type KeywordsQueryVariables = Exact<{
 }>;
 
 
-export type KeywordsQuery = { __typename?: 'Query', keywords?: { __typename?: 'KeywordConnection', edges?: Array<{ __typename?: 'KeywordEdge', node: { __typename?: 'Keyword', id: string, name: string, postCount: number } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } | null };
+export type KeywordsQuery = { __typename?: 'Query', keywords?: { __typename?: 'KeywordConnection', hasNextPage: boolean, endCursor?: string | null, nodes: Array<{ __typename?: 'Keyword', id: string, name: string, postCount: number }> } | null };
 
 export type KeywordSearchQueryVariables = Exact<{
   input?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 
-export type KeywordSearchQuery = { __typename?: 'Query', keywords?: { __typename?: 'KeywordConnection', edges?: Array<{ __typename?: 'KeywordEdge', node: { __typename?: 'Keyword', id: string, name: string } } | null> | null } | null };
+export type KeywordSearchQuery = { __typename?: 'Query', keywords?: { __typename?: 'KeywordConnection', nodes: Array<{ __typename?: 'Keyword', id: string, name: string }> } | null };
 
 export type KeywordWithPostsQueryVariables = Exact<{
   nodeId: Scalars['ID']['input'];
@@ -738,7 +678,7 @@ export type KeywordWithPostsQueryVariables = Exact<{
 }>;
 
 
-export type KeywordWithPostsQuery = { __typename?: 'Query', keyword?: { __typename: 'AudioItem' } | { __typename: 'GifItem' } | { __typename: 'ImageItem' } | { __typename: 'Keyword', name: string, postCount: number } | { __typename: 'Post' } | { __typename: 'ProcessingItem' } | { __typename: 'Session' } | { __typename: 'Task' } | { __typename: 'User' } | { __typename: 'VideoItem' } | null, posts?: { __typename?: 'PostConnection', edges?: Array<{ __typename?: 'PostEdge', node: { __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string } } | null> | null } } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null } } | null };
+export type KeywordWithPostsQuery = { __typename?: 'Query', keyword: { __typename: 'AudioItem' } | { __typename: 'GifItem' } | { __typename: 'ImageItem' } | { __typename: 'Keyword', name: string, postCount: number } | { __typename: 'Post' } | { __typename: 'ProcessingItem' } | { __typename: 'Session' } | { __typename: 'User' } | { __typename: 'VideoItem' }, posts?: { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, nodes: Array<{ __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string }> } }> } | null };
 
 export type CreateKeywordMutationVariables = Exact<{
   name: Scalars['String']['input'];
@@ -752,7 +692,7 @@ export type PostQueryVariables = Exact<{
 }>;
 
 
-export type PostQuery = { __typename?: 'Query', node?: { __typename?: 'AudioItem' } | { __typename?: 'GifItem' } | { __typename?: 'ImageItem' } | { __typename?: 'Keyword' } | { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } } | { __typename?: 'ProcessingItem' } | { __typename?: 'Session' } | { __typename?: 'Task' } | { __typename?: 'User' } | { __typename?: 'VideoItem' } | null };
+export type PostQuery = { __typename?: 'Query', node: { __typename?: 'AudioItem' } | { __typename?: 'GifItem' } | { __typename?: 'ImageItem' } | { __typename?: 'Keyword' } | { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', nodes: Array<{ __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } }> } } | { __typename?: 'ProcessingItem' } | { __typename?: 'Session' } | { __typename?: 'User' } | { __typename?: 'VideoItem' } };
 
 export type PostsQueryVariables = Exact<{
   after?: InputMaybe<Scalars['String']['input']>;
@@ -762,7 +702,7 @@ export type PostsQueryVariables = Exact<{
 }>;
 
 
-export type PostsQuery = { __typename?: 'Query', posts?: { __typename?: 'PostConnection', edges?: Array<{ __typename?: 'PostEdge', node: { __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string } } | null> | null } } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null } } | null };
+export type PostsQuery = { __typename?: 'Query', posts?: { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, nodes: Array<{ __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string }> } }> } | null };
 
 export type PostsTextOnlyQueryVariables = Exact<{
   after?: InputMaybe<Scalars['String']['input']>;
@@ -770,7 +710,7 @@ export type PostsTextOnlyQueryVariables = Exact<{
 }>;
 
 
-export type PostsTextOnlyQuery = { __typename?: 'Query', posts?: { __typename?: 'PostConnection', edges?: Array<{ __typename?: 'PostEdge', node: { __typename?: 'Post', id: string, title: string } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null } } | null };
+export type PostsTextOnlyQuery = { __typename?: 'Query', posts?: { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string }> } | null };
 
 export type CreatePostMutationVariables = Exact<{
   title: Scalars['String']['input'];
@@ -779,7 +719,7 @@ export type CreatePostMutationVariables = Exact<{
 }>;
 
 
-export type CreatePostMutation = { __typename?: 'Mutation', createPost: { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } } };
+export type CreatePostMutation = { __typename?: 'Mutation', createPost: { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', nodes: Array<{ __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } }> } } };
 
 export type EditPostMutationVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -791,21 +731,21 @@ export type EditPostMutationVariables = Exact<{
 }>;
 
 
-export type EditPostMutation = { __typename?: 'Mutation', editPost: { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } } | null> | null } } };
+export type EditPostMutation = { __typename?: 'Mutation', editPost: { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', nodes: Array<{ __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } }> } } };
 
 export type DeleteItemMutationVariables = Exact<{
   deleteItemId: Scalars['ID']['input'];
 }>;
 
 
-export type DeleteItemMutation = { __typename?: 'Mutation', deleteItem: boolean };
+export type DeleteItemMutation = { __typename?: 'Mutation', deleteItem: string };
 
 export type DeletePostMutationVariables = Exact<{
   deletePostId: Scalars['ID']['input'];
 }>;
 
 
-export type DeletePostMutation = { __typename?: 'Mutation', deletePost: boolean };
+export type DeletePostMutation = { __typename?: 'Mutation', deletePost: string };
 
 export type MergePostMutationVariables = Exact<{
   sourcePostId: Scalars['ID']['input'];
@@ -814,7 +754,7 @@ export type MergePostMutationVariables = Exact<{
 }>;
 
 
-export type MergePostMutation = { __typename?: 'Mutation', mergePost: boolean };
+export type MergePostMutation = { __typename?: 'Mutation', mergePost: number };
 
 export type ReorderItemMutationVariables = Exact<{
   itemIds: Array<Scalars['ID']['input']> | Scalars['ID']['input'];
@@ -822,7 +762,7 @@ export type ReorderItemMutationVariables = Exact<{
 }>;
 
 
-export type ReorderItemMutation = { __typename?: 'Mutation', reorderItems: boolean };
+export type ReorderItemMutation = { __typename?: 'Mutation', reorderItems: Array<string> };
 
 export type MoveItemMutationVariables = Exact<{
   itemId: Scalars['ID']['input'];
@@ -867,13 +807,6 @@ export type ClearProfilePictureMutationVariables = Exact<{ [key: string]: never;
 
 export type ClearProfilePictureMutation = { __typename?: 'Mutation', clearProfilePicture: boolean };
 
-export type SetDarkModeMutationVariables = Exact<{
-  enabled: Scalars['Boolean']['input'];
-}>;
-
-
-export type SetDarkModeMutation = { __typename?: 'Mutation', setDarkMode: boolean };
-
 export type RevokeSessionMutationVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
@@ -896,7 +829,7 @@ export type UnlinkTelegramMutation = { __typename?: 'Mutation', unlinkTelegram: 
 export type MeQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type MeQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, darkMode?: boolean | null, linkedTelegram?: boolean | null } | null };
+export type MeQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, linkedTelegram?: boolean | null } | null };
 
 export type UserQueryVariables = Exact<{
   username: Scalars['String']['input'];
@@ -911,7 +844,7 @@ export type UsersQueryVariables = Exact<{
 }>;
 
 
-export type UsersQuery = { __typename?: 'Query', users?: { __typename?: 'UserConnection', edges?: Array<{ __typename?: 'UserEdge', node: { __typename?: 'User', id: string, username: string, name: string, profilePicture?: string | null, postCount: number } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null } } | null };
+export type UsersQuery = { __typename?: 'Query', users?: { __typename?: 'UserConnection', hasNextPage: boolean, endCursor?: string | null, nodes: Array<{ __typename?: 'User', id: string, username: string, name: string, profilePicture?: string | null, postCount: number }> } | null };
 
 export type UserWithPostsQueryVariables = Exact<{
   username: Scalars['String']['input'];
@@ -920,7 +853,7 @@ export type UserWithPostsQueryVariables = Exact<{
 }>;
 
 
-export type UserWithPostsQuery = { __typename?: 'Query', user?: { __typename?: 'User', id: string, username: string, name: string, profilePicture?: string | null, postCount: number } | null, posts?: { __typename?: 'PostConnection', edges?: Array<{ __typename?: 'PostEdge', node: { __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, edges?: Array<{ __typename?: 'ItemEdge', node: { __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string } } | null> | null } } } | null> | null, pageInfo: { __typename?: 'PageInfo', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null } } | null };
+export type UserWithPostsQuery = { __typename?: 'Query', user?: { __typename?: 'User', id: string, username: string, name: string, profilePicture?: string | null, postCount: number } | null, posts?: { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, nodes: Array<{ __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string }> } }> } | null };
 
 export const ItemDataFragmentDoc = gql`
     fragment ItemData on Item {
@@ -966,47 +899,39 @@ export const PostDataFragmentDoc = gql`
     id
   }
   items {
-    edges {
-      node {
-        ...ItemData
-      }
+    nodes {
+      ...ItemData
     }
   }
 }
     ${ItemDataFragmentDoc}`;
 export const PostsConnectionFragmentDoc = gql`
     fragment PostsConnection on PostConnection {
-  edges {
-    node {
-      id
-      title
-      creator {
-        profilePicture
-        username
-      }
-      items(first: 1) {
-        totalCount
-        edges {
-          node {
-            id
-            __typename
-            ... on VisualMediaItem {
-              relativeHeight
-              thumbnailPath
-            }
-            ... on AudioItem {
-              ampThumbnail
-            }
-          }
+  nodes {
+    id
+    title
+    creator {
+      profilePicture
+      username
+    }
+    items(first: 1) {
+      totalCount
+      nodes {
+        id
+        __typename
+        ... on VisualMediaItem {
+          relativeHeight
+          thumbnailPath
+        }
+        ... on AudioItem {
+          ampThumbnail
         }
       }
     }
   }
-  pageInfo {
-    hasNextPage
-    endCursor
-    startCursor
-  }
+  hasNextPage
+  endCursor
+  startCursor
 }
     `;
 export const SettingsDocument = gql`
@@ -1015,7 +940,6 @@ export const SettingsDocument = gql`
     name
     username
     profilePicture
-    darkMode
     linkedTelegram
   }
   userSessions {
@@ -1042,28 +966,22 @@ export const LogoutDocument = gql`
 export const KeywordsDocument = gql`
     query Keywords($after: String, $byName: String) {
   keywords(first: 48, after: $after, sortByPostCount: true, byName: $byName) {
-    edges {
-      node {
-        id
-        name
-        postCount
-      }
+    nodes {
+      id
+      name
+      postCount
     }
-    pageInfo {
-      hasNextPage
-      endCursor
-    }
+    hasNextPage
+    endCursor
   }
 }
     `;
 export const KeywordSearchDocument = gql`
     query keywordSearch($input: String) {
   keywords(byName: $input) {
-    edges {
-      node {
-        id
-        name
-      }
+    nodes {
+      id
+      name
     }
   }
 }
@@ -1115,17 +1033,13 @@ export const PostsDocument = gql`
 export const PostsTextOnlyDocument = gql`
     query PostsTextOnly($after: String, $byContent: String) {
   posts(first: 20, after: $after, byContent: $byContent) {
-    edges {
-      node {
-        id
-        title
-      }
+    nodes {
+      id
+      title
     }
-    pageInfo {
-      hasNextPage
-      endCursor
-      startCursor
-    }
+    hasNextPage
+    endCursor
+    startCursor
   }
 }
     `;
@@ -1139,7 +1053,7 @@ export const CreatePostDocument = gql`
 export const EditPostDocument = gql`
     mutation editPost($id: ID!, $title: String!, $keywords: [ID!]!, $language: Language!, $items: [EditItemInput!], $newItems: [NewItemInput!]) {
   editPost(
-    id: $id
+    postId: $id
     title: $title
     keywords: $keywords
     language: $language
@@ -1152,12 +1066,12 @@ export const EditPostDocument = gql`
     ${PostDataFragmentDoc}`;
 export const DeleteItemDocument = gql`
     mutation deleteItem($deleteItemId: ID!) {
-  deleteItem(id: $deleteItemId)
+  deleteItem(itemId: $deleteItemId)
 }
     `;
 export const DeletePostDocument = gql`
     mutation deletePost($deletePostId: ID!) {
-  deletePost(id: $deletePostId)
+  deletePost(postId: $deletePostId)
 }
     `;
 export const MergePostDocument = gql`
@@ -1213,14 +1127,9 @@ export const ClearProfilePictureDocument = gql`
   clearProfilePicture
 }
     `;
-export const SetDarkModeDocument = gql`
-    mutation setDarkMode($enabled: Boolean!) {
-  setDarkMode(enabled: $enabled)
-}
-    `;
 export const RevokeSessionDocument = gql`
     mutation revokeSession($id: ID!) {
-  revokeSession(id: $id)
+  revokeSession(sessionId: $id)
 }
     `;
 export const LinkTelegramDocument = gql`
@@ -1239,7 +1148,6 @@ export const MeDocument = gql`
     name
     username
     profilePicture
-    darkMode
     linkedTelegram
   }
 }
@@ -1260,19 +1168,15 @@ export const UserDocument = gql`
 export const UsersDocument = gql`
     query Users($after: String, $search: String) {
   users(first: 50, after: $after, search: $search, sortByPostCount: true) {
-    edges {
-      node {
-        id
-        username
-        name
-        profilePicture
-        postCount
-      }
+    nodes {
+      id
+      username
+      name
+      profilePicture
+      postCount
     }
-    pageInfo {
-      hasNextPage
-      endCursor
-    }
+    hasNextPage
+    endCursor
   }
 }
     `;
@@ -1317,7 +1221,6 @@ const ChangeNameDocumentString = print(ChangeNameDocument);
 const ChangePasswordDocumentString = print(ChangePasswordDocument);
 const UploadPictureDocumentString = print(UploadPictureDocument);
 const ClearProfilePictureDocumentString = print(ClearProfilePictureDocument);
-const SetDarkModeDocumentString = print(SetDarkModeDocument);
 const RevokeSessionDocumentString = print(RevokeSessionDocument);
 const LinkTelegramDocumentString = print(LinkTelegramDocument);
 const UnlinkTelegramDocumentString = print(UnlinkTelegramDocument);
@@ -1392,9 +1295,6 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     clearProfilePicture(variables?: ClearProfilePictureMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ClearProfilePictureMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<ClearProfilePictureMutation>(ClearProfilePictureDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'clearProfilePicture', 'mutation', variables);
-    },
-    setDarkMode(variables: SetDarkModeMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: SetDarkModeMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<SetDarkModeMutation>(SetDarkModeDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'setDarkMode', 'mutation', variables);
     },
     revokeSession(variables: RevokeSessionMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: RevokeSessionMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<RevokeSessionMutation>(RevokeSessionDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'revokeSession', 'mutation', variables);

@@ -5,7 +5,7 @@
     type KeywordSearchQueryVariables,
   } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
-  import { getOperationResultError } from '@src/utils'
+  import { getOperationResultError } from '@src/graphql-errors'
 
   const sdk = getSdk(webClient)
 
@@ -47,10 +47,10 @@
     }
 
     const fetchedItems =
-      result.data.keywords?.edges
-        ?.map((edge) => ({
-          id: edge?.node?.id ?? '',
-          name: edge?.node?.name ?? '',
+      result.data.keywords?.nodes
+        ?.map((node) => ({
+          id: node.id ?? '',
+          name: node.name ?? '',
         }))
         .filter((item) => item.id !== '') ?? []
 
@@ -76,13 +76,14 @@
         name: label,
       })
       .catch((err) => {
-        error = getOperationResultError(err)
+        error = getOperationResultError(err)?.message
       })
     if (!result) {
       return
     }
-    if (getOperationResultError(result)) {
-      error = getOperationResultError(result)
+    const potentialError = getOperationResultError(result)
+    if (potentialError) {
+      error = potentialError.message
       return
     }
     items = [

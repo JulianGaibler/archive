@@ -1,12 +1,12 @@
 import { GraphQLError } from 'graphql'
-import { ValidationError } from 'objection'
+import { ZodError } from 'zod/v4'
 
 export default class ValidationInputError extends GraphQLError {
-  constructor(validationError: ValidationError) {
-    super(validationError.message, {
+  constructor(zodError: ZodError) {
+    super('Validation failed', {
       extensions: {
         code: 'INPUT_ERROR',
-        validationError: validationError,
+        issues: zodError.issues,
       },
     })
   }

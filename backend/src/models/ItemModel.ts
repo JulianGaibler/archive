@@ -1,136 +1,99 @@
 import DataLoader from 'dataloader'
-import { Model, ModelOptions, QueryContext, RelationMappings } from 'objection'
-import { stripHtml } from 'string-strip-html'
-import BaseModel from './BaseModel.js'
+import { z } from 'zod/v4'
+import { createInsertSchema } from 'drizzle-zod'
+import Con from '@src/Connection.js'
+import { InferSelectModel } from 'drizzle-orm'
+import { item, itemSearchView } from '@db/schema.js'
+import { inArray } from 'drizzle-orm'
+import HashId, { HashIdTypes } from './HashId.js'
 
-import PostModel from './PostModel.js'
-import UserModel from './UserModel.js'
+// --- Types ---
 
-export default class ItemModel extends BaseModel {
-  /// Config
-  static tableName = 'item'
+export type ItemInternal = InferSelectModel<typeof item>
+export type ItemExternal = Omit<ItemInternal, 'id' | 'creatorId' | 'postId'> & {
+  id: string
+  creatorId: string
+  postId: string
+}
 
-  /// Attributes
-  readonly id!: number
-  type!: string
-  caption!: string
-  description!: string
-  compressedPath?: string
-  thumbnailPath?: string
-  originalPath?: string
-  relativeHeight?: string
-  audioAmpThumbnail?: number[]
-  postId?: number
-  creatorId?: number
-  taskNotes?: string
-  taskStatus?: string
-  taskProgress?: number
-  position!: number
+// --- Schema and Validation ---
 
-  post?: PostModel
-  creator?: UserModel
+const schema = createInsertSchema(item, {
+  id: z.string(),
+  type: z.string().min(1).max(255),
+  caption: z.string().max(255),
+  description: z.string().max(255),
+  position: z.number(),
+  compressedPath: z.string().min(2).max(255).nullable().optional(),
+  thumbnailPath: z.string().min(2).max(255).nullable().optional(),
+  originalPath: z.string().min(2).max(255).nullable().optional(),
+  relativeHeight: z.string().max(255).nullable().optional(),
+  audioAmpThumbnail: z.array(z.number()).optional(),
+  postId: z.number().optional(),
+  creatorId: z.number().optional(),
+  taskNotes: z.string().nullable().optional(),
+  taskStatus: z.string().nullable().optional(),
+  taskProgress: z.number().optional(),
+})
 
-  /// Hooks
-  async $beforeInsert(queryContext: QueryContext) {
-    await super.$beforeInsert(queryContext)
-    this.description = this.description && stripHtml(this.description).result
-    this.caption = this.caption && stripHtml(this.caption).result
+function decodeId(stringId: string): number {
+  return HashId.decode(HashIdTypes.ITEM, stringId)
+}
+function encodeId(id: number): string {
+  return HashId.encode(HashIdTypes.ITEM, id)
+}
+function makeExternal(item: ItemInternal): ItemExternal {
+  return {
+    ...item,
+    id: encodeId(item.id),
+    creatorId: HashId.encode(HashIdTypes.USER, item.creatorId),
+    postId: HashId.encode(HashIdTypes.POST, item.postId),
   }
-  async $beforeUpdate(opt: ModelOptions, queryContext: QueryContext) {
-    await super.$beforeUpdate(opt, queryContext)
-    this.description = this.description && stripHtml(this.description).result
-    this.caption = this.caption && stripHtml(this.caption).result
-  }
+}
 
-  /// Schema
-  static jsonSchema = {
-    type: 'object',
-    required: ['type', 'caption', 'description', 'position'],
+export default {
+  table: item,
+  itemSearchView,
+  schema,
+  decodeId,
+  encodeId,
+  makeExternal,
+}
 
-    properties: {
-      id: { type: 'number' },
-      type: { type: 'string' },
-      compressedPath: {
-        type: ['string', 'null'],
-        minLength: 2,
-        maxLength: 255,
-      },
-      thumbnailPath: {
-        type: ['string', 'null'],
-        minLength: 2,
-        maxLength: 255,
-      },
-      originalPath: {
-        type: ['string', 'null'],
-        minLength: 2,
-        maxLength: 255,
-      },
-      relativeHeight: {
-        type: ['string', 'null'],
-        maxLength: 255,
-      },
-      postId: { type: 'number' },
-      description: { type: 'string' },
-      caption: { type: 'string' },
-      creatorId: { type: 'number' },
-      taskNotes: { type: ['string', 'null'] },
-      taskStatus: { type: ['string', 'null'] },
-      taskProgress: { type: 'number' },
-      position: { type: 'number' },
-    },
-  }
+// --- Loaders ---
 
-  /// Loaders
-  static getLoaders() {
-    const getById = new DataLoader<number, ItemModel>(ItemModel.itemsByIds)
-    const getByPost = new DataLoader<number, ItemModel[]>(
-      ItemModel.itemsByPosts,
-    )
+export function getLoaders() {
+  const getById = new DataLoader<number, ItemInternal | undefined>(itemsByIds)
+  const getByPost = new DataLoader<number, ItemInternal[]>(itemsByPosts)
+  return { getById, getByPost }
+}
 
-    return { getById, getByPost }
-  }
+async function itemsByIds(
+  ids: readonly number[],
+): Promise<(ItemInternal | undefined)[]> {
+  const db = Con.getDB()
+  const items = await db
+    .select()
+    .from(item)
+    .where(inArray(item.id, ids as number[]))
 
-  private static async itemsByIds(
-    itemIds: readonly number[],
-  ): Promise<ItemModel[]> {
-    const items = await ItemModel.query().findByIds(itemIds as number[])
+  const itemMap: { [key: string]: ItemInternal } = {}
+  items.forEach((item) => {
+    itemMap[item.id] = item
+  })
 
-    const itemMap: { [key: string]: ItemModel } = {}
-    items.forEach((item) => {
-      itemMap[item.id] = item
-    })
+  return ids.map((id) => itemMap[id])
+}
 
-    return itemIds.map((id) => itemMap[id])
-  }
+async function itemsByPosts(
+  postIds: readonly number[],
+): Promise<ItemInternal[][]> {
+  const db = Con.getDB()
+  const items = await db
+    .select()
+    .from(item)
+    .where(inArray(item.postId, postIds as number[]))
+    .orderBy(item.position)
 
-  private static async itemsByPosts(
-    postIds: readonly number[],
-  ): Promise<ItemModel[][]> {
-    const users = await ItemModel.query()
-      .whereIn('postId', postIds as number[])
-      .orderBy('position')
-
-    return postIds.map((id) => users.filter((x) => x.postId === id))
-  }
-
-  /// Relations
-  static relationMappings: RelationMappings = {
-    creator: {
-      relation: Model.BelongsToOneRelation,
-      modelClass: 'UserModel',
-      join: {
-        from: 'item.creatorId',
-        to: 'user.id',
-      },
-    },
-    post: {
-      relation: Model.BelongsToOneRelation,
-      modelClass: 'PostModel',
-      join: {
-        from: 'item.postId',
-        to: 'post.id',
-      },
-    },
-  }
-  static modelPaths = [new URL('.', import.meta.url).pathname]
+  return postIds.map((id) => items.filter((x: ItemInternal) => x.postId === id))
 }

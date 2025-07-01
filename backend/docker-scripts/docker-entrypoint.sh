@@ -7,6 +7,9 @@ set -e
 
 echo "🚀 Starting Archive Server..."
 
+# Set DATABASE_URL from environment variables
+export DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${BACKEND_POSTGRES_HOST}:${BACKEND_POSTGRES_PORT}/${POSTGRES_DB}"
+
 # Function to wait for database
 wait_for_db() {
     echo "⏳ Waiting for database to be ready..."
@@ -15,7 +18,7 @@ wait_for_db() {
     attempt=1
 
     while [ $attempt -le $max_attempts ]; do
-        if npx tsx ./node_modules/.bin/knex migrate:status --knexfile=dist/knexfile.js > /dev/null 2>&1; then
+        if pg_isready -h "$BACKEND_POSTGRES_HOST" -p "$BACKEND_POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" > /dev/null 2>&1; then
             echo "✅ Database is ready!"
             return 0
         fi
@@ -26,6 +29,7 @@ wait_for_db() {
     done
 
     echo "❌ Database failed to become ready after $max_attempts attempts"
+    sleep 180
     exit 1
 }
 
@@ -33,10 +37,11 @@ wait_for_db() {
 run_migrations() {
     echo "🔄 Running database migrations..."
 
-    if npx tsx ./node_modules/.bin/knex migrate:latest --knexfile=dist/knexfile.js; then
+    if npx tsx ./node_modules/.bin/node-pg-migrate up; then
         echo "✅ Migrations completed successfully!"
     else
         echo "❌ Migration failed!"
+        sleep 180
         exit 1
     fi
 }
@@ -44,7 +49,7 @@ run_migrations() {
 # Function to start server
 start_server() {
     echo "🚀 Starting server..."
-    exec node dist/index.js
+    exec node dist/src/index.js
 }
 
 # Main execution

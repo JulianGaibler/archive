@@ -27,7 +27,7 @@
   }: Props = $props()
   let columns = $state(4)
 
-  type PostEdge = NonNullable<NonNullable<PostsQuery['posts']>['edges']>
+  type PostNode = NonNullable<NonNullable<PostsQuery['posts']>['nodes']>
 
   function calculateColumns() {
     const clientWidth = window.innerWidth
@@ -51,13 +51,13 @@
     // create an array initialized with 0, for each column
     const columnHeights = Array.from({ length: columns }, () => 0)
     // initialize an array of arrays, one for each column
-    const columnPosts: PostEdge[] = Array.from({ length: columns }, () => [])
+    const columnPosts: PostNode[] = Array.from({ length: columns }, () => [])
 
-    if (results?.posts?.edges === undefined) return columnPosts
-    results.posts.edges!.forEach((postNode) => {
+    if (results?.posts?.nodes === undefined) return columnPosts
+    results.posts.nodes!.forEach((postNode) => {
       const shortestColumn = columnHeights.indexOf(Math.min(...columnHeights))
       // Use 16:9 aspect ratio (56.25%) as fallback for posts without items or relative height
-      const firstItem = postNode!.node?.items?.edges?.[0]?.node
+      const firstItem = postNode?.items?.nodes?.[0]
       const relativeHeight =
         firstItem && 'relativeHeight' in firstItem
           ? firstItem.relativeHeight
@@ -76,7 +76,7 @@
     loading = true
     try {
       const result = await sdk.Posts({
-        after: results?.posts?.pageInfo?.endCursor,
+        after: results?.posts?.endCursor,
         byContent,
         byKeywords,
         byUsers,
@@ -86,15 +86,17 @@
         return
       }
 
-      if (result.data?.posts?.edges) {
-        results.posts!.edges = [
-          ...results.posts!.edges!,
-          ...result.data.posts.edges,
+      if (result.data?.posts?.nodes) {
+        results.posts!.nodes = [
+          ...results.posts!.nodes!,
+          ...result.data.posts.nodes,
         ]
-        results.posts!.pageInfo = {
-          hasNextPage: result.data.posts.pageInfo?.hasNextPage,
-          endCursor: result.data.posts.pageInfo?.endCursor,
-          startCursor: results.posts!.pageInfo?.startCursor,
+        results.posts = {
+          ...results.posts,
+          hasNextPage: result.data.posts.hasNextPage,
+          endCursor: result.data.posts.endCursor,
+          startCursor: results.posts!.startCursor,
+          nodes: results.posts!.nodes ?? [],
         }
       }
     } finally {
@@ -168,8 +170,8 @@
   <div class="shrinkwrap columns">
     {#each columnPosts as column, i (i)}
       <div class="column">
-        {#each column as postNode (postNode?.node?.id)}
-          {@const firstItem = postNode?.node?.items?.edges?.[0]?.node}
+        {#each column as postNode (postNode?.id)}
+          {@const firstItem = postNode?.items?.nodes?.[0]}
           {@const relativeHeight =
             firstItem && 'relativeHeight' in firstItem
               ? firstItem.relativeHeight
@@ -180,14 +182,14 @@
               : null}
           <a
             class="tint--tinted post"
-            href={`/${postNode?.node?.id}`}
+            href={`/${postNode?.id}`}
             style="padding-bottom: {relativeHeight}%"
           >
             {#if thumbnailPath}
               <img
                 loading="lazy"
                 src={getResourceUrl(`${thumbnailPath}.jpeg`)}
-                alt="Preview of {postNode?.node?.title}"
+                alt="Preview of {postNode?.title}"
               />
             {:else}
               <div class="placeholder">
@@ -195,11 +197,11 @@
               </div>
             {/if}
             <div class="info">
-              <span>{postNode?.node?.title}</span>
-              <div class="count">{postNode?.node?.items?.totalCount ?? 0}</div>
+              <span>{postNode?.title}</span>
+              <div class="count">{postNode?.items?.totalCount ?? 0}</div>
               <div class="pfp">
-                {#if postNode?.node?.creator}
-                  <UserPicture user={postNode?.node?.creator} />
+                {#if postNode?.creator}
+                  <UserPicture user={postNode?.creator} />
                 {/if}
               </div>
             </div>
@@ -208,7 +210,7 @@
       </div>
     {/each}
   </div>
-  {#if results?.posts?.pageInfo?.hasNextPage}
+  {#if results?.posts?.hasNextPage}
     <div class="shrinkwrap more">
       <Button onclick={loadMore} {loading}>Load more</Button>
     </div>

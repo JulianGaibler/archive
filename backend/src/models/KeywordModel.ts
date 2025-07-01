@@ -1,113 +1,124 @@
 import DataLoader from 'dataloader'
-import { Model, RelationMappings } from 'objection'
-import UniqueModel from './UniqueModel.js'
+import { z } from 'zod/v4'
+import { createInsertSchema } from 'drizzle-zod'
+import Con from '@src/Connection.js'
+import { InferSelectModel } from 'drizzle-orm'
+import { keyword, keywordToPost } from '@db/schema.js'
+import { sql, inArray } from 'drizzle-orm'
+import HashId, { HashIdTypes } from './HashId.js'
 
-import PostModel from './PostModel.js'
+// --- Types ---
 
-export default class KeywordModel extends UniqueModel {
-  /// Config
-  static tableName = 'keyword'
+export type KeywordInternal = InferSelectModel<typeof keyword>
+export type KeywordExternal = Omit<KeywordInternal, 'id'> & { id: string }
 
-  $unique = {
-    fields: ['name'],
-    identifiers: ['id'],
+type KeywordToPost = InferSelectModel<typeof keywordToPost>
+
+// --- Schema and Validation ---
+
+const schema = createInsertSchema(keyword, {
+  id: z.string(),
+  name: z.string().min(2).max(64),
+})
+
+function decodeId(stringId: string): number {
+  return HashId.decode(HashIdTypes.KEYWORD, stringId)
+}
+function encodeId(id: number): string {
+  return HashId.encode(HashIdTypes.KEYWORD, id)
+}
+function makeExternal(keyword: KeywordInternal): KeywordExternal {
+  return {
+    ...keyword,
+    id: encodeId(keyword.id),
   }
+}
 
-  /// Attributes
-  readonly id!: number
-  name!: string
-  posts!: PostModel[]
+export default {
+  table: keyword,
+  keywordToPostTable: keywordToPost,
+  schema,
+  decodeId,
+  encodeId,
+  makeExternal,
+}
 
-  /// Schema
-  static jsonSchema = {
-    type: 'object',
-    required: ['name'],
+// --- Loaders ---
 
-    properties: {
-      id: { type: 'number' },
-      name: { type: 'string', minLength: 2, maxLength: 64 },
-    },
-  }
+export function getLoaders() {
+  const getById = new DataLoader<number, KeywordInternal | undefined>(
+    keywordsByIds,
+  )
+  const getByPost = new DataLoader<number, KeywordInternal[]>(keywordsByPosts)
+  const getKeywordCountOnPost = new DataLoader<number, number>(
+    postCountsByKeywords,
+  )
+  return { getById, getByPost, getKeywordCountOnPost }
+}
 
-  /// Loaders
-  static getLoaders() {
-    const getById = new DataLoader<number, KeywordModel>(
-      KeywordModel.keywordsByIds,
+async function keywordsByIds(
+  keywordIds: readonly number[],
+): Promise<(KeywordInternal | undefined)[]> {
+  const db = Con.getDB()
+  const keywords = await db
+    .select()
+    .from(keyword)
+    .where(inArray(keyword.id, keywordIds as number[]))
+
+  const keywordMap: { [key: string]: KeywordInternal } = {}
+  keywords.forEach((kw) => {
+    keywordMap[kw.id] = kw
+  })
+
+  return keywordIds.map((id) => keywordMap[id])
+}
+
+async function keywordsByPosts(
+  postIds: readonly number[],
+): Promise<KeywordInternal[][]> {
+  const db = Con.getDB()
+  // Get all keywordToPost rows for the given postIds
+  const ktpRows = await db
+    .select()
+    .from(keywordToPost)
+    .where(inArray(keywordToPost.postId, postIds as number[]))
+  const keywordIds = ktpRows.map((row: KeywordToPost) => row.keywordId)
+  // Get all keywords for those keywordIds
+  const keywords = keywordIds.length
+    ? await db.select().from(keyword).where(inArray(keyword.id, keywordIds))
+    : []
+  // Map postId -> keywords[]
+  const postMap: { [key: string]: KeywordInternal[] } = {}
+  postIds.forEach((pid) => {
+    const keywordIdsForPost = ktpRows
+      .filter((row: KeywordToPost) => row.postId === pid)
+      .map((row) => row.keywordId)
+    postMap[pid] = keywords.filter((kw: KeywordInternal) =>
+      keywordIdsForPost.includes(kw.id),
     )
-    const getByPost = new DataLoader<number, KeywordModel[]>(
-      KeywordModel.keywordsByPost,
-    )
-    const getPostCountByKeyword = new DataLoader<number, number>(
-      KeywordModel.postCountsByKeywords,
-    )
+  })
+  return postIds.map((id) => postMap[id] || [])
+}
 
-    return { getById, getByPost, getPostCountByKeyword }
-  }
-
-  private static async keywordsByIds(
-    keywordIds: readonly number[],
-  ): Promise<KeywordModel[]> {
-    const keyword = await KeywordModel.query().findByIds(keywordIds as number[])
-
-    const keywordMap: { [key: string]: KeywordModel } = {}
-    keyword.forEach((kw) => {
-      keywordMap[kw.id] = kw
+async function postCountsByKeywords(
+  keywordIds: readonly number[],
+): Promise<number[]> {
+  const db = Con.getDB()
+  // Get counts of posts for each keyword
+  const counts = await db
+    .select({
+      id: keyword.id,
+      postCount: sql`count(${keywordToPost.postId})::int`,
     })
+    .from(keyword)
+    .leftJoin(keywordToPost, sql`${keywordToPost.keywordId} = ${keyword.id}`)
+    .where(inArray(keyword.id, keywordIds as number[]))
+    .groupBy(keyword.id)
 
-    return keywordIds.map((id) => keywordMap[id])
-  }
+  const countMap: { [key: string]: number } = {}
+  counts.forEach((result: { id: number; postCount: unknown }) => {
+    countMap[result.id] = Number(result.postCount)
+  })
 
-  private static async keywordsByPost(
-    postIds: readonly number[],
-  ): Promise<KeywordModel[][]> {
-    const posts = await PostModel.query()
-      .findByIds(postIds as number[])
-      .select('post.id')
-      .withGraphFetched('keywords')
-    const postMap: { [key: string]: any } = {}
-    posts.forEach((post) => {
-      postMap[post.id] = post
-    })
-
-    return postIds.map((id) => (postMap[id] ? postMap[id].keywords : []))
-  }
-
-  private static async postCountsByKeywords(
-    keywordIds: readonly number[],
-  ): Promise<number[]> {
-    const counts = await KeywordModel.query()
-      .findByIds(keywordIds as number[])
-      .select('keyword.id')
-      .joinRelated('posts')
-      .groupBy('keyword.id')
-      .count('posts.id as postCount')
-
-    const countMap: { [key: string]: number } = {}
-    counts.forEach((result: any) => {
-      countMap[result.id] = parseInt(result.postCount, 10)
-    })
-
-    return keywordIds.map((id) => countMap[id] || 0)
-  }
-
-  /// Relations
-  static relationMappings: RelationMappings = {
-    posts: {
-      relation: Model.ManyToManyRelation,
-      modelClass: 'PostModel',
-      join: {
-        from: 'keyword.id',
-        through: {
-          from: 'KeywordToPost.keywordId',
-          to: 'KeywordToPost.postId',
-          beforeInsert(model) {
-            model.addedAt = new Date().getTime()
-          },
-          extra: ['addedAt'],
-        },
-        to: 'post.id',
-      },
-    },
-  }
-  static modelPaths = [new URL('.', import.meta.url).pathname]
+  return keywordIds.map((id) => countMap[id] || 0)
 }

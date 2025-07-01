@@ -1,0 +1,134 @@
+"""
+Base interface for all item types.
+"""
+interface Item implements Node {
+  """
+  The ID of an object
+  """
+  id: ID!
+  post: Post!
+  creator: User!
+  position: Int!
+  description: String!
+  updatedAt: DateTime!
+  createdAt: DateTime!
+}
+
+"""
+Interface for media items.
+"""
+interface MediaItem {
+  caption: String!
+  originalPath: String!
+  compressedPath: String!
+}
+
+"""
+Interface for visual media items.
+"""
+interface VisualMediaItem {
+  relativeHeight: Float!
+  thumbnailPath: String
+}
+
+"""
+An item that is being processed.
+"""
+type ProcessingItem implements Item & Node {
+  """
+  The ID of an object
+  """
+  id: ID!
+  post: Post!
+  creator: User!
+  position: Int!
+  description: String!
+  updatedAt: DateTime!
+  createdAt: DateTime!
+  taskProgress: Int
+  taskStatus: TaskStatus!
+  taskNotes: String
+}
+
+"""
+A video item.
+"""
+type VideoItem implements Item & MediaItem & VisualMediaItem & Node {
+  """
+  The ID of an object
+  """
+  id: ID!
+  post: Post!
+  creator: User!
+  position: Int!
+  description: String!
+  updatedAt: DateTime!
+  createdAt: DateTime!
+  caption: String!
+  originalPath: String!
+  compressedPath: String!
+  relativeHeight: Float!
+  thumbnailPath: String
+}
+
+"""
+An image item.
+"""
+type ImageItem implements Item & MediaItem & VisualMediaItem & Node {
+  """
+  The ID of an object
+  """
+  id: ID!
+  post: Post!
+  creator: User!
+  position: Int!
+  description: String!
+  updatedAt: DateTime!
+  createdAt: DateTime!
+  caption: String!
+  originalPath: String!
+  compressedPath: String!
+  relativeHeight: Float!
+  thumbnailPath: String
+}
+
+"""
+A GIF item.
+"""
+type GifItem implements Item & MediaItem & VisualMediaItem & Node {
+  """
+  The ID of an object
+  """
+  id: ID!
+  post: Post!
+  creator: User!
+  position: Int!
+  description: String!
+  updatedAt: DateTime!
+  createdAt: DateTime!
+  caption: String!
+  originalPath: String!
+  compressedPath: String!
+  relativeHeight: Float!
+  thumbnailPath: String
+}
+
+"""
+An audio item.
+"""
+type AudioItem implements Item & MediaItem & Node {
+  """
+  The ID of an object
+  """
+  id: ID!
+  post: Post!
+  creator: User!
+  position: Int!
+  description: String!
+  updatedAt: DateTime!
+  createdAt: DateTime!
+  caption: String!
+  originalPath: String!
+  compressedPath: String!
+  ampThumbnail: [Float!]!
+}

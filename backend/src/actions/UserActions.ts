@@ -1,118 +1,156 @@
 import { default as argon2 } from 'argon2'
 import { FileUpload } from 'graphql-upload/processRequest.mjs'
+import { eq, sql } from 'drizzle-orm'
 
-import UserModel from '@src/models/UserModel.js'
+import UserModel, { UserExternal, UserInternal } from '@src/models/UserModel.js'
+import PostModel from '@src/models/PostModel.js'
 import Context from '@src/Context.js'
-import ActionUtils from './ActionUtils.js'
 import {
   RequestError,
   AuthenticationError,
   AuthorizationError,
+  InputError,
+  validateInput,
 } from '../errors/index.js'
 
 import SessionActions from '@src/actions/SessionActions.js'
 import RateLimiter from '@src/middleware/RateLimiter.js'
 import env from '@src/utils/env.js'
+import PaginationUtils, { PaginationArgs } from './PaginationUtils.js'
+import { validateAuth } from '@src/apis/TelegramBot/index.js'
+import z from 'zod/v4'
 
-export default class {
+const userTable = UserModel.table
+const postTable = PostModel.table
+
+const UserActions = {
   /// Queries
-  static async qMe(ctx: Context) {
+  async qMe(ctx: Context): Promise<UserExternal> {
     const userIId = ctx.isAuthenticated()
-    return ctx.dataLoaders.user.getById.load(userIId)
-  }
-
-  static async qUser(
-    ctx: Context,
-    fields: { username?: string; userId?: number; telegramId?: string },
-  ) {
-    ctx.isAuthenticated()
-    if (fields.username !== undefined) {
-      return ctx.dataLoaders.user.getByUsername.load(fields.username)
-    } else if (fields.userId !== undefined) {
-      return ctx.dataLoaders.user.getById.load(fields.userId)
-    } else if (fields.telegramId !== undefined) {
-      return ctx.dataLoaders.user.getByTelegramId.load(fields.telegramId)
+    // Use DataLoader (returns UserInternal)
+    const user = await ctx.dataLoaders.user.getById.load(userIId)
+    if (!user) {
+      throw new AuthenticationError('User not found. Are you logged in?')
     }
-    throw new Error('username or userId need to be defined')
-  }
+    return UserModel.makeExternal(user)
+  },
 
-  static async qUsers(
+  async qUser(
     ctx: Context,
     fields: {
-      limit?: number
-      offset?: number
-      search?: string
-      sortByPostCount?: boolean
+      username?: UserExternal['username']
+      userId?: UserExternal['id']
+      telegramId?: NonNullable<UserInternal['telegramId']>
     },
-  ) {
+  ): Promise<UserExternal> {
     ctx.isAuthenticated()
-    const { limit, offset } = ActionUtils.getLimitOffset(fields)
+    let internalUserPromise: Promise<UserInternal | undefined>
+    if (fields.username !== undefined) {
+      internalUserPromise = ctx.dataLoaders.user.getByUsername.load(
+        fields.username,
+      )
+    } else if (fields.userId !== undefined) {
+      internalUserPromise = ctx.dataLoaders.user.getById.load(
+        UserModel.decodeId(fields.userId),
+      )
+    } else if (fields.telegramId !== undefined) {
+      internalUserPromise = ctx.dataLoaders.user.getByTelegramId.load(
+        fields.telegramId,
+      )
+    } else throw new InputError('username or userId need to be defined')
+    const user = await internalUserPromise
+    if (!user)
+      throw new RequestError('No user found with the provided criteria')
+    return UserModel.makeExternal(user)
+  },
 
-    const query = UserModel.query()
-
+  async qUsers(
+    ctx: Context,
+    fields: PaginationArgs & {
+      search?: string | null
+      sortByPostCount?: boolean | null
+    },
+  ): Promise<import('./PaginationUtils.js').Connection<UserExternal>> {
+    ctx.isAuthenticated()
+    const paginationInfo = PaginationUtils.parsePaginationArgs(fields)
+    const { limit, offset } = paginationInfo
+    let users: UserInternal[] = []
+    let totalCount = 0
+    const whereClauses = []
     if (fields.search) {
-      query.where((builder) => {
-        builder
-          .whereRaw('username ILIKE ?', `%${fields.search}%`)
-          .orWhereRaw('name ILIKE ?', `%${fields.search}%`)
-      })
+      const search = `%${fields.search}%`
+      whereClauses.push(
+        sql`lower(${userTable.username}) like lower(${search}) or lower(${userTable.name}) like lower(${search})`,
+      )
     }
-
-    // If sorting by post count, join with posts and count them
     if (fields.sortByPostCount) {
-      query
-        .leftJoinRelated('posts')
+      users = await ctx.db
+        .select({
+          id: userTable.id,
+          username: userTable.username,
+          name: userTable.name,
+          password: userTable.password,
+          profilePicture: userTable.profilePicture,
+          telegramId: userTable.telegramId,
+          updatedAt: userTable.updatedAt,
+          createdAt: userTable.createdAt,
+          postCount: sql`count(${postTable.id})::int`,
+        })
+        .from(userTable)
+        .leftJoin(postTable, eq(postTable.creatorId, userTable.id))
+        .where(whereClauses.length ? whereClauses[0] : undefined)
         .groupBy(
-          'user.id',
-          'user.username',
-          'user.name',
-          'user.profile_picture',
-          'user.password',
-          'user.updated_at',
-          'user.created_at',
-          'user.telegram_id',
-          'user.dark_mode',
+          userTable.id,
+          userTable.username,
+          userTable.name,
+          userTable.profilePicture,
+          userTable.password,
+          userTable.updatedAt,
+          userTable.createdAt,
+          userTable.telegramId,
         )
-        .orderByRaw('COUNT("posts"."id") DESC, "user"."created_at" DESC')
-    } else {
-      query.orderBy('createdAt', 'desc')
-    }
-
-    const [data, totalCount] = await Promise.all([
-      query
-        .clone()
+        .orderBy(sql`count(${postTable.id}) desc, ${userTable.createdAt} desc`)
         .limit(limit)
         .offset(offset)
-        .execute()
-        .then((rows) => {
-          rows.forEach((x) => ctx.dataLoaders.user.getById.prime(x.id, x))
-          return rows
-        }),
-      // For count query, we need a separate query without GROUP BY and ORDER BY
-      (() => {
-        const countQuery = UserModel.query()
-        if (fields.search) {
-          countQuery.where((builder) => {
-            builder
-              .whereRaw('username ILIKE ?', `%${fields.search}%`)
-              .orWhereRaw('name ILIKE ?', `%${fields.search}%`)
-          })
-        }
-        return countQuery.count().then((x) => (x[0] as any).count)
-      })(),
-    ])
-    return { data, totalCount }
-  }
+      const countResult = await ctx.db
+        .select({ count: sql`count(distinct ${userTable.id})::int` })
+        .from(userTable)
+        .leftJoin(postTable, eq(postTable.creatorId, userTable.id))
+        .where(whereClauses.length ? whereClauses[0] : undefined)
+      totalCount = Number(countResult[0]?.count || 0)
+    } else {
+      users = await ctx.db
+        .select()
+        .from(userTable)
+        .where(whereClauses.length ? whereClauses[0] : undefined)
+        .orderBy(sql`${userTable.createdAt} desc`)
+        .limit(limit)
+        .offset(offset)
+      const countResult = await ctx.db
+        .select({ count: sql`count(*)::int` })
+        .from(userTable)
+        .where(whereClauses.length ? whereClauses[0] : undefined)
+      totalCount = Number(countResult[0]?.count || 0)
+    }
+    users.forEach((u) => ctx.dataLoaders.user.getById.prime(u.id, u))
+    const nodes = users.map(UserModel.makeExternal)
+    return PaginationUtils.createConnection(nodes, totalCount, paginationInfo)
+  },
 
-  static async qPostCountByUser(ctx: Context, fields: { userId: number }) {
+  async qPostCountByUser(ctx: Context, fields: { userId: UserExternal['id'] }) {
     ctx.isAuthenticated()
-    return ctx.dataLoaders.user.getPostCountByUser.load(fields.userId)
-  }
+    const userIdDecoded = UserModel.decodeId(fields.userId)
+    return ctx.dataLoaders.user.getPostCountByUser.load(userIdDecoded)
+  },
 
-  /// Mutations
-  static async mSignup(
+  // --- Mutations ---
+  async mSignup(
     ctx: Context,
-    fields: { username: string; name: string; password: string },
+    fields: {
+      username: UserExternal['username']
+      name: UserExternal['name']
+      password: string
+    },
   ) {
     if (env.BACKEND_CREATE_ACCOUNTS !== 'allowed') {
       throw new AuthorizationError()
@@ -120,43 +158,61 @@ export default class {
     if (ctx.isAlreadyLoggedIn()) {
       throw new RequestError('You are already logged in.')
     }
-    const password = await hashPassword(fields.password)
 
-    const user = (await UserModel.query().insert({
-      username: fields.username,
-      name: fields.name,
-      password,
-    })) as any as UserModel
+    const vFields = validateInput(signupSchema, fields)
 
+    const validation = UserModel.schema.safeParse(vFields)
+    if (!validation.success) {
+      throw new InputError('Invalid input')
+    }
+
+    const password = await hashPassword(vFields.password)
+    // Use transaction for user creation
+    const [user] = await ctx.db.transaction(async (trx) => {
+      const inserted = await trx
+        .insert(userTable)
+        .values({
+          username: vFields.username,
+          name: vFields.name,
+          password,
+        })
+        .returning()
+      return inserted
+    })
     return SessionActions._mCreate(ctx, { userId: user.id })
-  }
+  },
 
-  static async mLogin(
+  async mLogin(
     ctx: Context,
-    fields: { username: string; password: string },
+    fields: { username: UserExternal['username']; password: string },
   ) {
     if (ctx.isAlreadyLoggedIn()) {
       throw new RequestError('You are already logged in.')
     }
 
+    const vFields = validateInput(loginSchema, fields)
+
     // Rate limiting by IP address and username
     const clientIP = ctx.req?.ip || ctx.req?.socket?.remoteAddress || 'unknown'
-    const rateLimitKey = `${clientIP}:${fields.username.toLowerCase()}`
+    const rateLimitKey = `${clientIP}:${vFields.username.toLowerCase()}`
 
     try {
       RateLimiter.checkLoginAttempt(rateLimitKey)
     } catch (error) {
       // Rate limit error - still perform timing-constant operations
-      await performTimingConstantAuth(null, fields.password)
+      await performTimingConstantAuth(null, vFields.password)
       throw error
     }
 
     // Always perform both database lookup and password verification to maintain constant timing
-    const user = await UserModel.query()
-      .whereRaw('LOWER(username) = ?', fields.username.toLowerCase())
-      .first()
+    const [user] = await ctx.db
+      .select()
+      .from(userTable)
+      .where(
+        sql`lower(${userTable.username}) = ${vFields.username.toLowerCase()}`,
+      )
 
-    const valid = await performTimingConstantAuth(user, fields.password)
+    const valid = await performTimingConstantAuth(user, vFields.password)
 
     // Always use the same error message regardless of whether user exists or password is wrong
     if (!user || !valid) {
@@ -167,40 +223,54 @@ export default class {
     RateLimiter.recordSuccessfulLogin(rateLimitKey)
 
     return SessionActions._mCreate(ctx, { userId: user.id })
-  }
+  },
 
-  static async mLinkTelegram(ctx: Context, fields: { telegramId: string }) {
+  async mLinkTelegram(ctx: Context, fields: { apiResponse: string }) {
     const userIId = ctx.isAuthenticated()
-    const user = await UserModel.query().findById(userIId)
+
+    const telegramId = validateAuth(fields.apiResponse)
+
+    const [user] = await ctx.db
+      .update(userTable)
+      .set({ telegramId })
+      .where(eq(userTable.id, userIId))
+      .returning()
     if (!user) {
       throw new AuthenticationError('This should not have happened.')
     }
-    await user.$query().patch({ telegramId: fields.telegramId })
     return true
-  }
+  },
 
-  static async mUnlinkTelegram(ctx: Context) {
+  async mUnlinkTelegram(ctx: Context) {
     const userIId = ctx.isAuthenticated()
-    const user = await UserModel.query().findById(userIId)
+    const [user] = await ctx.db
+      .update(userTable)
+      .set({ telegramId: null })
+      .where(eq(userTable.id, userIId))
+      .returning()
     if (!user) {
       throw new AuthenticationError('This should not have happened.')
     }
-    await user.$query().patch({ telegramId: null as any })
-
     return true
-  }
+  },
 
-  static async mUploadProfilePicture(
+  async mUploadProfilePicture(
     ctx: Context,
     fields: { file: Promise<FileUpload> },
   ) {
+    console.log('Uploading profile picture', fields)
     const userIId = ctx.isAuthenticated()
-    const user = await UserModel.query().findById(userIId)
+    const [user] = await ctx.db
+      .select()
+      .from(userTable)
+      .where(eq(userTable.id, userIId))
     if (!user) {
       throw new AuthenticationError('This should not have happened.')
     }
+    if (!fields.file) {
+      throw new InputError('No file provided')
+    }
     const filename = await Context.fileStorage.setProfilePicture(fields.file)
-
     if (user.profilePicture !== null) {
       try {
         await Context.fileStorage.deleteProfilePicture(user.profilePicture)
@@ -209,13 +279,19 @@ export default class {
         throw e
       }
     }
-    await user.$query().patch({ profilePicture: filename })
+    await ctx.db
+      .update(userTable)
+      .set({ profilePicture: filename })
+      .where(eq(userTable.id, userIId))
     return true
-  }
+  },
 
-  static async mClearProfilePicture(ctx: Context) {
+  async mClearProfilePicture(ctx: Context) {
     const userIId = ctx.isAuthenticated()
-    const user = await UserModel.query().findById(userIId)
+    const [user] = await ctx.db
+      .select()
+      .from(userTable)
+      .where(eq(userTable.id, userIId))
     if (!user) {
       throw new AuthenticationError('This should not have happened.')
     }
@@ -223,50 +299,58 @@ export default class {
       throw new AuthenticationError('There is no profile picture to clear.')
     }
     await Context.fileStorage.deleteProfilePicture(user.profilePicture)
-    await user.$query().patch({ profilePicture: null })
+    await ctx.db
+      .update(userTable)
+      .set({ profilePicture: null })
+      .where(eq(userTable.id, userIId))
     return true
-  }
+  },
 
-  static async mChangeName(ctx: Context, fields: { newName: string }) {
+  async mChangeName(ctx: Context, fields: { newName: UserExternal['name'] }) {
     const userIId = ctx.isAuthenticated()
-    const user = await UserModel.query().findById(userIId)
+
+    const vFields = validateInput(changeNameSchema, fields)
+
+    const [user] = await ctx.db
+      .update(userTable)
+      .set({ name: vFields.newName })
+      .where(eq(userTable.id, userIId))
+      .returning()
     if (!user) {
       throw new AuthenticationError('This should not have happened.')
     }
-    await user.$query().patch({ name: fields.newName })
-
     return true
-  }
+  },
 
-  static async mSetDarkMode(ctx: Context, fields: { enabled: boolean }) {
-    const userIId = ctx.isAuthenticated()
-    const user = await UserModel.query().findById(userIId)
-    if (!user) {
-      throw new AuthenticationError('This should not have happened.')
-    }
-    await user.$query().patch({ darkMode: fields.enabled })
-  }
-
-  static async mChangePassword(
+  async mChangePassword(
     ctx: Context,
     fields: { oldPassword: string; newPassword: string },
   ) {
     const userIId = ctx.isAuthenticated()
-    const user = await UserModel.query().findById(userIId)
+
+    const vFields = validateInput(changePasswordSchema, fields)
+
+    const [user] = await ctx.db
+      .select()
+      .from(userTable)
+      .where(eq(userTable.id, userIId))
     if (!user) {
       throw new AuthenticationError('This should not have happened.')
     }
-    const valid = await verifyPassword(user.password, fields.oldPassword)
+    const valid = await verifyPassword(user.password, vFields.oldPassword)
     if (!valid) {
       throw new AuthenticationError('Invalid password')
     }
-
-    const password = await hashPassword(fields.newPassword)
-
-    await user.$query().patch({ password })
+    const password = await hashPassword(vFields.newPassword)
+    await ctx.db
+      .update(userTable)
+      .set({ password })
+      .where(eq(userTable.id, userIId))
     return true
-  }
+  },
 }
+
+export default UserActions
 
 /**
  * Hash a password using Argon2id with OWASP recommended parameters
@@ -305,7 +389,7 @@ function verifyPassword(hash: string, password: string): Promise<boolean> {
  *   otherwise
  */
 async function performTimingConstantAuth(
-  user: UserModel | null | undefined,
+  user: UserInternal | null | undefined,
   password: string,
 ): Promise<boolean> {
   if (user) {
@@ -320,3 +404,23 @@ async function performTimingConstantAuth(
     return false
   }
 }
+
+const signupSchema = z.object({
+  username: UserModel.schema.shape.username,
+  name: UserModel.schema.shape.name,
+  password: UserModel.passwordSchema,
+})
+
+const loginSchema = z.object({
+  username: UserModel.schema.shape.username,
+  password: UserModel.passwordSchemaRough,
+})
+
+const changeNameSchema = z.object({
+  newName: UserModel.schema.shape.name,
+})
+
+const changePasswordSchema = z.object({
+  oldPassword: UserModel.passwordSchemaRough,
+  newPassword: UserModel.passwordSchema,
+})

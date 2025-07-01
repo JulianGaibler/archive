@@ -5,7 +5,6 @@ query me {
     name
     username
     profilePicture
-    darkMode
     linkedTelegram
   }
 }
@@ -24,19 +23,15 @@ query User($username: String!) {
 
 query Users($after: String, $search: String) {
   users(first: 50, after: $after, search: $search, sortByPostCount: true) {
-    edges {
-      node {
-        id
-        username
-        name
-        profilePicture
-        postCount
-      }
+    nodes {
+      id
+      username
+      name
+      profilePicture
+      postCount
     }
-    pageInfo {
-      hasNextPage
-      endCursor
-    }
+    hasNextPage
+    endCursor
   }
 }
 

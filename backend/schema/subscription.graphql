@@ -1,0 +1,11 @@
+type Subscription {
+  """
+  Returns updates from tasks.
+  """
+  taskUpdates(
+    """
+    List of Task IDs.
+    """
+    ids: [String!]!
+  ): TaskUpdate!
+}

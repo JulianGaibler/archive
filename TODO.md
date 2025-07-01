@@ -2,9 +2,10 @@
 
 ## 2.1
 
-- Move from objection to drizzle
-- Make post titles unique
 - Ensure errors are handled properly
+
+# 2.1.1
+- Store correct IP address in sessions
 
 # 2.2
 

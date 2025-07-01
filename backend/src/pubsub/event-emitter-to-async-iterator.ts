@@ -1,10 +1,10 @@
 interface PgListen {
   notifications: {
-    on(eventName: string, listener: (event: any) => void): void
+    on(eventName: string, listener: (event: unknown) => void): void
   }
 }
 
-type CommonMessageHandler<T = any> = (message: any) => T
+type CommonMessageHandler<T = unknown> = (message: unknown) => T
 
 /**
  * Converts event emitter to async iterator for GraphQL subscriptions
@@ -14,10 +14,10 @@ type CommonMessageHandler<T = any> = (message: any) => T
  * @param {Function} commonMessageHandler - Function to transform messages
  * @returns {AsyncIterableIterator} AsyncIterableIterator for the events
  */
-export function eventEmitterAsyncIterator<T = any>(
+export function eventEmitterAsyncIterator<T = unknown>(
   pgListen: PgListen,
   eventsNames: string | string[],
-  commonMessageHandler: CommonMessageHandler<T> = (message) => message,
+  commonMessageHandler: CommonMessageHandler<T> = (message) => message as T,
 ): AsyncIterableIterator<T> {
   const pullQueue: Array<(result: IteratorResult<T>) => void> = []
   const pushQueue: T[] = []
@@ -25,7 +25,7 @@ export function eventEmitterAsyncIterator<T = any>(
     typeof eventsNames === 'string' ? [eventsNames] : eventsNames
   let listening = true
 
-  const pushValue = (event: any) => {
+  const pushValue = (event: unknown) => {
     const value = commonMessageHandler(event)
     if (pullQueue.length !== 0) {
       const resolve = pullQueue.shift()
@@ -52,7 +52,7 @@ export function eventEmitterAsyncIterator<T = any>(
     if (listening) {
       listening = false
       pullQueue.forEach((resolve) =>
-        resolve({ value: undefined as any, done: true }),
+        resolve({ value: undefined as T, done: true }),
       )
       pullQueue.length = 0
       pushQueue.length = 0
@@ -73,9 +73,9 @@ export function eventEmitterAsyncIterator<T = any>(
     },
     return(): Promise<IteratorResult<T>> {
       emptyQueue()
-      return Promise.resolve({ value: undefined as any, done: true })
+      return Promise.resolve({ value: undefined as T, done: true })
     },
-    throw(error: any): Promise<IteratorResult<T>> {
+    throw(error: unknown): Promise<IteratorResult<T>> {
       emptyQueue()
       return Promise.reject(error)
     },

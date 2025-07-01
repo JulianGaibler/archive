@@ -1,6 +1,7 @@
 import { AuthenticationError } from './errors/index.js'
 import express from 'express'
 import cookie from 'cookie'
+import { DbConnection } from '@src/Connection.js'
 
 import {
   ItemModel,
@@ -37,23 +38,29 @@ type ConstructorObj =
     }
   | {
       type: 'websocket'
-      extra: any
+      extra: unknown
     }
 
 export default class Context {
   static fileStorage: FileStorage
   static pubSub: PostgresPubSub
+  static db: DbConnection
 
   type: 'http' | 'websocket' | 'privileged'
   req: express.Request | null
   res: express.Response | null
+  db: DbConnection
   // Internal user ID
   private userIId: number | null
   // Internal session ID (database ID, not secure session ID)
   private sessionIId: number | null
   private lastAuthCheck: number | null
   // Object to store data for this context
-  tmp: Record<string, any>
+  tmp: Record<string, unknown> & {
+    secureSessionId?: string
+    token?: string
+    userAgent?: string
+  }
   private _dataloaders: Partial<Loaders>
 
   private constructor(type: 'http' | 'websocket' | 'privileged') {
@@ -65,6 +72,7 @@ export default class Context {
     this.lastAuthCheck = null
     this.tmp = {}
     this._dataloaders = {}
+    this.db = Context.db
   }
 
   static async createContext(args: ConstructorObj) {
@@ -72,18 +80,21 @@ export default class Context {
     if (args.type === 'http') {
       newContext.req = args.req
       newContext.res = args.res
-      const cookies = AuthCookieUtils.getAuthCookies(newContext.req as any)
+      const cookies = AuthCookieUtils.getAuthCookies(newContext.req)
       if (cookies) {
         const userAgent = newContext.req.headers['user-agent']
           ? newContext.req.headers['user-agent']
           : ''
 
-        const verifyResult = await SessionActions.qVerify({
-          secureSessionId: cookies.secureSessionId,
-          token: cookies.token,
-          userAgent,
-          latestIp: newContext.req.ip || '',
-        })
+        const verifyResult = await SessionActions._qVerify(
+          {
+            secureSessionId: cookies.secureSessionId,
+            token: cookies.token,
+            userAgent,
+            latestIp: newContext.req.ip || '',
+          },
+          Context.db,
+        )
 
         if (verifyResult) {
           newContext.userIId = verifyResult.userId
@@ -99,7 +110,17 @@ export default class Context {
         }
       }
     } else if (args.type === 'websocket') {
-      const headerArray = args.extra.request.rawHeaders as string[] | undefined
+      // Check that args.extra exists and has a request property
+      if (!args.extra || typeof args.extra !== 'object') {
+        throw new Error('Invalid websocket args: extra is required')
+      }
+
+      const extraObj = args.extra as { request?: { rawHeaders?: string[] } }
+      if (!extraObj.request || typeof extraObj.request !== 'object') {
+        throw new Error('Invalid websocket args: extra.request is required')
+      }
+
+      const headerArray = extraObj.request.rawHeaders as string[] | undefined
       if (headerArray) {
         const cookieIndex = headerArray.findIndex((item) => item === 'Cookie')
         const cookies =
@@ -117,12 +138,15 @@ export default class Context {
           newContext.tmp.token = cookies[AUTH_COOKIE_NAME]
           newContext.tmp.userAgent = userAgent
 
-          const verifyResult = await SessionActions.qVerify({
-            secureSessionId: cookies[SESSION_COOKIE_NAME],
-            token: cookies[AUTH_COOKIE_NAME],
-            userAgent,
-            latestIp: undefined,
-          })
+          const verifyResult = await SessionActions._qVerify(
+            {
+              secureSessionId: cookies[SESSION_COOKIE_NAME],
+              token: cookies[AUTH_COOKIE_NAME],
+              userAgent,
+              latestIp: undefined,
+            },
+            Context.db,
+          )
 
           if (verifyResult) {
             newContext.userIId = verifyResult.userId
@@ -155,14 +179,16 @@ export default class Context {
 
   // use a proxy to lazily load dataloaders
   get dataLoaders(): Loaders {
-    return new Proxy<Partial<Loaders>>(this._dataloaders, {
-      get: (target, prop: keyof Loaders) => {
-        if (target[prop] == null) {
-          target[prop] = loaders[prop]() as any
+    return new Proxy<Loaders>({} as Loaders, {
+      get: (_target, prop: keyof Loaders) => {
+        if (this._dataloaders[prop] == null) {
+          const loaderFactory = loaders[prop]
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          this._dataloaders[prop] = loaderFactory() as any
         }
-        return target[prop]
+        return this._dataloaders[prop]!
       },
-    }) as Loaders
+    })
   }
 
   isAuthenticated(): number {
@@ -196,12 +222,15 @@ export default class Context {
     }
     if (Date.now() - this.lastAuthCheck > 5 * 60 * 1000) {
       // recheck the token
-      const verifyResult = await SessionActions.qVerify({
-        secureSessionId: this.tmp.secureSessionId,
-        token: this.tmp.token,
-        userAgent: this.tmp.userAgent,
-        latestIp: undefined,
-      })
+      const verifyResult = await SessionActions._qVerify(
+        {
+          secureSessionId: this.tmp.secureSessionId,
+          token: this.tmp.token,
+          userAgent: this.tmp.userAgent || '',
+          latestIp: undefined,
+        },
+        Context.db,
+      )
       if (!verifyResult || verifyResult.userId !== this.userIId) {
         throw new AuthenticationError()
       }

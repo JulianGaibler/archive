@@ -1,0 +1,19 @@
+"""
+Update data of a tasks current status.
+"""
+type TaskUpdate {
+  """
+  The ID of an object
+  """
+  id: ID!
+
+  """
+  Indicates what kind of update this is.
+  """
+  kind: UpdateKind!
+
+  """
+  The updated or created item.
+  """
+  item: Item
+}

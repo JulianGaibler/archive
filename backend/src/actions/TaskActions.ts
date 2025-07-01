@@ -1,161 +1,249 @@
-import { raw } from 'objection'
-
 import Context from '@src/Context.js'
 import ActionUtils from './ActionUtils.js'
-import { ItemModel } from '@src/models/index.js'
 import topics from '@src/pubsub/topics.js'
+import ItemModel, { ItemExternal, ItemInternal } from '@src/models/ItemModel.js'
+import { NotFoundError } from '@src/errors/index.js'
+import { inArray, and, desc, eq, asc, count, sql } from 'drizzle-orm'
 
-export default class {
-  /// Queries
-  static async qTask(ctx: Context, fields: { itemIds: number }) {
+const itemTable = ItemModel.table
+
+interface TaskUpdatePayload {
+  id: string // external ID
+  kind: 'CHANGED'
+  item: ItemExternal
+}
+
+const TaskActions = {
+  async qTask(
+    ctx: Context,
+    fields: { itemId: ItemExternal['id'] },
+  ): Promise<ItemExternal> {
     ctx.isPrivileged()
-    return ctx.dataLoaders.item.getById.load(fields.itemIds)
-  }
 
-  static async qTasks(
+    const internalId = ItemModel.decodeId(fields.itemId)
+    const internalItem = await ctx.dataLoaders.item.getById.load(internalId)
+
+    if (!internalItem) {
+      throw new NotFoundError('Item not found')
+    }
+
+    return ItemModel.makeExternal(internalItem)
+  },
+
+  async qTasks(
     ctx: Context,
     fields: {
       limit?: number
       offset?: number
-      byUsers?: number[]
-      byStatus?: string[]
+      byUsers?: NonNullable<ItemExternal['creatorId']>[]
     },
-  ) {
+  ): Promise<{ data: ItemExternal[]; totalCount: number }> {
     ctx.isPrivileged()
     const { limit, offset } = ActionUtils.getLimitOffset(fields)
 
-    const query = ItemModel.query()
+    // Build base query conditions
+    const conditions = []
+
     if (fields.byUsers && fields.byUsers.length > 0) {
-      query.whereIn('uploaderId', fields.byUsers)
-    }
-    if (fields.byStatus && fields.byStatus.length > 0) {
-      query.whereIn('taskStatus', fields.byStatus)
+      const internalUserIds = fields.byUsers.map((userId) =>
+        ItemModel.decodeId(userId),
+      )
+      conditions.push(inArray(itemTable.creatorId, internalUserIds))
     }
 
-    const [data, totalCount] = await Promise.all([
-      query
-        .clone()
-        .orderBy('createdAt', 'desc')
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+
+    const [data, totalCountResult] = await Promise.all([
+      ctx.db
+        .select()
+        .from(itemTable)
+        .where(whereClause)
+        .orderBy(desc(itemTable.createdAt))
         .limit(limit)
-        .offset(offset)
-        .execute()
-        .then((rows) => {
-          rows.forEach((x) => ctx.dataLoaders.item.getById.prime(x.id, x))
-          return rows
-        }),
-      query
-        .count()
-        .execute()
-        .then((x) => (x[0] as any).count),
+        .offset(offset),
+      ctx.db.select({ count: count() }).from(itemTable).where(whereClause),
     ])
 
-    return { data, totalCount }
-  }
-
-  static async qCheckIfBusy(ctx: Context) {
-    ctx.isPrivileged()
-    const activeTasks = await ItemModel.query()
-      .where({ taskStatus: 'PROCESSING' })
-      .count()
-      .then((x) => (x[0] as any).count)
-    return activeTasks > 0
-  }
-
-  /// Mutations
-
-  // FIXME: Pubsub
-  // Context.pubSub.publish(topics.TASK_UPDATES, {
-  //   id: task.id,
-  //   kind: 'CREATED',
-  //   task,
-  // })
-
-  static async mUpdate(ctx: Context, fields: { itemId: number; changes: any }) {
-    ctx.isPrivileged()
-    if (fields.changes.notes) {
-      await ItemModel.query()
-        .findById(fields.itemId)
-        .patch({
-          taskNotes: raw('CONCAT(notes, ?::text)', fields.changes.notes),
-        })
-      delete fields.changes.notes
-    }
-
-    const updatedItem = await ItemModel.query().patchAndFetchById(
-      fields.itemId,
-      fields.changes,
-    )
-
-    // Publish task update to subscribers
-    if (Context.pubSub && updatedItem) {
-      Context.pubSub.publish(topics.TASK_UPDATES, {
-        id: updatedItem.id,
-        kind: 'CHANGED',
-        item: updatedItem,
-      })
-    }
-
-    return updatedItem
-  }
-
-  // static async mDelete(ctx: Context, fields: { taskId: number }) {
-  //   ctx.isPrivileged()
-  //   const deletedRows = await TaskModel.query().deleteById(fields.taskId)
-  //   if (deletedRows > 0) {
-  //     // FIXME: Pubsub
-  //     // Context.pubSub.publish(topics.TASK_UPDATES, {
-  //     //   id: fields.taskId,
-  //     //   kind: 'DELETED',
-  //     // })
-  //     return true
-  //   }
-  //   return false
-  // }
-
-  static async mPopQueue(ctx: Context) {
-    ctx.isPrivileged()
-    const item = await ItemModel.query()
-      .findOne({ taskStatus: 'QUEUED' })
-      .orderBy('createdAt', 'asc')
-
-    if (item === undefined) {
-      return false
-    }
-
-    await this.mUpdate(ctx, {
-      itemId: item.id,
-      changes: { taskStatus: 'PROCESSING' },
+    // Prime the dataloader cache and convert to external format
+    const externalData = data.map((item) => {
+      ctx.dataLoaders.item.getById.prime(item.id, item)
+      return ItemModel.makeExternal(item)
     })
 
-    return item.id
-  }
+    const totalCount = totalCountResult[0]?.count ?? 0
 
-  static async mCleanup(_ctx: Context) {
-    const result = await ItemModel.query()
-      .select('id', 'ext')
-      .where({ taskStatus: 'PROCESSING' })
+    return { data: externalData, totalCount }
+  },
 
-    const ids = result.map(({ id }) => id)
-    await ItemModel.query()
-      .update({
-        taskStatus: 'FAILED',
-        taskNotes: 'Marked as failed and cleaned up after server restart',
-      })
-      .findByIds(ids)
-    return ids
-  }
+  async qCheckIfBusy(ctx: Context): Promise<boolean> {
+    ctx.isPrivileged()
 
-  /// Subscriptions
-  static sTasks(ctx: Context, fields: { itemIds: number[] }) {
+    const result = await ctx.db
+      .select({ count: count() })
+      .from(itemTable)
+      .where(eq(itemTable.taskStatus, 'PROCESSING'))
+
+    const activeTasks = result[0]?.count ?? 0
+    return activeTasks > 0
+  },
+
+  async mUpdate(
+    ctx: Context,
+    fields: {
+      itemId: ItemExternal['id']
+      changes: Partial<Pick<ItemInternal, 'taskStatus' | 'taskNotes'>> & {
+        notes?: string
+      }
+    },
+  ): Promise<ItemExternal> {
+    ctx.isPrivileged()
+
+    const internalId = ItemModel.decodeId(fields.itemId)
+
+    return await ctx.db.transaction(async (tx) => {
+      // Handle notes concatenation if provided
+      if (fields.changes.notes) {
+        await tx
+          .update(itemTable)
+          .set({
+            taskNotes: sql`CONCAT(${itemTable.taskNotes}, ${fields.changes.notes})`,
+          })
+          .where(eq(itemTable.id, internalId))
+      }
+
+      // Apply other changes (excluding notes)
+      const { notes, ...otherChanges } = fields.changes
+      if (Object.keys(otherChanges).length > 0) {
+        await tx
+          .update(itemTable)
+          .set(otherChanges)
+          .where(eq(itemTable.id, internalId))
+      }
+
+      // Fetch the updated item
+      const updatedItems = await tx
+        .select()
+        .from(itemTable)
+        .where(eq(itemTable.id, internalId))
+
+      if (updatedItems.length === 0) {
+        throw new NotFoundError('Item not found')
+      }
+
+      const updatedItem = updatedItems[0]
+
+      // Update dataloader cache
+      ctx.dataLoaders.item.getById.prime(updatedItem.id, updatedItem)
+
+      // Publish task update to subscribers
+      if (Context.pubSub) {
+        console.debug(
+          `Publishing task update for item updatedItem.id (${ItemModel.encodeId(updatedItem.id)}):`,
+          {
+            internal: updatedItem,
+            external: ItemModel.makeExternal(updatedItem),
+          },
+        )
+
+        Context.pubSub.publish(topics.TASK_UPDATES, {
+          id: ItemModel.encodeId(updatedItem.id),
+          kind: 'CHANGED',
+          item: ItemModel.makeExternal(updatedItem),
+        })
+      }
+
+      return ItemModel.makeExternal(updatedItem)
+    })
+  },
+
+  async mPopQueue(ctx: Context): Promise<ItemExternal['id'] | false> {
+    ctx.isPrivileged()
+
+    return await ctx.db.transaction(async (tx) => {
+      // Find the oldest queued item
+      const items = await tx
+        .select()
+        .from(itemTable)
+        .where(eq(itemTable.taskStatus, 'QUEUED'))
+        .orderBy(asc(itemTable.createdAt))
+        .limit(1)
+
+      if (items.length === 0) {
+        return false
+      }
+
+      const item = items[0]
+
+      // Update the item to PROCESSING status
+      await tx
+        .update(itemTable)
+        .set({ taskStatus: 'PROCESSING' })
+        .where(eq(itemTable.id, item.id))
+
+      // Update dataloader cache
+      const updatedItem = { ...item, taskStatus: 'PROCESSING' as const }
+      ctx.dataLoaders.item.getById.prime(item.id, updatedItem)
+
+      // Publish task update
+      if (Context.pubSub) {
+        Context.pubSub.publish(topics.TASK_UPDATES, {
+          id: ItemModel.encodeId(updatedItem.id),
+          kind: 'CHANGED',
+          item: ItemModel.makeExternal(updatedItem),
+        })
+      }
+
+      return ItemModel.makeExternal(item).id
+    })
+  },
+
+  async mCleanup(ctx: Context): Promise<ItemExternal['id'][]> {
+    return await ctx.db.transaction(async (tx) => {
+      // Get all processing items
+      const processingItems = await tx
+        .select({ id: itemTable.id })
+        .from(itemTable)
+        .where(eq(itemTable.taskStatus, 'PROCESSING'))
+
+      if (processingItems.length === 0) {
+        return []
+      }
+
+      const ids = processingItems.map((item) => item.id)
+
+      // Update all processing items to failed
+      await tx
+        .update(itemTable)
+        .set({
+          taskStatus: 'FAILED',
+          taskNotes: 'Marked as failed and cleaned up after server restart',
+        })
+        .where(inArray(itemTable.id, ids))
+
+      // Clear dataloader cache for these items
+      ids.forEach((id) => ctx.dataLoaders.item.getById.clear(id))
+
+      // Convert internal IDs to external format
+      return ids.map((id) => ItemModel.makeExternal({ id } as ItemInternal).id)
+    })
+  },
+
+  sTasks(
+    ctx: Context,
+    fields: { itemIds: ItemExternal['id'][] },
+  ): {
+    asyncIteratorFn: () => AsyncIterator<TaskUpdatePayload>
+    filterFn: (payload: TaskUpdatePayload | undefined) => boolean
+  } {
     ctx.isPrivileged()
 
     const originalAsyncIterator = Context.pubSub.asyncIterator(
       topics.TASK_UPDATES,
-    )
+    ) as AsyncIterator<TaskUpdatePayload>
 
     // Create a wrapped async iterator
     const wrappedAsyncIterator = {
-      async next() {
+      async next(): Promise<IteratorResult<TaskUpdatePayload>> {
         try {
           // Check if user is still authenticated before processing next item
           if (!ctx.isWebsocketAuthenticated()) {
@@ -172,14 +260,8 @@ export default class {
             return result
           }
 
-          // Transform/update the data before sending
-          const transformedPayload = await this.transformPayload(
-            ctx,
-            result.value,
-          )
-
           return {
-            value: transformedPayload,
+            value: result.value as TaskUpdatePayload,
             done: false,
           }
         } catch (error) {
@@ -192,16 +274,18 @@ export default class {
         }
       },
 
-      async return() {
+      async return(): Promise<IteratorResult<TaskUpdatePayload>> {
         if (originalAsyncIterator.return) {
-          return await originalAsyncIterator.return()
+          return (await originalAsyncIterator.return()) as IteratorResult<TaskUpdatePayload>
         }
         return { value: undefined, done: true }
       },
 
-      async throw(error: any) {
+      async throw(error: Error): Promise<IteratorResult<TaskUpdatePayload>> {
         if (originalAsyncIterator.throw) {
-          return await originalAsyncIterator.throw(error)
+          return (await originalAsyncIterator.throw(
+            error,
+          )) as IteratorResult<TaskUpdatePayload>
         }
         throw error
       },
@@ -209,26 +293,40 @@ export default class {
       [Symbol.asyncIterator]() {
         return this
       },
-
-      // Helper method to transform payload data
-      async transformPayload(_ctx: Context, payload: any) {
-        // deserizalize createdAt and updatedAt
-        if (payload.item) {
-          payload.item.createdAt = new Date(payload.item.createdAt)
-          payload.item.updatedAt = new Date(payload.item.updatedAt)
-        }
-        return {
-          ...payload,
-          item: payload.item,
-        }
-      },
     }
 
     return {
       asyncIteratorFn: () => wrappedAsyncIterator,
-      filterFn: (payload: any) => {
-        return !(fields.itemIds && !fields.itemIds.includes(payload.item?.id))
+      filterFn: (payload: TaskUpdatePayload | undefined): boolean => {
+        console.debug(
+          `Task subscription filter: itemIds=${JSON.stringify(fields.itemIds)}, payload=${JSON.stringify(payload)}`,
+        )
+
+        // If payload is undefined, do not pass the filter
+        if (!payload) {
+          console.debug(
+            'Task subscription filter: payload is undefined, skipping',
+          )
+          return false
+        }
+
+        // If no specific item IDs are requested, allow all
+        if (!fields.itemIds || fields.itemIds.length === 0) {
+          console.debug(
+            'Task subscription filter: no specific item IDs requested, allowing all',
+          )
+          return true
+        }
+
+        // Filter to only include items that match the requested external IDs
+        console.debug(
+          `Task subscription filter: checking if item ${payload.item.id} is in requested IDs:`,
+          fields.itemIds.includes(payload.item.id),
+        )
+        return fields.itemIds.includes(payload.item.id)
       },
     }
-  }
+  },
 }
+
+export default TaskActions

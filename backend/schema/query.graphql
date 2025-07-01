@@ -1,0 +1,156 @@
+type Query {
+  """
+  Fetches an object given its ID
+  """
+  node(
+    """
+    The ID of an object
+    """
+    id: ID!
+  ): Node!
+
+  """
+  Fetches objects given their IDs
+  """
+  nodes(
+    """
+    The IDs of objects
+    """
+    ids: [ID!]!
+  ): [Node]!
+
+  """
+  Returns a list of keywords.
+  """
+  keywords(
+    """
+    Returns the items in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the first n items from the list.
+    """
+    first: Int
+
+    """
+    Returns all keywords containing this string.
+    """
+    byName: String
+
+    """
+    Sort keywords by post count in descending order.
+    """
+    sortByPostCount: Boolean
+  ): KeywordConnection
+
+  """
+  Returns a list of posts.
+  """
+  posts(
+    """
+    Returns the items in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the first n items from the list.
+    """
+    first: Int
+
+    """
+    Limits the search of posts to one of these users.
+    """
+    byUsers: [String!]
+
+    """
+    Limits the search of posts to all of these keywords.
+    """
+    byKeywords: [ID!]
+
+    """
+    Limits the search of posts to any of these types.
+    """
+    byTypes: [Format!]
+
+    """
+    Limits the search of posts to any of these languages.
+    """
+    byLanguage: Language
+
+    """
+    Performs a fulltext-search of posts on the title and caption
+    """
+    byContent: String
+  ): PostConnection
+
+  """
+  Returns a list of posts.
+  """
+  items(
+    """
+    Returns the items in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the first n items from the list.
+    """
+    first: Int
+
+    """
+    Limits the search of items to one of these users.
+    """
+    byUsers: [String!]
+
+    """
+    Performs a fulltext-search of items on the title and caption
+    """
+    byContent: String
+  ): ItemConnection
+
+  """
+  Returns a list of sessions of the the currently authenticated user.
+  """
+  userSessions: [Session!]!
+
+  """
+  Returns the currently authenticated user.
+  """
+  me: User
+
+  """
+  Returns a list of users.
+  """
+  users(
+    """
+    Returns the items in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the first n items from the list.
+    """
+    first: Int
+
+    """
+    Returns all users whose username or name contains this string.
+    """
+    search: String
+
+    """
+    Sort users by number of posts in descending order.
+    """
+    sortByPostCount: Boolean
+  ): UserConnection
+
+  """
+  Returns user based on username
+  """
+  user(
+    """
+    Username of user.
+    """
+    username: String!
+  ): User
+}

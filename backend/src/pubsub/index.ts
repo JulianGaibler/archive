@@ -8,13 +8,13 @@ interface PgListenOptions {
   retryInterval?: number
   retryLimit?: number
   retryTimeout?: number
-  parse?: (data: string) => any
-  serialize?: (data: any) => string
+  parse?: (data: string) => unknown
+  serialize?: (data: unknown) => string
 }
 
 interface PostgresPubSubOptions extends PgListenOptions {
   topics?: string[]
-  commonMessageHandler?: (message: any) => any
+  commonMessageHandler?: (message: unknown) => unknown
   // Database connection options
   host?: string
   port?: number
@@ -22,27 +22,27 @@ interface PostgresPubSubOptions extends PgListenOptions {
   user?: string
   password?: string
   connectionString?: string
-  ssl?: any
-  [key: string]: any
+  ssl?: unknown
+  [key: string]: unknown
 }
 
 interface PgListenInstance {
   notifications: {
-    on(eventName: string, listener: (event: any) => void): void
-    removeListener(eventName: string, listener: (event: any) => void): void
+    on(eventName: string, listener: (event: unknown) => void): void
+    removeListener(eventName: string, listener: (event: unknown) => void): void
   }
   events: {
-    once(eventName: string, listener: (event: any) => void): void
+    once(eventName: string, listener: (event: unknown) => void): void
   }
   connect(): Promise<void>
-  listenTo(eventName: string): Promise<any> | undefined
-  notify(eventName: string, payload: any): Promise<any>
-  unlisten(eventName: string): Promise<any> | undefined
-  unlistenAll(): Promise<any>
+  listenTo(eventName: string): Promise<void> | undefined
+  notify(eventName: string, payload: unknown): Promise<unknown>
+  unlisten(eventName: string): Promise<void> | undefined
+  unlistenAll(): Promise<void>
   close(): Promise<void>
 }
 
-type DefaultCommonMessageHandler = (message: any) => any
+type DefaultCommonMessageHandler = (message: unknown) => unknown
 
 const defaultCommonMessageHandler: DefaultCommonMessageHandler = (message) =>
   message
@@ -52,9 +52,9 @@ export class PostgresPubSub extends PubSub {
   private pgListen: PgListenInstance
   private triggers: string[]
   private events: PgListenInstance['events']
-  private pgSubscriptions: Record<number, [string, (message: any) => void]>
+  private pgSubscriptions: Record<number, [string, (message: unknown) => void]>
   private pgSubIdCounter: number
-  private commonMessageHandler: (message: any) => any
+  private commonMessageHandler: (message: unknown) => unknown
   private connected: boolean
 
   /**
@@ -77,10 +77,12 @@ export class PostgresPubSub extends PubSub {
       ssl: options.ssl,
     }
 
-    this.pgListen = pgListen(
-      pgClientConfig,
-      pgListenOptions,
-    ) as PgListenInstance
+    this.pgListen = (
+      pgListen as unknown as (
+        config: Record<string, unknown>,
+        options?: PgListenOptions,
+      ) => PgListenInstance
+    )(pgClientConfig, pgListenOptions)
     this.triggers = (topics || []).concat(['error'])
     this.events = this.pgListen.events
     this.pgSubscriptions = {}
@@ -121,8 +123,8 @@ export class PostgresPubSub extends PubSub {
 
     try {
       await this.pgListen.connect()
-    } catch (e: any) {
-      if (!e.message.includes('ECONNREFUSED')) throw e
+    } catch (e: unknown) {
+      if (e instanceof Error && !e.message.includes('ECONNREFUSED')) throw e
     }
 
     await Promise.race([connectedAndListening, errorThrown])
@@ -153,10 +155,10 @@ export class PostgresPubSub extends PubSub {
    * Publish a message to a trigger
    *
    * @param {string} triggerName - Name of the trigger
-   * @param {any} payload - Payload to publish
+   * @param {unknown} payload - Payload to publish
    * @returns {Promise<void>} Promise that resolves when published
    */
-  async publish(triggerName: string, payload: any): Promise<void> {
+  async publish(triggerName: string, payload: unknown): Promise<void> {
     if (!this.connected) {
       const message = `attempted to publish a ${triggerName} event via pubsub, but client is not yet connected`
       throw new Error(message)
@@ -174,9 +176,9 @@ export class PostgresPubSub extends PubSub {
    */
   async subscribe(
     triggerName: string,
-    onMessage: (message: any) => void,
+    onMessage: (message: unknown) => void,
   ): Promise<number> {
-    const callback = (message: any) => {
+    const callback = (message: unknown) => {
       onMessage(
         message instanceof Error ? message : this.commonMessageHandler(message),
       )
@@ -224,12 +226,12 @@ export class PostgresPubSub extends PubSub {
    *
    * @param {string | string[]} triggers - Trigger name(s) to create iterator
    *   for
-   * @returns {Promise<AsyncIterableIterator<any>>} Promise that resolves to
+   * @returns {Promise<AsyncIterableIterator<unknown>>} Promise that resolves to
    *   AsyncIterableIterator
    */
   async asyncIteratorPromised(
     triggers: string | string[],
-  ): Promise<AsyncIterableIterator<any>> {
+  ): Promise<AsyncIterableIterator<unknown>> {
     await this.initTopics(Array.isArray(triggers) ? triggers : [triggers])
     return eventEmitterAsyncIterator(
       this.pgListen,
@@ -243,10 +245,10 @@ export class PostgresPubSub extends PubSub {
    *
    * @param {string | string[]} triggers - Trigger name(s) to create iterator
    *   for
-   * @returns {AsyncIterableIterator<any>} AsyncIterableIterator for the
+   * @returns {AsyncIterableIterator<unknown>} AsyncIterableIterator for the
    *   triggers
    */
-  asyncIterator(triggers: string | string[]): AsyncIterableIterator<any> {
+  asyncIterator(triggers: string | string[]): AsyncIterableIterator<unknown> {
     return eventEmitterAsyncIterator(
       this.pgListen,
       triggers,

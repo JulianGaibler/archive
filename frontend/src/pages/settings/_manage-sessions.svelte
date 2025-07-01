@@ -2,10 +2,11 @@
   import Button from 'tint/components/Button.svelte'
   import MessageBox from 'tint/components/MessageBox.svelte'
   import IconWarning from 'tint/icons/20-warning.svg?raw'
-  import { formatDateTime, getOperationResultError } from '@src/utils'
+  import { formatDateTime } from '@src/utils'
 
   import { getSdk, type SettingsQuery } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
+  import { getOperationResultError } from '@src/graphql-errors'
 
   const sdk = getSdk(webClient)
 
@@ -33,10 +34,10 @@
         loading = false
       })
       .catch((err) => {
-        globalError = getOperationResultError(err)
+        globalError = getOperationResultError(err)?.message
       })
       .then((res) => {
-        globalError = getOperationResultError(res)
+        globalError = getOperationResultError(res)?.message
         if (!globalError) {
           if (sessions.find((s) => s.id === sessionId)?.current) {
             window.location.href = '/login'

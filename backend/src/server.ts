@@ -6,6 +6,8 @@ import logger from 'morgan'
 import path from 'path'
 import GraphQLApi from './apis/GraphQLApi/index.js'
 import env from './utils/env.js'
+import Context from './Context.js'
+import Connection from './Connection.js'
 
 const corsOptions: cors.CorsOptions = {
   credentials: true,
@@ -22,7 +24,7 @@ const OPTIONS = {
 }
 
 export type ServerOptions = typeof OPTIONS
-
+export { Context }
 /**
  * Creates a new express server that serves the GraphQL API and optionally files
  * from the public directory (only in development).
@@ -70,8 +72,8 @@ export default class {
         const { default: Connection } = await import('./Connection.js')
 
         // Only check DB if connection exists (don't create new one)
-        if (Connection.knexInstance) {
-          await Connection.knexInstance.raw('SELECT 1')
+        if (Connection.db) {
+          await Connection.db.execute('SELECT 1')
         }
 
         res.status(200).json({
@@ -79,7 +81,7 @@ export default class {
           timestamp: new Date().toISOString(),
           uptime: process.uptime(),
           environment: env.NODE_ENV,
-          database: Connection.knexInstance ? 'connected' : 'not_initialized',
+          database: Connection.db ? 'connected' : 'not_initialized',
         })
       } catch (error) {
         res.status(503).json({
@@ -104,6 +106,7 @@ export default class {
     return new Promise((resolve) => {
       this.combinedServer.listen(OPTIONS.port, () => {
         console.log(`🔥 Server running on port ${OPTIONS.port}...`)
+        Context.db = Connection.getDB()
         resolve(null)
       })
     })

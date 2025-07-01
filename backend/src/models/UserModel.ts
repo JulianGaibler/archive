@@ -1,134 +1,183 @@
 import DataLoader from 'dataloader'
-import { Model, RelationMappings } from 'objection'
-import UniqueModel from './UniqueModel.js'
+import { z } from 'zod/v4'
+import { createInsertSchema } from 'drizzle-zod'
+import Con from '@src/Connection.js'
+import { user, post } from '@db/schema.js'
+import { sql, inArray } from 'drizzle-orm'
+import HashId, { HashIdTypes } from './HashId.js'
+import {
+  isLazyPassword,
+  checkPasswordComplexity,
+} from '@src/utils/password-check.js'
 
-import PostModel from './PostModel.js'
+// --- Types ---
 
-export default class UserModel extends UniqueModel {
-  /// Config
-  static tableName = 'user'
-  $unique = {
-    fields: ['username'],
-    identifiers: ['id'],
-  }
+export type UserInternal = typeof user.$inferSelect
+export type UserExternal = Omit<
+  UserInternal,
+  'id' | 'password' | 'telegramId'
+> & {
+  id: string
+  linkedTelegram: boolean
+}
 
-  /// Attributes
-  readonly id!: number
-  username!: string
-  profilePicture!: string | null
-  name!: string
-  password!: string
-  darkMode!: boolean
-  telegramId!: string | null
+// --- Schema and Validation ---
 
-  posts!: PostModel[]
+const schema = createInsertSchema(user, {
+  id: z.string(),
+  username: z
+    .string()
+    .min(2)
+    .max(64)
+    .refine((val) => /^[a-zA-Z0-9_]/.test(val), {
+      message: 'Username must start with a letter, number, or underscore',
+    })
+    .refine((val) => /^[a-zA-Z0-9._]+$/.test(val), {
+      message:
+        'Username can only contain letters, numbers, underscores, or periods',
+    })
+    .refine((val) => !val.includes('..'), {
+      message: 'Username cannot contain consecutive periods',
+    })
+    .refine((val) => !val.endsWith('.'), {
+      message: 'Username cannot end with a period',
+    }),
+  name: z.string().min(2).max(64),
+  password: z.string().min(5).max(255),
+})
 
-  /// Schema
-  static jsonSchema = {
-    type: 'object',
-    required: ['username', 'name', 'password'],
-
-    properties: {
-      id: { type: 'number' },
-      username: { type: 'string', minLength: 2, maxLength: 64 },
-      name: { type: 'string', minLength: 2, maxLength: 64 },
-      password: { type: 'string', minLength: 5, maxLength: 255 },
+const passwordSchemaRough = z.string().min(1).max(255)
+const passwordSchema = z
+  .string()
+  .min(12, 'Password must be at least 12 characters long.')
+  .refine((val) => !isLazyPassword(val), {
+    message: 'Password is too weak or predictable.',
+  })
+  .refine((val) => checkPasswordComplexity(val).sufficient, {
+    error: (iss) => {
+      const { unmet } = checkPasswordComplexity(iss.input as string)
+      return `Password must include at least ${
+        (iss.input as string).length < 15
+          ? 'a lowercase, uppercase, number, and symbol'
+          : (iss.input as string).length < 20
+            ? 'three of: lowercase, uppercase, number, symbol'
+            : 'two of: lowercase, uppercase, number, symbol'
+      }. Missing: ${unmet.join(', ')}.`
     },
+  })
+
+function decodeId(stringId: string): number {
+  return HashId.decode(HashIdTypes.USER, stringId)
+}
+function encodeId(id: number): string {
+  return HashId.encode(HashIdTypes.USER, id)
+}
+function makeExternal(user: UserInternal): UserExternal {
+  const { password, ...externalUser } = user
+  return {
+    ...externalUser,
+    id: encodeId(user.id),
+    linkedTelegram: user.telegramId !== null && user.telegramId !== undefined,
   }
+}
 
-  /// Loaders
-  static getLoaders() {
-    const getById = new DataLoader<number, UserModel>(UserModel.usersByIds)
-    const getByUsername = new DataLoader<string, UserModel>(
-      UserModel.usersByUsername,
-    )
-    const getByTelegramId = new DataLoader<string, UserModel>(
-      UserModel.usersByTelegramId,
-    )
-    const getPostCountByUser = new DataLoader<number, number>(
-      UserModel.postCountsByUsers,
-    )
+export default {
+  table: user,
+  schema,
+  passwordSchemaRough,
+  passwordSchema,
+  decodeId,
+  encodeId,
+  makeExternal,
+}
 
-    return { getById, getByUsername, getByTelegramId, getPostCountByUser }
-  }
+// --- Loaders ---
 
-  private static async usersByIds(
-    ids: readonly number[],
-  ): Promise<UserModel[]> {
-    const users = await UserModel.query().findByIds(ids as number[])
+export function getLoaders() {
+  const getById = new DataLoader<number, UserInternal | undefined>(usersByIds)
+  const getByUsername = new DataLoader<string, UserInternal | undefined>(
+    usersByUsername,
+  )
+  const getByTelegramId = new DataLoader<string, UserInternal | undefined>(
+    usersByTelegramId,
+  )
+  const getPostCountByUser = new DataLoader<number, number>(postCountsByUsers)
 
-    const userMap: { [key: string]: UserModel } = {}
-    users.forEach((user) => {
-      userMap[user.id] = user
+  return { getById, getByUsername, getByTelegramId, getPostCountByUser }
+}
+
+async function usersByIds(
+  ids: readonly number[],
+): Promise<(UserInternal | undefined)[]> {
+  const db = Con.getDB()
+  const users = await db
+    .select()
+    .from(user)
+    .where(inArray(user.id, ids as number[]))
+
+  const userMap: { [key: number]: UserInternal } = {}
+  users.forEach((u: UserInternal) => {
+    userMap[u.id] = u
+  })
+
+  return ids.map((id) => userMap[id])
+}
+
+async function usersByUsername(
+  usernames: readonly string[],
+): Promise<(UserInternal | undefined)[]> {
+  const db = Con.getDB()
+  const lowerUsernames = usernames.map((name) => name.toLowerCase())
+  const users = await db
+    .select()
+    .from(user)
+    .where(sql`lower(${user.username}) in (${sql.join(lowerUsernames)})`)
+
+  const userMap: { [key: string]: UserInternal } = {}
+  users.forEach((u: UserInternal) => {
+    userMap[u.username.toLowerCase()] = u
+  })
+
+  return lowerUsernames.map((username) => userMap[username])
+}
+
+async function usersByTelegramId(
+  telegramIds: readonly string[],
+): Promise<(UserInternal | undefined)[]> {
+  const db = Con.getDB()
+  const users = await db
+    .select()
+    .from(user)
+    .where(inArray(user.telegramId, telegramIds as string[]))
+
+  const userMap: { [key: string]: UserInternal } = {}
+  users
+    .filter((u: UserInternal) => u.telegramId)
+    .forEach((u: UserInternal) => {
+      userMap[u.telegramId as string] = u
     })
 
-    return ids.map((id) => userMap[id])
-  }
+  return telegramIds.map((id) => userMap[id])
+}
 
-  private static async usersByUsername(
-    usernames: readonly string[],
-  ): Promise<UserModel[]> {
-    const lowerUsernames = usernames.map((name) => name.toLowerCase())
-    const marks = usernames.map(() => '?').join(',')
-    const users = await UserModel.query().whereRaw(
-      `lower(username) IN (${marks})`,
-      lowerUsernames,
-    )
-
-    const userMap: { [key: string]: UserModel } = {}
-    users.forEach((user) => {
-      userMap[user.username.toLowerCase()] = user
+async function postCountsByUsers(
+  userIds: readonly number[],
+): Promise<number[]> {
+  const db = Con.getDB()
+  const counts = await db
+    .select({
+      id: user.id,
+      postCount: sql`count(${post.id})::int`,
     })
+    .from(user)
+    .leftJoin(post, sql`${post.creatorId} = ${user.id}`)
+    .where(inArray(user.id, userIds as number[]))
+    .groupBy(user.id)
 
-    return lowerUsernames.map((username) => userMap[username])
-  }
+  const countMap: { [key: number]: number } = {}
+  counts.forEach((result: { id: number; postCount: unknown }) => {
+    countMap[result.id] = Number(result.postCount) || 0
+  })
 
-  private static async usersByTelegramId(
-    telegramIds: readonly string[],
-  ): Promise<UserModel[]> {
-    const users = await UserModel.query().whereIn(
-      'telegramId',
-      telegramIds as string[],
-    )
-
-    const userMap: { [key: string]: UserModel } = {}
-    users
-      .filter((user) => user.telegramId)
-      .forEach((user) => {
-        userMap[user.telegramId as string] = user
-      })
-
-    return telegramIds.map((id) => userMap[id])
-  }
-
-  private static async postCountsByUsers(
-    userIds: readonly number[],
-  ): Promise<number[]> {
-    const counts = await UserModel.query()
-      .findByIds(userIds as number[])
-      .select('user.id')
-      .leftJoinRelated('posts')
-      .groupBy('user.id')
-      .count('posts.id as postCount')
-
-    const countMap: { [key: string]: number } = {}
-    counts.forEach((result: any) => {
-      countMap[result.id] = parseInt(result.postCount, 10)
-    })
-
-    return userIds.map((id) => countMap[id] || 0)
-  }
-
-  /// Relations
-  static relationMappings: RelationMappings = {
-    posts: {
-      relation: Model.HasManyRelation,
-      modelClass: 'PostModel',
-      join: {
-        from: 'user.id',
-        to: 'post.creatorId',
-      },
-    },
-  }
-  static modelPaths = [new URL('.', import.meta.url).pathname]
+  return userIds.map((id) => countMap[id] || 0)
 }
