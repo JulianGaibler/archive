@@ -4,7 +4,8 @@ import { SubscriptionResolvers } from '../generated-types.js'
 
 export const subscriptionResolvers: SubscriptionResolvers = {
   taskUpdates: {
-    resolve: (payload) => payload,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolve: (payload: any) => payload,
     subscribe: (_parent, args, ctx) => {
       const { asyncIteratorFn, filterFn } = TaskActions.sTasks(ctx, {
         itemIds: args.ids,

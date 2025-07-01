@@ -8,7 +8,14 @@ import {
   type TaskUpdatesSubscription,
 } from '@src/generated/graphql'
 import { print } from 'graphql'
-import { getOperationResultError } from '@src/utils'
+import { getOperationResultError } from '@src/graphql-errors'
+import {
+  clearValidationErrors,
+  createUpdateValue,
+  extractValues,
+  setValidationErrors,
+  type UpdateValue,
+} from './edit-utils'
 import type { OpenDialog } from 'tint/components/Dialog.svelte'
 import { webSubscriptionsClient } from '@src/gql-client'
 import {
@@ -18,11 +25,6 @@ import {
 } from './custom-fetch'
 
 type PostItemType = NonNullable<PostQuery['node']> & { __typename: 'Post' }
-
-interface UpdateValue<T> {
-  value: T
-  error?: string
-}
 
 export type ExistingItem = {
   type: 'existing'
@@ -54,6 +56,11 @@ export type PostUpdate = {
   isUploading: boolean
 }
 
+export type GlobalError = {
+  message: string
+  validationErrors?: string[]
+}
+
 export function createEditManager(
   sdk: ReturnType<typeof getSdk>,
   postData: PostItemType | undefined,
@@ -62,6 +69,7 @@ export function createEditManager(
   const post = writable<PostItemType | undefined>(postData)
   const data = writable<PostUpdate | undefined>(undefined)
   const loading = writable(false)
+  const globalError = writable<GlobalError | undefined>(undefined) // Global error store for edit manager
   const isInNewPostMode = writable(isNewPost) // Track new-post mode as reactive store
 
   // Derived store that provides reactive access to all items
@@ -242,18 +250,19 @@ export function createEditManager(
 
     data.set(undefined)
     loading.set(false)
+    globalError.set(undefined)
   }
 
   const setOpenDialog = (dialog: OpenDialog | undefined) => {
     openDialog = dialog
   }
 
-  const createUpdateValue = <T>(value: T): UpdateValue<T> => ({
-    value,
-    error: undefined,
-  })
-
   const startEdit = () => {
+    post.update((current) => {
+      if (!current) return current
+      return clearValidationErrors(current)
+    })
+
     const postObject = get(post)
 
     if (get(isInNewPostMode)) {
@@ -342,13 +351,9 @@ export function createEditManager(
     const $data = get(data)
     if (!$data) return
 
-    const uploadItems = Object.values($data.items).filter(
-      (item): item is UploadItem => item.type === 'upload',
-    )
-    const existingItems = Object.values($data.items).filter(
-      (item): item is ExistingItem => item.type === 'existing',
-    )
-    const hasNewFiles = uploadItems.length > 0
+    // Serialize the edit data for API consumption
+    const serializedData = serializeEditData($data)
+    const hasNewFiles = serializedData.uploadItems.length > 0
 
     // For new posts, require at least one file
     if (get(isInNewPostMode) && !hasNewFiles) {
@@ -366,9 +371,48 @@ export function createEditManager(
       console.error(error)
       data.update((current) => {
         if (current) {
-          current.title.error = getOperationResultError(error)
+          current = clearValidationErrors(current)
           current.isUploading = false
           current.uploadController = undefined
+
+          const errorResult = getOperationResultError(error)
+
+          if (!errorResult) return current
+
+          if ('issues' in errorResult) {
+            // serialize current data to preserve UpdateValue wrappers
+            const serializedWithValidation =
+              serializeEditDataWithValidation(current)
+            console.log(
+              'Serialized data with validation:',
+              serializedWithValidation,
+            )
+            const { validationTarget, unassignableErrors } =
+              setValidationErrors(serializedWithValidation, errorResult.issues)
+            const deserializedData = deserializeEditDataWithValidation(
+              validationTarget,
+              postData,
+            )
+
+            // set the globalError store. If there are no unassignableErrors, just say there were errors, otherwise also show them. If it is more than one, show a list.
+
+            if (unassignableErrors.length > 0) {
+              globalError.set({
+                message: `There were errors when trying to edit`,
+                validationErrors: unassignableErrors,
+              })
+            } else {
+              globalError.set({
+                message: 'There were errors when trying to edit the post.',
+              })
+            }
+
+            return deserializedData
+          } else {
+            globalError.set({
+              message: errorResult.message,
+            })
+          }
         }
         return current
       })
@@ -377,10 +421,17 @@ export function createEditManager(
     try {
       // Step 1: If we're in new post mode, create the post first
       if (get(isInNewPostMode)) {
+        // Extract core values for API call using the utility function
+        const coreValues = extractValues({
+          title: $data.title,
+          language: $data.language,
+          keywords: $data.keywords,
+        })
+
         const createResult = await sdk.createPost({
-          title: $data.title.value,
-          language: $data.language.value,
-          keywords: $data.keywords.value,
+          title: coreValues.title,
+          language: coreValues.language,
+          keywords: coreValues.keywords,
         })
 
         if (getOperationResultError(createResult)) {
@@ -421,21 +472,31 @@ export function createEditManager(
         })
       }
 
+      // Extract core values for API call using the utility function
+      const coreValues = extractValues({
+        title: $data.title,
+        language: $data.language,
+        keywords: $data.keywords,
+      })
+
+      // Serialize the edit data for API consumption
+      const serializedData = serializeEditData($data)
+
       const editResult = await sdk.editPost(
         {
           id: postObject.id,
-          title: $data.title.value,
-          language: $data.language.value,
-          keywords: $data.keywords.value,
-          items: existingItems.map((item) => ({
+          title: coreValues.title,
+          language: coreValues.language,
+          keywords: coreValues.keywords,
+          items: serializedData.existingItems.map((item) => ({
             id: item.id,
-            description: item.description.value,
-            caption: item.caption?.value,
+            description: item.description,
+            caption: item.caption,
           })),
-          newItems: uploadItems.map((uploadItem) => ({
+          newItems: serializedData.uploadItems.map((uploadItem) => ({
             file: uploadItem.file,
-            description: uploadItem.description.value,
-            caption: uploadItem.caption?.value,
+            description: uploadItem.description,
+            caption: uploadItem.caption,
           })),
         },
         headers,
@@ -449,6 +510,7 @@ export function createEditManager(
         post.set(editResult.data.editPost as PostItemType)
         // Clear edit data since update was successful
         data.set(undefined)
+        globalError.set(undefined)
       }
 
       // Restart subscription for any new processing items
@@ -742,6 +804,7 @@ export function createEditManager(
     post,
     data,
     loading,
+    globalError,
     isInNewPostMode,
     items, // Expose the items derived store
     startEdit,
@@ -757,5 +820,264 @@ export function createEditManager(
     reorderItems,
     mergePost,
     moveItem,
+  }
+}
+
+// Serialized formats for API communication
+export type SerializedEditItem = {
+  id: string
+  description: string
+  caption?: string
+}
+
+export type SerializedUploadItem = {
+  file: File
+  description: string
+  caption?: string
+  keywords: string[]
+  language: Language
+}
+
+export type SerializedEditData = {
+  title: string
+  language: Language
+  keywords: string[]
+  existingItems: SerializedEditItem[]
+  uploadItems: SerializedUploadItem[]
+}
+
+// Serialized formats with UpdateValue wrappers for validation
+export type SerializedEditItemWithValidation = {
+  id: UpdateValue<string>
+  description: UpdateValue<string>
+  caption?: UpdateValue<string>
+}
+
+export type SerializedUploadItemWithValidation = {
+  file: UpdateValue<File>
+  description: UpdateValue<string>
+  caption?: UpdateValue<string>
+  keywords: UpdateValue<string[]>
+  language: UpdateValue<Language>
+}
+
+export type SerializedEditDataWithValidation = {
+  title: UpdateValue<string>
+  language: UpdateValue<Language>
+  keywords: UpdateValue<string[]>
+  items: SerializedEditItemWithValidation[]
+  newItems: SerializedUploadItemWithValidation[]
+}
+
+/**
+ * Serialize edit data to API format (removes UpdateValue wrappers and flattens
+ * structure)
+ *
+ * Transforms the complex edit manager structure into the flat format expected
+ * by the API. This function is used when sending data to the server for
+ * persistence.
+ *
+ * @param data - The PostUpdate data with complex item structure and UpdateValue
+ *   wrappers
+ * @returns SerializedEditData - Flat structure suitable for API consumption
+ */
+export function serializeEditData(data: PostUpdate): SerializedEditData {
+  const existingItems = Object.values(data.items)
+    .filter((item): item is ExistingItem => item.type === 'existing')
+    .map(
+      (item): SerializedEditItem => ({
+        id: item.id,
+        description: item.description.value,
+        caption: item.caption?.value,
+      }),
+    )
+
+  const uploadItems = Object.values(data.items)
+    .filter((item): item is UploadItem => item.type === 'upload')
+    .map(
+      (item): SerializedUploadItem => ({
+        file: item.file,
+        description: item.description.value,
+        caption: item.caption?.value,
+        keywords: item.keywords.value,
+        language: item.language.value,
+      }),
+    )
+
+  return {
+    title: data.title.value,
+    language: data.language.value,
+    keywords: data.keywords.value,
+    existingItems,
+    uploadItems,
+  }
+}
+
+/**
+ * Deserialize API format to edit data (adds UpdateValue wrappers and creates
+ * item structure)
+ *
+ * Transforms flat API data back into the complex edit manager structure. This
+ * function is used when receiving data from the server or when reconstructing
+ * edit state.
+ *
+ * @param serialized - The flat SerializedEditData from API or storage
+ * @param postData - Optional post data to populate item.data fields for
+ *   existing items
+ * @returns PostUpdate - Complex structure suitable for edit manager
+ */
+export function deserializeEditData(
+  serialized: SerializedEditData,
+  postData?: PostItemType,
+): PostUpdate {
+  const items: Record<string, EditableItem> = {}
+
+  // Convert existing items
+  serialized.existingItems.forEach((serializedItem) => {
+    // Find the corresponding data from postData if available
+    const itemData = postData?.items.nodes?.find(
+      (node) => node?.id === serializedItem.id,
+    )
+
+    items[serializedItem.id] = {
+      type: 'existing',
+      id: serializedItem.id,
+      data: itemData!, // This should exist if we're deserializing valid data
+      description: createUpdateValue(serializedItem.description),
+      caption: serializedItem.caption
+        ? createUpdateValue(serializedItem.caption)
+        : undefined,
+      position: createUpdateValue(itemData?.position || 0),
+    }
+  })
+
+  // Convert upload items
+  serialized.uploadItems.forEach((serializedItem, index) => {
+    const id = serializedItem.file.name || `upload-${index}`
+    items[id] = {
+      type: 'upload',
+      id,
+      file: serializedItem.file,
+      keywords: createUpdateValue(serializedItem.keywords),
+      description: createUpdateValue(serializedItem.description),
+      caption: serializedItem.caption
+        ? createUpdateValue(serializedItem.caption)
+        : undefined,
+      language: createUpdateValue(serializedItem.language),
+    }
+  })
+
+  return {
+    title: createUpdateValue(serialized.title),
+    language: createUpdateValue(serialized.language),
+    keywords: createUpdateValue(serialized.keywords),
+    items,
+    uploadController: undefined,
+    isUploading: false,
+  }
+}
+
+/**
+ * Serialize edit data with UpdateValue wrappers preserved for validation error
+ * handling
+ *
+ * Similar to serializeEditData but keeps UpdateValue wrappers intact. This
+ * allows validation errors from the server to be applied to the correct fields
+ * using the existing error-handling utilities.
+ *
+ * @param data - The PostUpdate data with complex item structure
+ * @returns SerializedEditDataWithValidation - Flat structure with UpdateValue
+ *   fields preserved
+ */
+export function serializeEditDataWithValidation(
+  data: PostUpdate,
+): SerializedEditDataWithValidation {
+  const items = Object.values(data.items)
+    .filter((item): item is ExistingItem => item.type === 'existing')
+    .map(
+      (item): SerializedEditItemWithValidation => ({
+        id: createUpdateValue(item.id),
+        description: item.description,
+        caption: item.caption,
+      }),
+    )
+
+  const newItems = Object.values(data.items)
+    .filter((item): item is UploadItem => item.type === 'upload')
+    .map(
+      (item): SerializedUploadItemWithValidation => ({
+        file: createUpdateValue(item.file),
+        description: item.description,
+        caption: item.caption,
+        keywords: item.keywords,
+        language: item.language,
+      }),
+    )
+
+  return {
+    title: data.title,
+    language: data.language,
+    keywords: data.keywords,
+    items,
+    newItems,
+  }
+}
+
+/**
+ * Deserialize validation-compatible format back to edit data
+ *
+ * Transforms the validation-compatible serialized format back into edit manager
+ * structure. This function preserves any validation errors that were applied to
+ * the serialized data.
+ *
+ * @param serialized - The SerializedEditDataWithValidation with potential
+ *   validation errors
+ * @param postData - Optional post data to populate item.data fields for
+ *   existing items
+ * @returns PostUpdate - Complex structure with validation errors preserved
+ */
+export function deserializeEditDataWithValidation(
+  serialized: SerializedEditDataWithValidation,
+  postData?: PostItemType,
+): PostUpdate {
+  const items: Record<string, EditableItem> = {}
+
+  // Convert existing items
+  serialized.items.forEach((serializedItem) => {
+    const itemId = serializedItem.id.value
+    // Find the corresponding data from postData if available
+    const itemData = postData?.items.nodes?.find((node) => node?.id === itemId)
+
+    items[itemId] = {
+      type: 'existing',
+      id: itemId,
+      data: itemData!, // This should exist if we're deserializing valid data
+      description: serializedItem.description,
+      caption: serializedItem.caption,
+      position: createUpdateValue(itemData?.position || 0),
+    }
+  })
+
+  // Convert upload items
+  serialized.newItems.forEach((serializedItem, index) => {
+    const id = serializedItem.file.value.name || `upload-${index}`
+    items[id] = {
+      type: 'upload',
+      id,
+      file: serializedItem.file.value,
+      keywords: serializedItem.keywords,
+      description: serializedItem.description,
+      caption: serializedItem.caption,
+      language: serializedItem.language,
+    }
+  })
+
+  return {
+    title: serialized.title,
+    language: serialized.language,
+    keywords: serialized.keywords,
+    items,
+    uploadController: undefined,
+    isUploading: false,
   }
 }

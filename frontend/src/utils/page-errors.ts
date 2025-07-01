@@ -1,3 +1,6 @@
+// Astro page error handling utilities
+import { isAuthenticationError } from '@src/types/errors'
+
 export interface ErrorInfo {
   statusCode: number
   statusCategory: number // 400, 500, etc.
@@ -8,51 +11,6 @@ export interface ErrorInfo {
 export interface ErrorPageProps {
   error: ErrorInfo
   isDev?: boolean
-}
-
-/** Check if GraphQL error contains authentication error */
-export function isAuthenticationError(
-  errorOrGraphqlResponse: unknown,
-): boolean {
-  if (
-    typeof errorOrGraphqlResponse === 'object' &&
-    errorOrGraphqlResponse !== null
-  ) {
-    const response = errorOrGraphqlResponse as Record<string, unknown>
-
-    // Check for ClientError from graphql-request
-    if (
-      'response' in response &&
-      typeof response.response === 'object' &&
-      response.response !== null
-    ) {
-      const nestedResponse = response.response as Record<string, unknown>
-      if ('errors' in nestedResponse && Array.isArray(nestedResponse.errors)) {
-        return nestedResponse.errors.some(
-          (error: Record<string, unknown>) =>
-            error?.extensions &&
-            typeof error.extensions === 'object' &&
-            error.extensions !== null &&
-            (error.extensions as Record<string, unknown>).code ===
-              'AUTHENTICATION_ERROR',
-        )
-      }
-    }
-
-    // Check for direct GraphQL errors
-    if ('errors' in response && Array.isArray(response.errors)) {
-      return response.errors.some(
-        (error: Record<string, unknown>) =>
-          error?.extensions &&
-          typeof error.extensions === 'object' &&
-          error.extensions !== null &&
-          (error.extensions as Record<string, unknown>).code ===
-            'AUTHENTICATION_ERROR',
-      )
-    }
-  }
-
-  return false
 }
 
 /**
@@ -95,8 +53,8 @@ export function handleError(
   // Check for authentication errors and override status code
   if (errorOrGraphqlResponse && isAuthenticationError(errorOrGraphqlResponse)) {
     statusCode = 401
-  } else {
-    console.error('Error occurred:', errorOrGraphqlResponse)
+  } else if (statusCode !== 404) {
+    console.error('Error occurred:', statusCode, errorOrGraphqlResponse)
   }
 
   // Determine status category (4xx, 5xx)

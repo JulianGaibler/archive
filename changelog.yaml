@@ -1,14 +1,20 @@
 # Changelog
 # Labels: [Added], [Fixed], [Improved], [Removed], [Deprecated], [Security]
 
-2.2.0:
-  date: '2025-06-30' # UPDATE ME with the date of the release
+2.1.0:
+  date: '2025-07-01'
+  notes: |
+     Archive 2.1 brings a major overhaul of the backend, with few user-visible changes but paving the way for new features down the road.
+     
+     Notable changes include that the Telegram bot search quality is now on par with the web search, and error messages are more detailed.
   changes:
     - '[Improved] Telegram bot search now matches the quality and performance of the web search'
     - '[Improved] Telegram linking now has a confirmation step and can be initiated from Telegram too'
     - '[Improved] Post titles are now unique'
+    - '[Improved] Error messages in the frontend are now more descriptive'
     - '[Fixed] Captions and descriptions can now be set to empty'
-    - '[Removed] Frontend no longer uses webp and webm files, as a first step towards removing support for these formats'
+    - '[Removed] WebP and WebM files are no longer used or generated'
+    - '[Removed] Backend no longer generates video thumbnails (which were never used anyway)'
 2.0.2:
   date: '2025-06-27'
   changes:
@@ -36,7 +42,7 @@
 2.0.0:
   date: '2025-06-23'
   notes: |
-    🎉 **5 years later, Archive hits 2.0.0!** 🎉
+    🎉 **5 years later, Archive hits 2.0!** 🎉
 
     **The frontend has been completely rewritten**, moving from a single-page (SPA) to a multi-page application (MPA) architecture. **Password and session security has been enhanced**, with modern password hashing algorithms and fixed security issues around timing attacks.
     

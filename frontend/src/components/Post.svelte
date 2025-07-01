@@ -16,6 +16,7 @@
   import { getSdk } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
   import IconUpload from 'tint/icons/20-upload.svg?raw'
+  import IconWarning from 'tint/icons/20-warning.svg?raw'
   import { createEditManager } from '@src/utils/edit-manager'
   import { onMount } from 'svelte'
   import Menu, {
@@ -25,6 +26,7 @@
   } from 'tint/components/Menu.svelte'
   import ReorderModal from '@src/components/ReorderModal.svelte'
   import MergePostModal from '@src/components/MergePostModal.svelte'
+  import MessageBox from 'tint/components/MessageBox.svelte'
 
   const sdk = getSdk(webClient)
 
@@ -46,6 +48,7 @@
     data: editData,
     post: postObject,
     loading,
+    globalError,
     isInNewPostMode,
     items,
   } = editManager
@@ -251,6 +254,21 @@
 </script>
 
 <div class="tint--tinted head">
+  {#if $globalError !== undefined}
+    <div class="shrinkwrap global-error">
+      <MessageBox icon={IconWarning}>
+        <h2>Error</h2>
+        <p>{$globalError!.message}</p>
+        {#if $globalError!.validationErrors}
+          <ul class="validation-errors">
+            {#each $globalError!.validationErrors as message (message)}
+              <li>{message}</li>
+            {/each}
+          </ul>
+        {/if}
+      </MessageBox>
+    </div>
+  {/if}
   <div class="shrinkwrap split">
     {#if isNewPost && import.meta.env.SSR}
       <!-- SSR: Show loading indicator before JS hydration -->
@@ -455,6 +473,12 @@
   background: var(--tint-bg)
   padding-block: tint.$size-32
   position: relative
+  .global-error
+    margin-block-end: tint.$size-16
+    .validation-errors
+      color: var(--tint-text-secondary)
+      padding-block-start: tint.$size-4
+      padding-inline-start: tint.$size-32
   .title
     word-break: break-word
   .split
@@ -490,7 +514,6 @@
     display: flex
     gap: tint.$size-8
     a
-      @include tint.effect-focus()
       border-radius: tint.$button-radius-small
       border: 1px solid
       text-decoration: none
@@ -499,6 +522,7 @@
       align-items: center
       padding-inline: tint.$size-8
       line-height: 1
+      @include tint.effect-focus()
 
 
   .edit

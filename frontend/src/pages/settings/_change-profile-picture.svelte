@@ -11,8 +11,8 @@
     type User,
   } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
-  import { getOperationResultError } from '@src/utils'
   import UserPicture from '@src/components/UserPicture.svelte'
+  import { getOperationResultError } from '@src/graphql-errors'
 
   const sdk = getSdk(webClient)
 
@@ -49,13 +49,13 @@
         loading = false
       })
       .then((res) => {
-        globalError = getOperationResultError(res)
+        globalError = getOperationResultError(res)?.message
         if (!globalError) {
           success = true
         }
       })
       .catch((err) => {
-        globalError = getOperationResultError(err)
+        globalError = getOperationResultError(err)?.message
       })
   }
 
@@ -70,13 +70,13 @@
         loading = false
       })
       .then((res) => {
-        globalError = getOperationResultError(res)
+        globalError = getOperationResultError(res)?.message
         if (!globalError) {
           success = true
         }
       })
       .catch((err) => {
-        globalError = getOperationResultError(err)
+        globalError = getOperationResultError(err)?.message
       })
   }
 

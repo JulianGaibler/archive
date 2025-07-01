@@ -12,63 +12,114 @@
     type ChangePasswordMutationVariables,
   } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
-  import { getOperationResultError } from '@src/utils'
+  import { getOperationResultError } from '@src/graphql-errors'
+  import {
+    createUpdateValue,
+    clearValidationErrors,
+    setValidationErrors,
+    type UpdateValue,
+  } from '@src/utils/edit-utils'
 
   const sdk = getSdk(webClient)
 
-  let oldPassword = $state('')
-  let newPassword = $state('')
-  let newPasswordConfirm = $state('')
+  interface PasswordFormData {
+    oldPassword: UpdateValue<string>
+    newPassword: UpdateValue<string>
+    newPasswordConfirm: UpdateValue<string>
+  }
+
+  let data = $state<PasswordFormData>({
+    oldPassword: createUpdateValue(''),
+    newPassword: createUpdateValue(''),
+    newPasswordConfirm: createUpdateValue(''),
+  })
 
   let loading = $state(false)
   let success = $state(false)
   let globalError: string | undefined = $state(undefined)
-  let oldPasswordError: string | undefined = $state(undefined)
-  let newPasswordError: string | undefined = $state(undefined)
-  let newPasswordConfirmError: string | undefined = $state(undefined)
 
-  const tryChangePassword = (args: ChangePasswordMutationVariables) => {
-    resetErrors()
+  const tryChangePassword = () => {
+    // Clear previous validation errors
+    clearValidationErrors(data)
+    globalError = undefined
 
-    if (args.oldPassword.trim().length === 0) {
-      oldPasswordError = 'Please enter your current password'
+    // Local validation
+    if (data.oldPassword.value.trim().length === 0) {
+      data.oldPassword.error = 'Please enter your current password'
     }
-    if (args.newPassword.trim().length === 0) {
-      newPasswordError = 'Please enter your new password'
+    if (data.newPassword.value.trim().length === 0) {
+      data.newPassword.error = 'Please enter your new password'
     }
-    if (args.newPassword !== newPasswordConfirm) {
-      newPasswordConfirmError = 'Passwords do not match'
+    if (data.newPassword.value !== data.newPasswordConfirm.value) {
+      data.newPasswordConfirm.error = 'Passwords do not match'
     }
-    if (oldPasswordError || newPasswordError || newPasswordConfirmError) {
+
+    // Check if there are any validation errors
+    if (
+      data.oldPassword.error ||
+      data.newPassword.error ||
+      data.newPasswordConfirm.error
+    ) {
       return
     }
 
     loading = true
 
+    // Extract values for API call
+    const apiArgs: ChangePasswordMutationVariables = {
+      oldPassword: data.oldPassword.value,
+      newPassword: data.newPassword.value,
+    }
+
     sdk
-      .changePassword(args)
+      .changePassword(apiArgs)
       .finally(() => {
         loading = false
       })
       .then((res) => {
-        globalError = getOperationResultError(res)
-        if (!globalError) {
+        const errorResult = getOperationResultError(res)
+        if (errorResult) {
+          if ('issues' in errorResult) {
+            const { unassignableErrors } = setValidationErrors(
+              data,
+              errorResult.issues,
+            )
+            if (unassignableErrors.length > 0) {
+              globalError = unassignableErrors.join('; ')
+            }
+          } else {
+            globalError = errorResult.message
+          }
+        } else {
           success = true
-          oldPassword = ''
-          newPassword = ''
-          newPasswordConfirm = ''
+          data.oldPassword.value = ''
+          data.newPassword.value = ''
+          data.newPasswordConfirm.value = ''
         }
       })
       .catch((err) => {
-        globalError = getOperationResultError(err)
+        const errorResult = getOperationResultError(err)
+        if (errorResult) {
+          if ('issues' in errorResult) {
+            const { unassignableErrors } = setValidationErrors(
+              data,
+              errorResult.issues,
+            )
+            if (unassignableErrors.length > 0) {
+              globalError = unassignableErrors.join('; ')
+            }
+          } else {
+            globalError = errorResult.message
+          }
+        } else {
+          globalError = 'An unexpected error occurred'
+        }
       })
   }
 
   function resetErrors() {
+    clearValidationErrors(data)
     globalError = undefined
-    oldPasswordError = undefined
-    newPasswordError = undefined
-    newPasswordConfirmError = undefined
   }
 
   function resetSuccess() {
@@ -90,40 +141,36 @@
     <p>Your password has been updated</p>
   </MessageBox>
 {/if}
-<form
-  onsubmit={preventDefault(() =>
-    tryChangePassword({ oldPassword, newPassword }),
-  )}
->
+<form onsubmit={preventDefault(() => tryChangePassword())}>
   <TextField
     id="old-password"
     type="password"
     label="Current password"
     autocomplete="current-password"
-    bind:value={oldPassword}
+    bind:value={data.oldPassword.value}
     disabled={loading}
-    error={oldPasswordError}
-    oninput={() => (oldPasswordError = undefined)}
+    error={data.oldPassword.error}
+    oninput={() => (data.oldPassword.error = undefined)}
   />
   <TextField
     id="new-password"
     type="password"
     label="New password"
     autocomplete="new-password"
-    bind:value={newPassword}
+    bind:value={data.newPassword.value}
     disabled={loading}
-    error={newPasswordError}
-    oninput={() => (newPasswordError = undefined)}
+    error={data.newPassword.error}
+    oninput={() => (data.newPassword.error = undefined)}
   />
   <TextField
     id="new-password-confirm"
     type="password"
     label="Confirm new password"
     autocomplete="new-password"
-    bind:value={newPasswordConfirm}
+    bind:value={data.newPasswordConfirm.value}
     disabled={loading}
-    error={newPasswordConfirmError}
-    oninput={() => (newPasswordConfirmError = undefined)}
+    error={data.newPasswordConfirm.error}
+    oninput={() => (data.newPasswordConfirm.error = undefined)}
   />
   <Button submit={true} {loading}>Update password</Button>
 </form>

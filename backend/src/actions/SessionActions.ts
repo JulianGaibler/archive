@@ -1,4 +1,4 @@
-import { eq, inArray, sql } from 'drizzle-orm'
+import { eq, inArray, sql, and } from 'drizzle-orm'
 import Context from '@src/Context.js'
 import {
   AuthenticationError,
@@ -153,7 +153,16 @@ const SessionActions = {
       let finalUpdatedAt = session.updatedAt
 
       if (!skipUpdate) {
-        const updateFields: any = {
+        const updateFields: Partial<
+          Pick<
+            SessionInternal,
+            | 'userAgent'
+            | 'latestIp'
+            | 'tokenHash'
+            | 'secretVersion'
+            | 'lastTokenRotation'
+          >
+        > = {
           userAgent: fields.userAgent,
         }
         if (fields.latestIp) {
@@ -213,8 +222,7 @@ const SessionActions = {
     ctx: Context,
     fields: { userId: number },
   ): Promise<{ secureSessionId: string; token: string }> {
-    const db = ctx.db
-    await cleanupUserSessions(db, fields.userId)
+    await cleanupUserSessions(ctx.db, fields.userId)
     const token = generateToken()
     const secureSessionId = generateSecureSessionId()
     const currentVersion = SessionSecurityUtils.getCurrentSecretVersion()
@@ -222,7 +230,7 @@ const SessionActions = {
     const userAgent = ctx.req?.headers['user-agent'] || ''
     const firstIp = ctx.req?.ip || ''
     const latestIp = ctx.req?.ip || ''
-    const [session] = await db
+    const [session] = await ctx.db
       .insert(sessionTable)
       .values({
         secureSessionId,
@@ -265,8 +273,7 @@ const SessionActions = {
         )
       }
 
-      const db = ctx.db
-      const [session] = await db
+      const [session] = await ctx.db
         .select()
         .from(sessionTable)
         .where(eq(sessionTable.id, sessionId))
@@ -275,7 +282,7 @@ const SessionActions = {
           'Session not found or you do not have permission to revoke it.',
         )
       }
-      const result = await db
+      const result = await ctx.db
         .delete(sessionTable)
         .where(eq(sessionTable.id, session.id))
       return !!result.rowCount
@@ -312,7 +319,7 @@ function generateSecureSessionId(): string {
  * @param userId
  */
 async function cleanupUserSessions(
-  db: any,
+  db: DbConnection,
   userId: SessionInternal['id'],
 ): Promise<void> {
   const now = Date.now()
@@ -320,21 +327,23 @@ async function cleanupUserSessions(
   await db
     .delete(sessionTable)
     .where(
-      eq(sessionTable.userId, userId),
-      sql`${sessionTable.updatedAt} < ${now - SESSION_EXPIRY_TIME}`,
+      and(
+        eq(sessionTable.userId, userId),
+        sql`${sessionTable.updatedAt} < ${now - SESSION_EXPIRY_TIME}`,
+      ),
     )
   // Get remaining active sessions, ordered by most recent first
-  const activeSessions: any[] = await db
+  const activeSessions: SessionInternal[] = await db
     .select()
     .from(sessionTable)
     .where(eq(sessionTable.userId, userId))
     .orderBy(sql`${sessionTable.updatedAt} desc`)
   // If we have more than the limit, delete the oldest ones
   if (activeSessions.length >= MAX_SESSIONS_PER_USER) {
-    const sessionsToDelete: any[] = activeSessions.slice(
+    const sessionsToDelete: SessionInternal[] = activeSessions.slice(
       MAX_SESSIONS_PER_USER - 1,
     )
-    const idsToDelete = sessionsToDelete.map((s: any) => s.id)
+    const idsToDelete = sessionsToDelete.map((s: SessionInternal) => s.id)
     if (idsToDelete.length > 0) {
       await db.delete(sessionTable).where(inArray(sessionTable.id, idsToDelete))
     }

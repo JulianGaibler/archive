@@ -2,13 +2,13 @@ import type { CodegenConfig } from '@graphql-codegen/cli'
 
 const config: CodegenConfig = {
   overwrite: true,
-  schema: "src/apis/GraphQLApi/gql/*.graphql",
+  schema: "schema/*.graphql",
   generates: {
     "src/apis/GraphQLApi/generated-types.ts": {
       plugins: [
         {
           add: {
-            content: '/* eslint-disable @typescript-eslint/no-empty-object-type */'
+            content: '/* eslint-disable @typescript-eslint/no-empty-object-type */\n/* eslint-disable @typescript-eslint/no-explicit-any */'
           }
         },
         "typescript",

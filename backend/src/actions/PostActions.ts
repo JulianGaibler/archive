@@ -1,4 +1,4 @@
-import PostModel, { PostExternal } from '@src/models/PostModel.js'
+import PostModel, { PostExternal, PostInternal } from '@src/models/PostModel.js'
 import UserModel, { UserExternal } from '@src/models/UserModel.js'
 import Context from '@src/Context.js'
 import {
@@ -6,6 +6,7 @@ import {
   InputError,
   NotFoundError,
   RequestError,
+  validateInput,
 } from '@src/errors/index.js'
 import { FileUpload } from 'graphql-upload/processRequest.mjs'
 import KeywordModel, { KeywordExternal } from '@src/models/KeywordModel.js'
@@ -24,10 +25,12 @@ import {
   count,
 } from 'drizzle-orm'
 import ItemModel, { ItemExternal, ItemInternal } from '@src/models/ItemModel.js'
+import { DbConnection } from '@src/Connection.js'
 import PaginationUtils, {
   PaginationArgs,
   Connection,
 } from './PaginationUtils.js'
+import z from 'zod/v4'
 
 const postTable = PostModel.table
 const postSearchView = PostModel.postSearchView
@@ -68,17 +71,6 @@ const PostActions = {
     // Determine if content search is active
     const hasContentSearch =
       fields.byContent && fields.byContent.trim().length > 0
-
-    // Start building the base query dynamically with conditional selection
-    const selectFields: any = {
-      ...getTableColumns(postTable),
-    }
-    if (hasContentSearch) {
-      selectFields.searchRank = sql<number>`search_results.rank_score`.as(
-        'searchRank',
-      )
-    }
-    let baseQuery = ctx.db.select(selectFields).from(postTable).$dynamic()
 
     // Build conditions array
     const conditions = []
@@ -143,7 +135,10 @@ const PostActions = {
       conditions.push(eq(postTable.language, fields.byLanguage))
     }
 
-    // Handle byContent filter with CTE
+    let posts: PostInternal[]
+    let totalCount: number
+
+    // Handle search vs non-search queries separately due to different return types
     if (hasContentSearch) {
       const searchTerm = fields.byContent!.trim()
 
@@ -191,8 +186,8 @@ const PostActions = {
         ) combined_results`),
       )
 
-      // Add the CTE to the query and join with search results
-      baseQuery = ctx.db
+      // Build search query
+      let searchQuery = ctx.db
         .with(searchCte)
         .select({
           ...getTableColumns(postTable),
@@ -201,59 +196,62 @@ const PostActions = {
         .from(postTable)
         .innerJoin(searchCte, eq(postTable.id, searchCte.postId))
         .$dynamic()
-    }
 
-    // Apply all conditions
-    if (conditions.length > 0) {
-      baseQuery = baseQuery.where(and(...conditions))
-    }
+      // Apply additional conditions
+      if (conditions.length > 0) {
+        searchQuery = searchQuery.where(and(...conditions))
+      }
 
-    // Add ordering - prioritize search rank if content search is active, then by creation date
-    if (hasContentSearch) {
-      baseQuery = baseQuery.orderBy(
+      // Add ordering and pagination
+      searchQuery = searchQuery.orderBy(
         desc(sql`"searchRank"`),
         desc(postTable.createdAt),
       )
-    } else {
-      baseQuery = baseQuery.orderBy(desc(postTable.createdAt))
-    }
 
-    // Execute query with pagination
-    const posts = await baseQuery.limit(limit).offset(offset)
+      posts = (await searchQuery.limit(limit).offset(offset)) as PostInternal[]
 
-    // Get total count for pagination
-    let countQuery = ctx.db
-      .select({ count: count() })
-      .from(postTable)
-      .$dynamic()
-
-    // Apply same filters for count query
-    if (hasContentSearch) {
-      const searchTerm = fields.byContent!.trim()
-      const searchCte = ctx.db.$with('search_results').as(
-        ctx.db
-          .select({
-            postId: postSearchView.postId,
-          })
-          .from(postSearchView)
-          .where(
-            sql`${postSearchView.text} @@ websearch_to_tsquery('english_nostop', ${searchTerm}) OR ${postSearchView.plainText} ILIKE ${`%${searchTerm}%`}`,
-          ),
-      )
-
-      countQuery = ctx.db
+      // Get total count for search
+      let countQuery = ctx.db
         .with(searchCte)
         .select({ count: count() })
         .from(postTable)
         .innerJoin(searchCte, eq(postTable.id, searchCte.postId))
         .$dynamic()
-    }
 
-    if (conditions.length > 0) {
-      countQuery = countQuery.where(and(...conditions))
-    }
+      if (conditions.length > 0) {
+        countQuery = countQuery.where(and(...conditions))
+      }
 
-    const [{ count: totalCount }] = await countQuery
+      const [{ count: searchTotalCount }] = await countQuery
+      totalCount = searchTotalCount
+    } else {
+      // Non-search query - simpler flow
+      let baseQuery = ctx.db.select().from(postTable).$dynamic()
+
+      // Apply conditions
+      if (conditions.length > 0) {
+        baseQuery = baseQuery.where(and(...conditions))
+      }
+
+      // Add ordering
+      baseQuery = baseQuery.orderBy(desc(postTable.createdAt))
+
+      // Execute query with pagination
+      posts = await baseQuery.limit(limit).offset(offset)
+
+      // Get total count
+      let countQuery = ctx.db
+        .select({ count: count() })
+        .from(postTable)
+        .$dynamic()
+
+      if (conditions.length > 0) {
+        countQuery = countQuery.where(and(...conditions))
+      }
+
+      const [{ count: nonSearchTotalCount }] = await countQuery
+      totalCount = nonSearchTotalCount
+    }
 
     // Convert internal posts to external format
     const externalData = posts.map((postInternal) => {
@@ -288,21 +286,23 @@ const PostActions = {
   ): Promise<PostExternal> {
     const creatorId = ctx.isAuthenticated()
 
+    const vFields = validateInput(createPostSchema, fields)
+
     return await ctx.db.transaction(async (tx) => {
       // Insert the new post
       const [newPost] = await tx
         .insert(postTable)
         .values({
-          title: fields.title,
-          language: fields.language,
+          title: vFields.title,
+          language: vFields.language,
           creatorId: creatorId,
         })
         .returning()
 
       // Insert keyword relations if keywords are provided
-      if (fields.keywords && fields.keywords.length > 0) {
+      if (vFields.keywords && vFields.keywords.length > 0) {
         // Decode external keyword IDs to internal IDs for database operations
-        const keywordIds = fields.keywords.map((keywordId) =>
+        const keywordIds = vFields.keywords.map((keywordId) =>
           KeywordModel.decodeId(keywordId),
         )
 
@@ -343,7 +343,10 @@ const PostActions = {
     },
   ): Promise<PostExternal> {
     const userIId = ctx.isAuthenticated()
-    const postIId = PostModel.decodeId(fields.postId)
+
+    const vFields = validateInput(editPostSchema, fields)
+
+    const postIId = PostModel.decodeId(vFields.postId)
 
     let filesForStorage: { item: ItemInternal; file: Promise<FileUpload> }[] =
       []
@@ -369,13 +372,15 @@ const PostActions = {
       const [updatedPost] = await tx
         .update(postTable)
         .set({
-          title: fields.title,
-          language: fields.language,
+          title: vFields.title,
+          language: vFields.language,
         })
         .where(eq(postTable.id, postIId))
         .returning()
 
-      const keywordIIds = fields.keywords.map((id) => KeywordModel.decodeId(id))
+      const keywordIIds = vFields.keywords.map((id) =>
+        KeywordModel.decodeId(id),
+      )
 
       // Update keyword relationships
       const existingKeywords = await tx
@@ -419,9 +424,11 @@ const PostActions = {
       }
 
       // Update existing items with verification
-      if (fields.items && fields.items.length > 0) {
+      if (vFields.items && vFields.items.length > 0) {
         // First, verify all items exist and belong to this post
-        const itemIIds = fields.items.map((item) => ItemModel.decodeId(item.id))
+        const itemIIds = vFields.items.map((item) =>
+          ItemModel.decodeId(item.id),
+        )
         const existingItems = await tx
           .select()
           .from(itemTable)
@@ -438,8 +445,10 @@ const PostActions = {
         }
 
         // Update each item
-        for (const item of fields.items) {
-          const updateData: any = {}
+        for (const item of vFields.items) {
+          const updateData: Partial<
+            Pick<ItemInternal, 'caption' | 'description'>
+          > = {}
           if (item.caption !== undefined) updateData.caption = item.caption
           if (item.description !== undefined)
             updateData.description = item.description
@@ -467,7 +476,7 @@ const PostActions = {
       }
 
       // Handle new items
-      if (fields.newItems && fields.newItems.length > 0) {
+      if (vFields.newItems && vFields.newItems.length > 0) {
         // Get current highest position atomically
         const highestPositionResult = await tx
           .select({ maxPosition: sql`COALESCE(MAX(${itemTable.position}), 0)` })
@@ -479,7 +488,7 @@ const PostActions = {
         )
 
         // Create new items data
-        const newItemsToCreate = fields.newItems.map((item, index) => ({
+        const newItemsToCreate = vFields.newItems.map((item, index) => ({
           type: 'PROCESSING' as const,
           caption: item.caption || '',
           description: item.description || '',
@@ -490,28 +499,17 @@ const PostActions = {
           taskNotes: '',
           position: highestPosition + index + 1,
         }))
-
-        const validatedNewItems = newItemsToCreate.map((item, index) => {
-          const validation = ItemModel.insertSchema.safeParse(item)
-          if (!validation.success) {
-            throw new InputError(
-              `Invalid new item data at index ${index}: ${validation.error.message}`,
-            )
-          }
-          return validation.data
-        }) as ItemInternal[]
-
         // Insert new items
         const createdItems = await tx
           .insert(itemTable)
-          .values(validatedNewItems)
+          .values(newItemsToCreate)
           .returning()
 
         // Store files after transaction commits successfully
 
         filesForStorage = createdItems.map((item, index) => ({
           item,
-          file: fields.newItems![index].file,
+          file: vFields.newItems![index].file,
         }))
 
         // Store files asynchronously after transaction
@@ -1242,7 +1240,10 @@ const PostActions = {
 export default PostActions
 
 // Utility function to reorder item positions sequentially
-async function _reorderItemPositions(trx: any, postId: number): Promise<void> {
+async function _reorderItemPositions(
+  trx: DbConnection,
+  postId: number,
+): Promise<void> {
   // Using Drizzle's SQL template for the complex reordering query
   await trx.execute(sql`
     WITH ordered_items AS (
@@ -1256,3 +1257,36 @@ async function _reorderItemPositions(trx: any, postId: number): Promise<void> {
     WHERE ${itemTable.id} = ordered_items.id
   `)
 }
+
+const editPostSchema = z.object({
+  postId: PostModel.schema.shape.id,
+  title: PostModel.schema.shape.title,
+  language: PostModel.schema.shape.language,
+  keywords: z.array(KeywordModel.schema.shape.id),
+  items: z
+    .array(
+      z.object({
+        id: ItemModel.schema.shape.id,
+        caption: ItemModel.schema.shape.caption.optional(),
+        description: ItemModel.schema.shape.description.optional(),
+      }),
+    )
+    .optional()
+    .nullable(),
+  newItems: z
+    .array(
+      z.object({
+        file: z.any(), // or whatever validation you need for FileUpload
+        caption: ItemModel.schema.shape.caption.optional(),
+        description: ItemModel.schema.shape.description.optional(),
+      }),
+    )
+    .optional()
+    .nullable(),
+})
+
+const createPostSchema = z.object({
+  title: PostModel.schema.shape.title,
+  language: PostModel.schema.shape.language,
+  keywords: z.array(KeywordModel.schema.shape.id).optional().nullable(),
+})

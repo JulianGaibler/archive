@@ -1,13 +1,20 @@
-/** @param promise */
-export function to(promise: Promise<any>) {
-  return (
-    promise
-      .then((data) => {
-        return [null, data]
-      })
-      // This ensures that an undefined error still evaluates to true
-      .catch((err) => [err ? err : new Error('An error occurred')])
-  )
+/**
+ * Wraps a promise and returns a tuple of [error, data].
+ *
+ * @param promise The promise to wrap.
+ */
+export async function to<T>(
+  promise: Promise<T>,
+): Promise<[Error | null, T | undefined]> {
+  try {
+    const data = await promise
+    return [null, data] as [null, T]
+  } catch (err) {
+    return [err ? err : new Error('An error occurred'), undefined] as [
+      Error,
+      undefined,
+    ]
+  }
 }
 
 /**

@@ -57,7 +57,9 @@ export const resolveNodeById = async (
     case HashIdTypes.SESSION:
       return SessionActions.qSession(ctx, { sessionId: stringId })
     case HashIdTypes.ITEM:
-      return ItemActions.qItem(ctx, { itemId: stringId }) as any
+      return ItemActions.qItem(ctx, {
+        itemId: stringId,
+      }) as unknown as ResolversTypes['Node']
     default:
       throw new InputError('Node not found')
   }

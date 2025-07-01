@@ -15,7 +15,7 @@ import PaginationUtils, {
 } from './PaginationUtils.js'
 import { NotFoundError } from '@src/errors/index.js'
 import PostModel from '@src/models/PostModel.js'
-import { UserExternal } from '@src/models/UserModel.js'
+import { UserExternal, UserInternal } from '@src/models/UserModel.js'
 
 const itemTable = ItemModel.table
 const itemSearchView = ItemModel.itemSearchView
@@ -70,17 +70,6 @@ const ItemActions = {
     const hasContentSearch =
       fields.byContent && fields.byContent.trim().length > 0
 
-    // Start building the base query dynamically with conditional selection
-    const selectFields: any = {
-      ...getTableColumns(itemTable),
-    }
-    if (hasContentSearch) {
-      selectFields.searchRank = sql<number>`search_results.rank_score`.as(
-        'searchRank',
-      )
-    }
-    let baseQuery = ctx.db.select(selectFields).from(itemTable).$dynamic()
-
     // Build conditions array
     const conditions = []
 
@@ -90,8 +79,14 @@ const ItemActions = {
         fields.byUsers,
       )
       const validUserIds = users
-        .filter((user) => user && typeof user === 'object' && 'id' in user)
-        .map((user) => (user as any).id)
+        .filter(
+          (user): user is UserInternal =>
+            user !== null &&
+            typeof user === 'object' &&
+            'id' in user &&
+            !(user instanceof Error),
+        )
+        .map((user) => user.id)
 
       if (validUserIds.length > 0) {
         conditions.push(inArray(itemTable.creatorId, validUserIds))
@@ -105,7 +100,10 @@ const ItemActions = {
       }
     }
 
-    // Handle byContent filter with CTE
+    let items: ItemInternal[]
+    let totalCount: number
+
+    // Handle search vs non-search queries separately due to different return types
     if (hasContentSearch) {
       const searchTerm = fields.byContent!.trim()
 
@@ -156,8 +154,8 @@ const ItemActions = {
       ) combined_results`),
       )
 
-      // Add the CTE to the query and join with search results
-      baseQuery = ctx.db
+      // Build search query
+      let searchQuery = ctx.db
         .with(searchCte)
         .select({
           ...getTableColumns(itemTable),
@@ -166,61 +164,62 @@ const ItemActions = {
         .from(itemTable)
         .innerJoin(searchCte, eq(itemTable.id, searchCte.itemId))
         .$dynamic()
-    }
 
-    // Apply all conditions
-    if (conditions.length > 0) {
-      baseQuery = baseQuery.where(and(...conditions))
-    }
+      // Apply additional conditions
+      if (conditions.length > 0) {
+        searchQuery = searchQuery.where(and(...conditions))
+      }
 
-    // Add ordering - prioritize search rank if content search is active, then by creation date
-    if (hasContentSearch) {
-      baseQuery = baseQuery.orderBy(
+      // Add ordering and pagination
+      searchQuery = searchQuery.orderBy(
         desc(sql`"searchRank"`),
         desc(itemTable.createdAt),
       )
-    } else {
-      baseQuery = baseQuery.orderBy(desc(itemTable.createdAt))
-    }
 
-    // Execute query with pagination
-    const items = (await baseQuery
-      .limit(limit)
-      .offset(offset)) as ItemInternal[]
+      items = (await searchQuery.limit(limit).offset(offset)) as ItemInternal[]
 
-    // Get total count for pagination
-    let countQuery = ctx.db
-      .select({ count: count() })
-      .from(itemTable)
-      .$dynamic()
-
-    // Apply same filters for count query
-    if (hasContentSearch) {
-      const searchTerm = fields.byContent!.trim()
-      const searchCte = ctx.db.$with('search_results').as(
-        ctx.db
-          .select({
-            itemId: itemSearchView.itemId,
-          })
-          .from(itemSearchView)
-          .where(
-            sql`${itemSearchView.text} @@ websearch_to_tsquery('english_nostop', ${searchTerm}) OR ${itemSearchView.plainText} ILIKE ${`%${searchTerm}%`}`,
-          ),
-      )
-
-      countQuery = ctx.db
+      // Get total count for search
+      let countQuery = ctx.db
         .with(searchCte)
         .select({ count: count() })
         .from(itemTable)
         .innerJoin(searchCte, eq(itemTable.id, searchCte.itemId))
         .$dynamic()
-    }
 
-    if (conditions.length > 0) {
-      countQuery = countQuery.where(and(...conditions))
-    }
+      if (conditions.length > 0) {
+        countQuery = countQuery.where(and(...conditions))
+      }
 
-    const [{ count: totalCount }] = await countQuery
+      const [{ count: searchTotalCount }] = await countQuery
+      totalCount = searchTotalCount
+    } else {
+      // Non-search query - simpler flow
+      let baseQuery = ctx.db.select().from(itemTable).$dynamic()
+
+      // Apply conditions
+      if (conditions.length > 0) {
+        baseQuery = baseQuery.where(and(...conditions))
+      }
+
+      // Add ordering
+      baseQuery = baseQuery.orderBy(desc(itemTable.createdAt))
+
+      // Execute query with pagination
+      items = await baseQuery.limit(limit).offset(offset)
+
+      // Get total count
+      let countQuery = ctx.db
+        .select({ count: count() })
+        .from(itemTable)
+        .$dynamic()
+
+      if (conditions.length > 0) {
+        countQuery = countQuery.where(and(...conditions))
+      }
+
+      const [{ count: nonSearchTotalCount }] = await countQuery
+      totalCount = nonSearchTotalCount
+    }
 
     // Convert internal items to external format
     const externalData = items.map((itemInternal) => {

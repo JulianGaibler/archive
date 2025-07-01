@@ -10,6 +10,7 @@ import {
   AuthenticationError,
   AuthorizationError,
   InputError,
+  validateInput,
 } from '../errors/index.js'
 
 import SessionActions from '@src/actions/SessionActions.js'
@@ -17,6 +18,7 @@ import RateLimiter from '@src/middleware/RateLimiter.js'
 import env from '@src/utils/env.js'
 import PaginationUtils, { PaginationArgs } from './PaginationUtils.js'
 import { validateAuth } from '@src/apis/TelegramBot/index.js'
+import z from 'zod/v4'
 
 const userTable = UserModel.table
 const postTable = PostModel.table
@@ -72,7 +74,6 @@ const UserActions = {
     ctx.isAuthenticated()
     const paginationInfo = PaginationUtils.parsePaginationArgs(fields)
     const { limit, offset } = paginationInfo
-    const db = ctx.db
     let users: UserInternal[] = []
     let totalCount = 0
     const whereClauses = []
@@ -83,7 +84,7 @@ const UserActions = {
       )
     }
     if (fields.sortByPostCount) {
-      users = await db
+      users = await ctx.db
         .select({
           id: userTable.id,
           username: userTable.username,
@@ -111,21 +112,21 @@ const UserActions = {
         .orderBy(sql`count(${postTable.id}) desc, ${userTable.createdAt} desc`)
         .limit(limit)
         .offset(offset)
-      const countResult = await db
+      const countResult = await ctx.db
         .select({ count: sql`count(distinct ${userTable.id})::int` })
         .from(userTable)
         .leftJoin(postTable, eq(postTable.creatorId, userTable.id))
         .where(whereClauses.length ? whereClauses[0] : undefined)
       totalCount = Number(countResult[0]?.count || 0)
     } else {
-      users = await db
+      users = await ctx.db
         .select()
         .from(userTable)
         .where(whereClauses.length ? whereClauses[0] : undefined)
         .orderBy(sql`${userTable.createdAt} desc`)
         .limit(limit)
         .offset(offset)
-      const countResult = await db
+      const countResult = await ctx.db
         .select({ count: sql`count(*)::int` })
         .from(userTable)
         .where(whereClauses.length ? whereClauses[0] : undefined)
@@ -158,20 +159,21 @@ const UserActions = {
       throw new RequestError('You are already logged in.')
     }
 
-    const validation = UserModel.insertSchema.safeParse(fields)
+    const vFields = validateInput(signupSchema, fields)
+
+    const validation = UserModel.schema.safeParse(vFields)
     if (!validation.success) {
       throw new InputError('Invalid input')
     }
 
-    const password = await hashPassword(fields.password)
-    const db = ctx.db
+    const password = await hashPassword(vFields.password)
     // Use transaction for user creation
-    const [user] = await db.transaction(async (trx) => {
+    const [user] = await ctx.db.transaction(async (trx) => {
       const inserted = await trx
         .insert(userTable)
         .values({
-          username: fields.username,
-          name: fields.name,
+          username: vFields.username,
+          name: vFields.name,
           password,
         })
         .returning()
@@ -188,15 +190,17 @@ const UserActions = {
       throw new RequestError('You are already logged in.')
     }
 
+    const vFields = validateInput(loginSchema, fields)
+
     // Rate limiting by IP address and username
     const clientIP = ctx.req?.ip || ctx.req?.socket?.remoteAddress || 'unknown'
-    const rateLimitKey = `${clientIP}:${fields.username.toLowerCase()}`
+    const rateLimitKey = `${clientIP}:${vFields.username.toLowerCase()}`
 
     try {
       RateLimiter.checkLoginAttempt(rateLimitKey)
     } catch (error) {
       // Rate limit error - still perform timing-constant operations
-      await performTimingConstantAuth(null, fields.password)
+      await performTimingConstantAuth(null, vFields.password)
       throw error
     }
 
@@ -205,10 +209,10 @@ const UserActions = {
       .select()
       .from(userTable)
       .where(
-        sql`lower(${userTable.username}) = ${fields.username.toLowerCase()}`,
+        sql`lower(${userTable.username}) = ${vFields.username.toLowerCase()}`,
       )
 
-    const valid = await performTimingConstantAuth(user, fields.password)
+    const valid = await performTimingConstantAuth(user, vFields.password)
 
     // Always use the same error message regardless of whether user exists or password is wrong
     if (!user || !valid) {
@@ -226,8 +230,7 @@ const UserActions = {
 
     const telegramId = validateAuth(fields.apiResponse)
 
-    const db = ctx.db
-    const [user] = await db
+    const [user] = await ctx.db
       .update(userTable)
       .set({ telegramId })
       .where(eq(userTable.id, userIId))
@@ -240,8 +243,7 @@ const UserActions = {
 
   async mUnlinkTelegram(ctx: Context) {
     const userIId = ctx.isAuthenticated()
-    const db = ctx.db
-    const [user] = await db
+    const [user] = await ctx.db
       .update(userTable)
       .set({ telegramId: null })
       .where(eq(userTable.id, userIId))
@@ -258,8 +260,7 @@ const UserActions = {
   ) {
     console.log('Uploading profile picture', fields)
     const userIId = ctx.isAuthenticated()
-    const db = ctx.db
-    const [user] = await db
+    const [user] = await ctx.db
       .select()
       .from(userTable)
       .where(eq(userTable.id, userIId))
@@ -278,7 +279,7 @@ const UserActions = {
         throw e
       }
     }
-    await db
+    await ctx.db
       .update(userTable)
       .set({ profilePicture: filename })
       .where(eq(userTable.id, userIId))
@@ -287,8 +288,7 @@ const UserActions = {
 
   async mClearProfilePicture(ctx: Context) {
     const userIId = ctx.isAuthenticated()
-    const db = ctx.db
-    const [user] = await db
+    const [user] = await ctx.db
       .select()
       .from(userTable)
       .where(eq(userTable.id, userIId))
@@ -299,7 +299,7 @@ const UserActions = {
       throw new AuthenticationError('There is no profile picture to clear.')
     }
     await Context.fileStorage.deleteProfilePicture(user.profilePicture)
-    await db
+    await ctx.db
       .update(userTable)
       .set({ profilePicture: null })
       .where(eq(userTable.id, userIId))
@@ -308,10 +308,12 @@ const UserActions = {
 
   async mChangeName(ctx: Context, fields: { newName: UserExternal['name'] }) {
     const userIId = ctx.isAuthenticated()
-    const db = ctx.db
-    const [user] = await db
+
+    const vFields = validateInput(changeNameSchema, fields)
+
+    const [user] = await ctx.db
       .update(userTable)
-      .set({ name: fields.newName })
+      .set({ name: vFields.newName })
       .where(eq(userTable.id, userIId))
       .returning()
     if (!user) {
@@ -325,20 +327,22 @@ const UserActions = {
     fields: { oldPassword: string; newPassword: string },
   ) {
     const userIId = ctx.isAuthenticated()
-    const db = ctx.db
-    const [user] = await db
+
+    const vFields = validateInput(changePasswordSchema, fields)
+
+    const [user] = await ctx.db
       .select()
       .from(userTable)
       .where(eq(userTable.id, userIId))
     if (!user) {
       throw new AuthenticationError('This should not have happened.')
     }
-    const valid = await verifyPassword(user.password, fields.oldPassword)
+    const valid = await verifyPassword(user.password, vFields.oldPassword)
     if (!valid) {
       throw new AuthenticationError('Invalid password')
     }
-    const password = await hashPassword(fields.newPassword)
-    await db
+    const password = await hashPassword(vFields.newPassword)
+    await ctx.db
       .update(userTable)
       .set({ password })
       .where(eq(userTable.id, userIId))
@@ -400,3 +404,23 @@ async function performTimingConstantAuth(
     return false
   }
 }
+
+const signupSchema = z.object({
+  username: UserModel.schema.shape.username,
+  name: UserModel.schema.shape.name,
+  password: UserModel.passwordSchema,
+})
+
+const loginSchema = z.object({
+  username: UserModel.schema.shape.username,
+  password: UserModel.passwordSchemaRough,
+})
+
+const changeNameSchema = z.object({
+  newName: UserModel.schema.shape.name,
+})
+
+const changePasswordSchema = z.object({
+  oldPassword: UserModel.passwordSchemaRough,
+  newPassword: UserModel.passwordSchema,
+})

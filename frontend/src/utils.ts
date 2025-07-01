@@ -1,36 +1,4 @@
-import { ClientError, rawRequest } from 'graphql-request'
 import { getResourceUrl } from './utils/resource-urls'
-
-type GraphQLClientResponse =
-  ReturnType<typeof rawRequest> extends Promise<infer T> ? T : never
-
-export function getOperationResultError(
-  result: GraphQLClientResponse | ClientError | unknown,
-) {
-  // check if there is a response key in the result
-  if (isClientError(result)) {
-    const { response } = result
-    if (response.errors && response.errors.length > 0) {
-      return response.errors[0].message
-    }
-  }
-
-  if (isGraphQLResponse(result)) {
-    if (result.errors && result.errors.length > 0) {
-      return result.errors[0].message
-    }
-  }
-
-  return undefined
-
-  function isClientError(result: unknown): result is ClientError {
-    return typeof result === 'object' && result !== null && 'response' in result
-  }
-
-  function isGraphQLResponse(result: unknown): result is GraphQLClientResponse {
-    return typeof result === 'object' && result !== null && 'errors' in result
-  }
-}
 
 export function getConvertedSrcPath(
   path: string | undefined | null,

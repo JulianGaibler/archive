@@ -40,7 +40,11 @@ process.on(
 )
 
 /** @param options */
-async function handleExit(options: any) {
+async function handleExit(options: {
+  cleanup?: boolean
+  exit?: boolean
+  signal?: string
+}) {
   if (options.cleanup) {
     console.log('🛑 Shutting down services...')
     await telegramBot.stop()

@@ -10,6 +10,9 @@ import PaginationUtils, {
   PaginationArgs,
   Connection,
 } from './PaginationUtils.js'
+import AuthenticationError from '@src/errors/AuthenticationError.js'
+import { validateInput } from '@src/errors/index.js'
+import z from 'zod/v4'
 
 const postTable = PostModel.table
 const keywordTable = KeywordModel.table
@@ -66,7 +69,6 @@ const KeywordActions = {
 
     const paginationInfo = PaginationUtils.parsePaginationArgs(fields)
     const { limit, offset } = paginationInfo
-    const db = ctx.db
 
     let keywordsResult: KeywordInternal[] = []
     let totalCount = 0
@@ -88,7 +90,7 @@ const KeywordActions = {
 
     if (fields.sortByPostCount) {
       // Build dynamic query for sortByPostCount
-      const baseQuery = db
+      const baseQuery = ctx.db
         .select({
           id: keywordTable.id,
           name: keywordTable.name,
@@ -117,7 +119,7 @@ const KeywordActions = {
       keywordsResult = await dynamicQuery.limit(limit).offset(offset)
 
       // Count query for sortByPostCount
-      const countQuery = db
+      const countQuery = ctx.db
         .select({ count: sql`count(distinct ${keywordTable.id})::int` })
         .from(keywordTable)
         .leftJoin(keywordToPost, eq(keywordToPost.keywordId, keywordTable.id))
@@ -135,7 +137,7 @@ const KeywordActions = {
 
       if (needsPostJoin) {
         // Need inner join when filtering by postId
-        baseQuery = db
+        baseQuery = ctx.db
           .select()
           .from(keywordTable)
           .innerJoin(
@@ -145,7 +147,7 @@ const KeywordActions = {
           .orderBy(sql`${keywordTable.createdAt} desc`)
       } else {
         // No join needed for simple keyword queries
-        baseQuery = db
+        baseQuery = ctx.db
           .select()
           .from(keywordTable)
           .orderBy(sql`${keywordTable.createdAt} desc`)
@@ -161,7 +163,10 @@ const KeywordActions = {
 
       // Extract keywords from joined result if needed
       if (needsPostJoin) {
-        keywordsResult = rawResult.map((row: any) => row.keyword)
+        keywordsResult = rawResult.map(
+          (row: Record<string, unknown>) =>
+            (row as { keyword: KeywordInternal }).keyword,
+        )
       } else {
         keywordsResult = rawResult as KeywordInternal[]
       }
@@ -170,7 +175,7 @@ const KeywordActions = {
       let countQuery
 
       if (needsPostJoin) {
-        countQuery = db
+        countQuery = ctx.db
           .select({ count: sql`count(distinct ${keywordTable.id})::int` })
           .from(keywordTable)
           .innerJoin(
@@ -178,7 +183,9 @@ const KeywordActions = {
             eq(keywordTable.id, keywordToPost.keywordId),
           )
       } else {
-        countQuery = db.select({ count: sql`count(*)::int` }).from(keywordTable)
+        countQuery = ctx.db
+          .select({ count: sql`count(*)::int` })
+          .from(keywordTable)
       }
 
       const countDynamicQuery = countQuery.$dynamic()
@@ -208,15 +215,14 @@ const KeywordActions = {
   ): Promise<{ data: PostExternal[]; totalCount: number }> {
     ctx.isAuthenticated()
     const keywordId = KeywordModel.decodeId(fields.keywordId)
-    const db = ctx.db
     // Get all postIds for this keyword
-    const ktpRows = await db
+    const ktpRows = await ctx.db
       .select()
       .from(keywordToPost)
       .where(eq(keywordToPost.keywordId, keywordId))
     const postIds = ktpRows.map((row) => row.postId)
     if (!postIds.length) return { data: [], totalCount: 0 }
-    const allPosts = await db
+    const allPosts = await ctx.db
       .select()
       .from(postTable)
       .where(inArray(postTable.id, postIds))
@@ -235,8 +241,7 @@ const KeywordActions = {
   ): Promise<number> {
     ctx.isAuthenticated()
     const keywordId = KeywordModel.decodeId(fields.keywordId)
-    const db = ctx.db
-    const countResult = await db
+    const countResult = await ctx.db
       .select({ count: sql`count(${keywordToPost.postId})::int` })
       .from(keywordToPost)
       .where(eq(keywordToPost.keywordId, keywordId))
@@ -263,24 +268,31 @@ const KeywordActions = {
     fields: { name: string },
   ): Promise<KeywordExternal> {
     ctx.isAuthenticated()
-    const db = ctx.db
-    const [inserted] = await db
+
+    const vFields = validateInput(createKeywordSchema, fields)
+
+    const [inserted] = await ctx.db
       .insert(keywordTable)
-      .values({ name: fields.name })
+      .values({ name: vFields.name })
       .returning()
     return KeywordModel.makeExternal(inserted)
   },
 
   async mDelete(
     ctx: Context,
-    fields: { keywordId: KeywordExternal['id'] },
+    _fields: { keywordId: KeywordExternal['id'] },
   ): Promise<boolean> {
     ctx.isAuthenticated()
-    const id = KeywordModel.decodeId(fields.keywordId)
-    const db = ctx.db
-    const result = await db.delete(keywordTable).where(eq(keywordTable.id, id))
-    return !!result.rowCount
+
+    throw new AuthenticationError('Deleting keywords is currently disabled.')
+    // const id = KeywordModel.decodeId(fields.keywordId)
+    // const result = await ctx.db.delete(keywordTable).where(eq(keywordTable.id, id))
+    // return !!result.rowCount
   },
 }
 
 export default KeywordActions
+
+const createKeywordSchema = z.object({
+  name: KeywordModel.schema.shape.name,
+})

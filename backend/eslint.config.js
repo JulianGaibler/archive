@@ -1,7 +1,6 @@
 import js from '@eslint/js'
 import prettierConfig from 'eslint-config-prettier'
 import ts from 'typescript-eslint'
-import jsdoc from 'eslint-plugin-jsdoc'
 import globals from 'globals'
 
 export default ts.config(
@@ -25,7 +24,7 @@ export default ts.config(
       ],
       // Probably want to turn this rule on in the future but for now
       // the effort to fix all the errors is too much
-      '@typescript-eslint/no-explicit-any': 'off',
+      // '@typescript-eslint/no-explicit-any': 'off',
     },
   },
   {

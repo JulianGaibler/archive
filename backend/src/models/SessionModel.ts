@@ -23,7 +23,8 @@ export type SessionExternal = Omit<
 
 // --- Schema and Validation ---
 
-const insertSchema = createInsertSchema(session, {
+const schema = createInsertSchema(session, {
+  id: z.string(),
   secureSessionId: z.string(),
   tokenHash: z.string(),
   secretVersion: z.number(),
@@ -59,7 +60,7 @@ function makeExternal(session: SessionInternal): SessionExternal {
 
 export default {
   table: session,
-  insertSchema,
+  schema,
   decodeId,
   encodeId,
   makeExternal,

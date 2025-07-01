@@ -18,13 +18,11 @@ import { join } from 'path'
 import { readFileSync } from 'fs'
 import { makeExecutableSchema } from '@graphql-tools/schema'
 import { resolvers } from './resolvers/index.js'
+import chalk from 'chalk'
+import util from 'util'
 
-// Load all GraphQL schema files
-import { fileURLToPath } from 'url'
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = join(__filename, '..')
-
-const schemaPath = join(__dirname, 'gql')
+// Path to schema files in root of project
+const schemaPath = join(process.cwd(), 'schema')
 const typeDefs = [
   'shared.graphql',
   'pagination.graphql',
@@ -67,7 +65,7 @@ export default class {
     const serverCleanup = useServer(
       {
         schema,
-        context: async (ctx: WsContext, _msg: any, _args: any) =>
+        context: async (ctx: WsContext, _msg: unknown, _args: unknown) =>
           await this.createSubscriptionContext(ctx),
       },
       wsServer,
@@ -76,31 +74,25 @@ export default class {
     const apollo = new ApolloServer<Context>({
       schema,
       formatError: (err) => {
-        console.error('--------- formatError ---------')
-        // if (err.originalError instanceof ValidationError) {
-        //   const newErr = new ValidationInputError(err.originalError)
-        //   return new GraphQLError(
-        //     newErr.message,
-        //     err.nodes,
-        //     err.source,
-        //     err.positions,
-        //     err.path,
-        //     newErr,
-        //     newErr.extensions,
-        //   )
-        // }
-
-        if (process.env.NODE_ENV !== 'development' && err.extensions) {
+        if (env.NODE_ENV !== 'development' && err.extensions) {
           delete err.extensions.stacktrace
         }
 
-        console.error('GraphQL Error:', JSON.stringify(err, null, 2))
-        console.error(
-          'GraphQL originalError:',
-          'originalError' in err && JSON.stringify(err.originalError, null, 2),
-        )
+        if (err.extensions?.code === 'INTERNAL_SERVER_ERROR') {
+          console.error(
+            chalk.red.bold('\n=== Internal Server Error ===\n'),
+            util.inspect(err, { depth: null, colors: true }),
+            chalk.red.bold('\n---- END ----\n'),
+          )
+        } else if (env.NODE_ENV === 'development') {
+          // Use util.inspect for full depth and color
+          console.error(
+            chalk.yellow.bold('\n=== GraphQL Error ===\n'),
+            util.inspect(err, { depth: null, colors: true }),
+            chalk.yellow.bold('\n---- END ----\n'),
+          )
+        }
 
-        console.error('--------- END ---------')
         return err
       },
       plugins: [
@@ -137,7 +129,7 @@ export default class {
 
     app.use(
       options.endpoint,
-      expressMiddleware(apollo as any, {
+      expressMiddleware(apollo, {
         context: ({ req, res }) => this.createContext(req, res),
       }),
     )

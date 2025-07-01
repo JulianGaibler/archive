@@ -236,6 +236,7 @@ export default class FileStorage {
   }
 
   private async moveProcessedFiles(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     { result, fileType }: { result: any; fileType: FileType },
     _task: ItemExternal,
     _itemId: ItemExternal['id'],

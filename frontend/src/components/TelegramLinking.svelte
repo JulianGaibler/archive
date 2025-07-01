@@ -18,9 +18,9 @@
   import Button from 'tint/components/Button.svelte'
   import IconWarning from 'tint/icons/20-warning.svg?raw'
   import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
-  import { getOperationResultError } from '@src/utils'
   import UserPicture from './UserPicture.svelte'
   import IconHeart from 'tint/icons/20-heart-fill.svg?raw'
+  import { getOperationResultError } from '@src/graphql-errors'
 
   interface Props {
     me: NonNullable<MeQuery['me']>
@@ -45,7 +45,7 @@
       })
       loading = false
 
-      error = getOperationResultError(result) || null
+      error = getOperationResultError(result)?.message || null
       if (error) {
         console.error('Error linking Telegram account:', error)
         return

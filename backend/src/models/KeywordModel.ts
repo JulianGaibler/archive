@@ -16,7 +16,8 @@ type KeywordToPost = InferSelectModel<typeof keywordToPost>
 
 // --- Schema and Validation ---
 
-const insertSchema = createInsertSchema(keyword, {
+const schema = createInsertSchema(keyword, {
+  id: z.string(),
   name: z.string().min(2).max(64),
 })
 
@@ -36,7 +37,7 @@ function makeExternal(keyword: KeywordInternal): KeywordExternal {
 export default {
   table: keyword,
   keywordToPostTable: keywordToPost,
-  insertSchema,
+  schema,
   decodeId,
   encodeId,
   makeExternal,

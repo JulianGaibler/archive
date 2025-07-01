@@ -181,8 +181,13 @@ export async function moveAsync(
       await fs.promises.rm(to, { recursive: true, force: true })
     }
     await fs.promises.rename(from, to)
-  } catch (err: any) {
-    if (err.code === 'EXDEV') {
+  } catch (err: unknown) {
+    if (
+      err &&
+      typeof err === 'object' &&
+      'code' in err &&
+      err.code === 'EXDEV'
+    ) {
       // Cross-device move: fallback to copy and remove
       await fs.promises.copyFile(from, to)
       await removeAsync(from)
@@ -215,8 +220,13 @@ export function move(
       fs.rmSync(to, { recursive: true, force: true })
     }
     fs.renameSync(from, to)
-  } catch (err: any) {
-    if (err.code === 'EXDEV') {
+  } catch (err: unknown) {
+    if (
+      err &&
+      typeof err === 'object' &&
+      'code' in err &&
+      err.code === 'EXDEV'
+    ) {
       // Cross-device move: fallback to copy and remove
       fs.copyFileSync(from, to)
       remove(from)

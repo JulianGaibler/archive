@@ -11,7 +11,13 @@
     type User,
   } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
-  import { getOperationResultError } from '@src/utils'
+  import { getOperationResultError } from '@src/graphql-errors'
+  import {
+    createUpdateValue,
+    clearValidationErrors,
+    setValidationErrors,
+    type UpdateValue,
+  } from '@src/utils/edit-utils'
 
   const sdk = getSdk(webClient)
 
@@ -21,26 +27,38 @@
 
   let { user }: Props = $props()
 
-  let newName = $state<string>(user.name || '')
+  interface NameFormData {
+    newName: UpdateValue<string>
+  }
+
+  let data = $state<NameFormData>({
+    newName: createUpdateValue(user.name || ''),
+  })
 
   let loading = $state(false)
   let success = $state(false)
-  let globalError = $state<string | undefined>(undefined)
-  let inputError = $state<string | undefined>(undefined)
+  let globalError: string | undefined = $state(undefined)
 
-  const tryChangePicture = (e: Event) => {
+  const tryChangeName = (e: Event) => {
     e.preventDefault()
-    const args: ChangeNameMutationVariables = { newName }
-    resetErrors()
 
-    if (!newName || newName.trim().length === 0) {
-      inputError = 'Please enter a name'
+    // Clear previous validation errors
+    clearValidationErrors(data)
+    globalError = undefined
+
+    // Local validation
+    if (!data.newName.value || data.newName.value.trim().length === 0) {
+      data.newName.error = 'Please enter a name'
     }
-    if (inputError) {
+
+    // Check if there are any validation errors
+    if (data.newName.error) {
       return
     }
 
     loading = true
+
+    const args: ChangeNameMutationVariables = { newName: data.newName.value }
 
     sdk
       .changeName(args)
@@ -48,19 +66,46 @@
         loading = false
       })
       .then((res) => {
-        globalError = getOperationResultError(res)
-        if (!globalError) {
+        const errorResult = getOperationResultError(res)
+        if (errorResult) {
+          if ('issues' in errorResult) {
+            const { unassignableErrors } = setValidationErrors(
+              data,
+              errorResult.issues,
+            )
+            if (unassignableErrors.length > 0) {
+              globalError = unassignableErrors.join('; ')
+            }
+          } else {
+            globalError = errorResult.message
+          }
+        } else {
           success = true
         }
       })
       .catch((err) => {
-        globalError = getOperationResultError(err)
+        const errorResult = getOperationResultError(err)
+        if (errorResult) {
+          if ('issues' in errorResult) {
+            const { unassignableErrors } = setValidationErrors(
+              data,
+              errorResult.issues,
+            )
+            if (unassignableErrors.length > 0) {
+              globalError = unassignableErrors.join('; ')
+            }
+          } else {
+            globalError = errorResult.message
+          }
+        } else {
+          globalError = 'An unexpected error occurred'
+        }
       })
   }
 
   function resetErrors() {
+    clearValidationErrors(data)
     globalError = undefined
-    inputError = undefined
   }
 
   function resetSuccess() {
@@ -89,12 +134,14 @@
   bind:value={user.username}
   helperText="Reach out if you want to change your username"
 />
-<form onsubmit={tryChangePicture} class="update">
+<form onsubmit={tryChangeName} class="update">
   <TextField
     id="display-name"
     label="Name"
-    bind:value={newName}
-    error={inputError}
+    bind:value={data.newName.value}
+    error={data.newName.error}
+    disabled={loading}
+    oninput={() => (data.newName.error = undefined)}
   />
   <div class="flex-center">
     <Button small variant="primary" submit={true} {loading}>Update name</Button>

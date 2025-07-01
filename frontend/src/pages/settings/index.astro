@@ -8,7 +8,7 @@ import TelegramConnection from './_telegram-connection.svelte'
 import ErrorPage from '@src/components/ErrorPage.astro'
 
 import { getSdk } from '@src/generated/graphql'
-import { handleError, hasAuthenticationError } from '@src/utils/error-handling'
+import { handleError, hasAuthenticationError } from '@src/utils/page-errors'
 
 const ssrClient = Astro.locals.gqlClient
 

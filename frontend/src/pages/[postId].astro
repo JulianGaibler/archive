@@ -4,7 +4,7 @@ import Post from '@src/components/Post.svelte'
 import ErrorPage from '@src/components/ErrorPage.astro'
 
 import { getSdk, type PostQuery } from '@src/generated/graphql'
-import { handleError, hasAuthenticationError } from '@src/utils/error-handling'
+import { handleError, hasAuthenticationError } from '@src/utils/page-errors'
 
 type PostNode = Extract<NonNullable<PostQuery['node']>, { __typename?: 'Post' }>
 

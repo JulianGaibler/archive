@@ -5,7 +5,7 @@ import ErrorPage from '@src/components/ErrorPage.astro'
 import UserPicture from '@src/components/UserPicture.svelte'
 
 import { getSdk } from '@src/generated/graphql'
-import { handleError, hasAuthenticationError } from '@src/utils/error-handling'
+import { handleError, hasAuthenticationError } from '@src/utils/page-errors'
 
 const ssrClient = Astro.locals.gqlClient
 const sdk = getSdk(ssrClient)

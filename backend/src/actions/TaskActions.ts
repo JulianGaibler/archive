@@ -239,7 +239,7 @@ const TaskActions = {
 
     const originalAsyncIterator = Context.pubSub.asyncIterator(
       topics.TASK_UPDATES,
-    )
+    ) as AsyncIterator<TaskUpdatePayload>
 
     // Create a wrapped async iterator
     const wrappedAsyncIterator = {
@@ -261,7 +261,7 @@ const TaskActions = {
           }
 
           return {
-            value: result.value,
+            value: result.value as TaskUpdatePayload,
             done: false,
           }
         } catch (error) {
@@ -276,14 +276,16 @@ const TaskActions = {
 
       async return(): Promise<IteratorResult<TaskUpdatePayload>> {
         if (originalAsyncIterator.return) {
-          return await originalAsyncIterator.return()
+          return (await originalAsyncIterator.return()) as IteratorResult<TaskUpdatePayload>
         }
         return { value: undefined, done: true }
       },
 
       async throw(error: Error): Promise<IteratorResult<TaskUpdatePayload>> {
         if (originalAsyncIterator.throw) {
-          return await originalAsyncIterator.throw(error)
+          return (await originalAsyncIterator.throw(
+            error,
+          )) as IteratorResult<TaskUpdatePayload>
         }
         throw error
       },

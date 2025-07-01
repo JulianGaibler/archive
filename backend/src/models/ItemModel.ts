@@ -18,7 +18,8 @@ export type ItemExternal = Omit<ItemInternal, 'id' | 'creatorId' | 'postId'> & {
 
 // --- Schema and Validation ---
 
-const insertSchema = createInsertSchema(item, {
+const schema = createInsertSchema(item, {
+  id: z.string(),
   type: z.string().min(1).max(255),
   caption: z.string().max(255),
   description: z.string().max(255),
@@ -53,7 +54,7 @@ function makeExternal(item: ItemInternal): ItemExternal {
 export default {
   table: item,
   itemSearchView,
-  insertSchema,
+  schema,
   decodeId,
   encodeId,
   makeExternal,

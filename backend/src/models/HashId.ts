@@ -22,7 +22,7 @@ export default class {
     return hashIds.encode(hashIdType as number, id)
   }
 
-  static decode(hashIdType: any, stringId: string) {
+  static decode(hashIdType: HashIdType, stringId: string) {
     const res = hashIds.decode(stringId) as number[]
     if (
       res.length < 2 ||

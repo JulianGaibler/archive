@@ -6,7 +6,7 @@
 
   import { getSdk, type User } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
-  import { getOperationResultError } from '@src/utils'
+  import { getOperationResultError } from '@src/graphql-errors'
 
   const sdk = getSdk(webClient)
 
@@ -43,7 +43,7 @@
         }
       })
       .catch((e) => {
-        globalError = getOperationResultError(e)
+        globalError = getOperationResultError(e)?.message
       })
   }
 

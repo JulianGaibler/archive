@@ -247,18 +247,19 @@ export default class TelegramBot {
  * @param {Function} next - Next handler function
  * @returns {Promise<any>} Result of the next handler
  */
-async function middleware(
-  msgCtx: any,
-  next: (ctx: Context | null, msgCtx: any) => any,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function middleware<T extends { [key: string]: any }>(
+  msgCtx: T,
+  next: (ctx: Context | null, msgCtx: T) => void,
 ) {
   try {
     const serverCtx = Context.createPrivilegedContext()
 
     // Extract user ID from different message types
     const fromUser =
-      msgCtx.update.message?.from ||
-      msgCtx.update.inline_query?.from ||
-      msgCtx.update.callback_query?.from
+      msgCtx.update?.message?.from ||
+      msgCtx.update?.inline_query?.from ||
+      msgCtx.update?.callback_query?.from
 
     if (!fromUser) {
       console.error(
@@ -320,6 +321,7 @@ async function middleware(
  * @param ctx
  * @param msgCtx
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function checkStatus(ctx: Context | null, msgCtx: any) {
   try {
     // Check if user exists and is authenticated
@@ -347,7 +349,7 @@ async function checkStatus(ctx: Context | null, msgCtx: any) {
       'You have to link your Archive account with Telegram to use this Bot.',
       {
         reply_markup: {
-          inline_keyboard: [[buttonObj as any]],
+          inline_keyboard: [[buttonObj as unknown]],
         },
       },
     )
@@ -365,6 +367,7 @@ async function checkStatus(ctx: Context | null, msgCtx: any) {
  * @param ctx
  * @param msgCtx
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function inlineQuery(ctx: Context | null, msgCtx: any) {
   const { id, from: _from, query, offset } = msgCtx.inlineQuery
 

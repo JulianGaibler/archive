@@ -5,6 +5,10 @@ import Con from '@src/Connection.js'
 import { user, post } from '@db/schema.js'
 import { sql, inArray } from 'drizzle-orm'
 import HashId, { HashIdTypes } from './HashId.js'
+import {
+  isLazyPassword,
+  checkPasswordComplexity,
+} from '@src/utils/password-check.js'
 
 // --- Types ---
 
@@ -19,11 +23,48 @@ export type UserExternal = Omit<
 
 // --- Schema and Validation ---
 
-const insertSchema = createInsertSchema(user, {
-  username: z.string().min(2).max(64),
+const schema = createInsertSchema(user, {
+  id: z.string(),
+  username: z
+    .string()
+    .min(2)
+    .max(64)
+    .refine((val) => /^[a-zA-Z0-9_]/.test(val), {
+      message: 'Username must start with a letter, number, or underscore',
+    })
+    .refine((val) => /^[a-zA-Z0-9._]+$/.test(val), {
+      message:
+        'Username can only contain letters, numbers, underscores, or periods',
+    })
+    .refine((val) => !val.includes('..'), {
+      message: 'Username cannot contain consecutive periods',
+    })
+    .refine((val) => !val.endsWith('.'), {
+      message: 'Username cannot end with a period',
+    }),
   name: z.string().min(2).max(64),
   password: z.string().min(5).max(255),
 })
+
+const passwordSchemaRough = z.string().min(1).max(255)
+const passwordSchema = z
+  .string()
+  .min(12, 'Password must be at least 12 characters long.')
+  .refine((val) => !isLazyPassword(val), {
+    message: 'Password is too weak or predictable.',
+  })
+  .refine((val) => checkPasswordComplexity(val).sufficient, {
+    error: (iss) => {
+      const { unmet } = checkPasswordComplexity(iss.input as string)
+      return `Password must include at least ${
+        (iss.input as string).length < 15
+          ? 'a lowercase, uppercase, number, and symbol'
+          : (iss.input as string).length < 20
+            ? 'three of: lowercase, uppercase, number, symbol'
+            : 'two of: lowercase, uppercase, number, symbol'
+      }. Missing: ${unmet.join(', ')}.`
+    },
+  })
 
 function decodeId(stringId: string): number {
   return HashId.decode(HashIdTypes.USER, stringId)
@@ -42,7 +83,9 @@ function makeExternal(user: UserInternal): UserExternal {
 
 export default {
   table: user,
-  insertSchema,
+  schema,
+  passwordSchemaRough,
+  passwordSchema,
   decodeId,
   encodeId,
   makeExternal,
