@@ -1,139 +1,238 @@
-import { eq, sql } from 'drizzle-orm'
-import { item } from '@db/schema.js'
+import {
+  and,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  inArray,
+  sql,
+} from 'drizzle-orm'
 import ItemModel, { ItemExternal, ItemInternal } from '@src/models/ItemModel.js'
 import Context from '@src/Context.js'
-import ActionUtils from './ActionUtils.js'
+import PaginationUtils, {
+  PaginationArgs,
+  Connection,
+} from './PaginationUtils.js'
+import { NotFoundError } from '@src/errors/index.js'
+import PostModel from '@src/models/PostModel.js'
+import { UserExternal } from '@src/models/UserModel.js'
 
-export default class ItemActions {
+const itemTable = ItemModel.table
+const itemSearchView = ItemModel.itemSearchView
+
+const ItemActions = {
   /// Queries
-  static async qItem(
+  async qItem(
     ctx: Context,
     fields: { itemId: ItemExternal['id'] },
-  ): Promise<ItemExternal | undefined> {
+  ): Promise<ItemExternal> {
     ctx.isAuthenticated()
     const id = ItemModel.decodeId(fields.itemId)
-    const db = ctx.db
-    const [itm] = await db.select().from(item).where(eq(item.id, id))
-    if (!itm) return undefined
-    ctx.dataLoaders.item.getById.prime(itm.id, itm)
+    const itm = await ctx.dataLoaders.item.getById.load(id)
+    if (!itm) throw new NotFoundError('Item not found.')
     return ItemModel.makeExternal(itm)
-  }
+  },
 
-  static async qItemsByPost(
+  async qItemsByPost(
     ctx: Context,
-    fields: { postId: string },
-  ): Promise<ItemExternal[]> {
+    fields: PaginationArgs & { postId: string },
+  ): Promise<Connection<ItemExternal>> {
     ctx.isAuthenticated()
-    // Assume postId is external string, decode to number
-    const postId = parseInt(fields.postId, 10)
-    const db = ctx.db
-    const itemsResult = await db
-      .select()
-      .from(item)
-      .where(eq(item.postId, postId))
-      .orderBy(item.position)
-    itemsResult.forEach((itm) =>
-      ctx.dataLoaders.item.getById.prime(itm.id, itm),
-    )
-    return itemsResult.map(ItemModel.makeExternal)
-  }
+    const paginationInfo = PaginationUtils.parsePaginationArgs(fields)
+    const { limit, offset } = paginationInfo
+    const postId = PostModel.decodeId(fields.postId)
 
-  static async qItems(
+    const allItems =
+      ((await ctx.dataLoaders.item.getByPost.load(postId)) as ItemInternal[]) ||
+      []
+
+    const pagedItems = allItems.slice(offset, offset + limit)
+
+    return PaginationUtils.createConnection(
+      pagedItems.map(ItemModel.makeExternal),
+      allItems.length,
+      paginationInfo,
+    )
+  },
+
+  async qItems(
     ctx: Context,
     fields: {
-      limit?: number
-      offset?: number
-      byContent?: string
-    },
-  ): Promise<{
-    data: ItemExternal[]
-    totalSearchCount: number
-    totalCount: number
-  }> {
+      byUsers?: UserExternal['username'][] | null
+      byContent?: string | null
+    } & PaginationArgs,
+  ): Promise<Connection<ItemExternal>> {
     ctx.isAuthenticated()
-    const { limit, offset } = ActionUtils.getLimitOffset(fields)
-    const db = ctx.db
-    let itemsResult: ItemInternal[] = []
-    let totalSearchCount = 0
-    let totalCount = 0
-    if (fields.byContent && fields.byContent.trim().length > 0) {
-      const tsQuery = fields.byContent
-      // Use raw SQL for full-text search on item_search_view
-      const searchStatement = sql`SELECT i.* FROM item i
-        JOIN post p ON i.post_id = p.id
-        JOIN (
-          WITH ts_results AS (
-            SELECT post_id, MAX(ts_rank(text, websearch_to_tsquery('english_nostop', ${tsQuery}))) as rank_score
-            FROM item_search_view
-            WHERE text @@ websearch_to_tsquery('english_nostop', ${tsQuery})
-            GROUP BY post_id
-          ),
-          ilike_results AS (
-            SELECT v.post_id, 0.1 as rank_score
-            FROM item_search_view v
-            LEFT JOIN ts_results t ON v.post_id = t.post_id
-            WHERE v.plain_text ILIKE ${`%${tsQuery}%`} AND t.post_id IS NULL
-            GROUP BY v.post_id
-          )
-          SELECT post_id, 1 as search_type, rank_score FROM ts_results
-          UNION ALL
-          SELECT post_id, 2 as search_type, rank_score FROM ilike_results
-        ) b ON b.post_id = p.id
-        ORDER BY b.search_type, b.rank_score DESC, i.created_at DESC
-        LIMIT ${limit} OFFSET ${offset}`
-      const searchResults = await db.execute(searchStatement)
-      itemsResult = searchResults.rows as ItemInternal[]
-      // Get totalSearchCount
-      const countStatement = sql`SELECT COUNT(DISTINCT i.id) as count FROM item i
-        JOIN post p ON i.post_id = p.id
-        JOIN (
-          WITH ts_results AS (
-            SELECT post_id, MAX(ts_rank(text, websearch_to_tsquery('english_nostop', ${tsQuery}))) as rank_score
-            FROM item_search_view
-            WHERE text @@ websearch_to_tsquery('english_nostop', ${tsQuery})
-            GROUP BY post_id
-          ),
-          ilike_results AS (
-            SELECT v.post_id, 0.1 as rank_score
-            FROM item_search_view v
-            LEFT JOIN ts_results t ON v.post_id = t.post_id
-            WHERE v.plain_text ILIKE ${`%${tsQuery}%`} AND t.post_id IS NULL
-            GROUP BY v.post_id
-          )
-          SELECT post_id, 1 as search_type, rank_score FROM ts_results
-          UNION ALL
-          SELECT post_id, 2 as search_type, rank_score FROM ilike_results
-        ) b ON b.post_id = p.id`
-      const countResult = await db.execute(countStatement)
-      totalSearchCount = parseInt(
-        (countResult.rows[0]?.count as string) || '0',
-        10,
+    const paginationInfo = PaginationUtils.parsePaginationArgs(fields)
+    const { limit, offset } = paginationInfo
+
+    // Determine if content search is active
+    const hasContentSearch =
+      fields.byContent && fields.byContent.trim().length > 0
+
+    // Start building the base query dynamically with conditional selection
+    const selectFields: any = {
+      ...getTableColumns(itemTable),
+    }
+    if (hasContentSearch) {
+      selectFields.searchRank = sql<number>`search_results.rank_score`.as(
+        'searchRank',
       )
-      // Get totalCount (all items)
-      const totalCountResult = await db
-        .select({ count: sql`count(*)::int` })
-        .from(item)
-      totalCount = Number(totalCountResult[0]?.count || 0)
+    }
+    let baseQuery = ctx.db.select(selectFields).from(itemTable).$dynamic()
+
+    // Build conditions array
+    const conditions = []
+
+    // Handle byUsers filter
+    if (fields.byUsers && fields.byUsers.length > 0) {
+      const users = await ctx.dataLoaders.user.getByUsername.loadMany(
+        fields.byUsers,
+      )
+      const validUserIds = users
+        .filter((user) => user && typeof user === 'object' && 'id' in user)
+        .map((user) => (user as any).id)
+
+      if (validUserIds.length > 0) {
+        conditions.push(inArray(itemTable.creatorId, validUserIds))
+      } else {
+        // If no valid users found, return empty result
+        return PaginationUtils.createConnection<ItemExternal>(
+          [],
+          0,
+          paginationInfo,
+        )
+      }
+    }
+
+    // Handle byContent filter with CTE
+    if (hasContentSearch) {
+      const searchTerm = fields.byContent!.trim()
+
+      // Create the search CTE
+      const searchCte = ctx.db.$with('search_results').as(
+        ctx.db
+          .with(
+            ctx.db.$with('ts_results').as(
+              ctx.db
+                .select({
+                  itemId: itemSearchView.itemId,
+                  postId: itemSearchView.postId,
+                  text: itemSearchView.text,
+                  plainText: itemSearchView.plainText,
+                  searchType: sql<number>`1`.as('search_type'),
+                  rankScore:
+                    sql<number>`ts_rank(${itemSearchView.text}, websearch_to_tsquery('english_nostop', ${searchTerm}))`.as(
+                      'rank_score',
+                    ),
+                })
+                .from(itemSearchView)
+                .where(
+                  sql`${itemSearchView.text} @@ websearch_to_tsquery('english_nostop', ${searchTerm})`,
+                ),
+            ),
+          )
+          .select({
+            itemId: sql<number>`item_id`.as('item_id'),
+            postId: sql<number>`post_id`.as('post_id'),
+            text: sql<string>`text`,
+            plainText: sql<string>`plain_text`.as('plain_text'),
+            searchType: sql<number>`search_type`.as('search_type'),
+            rankScore: sql<number>`rank_score`.as('rank_score'),
+          }).from(sql`(
+        SELECT * FROM ts_results
+        UNION ALL
+        SELECT
+          v.item_id,
+          v.post_id,
+          v.text,
+          v.plain_text,
+          2 as search_type,
+          0.1 as rank_score
+        FROM ${itemSearchView} v
+        LEFT JOIN ts_results t ON v.item_id = t.item_id
+        WHERE v.plain_text ILIKE ${`%${searchTerm}%`}
+          AND t.item_id IS NULL
+      ) combined_results`),
+      )
+
+      // Add the CTE to the query and join with search results
+      baseQuery = ctx.db
+        .with(searchCte)
+        .select({
+          ...getTableColumns(itemTable),
+          searchRank: sql<number>`${searchCte.rankScore}`.as('searchRank'),
+        })
+        .from(itemTable)
+        .innerJoin(searchCte, eq(itemTable.id, searchCte.itemId))
+        .$dynamic()
+    }
+
+    // Apply all conditions
+    if (conditions.length > 0) {
+      baseQuery = baseQuery.where(and(...conditions))
+    }
+
+    // Add ordering - prioritize search rank if content search is active, then by creation date
+    if (hasContentSearch) {
+      baseQuery = baseQuery.orderBy(
+        desc(sql`"searchRank"`),
+        desc(itemTable.createdAt),
+      )
     } else {
-      itemsResult = await db
-        .select()
-        .from(item)
-        .orderBy(sql`${item.createdAt} desc`)
-        .limit(limit)
-        .offset(offset)
-      const countResult = await db
-        .select({ count: sql`count(*)::int` })
-        .from(item)
-      totalCount = Number(countResult[0]?.count || 0)
-      totalSearchCount = totalCount
+      baseQuery = baseQuery.orderBy(desc(itemTable.createdAt))
     }
-    itemsResult.forEach((itm) =>
-      ctx.dataLoaders.item.getById.prime(itm.id, itm),
-    )
-    return {
-      data: itemsResult.map(ItemModel.makeExternal),
-      totalSearchCount,
+
+    // Execute query with pagination
+    const items = (await baseQuery
+      .limit(limit)
+      .offset(offset)) as ItemInternal[]
+
+    // Get total count for pagination
+    let countQuery = ctx.db
+      .select({ count: count() })
+      .from(itemTable)
+      .$dynamic()
+
+    // Apply same filters for count query
+    if (hasContentSearch) {
+      const searchTerm = fields.byContent!.trim()
+      const searchCte = ctx.db.$with('search_results').as(
+        ctx.db
+          .select({
+            itemId: itemSearchView.itemId,
+          })
+          .from(itemSearchView)
+          .where(
+            sql`${itemSearchView.text} @@ websearch_to_tsquery('english_nostop', ${searchTerm}) OR ${itemSearchView.plainText} ILIKE ${`%${searchTerm}%`}`,
+          ),
+      )
+
+      countQuery = ctx.db
+        .with(searchCte)
+        .select({ count: count() })
+        .from(itemTable)
+        .innerJoin(searchCte, eq(itemTable.id, searchCte.itemId))
+        .$dynamic()
+    }
+
+    if (conditions.length > 0) {
+      countQuery = countQuery.where(and(...conditions))
+    }
+
+    const [{ count: totalCount }] = await countQuery
+
+    // Convert internal items to external format
+    const externalData = items.map((itemInternal) => {
+      return ItemModel.makeExternal(itemInternal)
+    })
+
+    return PaginationUtils.createConnection<ItemExternal>(
+      externalData,
       totalCount,
-    }
-  }
+      paginationInfo,
+    )
+  },
 }
+
+export default ItemActions

@@ -2,7 +2,7 @@ import Context from '@src/Context.js'
 import ActionUtils from './ActionUtils.js'
 import topics from '@src/pubsub/topics.js'
 import ItemModel, { ItemExternal, ItemInternal } from '@src/models/ItemModel.js'
-import { NotFoundError, RequestError } from '@src/errors/index.js'
+import { NotFoundError } from '@src/errors/index.js'
 import { inArray, and, desc, eq, asc, count, sql } from 'drizzle-orm'
 
 const itemTable = ItemModel.table
@@ -137,8 +137,16 @@ const TaskActions = {
 
       // Publish task update to subscribers
       if (Context.pubSub) {
+        console.debug(
+          `Publishing task update for item updatedItem.id (${ItemModel.encodeId(updatedItem.id)}):`,
+          {
+            internal: updatedItem,
+            external: ItemModel.makeExternal(updatedItem),
+          },
+        )
+
         Context.pubSub.publish(topics.TASK_UPDATES, {
-          id: ItemModel.makeExternal(updatedItem).id,
+          id: ItemModel.encodeId(updatedItem.id),
           kind: 'CHANGED',
           item: ItemModel.makeExternal(updatedItem),
         })
@@ -179,7 +187,7 @@ const TaskActions = {
       // Publish task update
       if (Context.pubSub) {
         Context.pubSub.publish(topics.TASK_UPDATES, {
-          id: ItemModel.makeExternal(updatedItem).id,
+          id: ItemModel.encodeId(updatedItem.id),
           kind: 'CHANGED',
           item: ItemModel.makeExternal(updatedItem),
         })
@@ -225,7 +233,7 @@ const TaskActions = {
     fields: { itemIds: ItemExternal['id'][] },
   ): {
     asyncIteratorFn: () => AsyncIterator<TaskUpdatePayload>
-    filterFn: (payload: TaskUpdatePayload) => boolean
+    filterFn: (payload: TaskUpdatePayload | undefined) => boolean
   } {
     ctx.isPrivileged()
 
@@ -252,11 +260,8 @@ const TaskActions = {
             return result
           }
 
-          // Transform/update the data before sending
-          const transformedPayload = await transformPayload(ctx, result.value)
-
           return {
-            value: transformedPayload,
+            value: result.value,
             done: false,
           }
         } catch (error) {
@@ -290,13 +295,32 @@ const TaskActions = {
 
     return {
       asyncIteratorFn: () => wrappedAsyncIterator,
-      filterFn: (payload: TaskUpdatePayload): boolean => {
+      filterFn: (payload: TaskUpdatePayload | undefined): boolean => {
+        console.debug(
+          `Task subscription filter: itemIds=${JSON.stringify(fields.itemIds)}, payload=${JSON.stringify(payload)}`,
+        )
+
+        // If payload is undefined, do not pass the filter
+        if (!payload) {
+          console.debug(
+            'Task subscription filter: payload is undefined, skipping',
+          )
+          return false
+        }
+
         // If no specific item IDs are requested, allow all
         if (!fields.itemIds || fields.itemIds.length === 0) {
+          console.debug(
+            'Task subscription filter: no specific item IDs requested, allowing all',
+          )
           return true
         }
 
         // Filter to only include items that match the requested external IDs
+        console.debug(
+          `Task subscription filter: checking if item ${payload.item.id} is in requested IDs:`,
+          fields.itemIds.includes(payload.item.id),
+        )
         return fields.itemIds.includes(payload.item.id)
       },
     }
@@ -304,24 +328,3 @@ const TaskActions = {
 }
 
 export default TaskActions
-
-// Utility functions
-
-async function transformPayload(
-  _ctx: Context,
-  payload: any,
-): Promise<TaskUpdatePayload> {
-  // Ensure we have an item in the payload
-  if (!payload.item) {
-    throw new RequestError('Invalid task update payload: missing item')
-  }
-
-  // Convert internal item to external format
-  const externalItem = ItemModel.makeExternal(payload.item)
-
-  return {
-    id: externalItem.id,
-    kind: payload.kind || 'CHANGED',
-    item: externalItem,
-  }
-}

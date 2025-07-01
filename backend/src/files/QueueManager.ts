@@ -1,9 +1,10 @@
 import { Mutex } from 'async-mutex'
 import Context from '../Context.js'
 import TaskActions from '@src/actions/TaskActions.js'
+import { ItemExternal } from '@src/models/ItemModel.js'
 
 export interface QueueManager {
-  checkQueue(): Promise<number | undefined>
+  checkQueue(): Promise<ItemExternal['id'] | undefined>
   isBusy(): boolean
 }
 
@@ -15,7 +16,7 @@ export class FileProcessingQueue implements QueueManager {
     this.taskMutex = new Mutex()
   }
 
-  async checkQueue(): Promise<number | undefined> {
+  async checkQueue(): Promise<ItemExternal['id'] | undefined> {
     if (this.isProcessing) {
       return undefined
     }

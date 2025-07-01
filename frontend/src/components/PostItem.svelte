@@ -1,5 +1,4 @@
 <script lang="ts">
-  import type { PostQuery } from '@src/generated/graphql'
   import UserPicture from '@src/components/UserPicture.svelte'
   import Button from 'tint/components/Button.svelte'
   import TextField from 'tint/components/TextField.svelte'
@@ -8,31 +7,24 @@
   import Menu, { type ContextClickHandler } from 'tint/components/Menu.svelte'
   import IconMore from 'tint/icons/20-more.svg?raw'
   import { formatDate, getConvertedSrcPath, getPlainSrcPath } from '@src/utils'
-  import type { PostUpdate, UploadItem } from '@src/utils/edit-manager'
-
-  type ExtractPost<T> = T extends { __typename?: 'Post' } ? T : never
-  type Post = ExtractPost<NonNullable<PostQuery['node']>>
-  type ItemConnection = NonNullable<Post['items']>
-  type ItemEdges = NonNullable<ItemConnection['edges']>
-  type ItemEdge = NonNullable<ItemEdges[number]>
-  type PostItem = ItemEdge['node']
+  import type { PostUpdate, EditableItem } from '@src/utils/edit-manager'
 
   type Props = {
     loading: boolean
-    itemData?: PostItem
+    item: EditableItem
     editData?: PostUpdate
-    uploadItemIndex?: string
     onMoveItem?: (itemId: string) => void
     onDeleteItem?: (itemId: string) => void
+    removeUploadItem?: (itemId: string) => void
   }
 
   let {
     loading,
-    itemData = undefined,
+    item,
     editData = $bindable(),
-    uploadItemIndex = undefined,
     onMoveItem,
     onDeleteItem,
+    removeUploadItem,
   }: Props = $props()
 
   function forceUpdateEditData() {
@@ -43,16 +35,10 @@
     }
   }
 
-  let item = $derived.by<PostItem | UploadItem>(() => {
-    if (editData && uploadItemIndex !== undefined)
-      return editData.uploadItems[uploadItemIndex]
-    if (itemData) return itemData
-    throw new Error('Either itemData or uploadItem must be defined')
-  })
   let editItem = $derived.by(() => {
-    if (editData && uploadItemIndex !== undefined)
-      return { ...editData.uploadItems[uploadItemIndex] }
-    if (editData) return { ...editData.items[item.id] }
+    if (editData && editData.items[item.id]) {
+      return { ...editData.items[item.id] }
+    }
     return undefined
   })
 
@@ -60,55 +46,57 @@
 
   const itemActions = $derived([
     ...(onMoveItem &&
-    '__typename' in item &&
-    item.__typename !== 'ProcessingItem'
+    item.type === 'existing' &&
+    item.data.__typename !== 'ProcessingItem'
       ? [{ label: 'Move to another post', onClick: () => onMoveItem(item.id) }]
       : []),
     ...(onDeleteItem &&
-    '__typename' in item &&
-    (item.__typename !== 'ProcessingItem' ||
-      (item.__typename === 'ProcessingItem' &&
-        (item.taskStatus === 'FAILED' || item.taskStatus === 'DONE')))
+    item.type === 'existing' &&
+    (item.data.__typename !== 'ProcessingItem' ||
+      (item.data.__typename === 'ProcessingItem' &&
+        (item.data.taskStatus === 'FAILED' || item.data.taskStatus === 'DONE')))
       ? [{ label: 'Delete item', onClick: () => onDeleteItem(item.id) }]
       : []),
   ])
 
-  function removeUploadItem() {
-    if (editData && uploadItemIndex !== undefined) {
-      delete editData.uploadItems[uploadItemIndex]
-      editData = { ...editData }
+  function handleRemoveUploadItem() {
+    if (item.type === 'upload' && removeUploadItem) {
+      removeUploadItem(item.id)
     }
   }
 </script>
 
 <article>
-  {#if '__typename' in item}
-    {#if item.__typename === 'ProcessingItem'}
-      <ProcessingMediaStatus {item} />
+  <!-- <pre>{JSON.stringify(item, null, 2)}</pre> -->
+  {#if item.type === 'existing'}
+    {#if item.data.__typename === 'ProcessingItem'}
+      <ProcessingMediaStatus item={item.data} />
     {:else}
-      <ItemMedia {item} />
+      <ItemMedia item={item.data} />
     {/if}
     <div class="info">
       <ul class="origin pipelist">
         <li>
-          <UserPicture user={item.creator} size="16" showUsername={true} />
+          <UserPicture user={item.data.creator} size="16" showUsername={true} />
         </li>
-        <li>{formatDate(new Date(item.createdAt))}</li>
+        <li>{formatDate(new Date(item.data.createdAt))}</li>
       </ul>
       <div class="actions">
-        {#if 'originalPath' in item}
+        {#if 'originalPath' in item.data}
           <Button
             small={true}
             download={`archive-${item.id}`}
-            href={getPlainSrcPath(item.originalPath)}>Original</Button
+            href={getPlainSrcPath(item.data.originalPath)}>Original</Button
           >
         {/if}
-        {#if 'compressedPath' in item}
+        {#if 'compressedPath' in item.data}
           <Button
             small={true}
             download={`archive-${item.id}-original`}
-            href={getConvertedSrcPath(item.compressedPath, item.__typename)}
-            >Compressed</Button
+            href={getConvertedSrcPath(
+              item.data.compressedPath,
+              item.data.__typename,
+            )}>Compressed</Button
           >
         {/if}
         {#if itemActions.length > 0}
@@ -122,12 +110,11 @@
         {/if}
       </div>
     </div>
-  {/if}
-  {#if 'file' in item}
+  {:else if item.type === 'upload'}
     <ItemMedia file={item.file} />
     <div class="info">
       <div class="actions standalone">
-        <Button small={true} onclick={removeUploadItem}>Remove</Button>
+        <Button small={true} onclick={handleRemoveUploadItem}>Remove</Button>
       </div>
     </div>
   {/if}
@@ -156,12 +143,12 @@
     {:else}
       <div>
         <h3 class="tint--type-ui-small">Description</h3>
-        <q>{item.description}</q>
+        <q>{item.description.value}</q>
       </div>
-      {#if 'caption' in item}
+      {#if item.caption !== undefined}
         <div>
           <h3 class="tint--type-ui-small">Caption</h3>
-          <q><pre>{item.caption}</pre></q>
+          <q><pre>{item.caption.value}</pre></q>
         </div>
       {/if}
     {/if}

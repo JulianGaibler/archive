@@ -3,7 +3,7 @@ import { z } from 'zod/v4'
 import { createInsertSchema } from 'drizzle-zod'
 import Con from '@src/Connection.js'
 import { InferSelectModel } from 'drizzle-orm'
-import { item } from '@db/schema.js'
+import { item, itemSearchView } from '@db/schema.js'
 import { inArray } from 'drizzle-orm'
 import HashId, { HashIdTypes } from './HashId.js'
 
@@ -20,8 +20,8 @@ export type ItemExternal = Omit<ItemInternal, 'id' | 'creatorId' | 'postId'> & {
 
 const insertSchema = createInsertSchema(item, {
   type: z.string().min(1).max(255),
-  caption: z.string().min(1).max(255),
-  description: z.string().min(1).max(255),
+  caption: z.string().max(255),
+  description: z.string().max(255),
   position: z.number(),
   compressedPath: z.string().min(2).max(255).nullable().optional(),
   thumbnailPath: z.string().min(2).max(255).nullable().optional(),
@@ -52,6 +52,7 @@ function makeExternal(item: ItemInternal): ItemExternal {
 
 export default {
   table: item,
+  itemSearchView,
   insertSchema,
   decodeId,
   encodeId,

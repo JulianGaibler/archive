@@ -1,6 +1,5 @@
 import express from 'express'
 import { Server as HttpServer } from 'http'
-import schema from './schema/index.js'
 import Context from '@src/Context.js'
 import { ApolloServer } from '@apollo/server'
 import { expressMiddleware } from '@as-integrations/express5'
@@ -15,6 +14,28 @@ import { Context as WsContext } from 'graphql-ws'
 import Connection from '@src/Connection.js'
 import env from '@src/utils/env.js'
 import { ServerOptions } from '@src/server.js'
+import { join } from 'path'
+import { readFileSync } from 'fs'
+import { makeExecutableSchema } from '@graphql-tools/schema'
+import { resolvers } from './resolvers/index.js'
+
+// Load all GraphQL schema files
+import { fileURLToPath } from 'url'
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = join(__filename, '..')
+
+const schemaPath = join(__dirname, 'gql')
+const typeDefs = [
+  'shared.graphql',
+  'pagination.graphql',
+  'user.graphql',
+  'post.graphql',
+  'item.graphql',
+  'task.graphql',
+  'query.graphql',
+  'mutation.graphql',
+  'subscription.graphql',
+].map((file) => readFileSync(join(schemaPath, file), 'utf8'))
 
 /**
  * This class is responsible for handling all GraphQL requests.
@@ -33,6 +54,11 @@ export default class {
     } catch (error) {
       console.error('⚠️ Error connecting to PubSub:', error)
     }
+
+    const schema = makeExecutableSchema({
+      typeDefs,
+      resolvers,
+    })
 
     const wsServer = new WebSocketServer({
       server: httpServer,

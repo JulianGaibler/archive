@@ -16,7 +16,7 @@
 
   async function loadMore() {
     const result = await sdk.Users({
-      after: results?.users?.pageInfo?.endCursor,
+      after: results?.users?.endCursor,
       search,
     })
     if (!results) {
@@ -24,15 +24,13 @@
       return
     }
 
-    if (result.data?.users?.edges) {
-      results.users!.edges = [
-        ...results.users!.edges!,
-        ...result.data.users.edges,
+    if (result.data?.users?.nodes) {
+      results.users!.nodes = [
+        ...results.users!.nodes!,
+        ...result.data.users.nodes,
       ]
-      results.users!.pageInfo = {
-        hasNextPage: result.data.users.pageInfo?.hasNextPage,
-        endCursor: result.data.users.pageInfo?.endCursor,
-      }
+      results.users!.hasNextPage = result.data.users.hasNextPage
+      results.users!.endCursor = result.data.users.endCursor
     }
   }
 
@@ -76,21 +74,17 @@
   {/if}
 
   <ul class="users-list">
-    {#each results?.users?.edges || [] as userEdge (userEdge?.node?.id)}
-      {#if userEdge?.node}
+    {#each results?.users?.nodes || [] as user (user?.id)}
+      {#if user}
         <li class="user-item tint--card">
-          <a href={`/humans/${userEdge.node.username}`} class="user-link">
-            <UserPicture user={userEdge.node} size="128" />
+          <a href={`/humans/${user.username}`} class="user-link">
+            <UserPicture {user} size="128" />
             <div class="user-details">
-              <span class="name tint--type-body-sans-large"
-                >{userEdge.node.name}</span
-              >
-              <span class="username tint--type-body-sans"
-                >{userEdge.node.username}</span
-              >
+              <span class="name tint--type-body-sans-large">{user.name}</span>
+              <span class="username tint--type-body-sans">{user.username}</span>
             </div>
             <div class="badge tint--type-action">
-              {userEdge.node.postCount || 0} posts
+              {user.postCount || 0} posts
             </div>
           </a>
         </li>
@@ -98,7 +92,7 @@
     {/each}
   </ul>
 
-  {#if results?.users?.pageInfo?.hasNextPage}
+  {#if results?.users?.hasNextPage}
     <Button onclick={loadMore}>Load more</Button>
   {/if}
 </div>

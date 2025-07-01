@@ -49,10 +49,10 @@ export function getLoaders() {
     keywordsByIds,
   )
   const getByPost = new DataLoader<number, KeywordInternal[]>(keywordsByPosts)
-  const getPostCountByKeyword = new DataLoader<number, number>(
+  const getKeywordCountOnPost = new DataLoader<number, number>(
     postCountsByKeywords,
   )
-  return { getById, getByPost, getPostCountByKeyword }
+  return { getById, getByPost, getKeywordCountOnPost }
 }
 
 async function keywordsByIds(

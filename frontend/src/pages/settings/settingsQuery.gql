@@ -3,7 +3,6 @@ query settings {
     name
     username
     profilePicture
-    darkMode
     linkedTelegram
   }
   userSessions {

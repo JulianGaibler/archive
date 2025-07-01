@@ -3,8 +3,43 @@ import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres'
 import env from './utils/env.js'
 import { PostgresPubSub } from './pubsub/index.js'
 import topics from './pubsub/topics.js'
+import { Logger } from 'drizzle-orm'
+import chalk from 'chalk'
 
 export type DbConnection = NodePgDatabase
+
+class DrizzleLogger implements Logger {
+  logQuery(query: string, params: unknown[]): void {
+    const prefix = chalk.blue.bold('[Database]')
+    // Simple regex for session verification SELECT
+    const sessionVerificationRegex =
+      /select\s+.+\s+from\s+"session"\s+where\s+"session"\."secure_session_id"\s*=\s*\$1/i
+
+    // Simple regex for session UPDATE
+    const sessionUpdateRegex =
+      /update\s+"session"\s+set\s+.+\s+where\s+"session"\."id"\s*=\s*\$[0-9]+\s+returning\s+"updated_at"/i
+
+    if (typeof query === 'string' && Array.isArray(params)) {
+      if (sessionVerificationRegex.test(query.trim())) {
+        console.log(
+          `${prefix} ${chalk.green('Session verification query executed')}`,
+        )
+      } else if (sessionUpdateRegex.test(query.trim())) {
+        console.log(
+          `${prefix} ${chalk.yellow('Session update query executed')}`,
+        )
+      } else {
+        console.log(
+          `${prefix} ${chalk.cyan('Query:')} ${chalk.white(query)}\n${prefix} ${chalk.magenta('Params:')} ${chalk.white(JSON.stringify(params))}`,
+        )
+      }
+    } else {
+      console.log(
+        `${prefix} ${chalk.red('Invalid query or params:')} ${chalk.white(JSON.stringify({ query, params }))}`,
+      )
+    }
+  }
+}
 
 function getPgConnectionConfig() {
   return {
@@ -29,7 +64,10 @@ export default class Connection {
     try {
       Connection.pool = new Pool(config)
       await Connection.pool.query('SELECT 1')
-      Connection.db = drizzle(Connection.pool)
+      Connection.db = drizzle(
+        Connection.pool,
+        env.NODE_ENV === 'development' ? { logger: new DrizzleLogger() } : {},
+      )
       console.log('✅ Database connection established successfully (drizzle)')
     } catch (error) {
       console.error('Error connecting to the database:', error)

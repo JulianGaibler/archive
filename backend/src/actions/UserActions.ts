@@ -3,8 +3,8 @@ import { FileUpload } from 'graphql-upload/processRequest.mjs'
 import { eq, sql } from 'drizzle-orm'
 
 import UserModel, { UserExternal, UserInternal } from '@src/models/UserModel.js'
+import PostModel from '@src/models/PostModel.js'
 import Context from '@src/Context.js'
-import ActionUtils from './ActionUtils.js'
 import {
   RequestError,
   AuthenticationError,
@@ -15,8 +15,11 @@ import {
 import SessionActions from '@src/actions/SessionActions.js'
 import RateLimiter from '@src/middleware/RateLimiter.js'
 import env from '@src/utils/env.js'
+import PaginationUtils, { PaginationArgs } from './PaginationUtils.js'
+import { validateAuth } from '@src/apis/TelegramBot/index.js'
 
 const userTable = UserModel.table
+const postTable = PostModel.table
 
 const UserActions = {
   /// Queries
@@ -35,9 +38,9 @@ const UserActions = {
     fields: {
       username?: UserExternal['username']
       userId?: UserExternal['id']
-      telegramId?: NonNullable<UserExternal['telegramId']>
+      telegramId?: NonNullable<UserInternal['telegramId']>
     },
-  ): Promise<UserExternal | undefined> {
+  ): Promise<UserExternal> {
     ctx.isAuthenticated()
     let internalUserPromise: Promise<UserInternal | undefined>
     if (fields.username !== undefined) {
@@ -61,15 +64,14 @@ const UserActions = {
 
   async qUsers(
     ctx: Context,
-    fields: {
-      limit?: number
-      offset?: number
-      search?: string
-      sortByPostCount?: boolean
+    fields: PaginationArgs & {
+      search?: string | null
+      sortByPostCount?: boolean | null
     },
-  ): Promise<{ data: UserExternal[]; totalCount: number }> {
+  ): Promise<import('./PaginationUtils.js').Connection<UserExternal>> {
     ctx.isAuthenticated()
-    const { limit, offset } = ActionUtils.getLimitOffset(fields)
+    const paginationInfo = PaginationUtils.parsePaginationArgs(fields)
+    const { limit, offset } = paginationInfo
     const db = ctx.db
     let users: UserInternal[] = []
     let totalCount = 0
@@ -81,7 +83,6 @@ const UserActions = {
       )
     }
     if (fields.sortByPostCount) {
-      const { post } = await import('@db/schema.js')
       users = await db
         .select({
           id: userTable.id,
@@ -92,10 +93,10 @@ const UserActions = {
           telegramId: userTable.telegramId,
           updatedAt: userTable.updatedAt,
           createdAt: userTable.createdAt,
-          postCount: sql`count(${post.id})::int`,
+          postCount: sql`count(${postTable.id})::int`,
         })
         .from(userTable)
-        .leftJoin(post, eq(post.creatorId, userTable.id))
+        .leftJoin(postTable, eq(postTable.creatorId, userTable.id))
         .where(whereClauses.length ? whereClauses[0] : undefined)
         .groupBy(
           userTable.id,
@@ -107,13 +108,13 @@ const UserActions = {
           userTable.createdAt,
           userTable.telegramId,
         )
-        .orderBy(sql`count(${post.id}) desc, ${userTable.createdAt} desc`)
+        .orderBy(sql`count(${postTable.id}) desc, ${userTable.createdAt} desc`)
         .limit(limit)
         .offset(offset)
       const countResult = await db
         .select({ count: sql`count(distinct ${userTable.id})::int` })
         .from(userTable)
-        .leftJoin(post, eq(post.creatorId, userTable.id))
+        .leftJoin(postTable, eq(postTable.creatorId, userTable.id))
         .where(whereClauses.length ? whereClauses[0] : undefined)
       totalCount = Number(countResult[0]?.count || 0)
     } else {
@@ -131,10 +132,8 @@ const UserActions = {
       totalCount = Number(countResult[0]?.count || 0)
     }
     users.forEach((u) => ctx.dataLoaders.user.getById.prime(u.id, u))
-    return {
-      data: users.map(UserModel.makeExternal),
-      totalCount,
-    }
+    const nodes = users.map(UserModel.makeExternal)
+    return PaginationUtils.createConnection(nodes, totalCount, paginationInfo)
   },
 
   async qPostCountByUser(ctx: Context, fields: { userId: UserExternal['id'] }) {
@@ -222,15 +221,15 @@ const UserActions = {
     return SessionActions._mCreate(ctx, { userId: user.id })
   },
 
-  async mLinkTelegram(
-    ctx: Context,
-    fields: { telegramId: UserExternal['telegramId'] },
-  ) {
+  async mLinkTelegram(ctx: Context, fields: { apiResponse: string }) {
     const userIId = ctx.isAuthenticated()
+
+    const telegramId = validateAuth(fields.apiResponse)
+
     const db = ctx.db
     const [user] = await db
       .update(userTable)
-      .set({ telegramId: fields.telegramId })
+      .set({ telegramId })
       .where(eq(userTable.id, userIId))
       .returning()
     if (!user) {
@@ -257,6 +256,7 @@ const UserActions = {
     ctx: Context,
     fields: { file: Promise<FileUpload> },
   ) {
+    console.log('Uploading profile picture', fields)
     const userIId = ctx.isAuthenticated()
     const db = ctx.db
     const [user] = await db
@@ -265,6 +265,9 @@ const UserActions = {
       .where(eq(userTable.id, userIId))
     if (!user) {
       throw new AuthenticationError('This should not have happened.')
+    }
+    if (!fields.file) {
+      throw new InputError('No file provided')
     }
     const filename = await Context.fileStorage.setProfilePicture(fields.file)
     if (user.profilePicture !== null) {

@@ -1,0 +1,139 @@
+"""
+A connection to a list of posts.
+"""
+type PostConnection {
+  """
+  List of posts.
+  """
+  nodes: [Post!]!
+
+  """
+  Total number of posts.
+  """
+  totalCount: Int!
+
+  """
+  When paginating forwards, are there more items?
+  """
+  hasNextPage: Boolean!
+
+  """
+  When paginating backwards, are there more items?
+  """
+  hasPreviousPage: Boolean!
+
+  """
+  When paginating backwards, the cursor to continue.
+  """
+  startCursor: String
+
+  """
+  When paginating forwards, the cursor to continue.
+  """
+  endCursor: String
+}
+
+"""
+A connection to a list of items.
+"""
+type ItemConnection {
+  """
+  List of items.
+  """
+  nodes: [Item!]!
+
+  """
+  Total number of items.
+  """
+  totalCount: Int!
+
+  """
+  When paginating forwards, are there more items?
+  """
+  hasNextPage: Boolean!
+
+  """
+  When paginating backwards, are there more items?
+  """
+  hasPreviousPage: Boolean!
+
+  """
+  When paginating backwards, the cursor to continue.
+  """
+  startCursor: String
+
+  """
+  When paginating forwards, the cursor to continue.
+  """
+  endCursor: String
+}
+
+"""
+A connection to a list of users.
+"""
+type UserConnection {
+  """
+  List of users.
+  """
+  nodes: [User!]!
+
+  """
+  Total number of users.
+  """
+  totalCount: Int!
+
+  """
+  When paginating forwards, are there more items?
+  """
+  hasNextPage: Boolean!
+
+  """
+  When paginating backwards, are there more items?
+  """
+  hasPreviousPage: Boolean!
+
+  """
+  When paginating backwards, the cursor to continue.
+  """
+  startCursor: String
+
+  """
+  When paginating forwards, the cursor to continue.
+  """
+  endCursor: String
+}
+
+"""
+A connection to a list of keywords.
+"""
+type KeywordConnection {
+  """
+  List of keywords.
+  """
+  nodes: [Keyword!]!
+
+  """
+  Total number of keywords.
+  """
+  totalCount: Int!
+
+  """
+  When paginating forwards, are there more items?
+  """
+  hasNextPage: Boolean!
+
+  """
+  When paginating backwards, are there more items?
+  """
+  hasPreviousPage: Boolean!
+
+  """
+  When paginating backwards, the cursor to continue.
+  """
+  startCursor: String
+
+  """
+  When paginating forwards, the cursor to continue.
+  """
+  endCursor: String
+}

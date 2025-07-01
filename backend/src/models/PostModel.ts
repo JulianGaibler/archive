@@ -2,7 +2,7 @@ import DataLoader from 'dataloader'
 import { z } from 'zod/v4'
 import { createInsertSchema } from 'drizzle-zod'
 import Con from '@src/Connection.js'
-import { post, keywordToPost } from '@db/schema.js'
+import { post, keywordToPost, postSearchView } from '@db/schema.js'
 import { inArray } from 'drizzle-orm'
 import { InferSelectModel } from 'drizzle-orm'
 import HashId, { HashIdTypes } from './HashId.js'
@@ -40,6 +40,7 @@ function makeExternal(post: PostInternal): PostExternal {
 
 export default {
   table: post,
+  postSearchView,
   insertSchema,
   decodeId,
   encodeId,

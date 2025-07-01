@@ -47,10 +47,10 @@
     }
 
     const fetchedItems =
-      result.data.keywords?.edges
-        ?.map((edge) => ({
-          id: edge?.node?.id ?? '',
-          name: edge?.node?.name ?? '',
+      result.data.keywords?.nodes
+        ?.map((node) => ({
+          id: node.id ?? '',
+          name: node.name ?? '',
         }))
         .filter((item) => item.id !== '') ?? []
 

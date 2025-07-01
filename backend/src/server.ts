@@ -24,7 +24,7 @@ const OPTIONS = {
 }
 
 export type ServerOptions = typeof OPTIONS
-
+export { Context }
 /**
  * Creates a new express server that serves the GraphQL API and optionally files
  * from the public directory (only in development).

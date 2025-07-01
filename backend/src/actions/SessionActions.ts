@@ -32,7 +32,7 @@ const SessionActions = {
   async qSession(
     ctx: Context,
     fields: { sessionId: SessionExternal['id'] },
-  ): Promise<SessionExternal | undefined> {
+  ): Promise<SessionExternal> {
     const userIId = ctx.isAuthenticated()
 
     const session = await ctx.dataLoaders.session.getById.load(
@@ -88,13 +88,31 @@ const SessionActions = {
     rotatedToken?: string
   } | null> {
     try {
+      // Select only the fields we need for verification
       const [session] = await db
-        .select()
+        .select({
+          id: sessionTable.id,
+          userId: sessionTable.userId,
+          tokenHash: sessionTable.tokenHash,
+          secretVersion: sessionTable.secretVersion,
+          lastTokenRotation: sessionTable.lastTokenRotation,
+          updatedAt: sessionTable.updatedAt,
+          userAgent: sessionTable.userAgent,
+          latestIp: sessionTable.latestIp,
+        })
         .from(sessionTable)
         .where(eq(sessionTable.secureSessionId, fields.secureSessionId))
+
       if (!session) {
         return null
       }
+
+      // Check if session is expired before doing crypto work
+      if (Math.abs(session.updatedAt - Date.now()) > SESSION_EXPIRY_TIME) {
+        await db.delete(sessionTable).where(eq(sessionTable.id, session.id))
+        throw new AuthenticationError('Your Session timed out.')
+      }
+
       let isValidToken = false
       try {
         const expectedHash = SessionSecurityUtils.hashToken(
@@ -110,43 +128,68 @@ const SessionActions = {
           'Your session is invalid. Please log in again.',
         )
       }
+
       if (!isValidToken) {
         return null
       }
-      const updateFields: any = {
-        userAgent: fields.userAgent,
-      }
-      if (fields.latestIp) {
-        updateFields.latestIp = fields.latestIp
-      }
+
+      // Check if we need to update anything
+      const now = Date.now()
+      const timeSinceLastUpdate = Math.abs(session.updatedAt - now)
+      const needsTokenRotation = SessionSecurityUtils.needsTokenRotation(
+        session.lastTokenRotation,
+      )
+      const userAgentChanged = session.userAgent !== fields.userAgent
+      const ipChanged = fields.latestIp && session.latestIp !== fields.latestIp
+
+      // Skip update if recent activity (< 10 seconds) and no changes needed
+      const skipUpdate =
+        timeSinceLastUpdate < 10000 &&
+        !needsTokenRotation &&
+        !userAgentChanged &&
+        !ipChanged
+
       let rotatedToken: string | undefined
-      if (SessionSecurityUtils.needsTokenRotation(session.lastTokenRotation)) {
-        rotatedToken = generateToken()
-        updateFields.tokenHash =
-          SessionSecurityUtils.hashTokenCurrent(rotatedToken)
-        updateFields.secretVersion =
-          SessionSecurityUtils.getCurrentSecretVersion()
-        updateFields.lastTokenRotation = Date.now()
+      let finalUpdatedAt = session.updatedAt
+
+      if (!skipUpdate) {
+        const updateFields: any = {
+          userAgent: fields.userAgent,
+        }
+        if (fields.latestIp) {
+          updateFields.latestIp = fields.latestIp
+        }
+
+        if (needsTokenRotation) {
+          rotatedToken = generateToken()
+          updateFields.tokenHash =
+            SessionSecurityUtils.hashTokenCurrent(rotatedToken)
+          updateFields.secretVersion =
+            SessionSecurityUtils.getCurrentSecretVersion()
+          updateFields.lastTokenRotation = now
+        }
+
+        // Update and return the updated timestamp in one query using RETURNING
+        const [updatedSession] = await db
+          .update(sessionTable)
+          .set(updateFields)
+          .where(eq(sessionTable.id, session.id))
+          .returning({
+            updatedAt: sessionTable.updatedAt,
+          })
+
+        finalUpdatedAt = updatedSession.updatedAt
       }
-      await db
-        .update(sessionTable)
-        .set(updateFields)
-        .where(eq(sessionTable.id, session.id))
-      const [updatedSession] = await db
-        .select()
-        .from(sessionTable)
-        .where(eq(sessionTable.id, session.id))
-      if (
-        Math.abs(updatedSession.updatedAt - Date.now()) > SESSION_EXPIRY_TIME
-      ) {
-        await db
-          .delete(sessionTable)
-          .where(eq(sessionTable.id, updatedSession.id))
+
+      // Final expiry check using the appropriate updatedAt
+      if (Math.abs(finalUpdatedAt - now) > SESSION_EXPIRY_TIME) {
+        await db.delete(sessionTable).where(eq(sessionTable.id, session.id))
         throw new AuthenticationError('Your Session timed out.')
       }
+
       return {
-        userId: updatedSession.userId,
-        sessionId: updatedSession.id,
+        userId: session.userId,
+        sessionId: session.id,
         rotatedToken,
       }
     } catch (error) {
@@ -205,14 +248,23 @@ const SessionActions = {
    */
   async mRevoke(
     ctx: Context,
-    fields: { sessionId?: SessionExternal['id'] },
+    fields: { sessionId?: SessionExternal['id']; thisSession?: boolean } = {},
   ): Promise<boolean> {
     const currentUserIId = ctx.isAuthenticated()
-    if (!fields.sessionId) {
-      throw new InputError('You must provide a sessionId.')
-    }
+
     try {
-      const sessionId = SessionModel.decodeId(fields.sessionId)
+      const sessionId = fields.sessionId
+        ? SessionModel.decodeId(fields.sessionId)
+        : ctx.sessionId
+      if (!sessionId && fields.thisSession !== true) {
+        throw new InputError('No session ID provided and thisSession is false.')
+      }
+      if (!sessionId) {
+        throw new InputError(
+          'Cannot revoke current session: session ID is not set.',
+        )
+      }
+
       const db = ctx.db
       const [session] = await db
         .select()

@@ -2,15 +2,19 @@ import DataLoader from 'dataloader'
 import { z } from 'zod/v4'
 import { createInsertSchema } from 'drizzle-zod'
 import Con from '@src/Connection.js'
-import { user } from '@db/schema.js'
+import { user, post } from '@db/schema.js'
 import { sql, inArray } from 'drizzle-orm'
 import HashId, { HashIdTypes } from './HashId.js'
 
 // --- Types ---
 
 export type UserInternal = typeof user.$inferSelect
-export type UserExternal = Omit<UserInternal, 'id' | 'password'> & {
+export type UserExternal = Omit<
+  UserInternal,
+  'id' | 'password' | 'telegramId'
+> & {
   id: string
+  linkedTelegram: boolean
 }
 
 // --- Schema and Validation ---
@@ -32,6 +36,7 @@ function makeExternal(user: UserInternal): UserExternal {
   return {
     ...externalUser,
     id: encodeId(user.id),
+    linkedTelegram: user.telegramId !== null && user.telegramId !== undefined,
   }
 }
 
@@ -116,7 +121,6 @@ async function postCountsByUsers(
   userIds: readonly number[],
 ): Promise<number[]> {
   const db = Con.getDB()
-  const { post } = await import('@db/schema.js')
   const counts = await db
     .select({
       id: user.id,

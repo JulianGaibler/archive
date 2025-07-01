@@ -74,12 +74,12 @@
     try {
       const result = await sdk.PostsTextOnly({ byContent: search })
 
-      const searchResults: PostItem[] = (result.data.posts?.edges || [])
-        .map((edge) => {
-          if (edge?.node) {
+      const searchResults: PostItem[] = (result.data.posts?.nodes || [])
+        .map((node) => {
+          if (node) {
             return {
-              id: edge.node.id,
-              title: edge.node.title,
+              id: node.id,
+              title: node.title,
             }
           }
           return null

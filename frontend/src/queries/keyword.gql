@@ -2,27 +2,21 @@
 
 query Keywords($after: String, $byName: String) {
   keywords(first: 48, after: $after, sortByPostCount: true, byName: $byName) {
-    edges {
-      node {
-        id
-        name
-        postCount
-      }
+    nodes {
+      id
+      name
+      postCount
     }
-    pageInfo {
-      hasNextPage
-      endCursor
-    }
+    hasNextPage
+    endCursor
   }
 }
 
 query keywordSearch($input: String) {
   keywords(byName: $input) {
-    edges {
-      node {
-        id
-        name
-      }
+    nodes {
+      id
+      name
     }
   }
 }

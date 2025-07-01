@@ -1,4 +1,4 @@
-import { get, writable } from 'svelte/store'
+import { get, writable, derived } from 'svelte/store'
 import {
   Language,
   type getSdk,
@@ -24,7 +24,17 @@ interface UpdateValue<T> {
   error?: string
 }
 
+export type ExistingItem = {
+  type: 'existing'
+  id: string
+  data: NonNullable<PostItemType['items']['nodes']>[number] // The actual item data from GraphQL
+  description: UpdateValue<string>
+  caption: UpdateValue<string> | undefined
+  position: UpdateValue<number>
+}
+
 export type UploadItem = {
+  type: 'upload'
   id: string
   file: File
   keywords: UpdateValue<string[]>
@@ -33,19 +43,13 @@ export type UploadItem = {
   language: UpdateValue<Language>
 }
 
+export type EditableItem = ExistingItem | UploadItem
+
 export type PostUpdate = {
   title: UpdateValue<string>
   language: UpdateValue<Language>
   keywords: UpdateValue<string[]>
-  items: Record<
-    string,
-    {
-      description: UpdateValue<string>
-      caption: UpdateValue<string> | undefined
-      position: UpdateValue<number>
-    }
-  >
-  uploadItems: Record<string, UploadItem>
+  items: Record<string, EditableItem>
   uploadController?: UploadController
   isUploading: boolean
 }
@@ -59,6 +63,31 @@ export function createEditManager(
   const data = writable<PostUpdate | undefined>(undefined)
   const loading = writable(false)
   const isInNewPostMode = writable(isNewPost) // Track new-post mode as reactive store
+
+  // Derived store that provides reactive access to all items
+  const items = derived([post, data], ([postData, editData]) => {
+    if (editData) {
+      // In edit mode, return editable items
+      return Object.values(editData.items)
+    } else if (postData) {
+      // In view mode, return post items wrapped as display items
+      return (
+        postData.items.nodes?.filter(Boolean).map((node) => ({
+          type: 'existing' as const,
+          id: node.id,
+          data: node,
+          description: { value: node.description, error: undefined },
+          caption:
+            'caption' in node
+              ? { value: node.caption, error: undefined }
+              : undefined,
+          position: { value: node.position, error: undefined },
+        })) || []
+      )
+    }
+    return []
+  })
+
   let openDialog: OpenDialog | undefined = undefined
   let subscriptionUnsubscribe: (() => void) | undefined = undefined
 
@@ -66,8 +95,7 @@ export function createEditManager(
   const getProcessingItemIds = (postData: PostItemType): string[] => {
     const processingIds: string[] = []
 
-    postData.items.edges?.forEach((edge) => {
-      const item = edge?.node
+    postData.items.nodes?.forEach((item) => {
       if (item && item.__typename === 'ProcessingItem') {
         // Monitor items that are not FAILED or DONE
         if (
@@ -125,19 +153,32 @@ export function createEditManager(
               const newPost = { ...currentPost }
               newPost.items = { ...newPost.items }
 
-              if (newPost.items.edges) {
-                newPost.items.edges = newPost.items.edges.map((edge) => {
-                  if (edge?.node?.id === updatedItem.id) {
-                    return {
-                      ...edge,
-                      node: updatedItem,
-                    }
+              if (newPost.items.nodes) {
+                newPost.items.nodes = newPost.items.nodes.map((node) => {
+                  if (node && node.id === updatedItem.id) {
+                    return updatedItem
                   }
-                  return edge
+                  return node
                 })
               }
-
               return newPost
+            })
+
+            // Also update edit data if it exists
+            data.update((currentData) => {
+              if (!currentData) return currentData
+
+              if (
+                currentData.items[updatedItem.id] &&
+                currentData.items[updatedItem.id].type === 'existing'
+              ) {
+                const existingItem = currentData.items[
+                  updatedItem.id
+                ] as ExistingItem
+                existingItem.data = updatedItem
+              }
+
+              return currentData
             })
 
             // Check if we should stop the subscription
@@ -222,7 +263,6 @@ export function createEditManager(
         language: createUpdateValue(Language.English),
         keywords: createUpdateValue([]),
         items: {},
-        uploadItems: {},
         uploadController: undefined,
         isUploading: false,
       })
@@ -230,31 +270,29 @@ export function createEditManager(
       // For existing posts, use current values
       if (!postObject) return
 
+      const existingItems: Record<string, EditableItem> = {}
+
+      postObject.items.nodes?.forEach((node) => {
+        if (node) {
+          existingItems[node.id] = {
+            type: 'existing',
+            id: node.id,
+            data: node,
+            description: createUpdateValue(node.description),
+            caption:
+              'caption' in node ? createUpdateValue(node.caption) : undefined,
+            position: createUpdateValue(node.position),
+          }
+        }
+      })
+
       data.set({
         title: createUpdateValue(postObject.title),
         language: createUpdateValue(postObject.language),
         keywords: createUpdateValue(
           postObject.keywords.map((keyword) => keyword.id),
         ),
-        items:
-          postObject.items.edges?.reduce(
-            (acc, item) => {
-              const node = item?.node
-              if (node) {
-                acc[node.id] = {
-                  description: createUpdateValue(node.description),
-                  caption:
-                    'caption' in node
-                      ? createUpdateValue(node.caption)
-                      : undefined,
-                  position: createUpdateValue(node.position),
-                }
-              }
-              return acc
-            },
-            {} as PostUpdate['items'],
-          ) || {},
-        uploadItems: {},
+        items: existingItems,
         uploadController: undefined,
         isUploading: false,
       })
@@ -273,7 +311,8 @@ export function createEditManager(
     }
     data.update((current) => {
       if (!current) return current
-      current.uploadItems[file.name] = {
+      current.items[file.name] = {
+        type: 'upload',
         id: file.name,
         file,
         keywords: createUpdateValue([]),
@@ -303,7 +342,13 @@ export function createEditManager(
     const $data = get(data)
     if (!$data) return
 
-    const hasNewFiles = Object.keys($data.uploadItems || {}).length > 0
+    const uploadItems = Object.values($data.items).filter(
+      (item): item is UploadItem => item.type === 'upload',
+    )
+    const existingItems = Object.values($data.items).filter(
+      (item): item is ExistingItem => item.type === 'existing',
+    )
+    const hasNewFiles = uploadItems.length > 0
 
     // For new posts, require at least one file
     if (get(isInNewPostMode) && !hasNewFiles) {
@@ -382,18 +427,16 @@ export function createEditManager(
           title: $data.title.value,
           language: $data.language.value,
           keywords: $data.keywords.value,
-          items: Object.entries($data.items || {}).map(([id, item]) => ({
-            id,
+          items: existingItems.map((item) => ({
+            id: item.id,
             description: item.description.value,
             caption: item.caption?.value,
           })),
-          newItems: Object.values($data.uploadItems || {}).map(
-            (uploadItem) => ({
-              file: uploadItem.file,
-              description: uploadItem.description.value,
-              caption: uploadItem.caption?.value,
-            }),
-          ),
+          newItems: uploadItems.map((uploadItem) => ({
+            file: uploadItem.file,
+            description: uploadItem.description.value,
+            caption: uploadItem.caption?.value,
+          })),
         },
         headers,
       )
@@ -437,11 +480,12 @@ export function createEditManager(
       loading.set(true)
       const result = await sdk.deleteItem({ deleteItemId: itemId })
 
-      if (getOperationResultError(result)) {
+      const error = getOperationResultError(result)
+      if (error) {
         console.error(result)
         openDialog?.({
           heading: 'Error',
-          children: 'Failed to delete item. Please try again.',
+          children: `Failed to delete item: ${error}`,
         })
         return false
       }
@@ -453,9 +497,9 @@ export function createEditManager(
         const newPost = { ...currentPost }
         newPost.items = { ...newPost.items }
 
-        if (newPost.items.edges) {
-          newPost.items.edges = newPost.items.edges.filter(
-            (edge) => edge?.node?.id !== itemId,
+        if (newPost.items.nodes) {
+          newPost.items.nodes = newPost.items.nodes.filter(
+            (node) => node.id !== itemId,
           )
         }
         return newPost
@@ -492,11 +536,12 @@ export function createEditManager(
       loading.set(true)
       const result = await sdk.deletePost({ deletePostId: postObject.id })
 
-      if (getOperationResultError(result)) {
+      const error = getOperationResultError(result)
+      if (error) {
         console.error(result)
         openDialog?.({
           heading: 'Error',
-          children: 'Failed to delete post. Please try again.',
+          children: `Failed to delete post: ${error}`,
         })
         return false
       }
@@ -541,27 +586,27 @@ export function createEditManager(
         const newPost = { ...currentPost }
         newPost.items = { ...newPost.items }
 
-        if (newPost.items.edges) {
+        if (newPost.items.nodes) {
           // Create a map of existing items by ID for easy lookup
           const itemMap = new Map()
-          newPost.items.edges.forEach((edge) => {
-            if (edge?.node) {
-              itemMap.set(edge.node.id, edge)
+          newPost.items.nodes.forEach((node) => {
+            if (node) {
+              itemMap.set(node.id, node)
             }
           })
 
-          // Reorder the edges based on the provided itemIds array
-          const reorderedEdges = itemIds
+          // Reorder the nods based on the provided itemIds array
+          const reorderedNodes = itemIds
             .map((id) => itemMap.get(id))
             .filter(Boolean) // Remove any undefined items
 
           // Add any items that weren't in the reorder list at the end
           const reorderedIds = new Set(itemIds)
-          const remainingEdges = newPost.items.edges.filter(
-            (edge) => edge?.node && !reorderedIds.has(edge.node.id),
+          const remainingNodes = newPost.items.nodes.filter(
+            (node) => node && !reorderedIds.has(node.id),
           )
 
-          newPost.items.edges = [...reorderedEdges, ...remainingEdges]
+          newPost.items.nodes = [...reorderedNodes, ...remainingNodes]
         }
 
         return newPost
@@ -662,9 +707,9 @@ export function createEditManager(
         const newPost = { ...currentPost }
         newPost.items = { ...newPost.items }
 
-        if (newPost.items.edges) {
-          newPost.items.edges = newPost.items.edges.filter(
-            (edge) => edge?.node?.id !== itemId,
+        if (newPost.items.nodes) {
+          newPost.items.nodes = newPost.items.nodes.filter(
+            (node) => node.id !== itemId,
           )
         }
         return newPost
@@ -683,14 +728,26 @@ export function createEditManager(
     }
   }
 
+  const removeUploadItem = (itemId: string) => {
+    data.update((current) => {
+      if (!current) return current
+      if (current.items[itemId] && current.items[itemId].type === 'upload') {
+        delete current.items[itemId]
+      }
+      return current
+    })
+  }
+
   return {
     post,
     data,
     loading,
     isInNewPostMode,
+    items, // Expose the items derived store
     startEdit,
     cancelEdit,
     addFile,
+    removeUploadItem,
     submitEdit,
     setOpenDialog,
     cancelUpload,

@@ -12,9 +12,9 @@ import { FileUpload } from 'graphql-upload/processRequest.mjs'
 import { InputError } from '@src/errors/index.js'
 import * as fileUtils from './file-utils.js'
 import { FileType, UpdateCallback } from './types.js'
-import { ItemModel } from '@src/models/index.js'
 import { FilePathManager } from './FilePathManager.js'
 import { FileProcessingQueue } from './QueueManager.js'
+import { ItemExternal } from '@src/models/ItemModel.js'
 
 const pipeline = util.promisify(stream.pipeline)
 
@@ -40,7 +40,7 @@ export default class FileStorage {
   async storeFile(
     _ctx: Context,
     upload: Promise<FileUpload>,
-    itemId: number,
+    itemId: ItemExternal['id'],
   ): Promise<void> {
     const { createReadStream } = await upload
 
@@ -151,10 +151,10 @@ export default class FileStorage {
   /**
    * Processes a single item from the queue
    *
-   * @param {number} itemId The item ID to process
+   * @param {string} itemId The item ID to process
    * @returns {Promise<void>}
    */
-  private async processItem(itemId: number): Promise<void> {
+  private async processItem(itemId: ItemExternal['id']): Promise<void> {
     const ctx = Context.createPrivilegedContext()
 
     try {
@@ -163,7 +163,7 @@ export default class FileStorage {
         await TaskActions.mUpdate(ctx, { itemId, changes })
       }
 
-      const task = await TaskActions.qTask(ctx, { itemIds: itemId })
+      const task = await TaskActions.qTask(ctx, { itemId })
 
       if (!task) {
         throw new Error(`Task not found for item ${itemId}`)
@@ -237,8 +237,8 @@ export default class FileStorage {
 
   private async moveProcessedFiles(
     { result, fileType }: { result: any; fileType: FileType },
-    _task: ItemModel,
-    _itemId: number,
+    _task: ItemExternal,
+    _itemId: ItemExternal['id'],
     updateCallback: UpdateCallback,
   ): Promise<void> {
     const fileId = createId()

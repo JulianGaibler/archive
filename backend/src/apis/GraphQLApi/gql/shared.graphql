@@ -1,0 +1,144 @@
+"""
+Indicates exactly one field must be supplied and this field must not be `null`.
+"""
+directive @oneOf on INPUT_OBJECT
+
+"""
+An object with an ID
+"""
+interface Node {
+  """
+  The id of the object.
+  """
+  id: ID!
+}
+
+"""
+A timestamp encoded as milliseconds since Unix Epoch in UTC.
+"""
+scalar DateTime
+
+"""
+The `Upload` scalar type represents a file upload.
+"""
+scalar Upload
+
+"""
+Possible languages that an object can have.
+"""
+enum Language {
+  """
+  The English language.
+  """
+  ENGLISH
+
+  """
+  The German language.
+  """
+  GERMAN
+
+  """
+  The French language.
+  """
+  FRENCH
+
+  """
+  The Italian language.
+  """
+  ITALIAN
+
+  """
+  The Norwegian language.
+  """
+  NORWEGIAN
+
+  """
+  The Russian language.
+  """
+  RUSSIAN
+
+  """
+  The Spanish language.
+  """
+  SPANISH
+
+  """
+  The Turkish language.
+  """
+  TURKISH
+}
+
+"""
+The possible states of a task.
+"""
+enum TaskStatus {
+  """
+  The processing was successful.
+  """
+  DONE
+
+  """
+  The file is waiting to be processed.
+  """
+  QUEUED
+
+  """
+  The file is being processed.
+  """
+  PROCESSING
+
+  """
+  The processing has failed.
+  """
+  FAILED
+}
+
+"""
+Possible formats a post can have.
+"""
+enum Format {
+  """
+  A video with sound.
+  """
+  VIDEO
+
+  """
+  An image.
+  """
+  IMAGE
+
+  """
+  A video without sound.
+  """
+  GIF
+
+  """
+  A sound file.
+  """
+  AUDIO
+
+  """
+  A text post.
+  """
+  TEXT
+}
+
+"""
+Enum that specifies if an update contains a new object, an update or if an object has been deleted.
+"""
+enum UpdateKind {
+  """
+  Contains a new object
+  """
+  CREATED
+
+  """
+  Contains a changed object
+  """
+  CHANGED
+
+  """
+  Contains a deleted object
+  """
+  DELETED
+}

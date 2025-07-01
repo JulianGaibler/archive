@@ -1,11 +1,13 @@
 # Changelog
 # Labels: [Added], [Fixed], [Improved], [Removed], [Deprecated], [Security]
 
-2.0.3:
+2.2.0:
   date: '2025-06-30' # UPDATE ME with the date of the release
   changes:
-    - '[Fixed] Fixed bug where captions and descriptions could not be cleared'
+    - '[Improved] Telegram bot search now matches the quality and performance of the web search'
     - '[Improved] Telegram linking now has a confirmation step and can be initiated from Telegram too'
+    - '[Improved] Post titles are now unique'
+    - '[Fixed] Captions and descriptions can now be set to empty'
     - '[Removed] Frontend no longer uses webp and webm files, as a first step towards removing support for these formats'
 2.0.2:
   date: '2025-06-27'

@@ -1,7 +1,6 @@
-import PostModel, { PostExternal, PostInternal } from '@src/models/PostModel.js'
+import PostModel, { PostExternal } from '@src/models/PostModel.js'
 import UserModel, { UserExternal } from '@src/models/UserModel.js'
 import Context from '@src/Context.js'
-import ActionUtils from './ActionUtils.js'
 import {
   AuthorizationError,
   InputError,
@@ -25,8 +24,13 @@ import {
   count,
 } from 'drizzle-orm'
 import ItemModel, { ItemExternal, ItemInternal } from '@src/models/ItemModel.js'
+import PaginationUtils, {
+  PaginationArgs,
+  Connection,
+} from './PaginationUtils.js'
 
 const postTable = PostModel.table
+const postSearchView = PostModel.postSearchView
 const userTable = UserModel.table
 const itemTable = ItemModel.table
 const keywordTable = KeywordModel.table
@@ -48,227 +52,242 @@ const PostActions = {
     return PostModel.makeExternal(result)
   },
 
-  async qPostsByKeyword(
-    ctx: Context,
-    fields: { keywordId: KeywordExternal['id'] },
-  ): Promise<PostExternal[]> {
-    ctx.isAuthenticated()
-    const result = await ctx.dataLoaders.post.getByKeyword.load(
-      KeywordModel.decodeId(fields.keywordId),
-    )
-    if (!result) {
-      throw new NotFoundError('No posts found for this keyword.')
-    }
-    return result.map((post) => PostModel.makeExternal(post))
-  },
-
-  async qPostsByUser(
-    ctx: Context,
-    fields: { userId: PostExternal['id'] },
-  ): Promise<PostExternal[]> {
-    ctx.isAuthenticated()
-    const result = await ctx.dataLoaders.post.getByUser.load(
-      PostModel.decodeId(fields.userId),
-    )
-    if (!result) {
-      throw new NotFoundError('No posts found for this user.')
-    }
-    return result.map((post) => PostModel.makeExternal(post))
-  },
-
   async qPosts(
     ctx: Context,
     fields: {
-      limit?: number
-      offset?: number
-      byUsers?: UserExternal['username'][]
-      byKeywords?: KeywordExternal['id'][]
-      byLanguage?: string
-      byContent?: string
-    },
-  ): Promise<{
-    data: PostExternal[]
-    totalSearchCount: number
-    totalCount: number
-  }> {
+      byUsers?: UserExternal['username'][] | null
+      byKeywords?: KeywordExternal['id'][] | null
+      byLanguage?: string | null
+      byContent?: string | null
+    } & PaginationArgs,
+  ): Promise<Connection<PostExternal>> {
     ctx.isAuthenticated()
-    const { limit, offset } = ActionUtils.getLimitOffset(fields)
+    const paginationInfo = PaginationUtils.parsePaginationArgs(fields)
+    const { limit, offset } = paginationInfo
 
-    // No more preloading needed
+    // Determine if content search is active
+    const hasContentSearch =
+      fields.byContent && fields.byContent.trim().length > 0
+
+    // Start building the base query dynamically with conditional selection
+    const selectFields: any = {
+      ...getTableColumns(postTable),
+    }
+    if (hasContentSearch) {
+      selectFields.searchRank = sql<number>`search_results.rank_score`.as(
+        'searchRank',
+      )
+    }
+    let baseQuery = ctx.db.select(selectFields).from(postTable).$dynamic()
 
     // Build conditions array
     const conditions = []
 
+    // Handle byUsers filter
+    if (fields.byUsers && fields.byUsers.length > 0) {
+      const userIds = await Promise.all(
+        fields.byUsers.map(async (username) => {
+          const users = await ctx.db
+            .select({ id: userTable.id })
+            .from(userTable)
+            .where(
+              eq(sql`lower(${userTable.username})`, username.toLowerCase()),
+            )
+            .limit(1)
+          return users[0]?.id
+        }),
+      )
+
+      const validUserIds = userIds.filter((id) => id !== undefined)
+      if (validUserIds.length > 0) {
+        conditions.push(inArray(postTable.creatorId, validUserIds))
+      } else {
+        // If no valid users found, return empty result
+        return PaginationUtils.createConnection<PostExternal>(
+          [],
+          0,
+          paginationInfo,
+        )
+      }
+    }
+
+    // Handle byKeywords filter
+    if (fields.byKeywords && fields.byKeywords.length > 0) {
+      // Decode external keyword IDs to internal numeric IDs
+      const internalKeywordIds = fields.byKeywords.map((externalId) =>
+        KeywordModel.decodeId(externalId),
+      )
+
+      const keywordPostIds = await ctx.db
+        .select({ postId: keywordToPostTable.postId })
+        .from(keywordToPostTable)
+        .where(inArray(keywordToPostTable.keywordId, internalKeywordIds))
+        .groupBy(keywordToPostTable.postId)
+        .having(sql`count(*) = ${internalKeywordIds.length}`) // Ensure all keywords match
+
+      const postIds = keywordPostIds.map((row) => row.postId)
+      if (postIds.length > 0) {
+        conditions.push(inArray(postTable.id, postIds))
+      } else {
+        // If no posts found with these keywords, return empty result
+        return PaginationUtils.createConnection<PostExternal>(
+          [],
+          0,
+          paginationInfo,
+        )
+      }
+    }
+
+    // Handle byLanguage filter
     if (fields.byLanguage) {
       conditions.push(eq(postTable.language, fields.byLanguage))
     }
 
-    if (fields.byUsers && fields.byUsers.length > 0) {
-      // Subquery to get user IDs by username
-      const userIdsSubquery = ctx.db
-        .select({ id: userTable.id })
-        .from(userTable)
-        .where(inArray(userTable.username, fields.byUsers))
+    // Handle byContent filter with CTE
+    if (hasContentSearch) {
+      const searchTerm = fields.byContent!.trim()
 
-      conditions.push(inArray(postTable.creatorId, userIdsSubquery))
+      // Create the search CTE
+      const searchCte = ctx.db.$with('search_results').as(
+        ctx.db
+          .with(
+            ctx.db.$with('ts_results').as(
+              ctx.db
+                .select({
+                  postId: postSearchView.postId,
+                  text: postSearchView.text,
+                  plainText: postSearchView.plainText,
+                  searchType: sql<number>`1`.as('search_type'),
+                  rankScore:
+                    sql<number>`ts_rank(${postSearchView.text}, websearch_to_tsquery('english_nostop', ${searchTerm}))`.as(
+                      'rank_score',
+                    ),
+                })
+                .from(postSearchView)
+                .where(
+                  sql`${postSearchView.text} @@ websearch_to_tsquery('english_nostop', ${searchTerm})`,
+                ),
+            ),
+          )
+          .select({
+            postId: sql<number>`post_id`.as('post_id'),
+            text: sql<string>`text`,
+            plainText: sql<string>`plain_text`.as('plain_text'),
+            searchType: sql<number>`search_type`.as('search_type'),
+            rankScore: sql<number>`rank_score`.as('rank_score'),
+          }).from(sql`(
+          SELECT * FROM ts_results
+          UNION ALL
+          SELECT
+            v.post_id,
+            v.text,
+            v.plain_text,
+            2 as search_type,
+            0.1 as rank_score
+          FROM ${postSearchView} v
+          LEFT JOIN ts_results t ON v.post_id = t.post_id
+          WHERE v.plain_text ILIKE ${`%${searchTerm}%`}
+            AND t.post_id IS NULL
+        ) combined_results`),
+      )
+
+      // Add the CTE to the query and join with search results
+      baseQuery = ctx.db
+        .with(searchCte)
+        .select({
+          ...getTableColumns(postTable),
+          searchRank: sql<number>`${searchCte.rankScore}`.as('searchRank'),
+        })
+        .from(postTable)
+        .innerJoin(searchCte, eq(postTable.id, searchCte.postId))
+        .$dynamic()
     }
 
-    // Create the filtered posts CTE
-    const filteredPostsCTE = ctx.db.$with('filtered_posts').as(
-      (() => {
-        let query = ctx.db.select().from(postTable).$dynamic()
+    // Apply all conditions
+    if (conditions.length > 0) {
+      baseQuery = baseQuery.where(and(...conditions))
+    }
 
-        // Handle keywords join
-        if (fields.byKeywords && fields.byKeywords.length > 0) {
-          query.innerJoin(
-            KeywordModel.keywordToPostTable,
-            eq(postTable.id, KeywordModel.keywordToPostTable.postId),
-          )
-          const keywords = fields.byKeywords.map((id) =>
-            KeywordModel.decodeId(id),
-          )
-          conditions.push(
-            inArray(KeywordModel.keywordToPostTable.keywordId, keywords),
-          )
-        }
-
-        // Handle content search join
-        if (fields.byContent && fields.byContent.trim().length > 0) {
-          const tsQuery = fields.byContent.trim()
-
-          query.innerJoin(
-            sql`
-          (
-            WITH ts_results AS (
-              SELECT
-                post_id,
-                text,
-                plain_text,
-                1 as search_type,
-                ts_rank(text, websearch_to_tsquery('english_nostop', ${tsQuery})) as rank_score
-              FROM item_search_view
-              WHERE text @@ websearch_to_tsquery('english_nostop', ${tsQuery})
-            ),
-            combined_results AS (
-              SELECT * FROM ts_results
-              UNION ALL
-              SELECT
-                v.post_id,
-                v.text,
-                v.plain_text,
-                2 as search_type,
-                0.1 as rank_score
-              FROM item_search_view v
-              LEFT JOIN ts_results t ON v.post_id = t.post_id
-              WHERE v.plain_text ILIKE ${`%${tsQuery}%`}
-                AND t.post_id IS NULL
-            )
-            SELECT
-              post_id,
-              text,
-              plain_text,
-              search_type,
-              rank_score
-            FROM combined_results
-          ) search_results`,
-            sql`search_results.post_id = ${postTable.id}`,
-          )
-
-          // Add groupBy if we have content search
-          query = query.groupBy(
-            postTable.id,
-            sql`search_results.text`,
-            sql`search_results.plain_text`,
-            sql`search_results.search_type`,
-            sql`search_results.rank_score`,
-          )
-        }
-
-        // Apply WHERE conditions
-        if (conditions.length > 0) {
-          query = query.where(and(...conditions))
-        }
-
-        return query
-      })(),
-    )
-
-    // Create search count
-    const searchCountCTE = ctx.db
-      .$with('search_count')
-      .as(
-        ctx.db
-          .select({ count: sql`count(distinct ${postTable.id})`.as('count') })
-          .from(filteredPostsCTE),
-      )
-
-    // Create total count
-    const totalCountCTE = ctx.db
-      .$with('total_count')
-      .as(ctx.db.select({ count: sql`count(*)`.as('count') }).from(postTable))
-
-    // Build the final query with all CTEs
-    const hasContentSearch =
-      fields.byContent && fields.byContent.trim().length > 0
-
-    const finalQuery = ctx.db
-      .with(filteredPostsCTE, searchCountCTE, totalCountCTE)
-      .select({
-        // Get all post fields
-        ...getTableColumns(postTable),
-        // Add counts to each row
-        searchCount: sql`(SELECT count FROM search_count)`.as('searchCount'),
-        totalCount: sql`(SELECT count FROM total_count)`.as('totalCount'),
-        // Add search ranking if content search is used
-        ...(hasContentSearch
-          ? {
-              searchType: sql`search_results.search_type`.as('searchType'),
-              rankScore: sql`search_results.rank_score`.as('rankScore'),
-            }
-          : {}),
-      })
-      .from(filteredPostsCTE)
-      .orderBy(
-        // If content search, order by search relevance first, then date
-        ...(hasContentSearch
-          ? [
-              sql`search_results.search_type`,
-              sql`search_results.rank_score DESC`,
-            ]
-          : []),
+    // Add ordering - prioritize search rank if content search is active, then by creation date
+    if (hasContentSearch) {
+      baseQuery = baseQuery.orderBy(
+        desc(sql`"searchRank"`),
         desc(postTable.createdAt),
       )
-      .limit(limit)
-      .offset(offset)
+    } else {
+      baseQuery = baseQuery.orderBy(desc(postTable.createdAt))
+    }
 
-    const results = await finalQuery
+    // Execute query with pagination
+    const posts = await baseQuery.limit(limit).offset(offset)
 
-    // Extract data and counts
-    const data = results.map((row) => {
-      const { searchCount, totalCount, searchType, rankScore, ...postData } =
-        row
-      return postData
+    // Get total count for pagination
+    let countQuery = ctx.db
+      .select({ count: count() })
+      .from(postTable)
+      .$dynamic()
+
+    // Apply same filters for count query
+    if (hasContentSearch) {
+      const searchTerm = fields.byContent!.trim()
+      const searchCte = ctx.db.$with('search_results').as(
+        ctx.db
+          .select({
+            postId: postSearchView.postId,
+          })
+          .from(postSearchView)
+          .where(
+            sql`${postSearchView.text} @@ websearch_to_tsquery('english_nostop', ${searchTerm}) OR ${postSearchView.plainText} ILIKE ${`%${searchTerm}%`}`,
+          ),
+      )
+
+      countQuery = ctx.db
+        .with(searchCte)
+        .select({ count: count() })
+        .from(postTable)
+        .innerJoin(searchCte, eq(postTable.id, searchCte.postId))
+        .$dynamic()
+    }
+
+    if (conditions.length > 0) {
+      countQuery = countQuery.where(and(...conditions))
+    }
+
+    const [{ count: totalCount }] = await countQuery
+
+    // Convert internal posts to external format
+    const externalData = posts.map((postInternal) => {
+      // Only pass the fields expected by PostModel.makeExternal
+      const { id, title, language, creatorId, updatedAt, createdAt } =
+        postInternal
+      return PostModel.makeExternal({
+        id,
+        title,
+        language,
+        creatorId,
+        updatedAt,
+        createdAt,
+      })
     })
 
-    data.forEach((post) => {
-      ctx.dataLoaders.post.getById.prime(post.id, post)
-    })
-    const externalData = data.map((post) => PostModel.makeExternal(post))
-
-    // Get counts from first row (they're the same for all rows)
-    const totalSearchCount =
-      results.length > 0 ? Number(results[0].searchCount) : 0
-    const totalCount = results.length > 0 ? Number(results[0].totalCount) : 0
-
-    return { data: externalData, totalSearchCount, totalCount }
+    return PaginationUtils.createConnection<PostExternal>(
+      externalData,
+      totalCount,
+      paginationInfo,
+    )
   },
 
   /// Mutations
   async mCreate(
     ctx: Context,
-    fields: { title: string; language: string; keywords?: number[] },
-  ) {
+    fields: {
+      title: string
+      language: string
+      keywords?: KeywordExternal['id'][] | null
+    },
+  ): Promise<PostExternal> {
     const creatorId = ctx.isAuthenticated()
+
     return await ctx.db.transaction(async (tx) => {
       // Insert the new post
       const [newPost] = await tx
@@ -282,7 +301,12 @@ const PostActions = {
 
       // Insert keyword relations if keywords are provided
       if (fields.keywords && fields.keywords.length > 0) {
-        const keywordRelations = fields.keywords.map((keywordId) => ({
+        // Decode external keyword IDs to internal IDs for database operations
+        const keywordIds = fields.keywords.map((keywordId) =>
+          KeywordModel.decodeId(keywordId),
+        )
+
+        const keywordRelations = keywordIds.map((keywordId) => ({
           keywordId: keywordId,
           postId: newPost.id,
           addedAt: Date.now(),
@@ -291,7 +315,7 @@ const PostActions = {
         await tx.insert(keywordToPostTable).values(keywordRelations)
       }
 
-      return newPost
+      return PostModel.makeExternal(newPost)
     })
   },
 
@@ -302,16 +326,20 @@ const PostActions = {
       title: PostExternal['title']
       language: PostExternal['language']
       keywords: KeywordExternal['id'][]
-      items?: {
-        id: ItemExternal['id']
-        caption?: ItemExternal['caption']
-        description?: ItemExternal['description']
-      }[]
-      newItems?: {
-        file: Promise<FileUpload>
-        caption?: ItemExternal['caption']
-        description?: ItemExternal['description']
-      }[]
+      items?:
+        | {
+            id: ItemExternal['id']
+            caption?: ItemExternal['caption'] | null
+            description?: ItemExternal['description'] | null
+          }[]
+        | null
+      newItems?:
+        | {
+            file: Promise<FileUpload>
+            caption?: ItemExternal['caption'] | null
+            description?: ItemExternal['description'] | null
+          }[]
+        | null
     },
   ): Promise<PostExternal> {
     const userIId = ctx.isAuthenticated()
@@ -455,7 +483,7 @@ const PostActions = {
           type: 'PROCESSING' as const,
           caption: item.caption || '',
           description: item.description || '',
-          postId: fields.postId,
+          postId: postIId,
           creatorId: userIId,
           taskStatus: 'QUEUED' as const,
           taskProgress: 0,
@@ -497,10 +525,18 @@ const PostActions = {
 
     for (const { item, file } of filesForStorage) {
       try {
-        await Context.fileStorage.storeFile(ctx, file, item.id)
-      } catch (_error: unknown) {
+        await Context.fileStorage.storeFile(
+          ctx,
+          file,
+          ItemModel.encodeId(item.id),
+        )
+      } catch (error: unknown) {
+        console.error(
+          `Failed to store file for item ${ItemModel.encodeId(item.id)}:`,
+          error,
+        )
         throw new RequestError(
-          `Failed to store file for item ${item.id}. Please try again.`,
+          `Failed to store file for item ${ItemModel.encodeId(item.id)}. Please try again.`,
         )
       }
     }
@@ -514,7 +550,7 @@ const PostActions = {
   async mDeletePost(
     ctx: Context,
     fields: { postId: PostExternal['id'] },
-  ): Promise<{ success: boolean; deletedPostId: PostExternal['id'] }> {
+  ): Promise<PostExternal['id']> {
     const userIId = ctx.isAuthenticated()
 
     return await ctx.db.transaction(async (tx) => {
@@ -566,14 +602,14 @@ const PostActions = {
       // Delete the post
       await tx.delete(postTable).where(eq(postTable.id, post.id))
 
-      return { success: true, deletedPostId: fields.postId }
+      return fields.postId
     })
   },
 
   async mDeleteItem(
     ctx: Context,
     fields: { itemId: ItemExternal['id'] },
-  ): Promise<{ success: boolean; deletedItemId: ItemExternal['id'] }> {
+  ): Promise<ItemExternal['id']> {
     const _userIId = ctx.isAuthenticated()
 
     return await ctx.db.transaction(async (trx) => {
@@ -621,10 +657,7 @@ const PostActions = {
         await _reorderItemPositions(trx, item.postId)
       }
 
-      return {
-        success: true,
-        deletedItemId: fields.itemId,
-      }
+      return fields.itemId
     })
   },
 
@@ -634,12 +667,7 @@ const PostActions = {
       itemIds: ItemExternal['id'][]
       postId: PostExternal['id']
     },
-  ): Promise<{
-    success: boolean
-    reorderedItemIds: ItemExternal['id'][]
-    totalItemsInPost: number
-    postId: PostExternal['id']
-  }> {
+  ): Promise<ItemExternal['id'][]> {
     const _userIId = ctx.isAuthenticated()
 
     return await ctx.db.transaction(async (trx) => {
@@ -700,7 +728,7 @@ const PostActions = {
 
       // Get all items in the post
       const allItemsInPost = await trx
-        .select()
+        .select({ id: itemTable.id })
         .from(itemTable)
         .where(eq(itemTable.postId, internalPostId))
         .orderBy(itemTable.position)
@@ -741,18 +769,14 @@ const PostActions = {
           .where(eq(itemTable.id, id))
       }
 
-      // Filter valid reordered item IDs (only those that actually exist)
-      const validReorderedIds = uniqueItemIds.filter((externalId) => {
-        const internalId = ItemModel.decodeId(externalId)
-        return itemsToReorderMap.has(internalId)
-      })
+      // Return external IDs of ALL items in the post in their new order
+      const allItemsInNewOrder = await trx
+        .select()
+        .from(itemTable)
+        .where(eq(itemTable.postId, internalPostId))
+        .orderBy(itemTable.position)
 
-      return {
-        success: true,
-        reorderedItemIds: validReorderedIds,
-        totalItemsInPost: allItemsInPost.length,
-        postId: fields.postId,
-      }
+      return allItemsInNewOrder.map((item) => ItemModel.makeExternal(item).id)
     })
   },
 
@@ -762,11 +786,7 @@ const PostActions = {
       itemId: ItemExternal['id']
       newPosition: number
     },
-  ): Promise<{
-    success: boolean
-    itemId: ItemExternal['id']
-    newPosition: number
-  }> {
+  ): Promise<number> {
     const _userIId = ctx.isAuthenticated()
 
     return await ctx.db.transaction(async (trx) => {
@@ -813,11 +833,7 @@ const PostActions = {
 
       // If position hasn't changed, return early
       if (item.position === fields.newPosition) {
-        return {
-          success: true,
-          itemId: fields.itemId,
-          newPosition: fields.newPosition,
-        }
+        return fields.newPosition
       }
 
       // Update the item's position temporarily to avoid conflicts
@@ -862,11 +878,7 @@ const PostActions = {
       // Ensure positions are sequential (cleanup any gaps)
       await _reorderItemPositions(trx, item.postId)
 
-      return {
-        success: true,
-        itemId: fields.itemId,
-        newPosition: fields.newPosition,
-      }
+      return fields.newPosition
     })
   },
 
@@ -877,13 +889,7 @@ const PostActions = {
       targetPostId: PostExternal['id']
       mergeKeywords?: boolean
     },
-  ): Promise<{
-    success: boolean
-    sourcePostId: PostExternal['id']
-    targetPostId: PostExternal['id']
-    mergedItemsCount: number
-    mergedKeywordsCount: number
-  }> {
+  ): Promise<number> {
     ctx.isAuthenticated()
 
     return await ctx.db.transaction(async (trx) => {
@@ -927,7 +933,6 @@ const PostActions = {
       // }
 
       let mergedItemsCount = 0
-      let mergedKeywordsCount = 0
 
       // Get all items from source post
       const sourceItems = await trx
@@ -1043,7 +1048,6 @@ const PostActions = {
           }))
 
           await trx.insert(keywordToPostTable).values(keywordRelations)
-          mergedKeywordsCount = keywordsToAdd.length
         }
       }
 
@@ -1067,13 +1071,7 @@ const PostActions = {
       // Reorder items in target post to ensure sequential positions
       await _reorderItemPositions(trx, internalTargetPostId)
 
-      return {
-        success: true,
-        sourcePostId: fields.sourcePostId,
-        targetPostId: fields.targetPostId,
-        mergedItemsCount,
-        mergedKeywordsCount,
-      }
+      return mergedItemsCount
     })
   },
 
@@ -1084,13 +1082,7 @@ const PostActions = {
       targetPostId: PostExternal['id']
       keepEmptyPost?: boolean
     },
-  ): Promise<{
-    success: boolean
-    itemId: ItemExternal['id']
-    sourcePostId: PostExternal['id']
-    targetPostId: PostExternal['id']
-    sourcePostDeleted: boolean
-  }> {
+  ): Promise<boolean> {
     const _userIId = ctx.isAuthenticated()
 
     return await ctx.db.transaction(async (trx) => {
@@ -1137,19 +1129,10 @@ const PostActions = {
       }
 
       const sourcePostId = item.postId
-      const externalSourcePostId = PostModel.makeExternal({
-        id: sourcePostId,
-      } as PostInternal).id
 
       // If moving to the same post, do nothing
       if (sourcePostId === internalTargetPostId) {
-        return {
-          success: true,
-          itemId: fields.itemId,
-          sourcePostId: externalSourcePostId,
-          targetPostId: fields.targetPostId,
-          sourcePostDeleted: false,
-        }
+        return false
       }
 
       // Verify the item still exists and belongs to the expected source post
@@ -1251,13 +1234,7 @@ const PostActions = {
         }
       }
 
-      return {
-        success: true,
-        itemId: fields.itemId,
-        sourcePostId: externalSourcePostId,
-        targetPostId: fields.targetPostId,
-        sourcePostDeleted,
-      }
+      return sourcePostDeleted
     })
   },
 }

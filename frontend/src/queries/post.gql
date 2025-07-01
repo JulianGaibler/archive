@@ -27,17 +27,13 @@ query Posts(
 
 query PostsTextOnly($after: String, $byContent: String) {
   posts(first: 20, after: $after, byContent: $byContent) {
-    edges {
-      node {
-        id
-        title
-      }
+    nodes {
+      id
+      title
     }
-    pageInfo {
-      hasNextPage
-      endCursor
-      startCursor
-    }
+    hasNextPage
+    endCursor
+    startCursor
   }
 }
 
@@ -56,7 +52,7 @@ mutation editPost(
   $newItems: [NewItemInput!]
 ) {
   editPost(
-    id: $id
+    postId: $id
     title: $title
     keywords: $keywords
     language: $language
@@ -68,11 +64,11 @@ mutation editPost(
 }
 
 mutation deleteItem($deleteItemId: ID!) {
-  deleteItem(id: $deleteItemId)
+  deleteItem(itemId: $deleteItemId)
 }
 
 mutation deletePost($deletePostId: ID!) {
-  deletePost(id: $deletePostId)
+  deletePost(postId: $deletePostId)
 }
 
 mutation mergePost(

@@ -9,13 +9,11 @@ import UserActions from '@src/actions/UserActions.js'
 import ItemActions from '@src/actions/ItemActions.js'
 import Context from '@src/Context.js'
 import env from '@src/utils/env.js'
-import HashId from '@src/models/HashId.js'
-import { itemHashType } from '@src/apis/GraphQLApi/schema/item/ItemType.js'
 import UserModel from '@src/models/UserModel.js'
+import PostModel, { PostExternal } from '@src/models/PostModel.js'
 
 const BOT_TOKEN = env.BACKEND_TELEGRAM_BOT_TOKEN
 const SECRET = BOT_TOKEN ? createHash('sha256').update(BOT_TOKEN).digest() : ''
-const PREFIX = 'telegramcursor:'
 const ORIGIN = env.BACKEND_TELEGRAM_BOT_RESOURCE_URL
 
 // Restart configuration
@@ -29,6 +27,10 @@ const RESTART_DELAYS = [
 ] // 0s, 1m, 5m, 15m, 30m
 const HEALTH_CHECK_INTERVAL = 10 * 60 * 1000 // 10 minutes
 const HEALTH_CHECK_TIMEOUT = 30 * 1000 // 30 seconds
+
+type ItemWithPost = ItemExternal & {
+  post: PostExternal | null
+}
 
 export default class TelegramBot {
   private bot: Telegraf | null = null
@@ -364,7 +366,7 @@ async function checkStatus(ctx: Context | null, msgCtx: any) {
  * @param msgCtx
  */
 async function inlineQuery(ctx: Context | null, msgCtx: any) {
-  const { id, from: _from, query, offset: cursor } = msgCtx.inlineQuery
+  const { id, from: _from, query, offset } = msgCtx.inlineQuery
 
   try {
     // Check if user is authenticated
@@ -381,44 +383,53 @@ async function inlineQuery(ctx: Context | null, msgCtx: any) {
       await msgCtx.telegram.answerInlineQuery(id, [], {
         is_personal: true,
         next_offset: '',
-        switch_pm_text: 'Enter at least one character',
-        switch_pm_parameter: 'search',
       })
     }
 
-    const limit = 10
-    const offset = (cursor && cursorToOffset(cursor)) || 0
+    const first = 10
 
-    const {
-      data,
-      totalSearchCount: _totalSearchCount,
-      totalCount: _totalCount,
-    } = await ItemActions.qItems(ctx, {
-      limit,
-      offset,
+    const { nodes, endCursor } = await ItemActions.qItems(ctx, {
+      first,
+      after: offset,
       byContent: trimmedQuery,
     })
 
-    if (data.length === 0) {
+    if (nodes.length === 0) {
       await msgCtx.telegram.answerInlineQuery(id, [], {
         is_personal: true,
         next_offset: '',
-        switch_pm_text: 'No results found',
-        switch_pm_parameter: 'search',
       })
       return
     }
 
-    const newCursor =
-      data.length < limit ? undefined : offsetToCursor(offset + limit)
+    const posts = await ctx.dataLoaders.post.getById.loadMany(
+      nodes.map((item) => PostModel.decodeId(item.postId)),
+    )
+
+    // Filter out Error objects and build a map for quick lookup
+    const postMap = new Map<string, PostExternal>()
+    posts.forEach((p) => {
+      if (p && !(p instanceof Error)) {
+        const externalPost = PostModel.makeExternal(p)
+        postMap.set(externalPost.id, externalPost)
+      }
+    })
+
+    const nodesWithPosts: ItemWithPost[] = nodes.map((item) => {
+      const post = postMap.get(item.postId) || null
+      return {
+        ...item,
+        post,
+      }
+    })
 
     await msgCtx.telegram.answerInlineQuery(
       id,
-      convertToInlineQueryResult(data),
+      convertToInlineQueryResult(nodesWithPosts),
       {
         is_personal: true,
         cache_time: env.NODE_ENV === 'development' ? 0 : 60,
-        next_offset: newCursor,
+        next_offset: endCursor || undefined,
       },
     )
   } catch (error) {
@@ -448,22 +459,9 @@ async function inlineQuery(ctx: Context | null, msgCtx: any) {
   }
 }
 
-/** @param offset */
-function offsetToCursor(offset: number): string {
-  return Buffer.from(offset.toString(), 'utf8').toString('base64')
-}
-
-/** @param cursor */
-function cursorToOffset(cursor: string): number {
-  return parseInt(
-    Buffer.from(cursor, 'base64').toString('utf8').substring(PREFIX.length),
-    10,
-  )
-}
-
 /** @param items */
-function convertToInlineQueryResult(items: ItemExternal[]) {
-  return items.map((item: ItemExternal) => {
+function convertToInlineQueryResult(items: ItemWithPost[]) {
+  return items.map((item: ItemWithPost) => {
     // Use post title as the main title, with item description as secondary info
     const title = item.post?.title || item.description || 'Untitled'
 
@@ -494,7 +492,7 @@ function convertToInlineQueryResult(items: ItemExternal[]) {
     }
 
     const base = {
-      id: HashId.encode(itemHashType, item.id),
+      id: item.id,
       title,
       description,
     }
@@ -544,13 +542,18 @@ export function validateAuth(apiResponse: string) {
   let dataObj: { [key: string]: string | number } = {}
   try {
     dataObj = JSON.parse(apiResponse)
-  } catch (error) {
-    console.error('Failed to parse Telegram data:', error)
+  } catch (_error) {
     throw new RequestError('Telegram data was not valid JSON!')
   }
 
   if (!BOT_TOKEN) {
-    throw new RequestError('Telegram bot has not been configured!')
+    throw new RequestError(
+      'Telegram bot has not been configured on this server. Telegram data cannot be validated!',
+    )
+  }
+
+  if (!dataObj.id || !dataObj.hash) {
+    throw new RequestError('Telegram data was not valid!')
   }
 
   const { hash, ...data } = dataObj

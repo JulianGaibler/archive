@@ -1,0 +1,97 @@
+"""
+A post.
+"""
+type Post implements Node {
+  """
+  The ID of an object
+  """
+  id: ID!
+  title: String!
+
+  """
+  Language in which caption and title are written.
+  """
+  language: Language!
+  creator: User!
+  keywords: [Keyword!]!
+
+  """
+  Items in this post.
+  """
+  items(
+    """
+    Returns the items in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the first n items from the list.
+    """
+    first: Int
+
+    """
+    Returns the items in the list that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Returns the last n items from the list.
+    """
+    last: Int
+  ): ItemConnection!
+
+  """
+  Identifies the date and time when the object was last updated.
+  """
+  updatedAt: DateTime!
+
+  """
+  Identifies the date and time when the object was created.
+  """
+  createdAt: DateTime!
+}
+
+"""
+A keyword for categorizing Posts.
+"""
+type Keyword implements Node {
+  """
+  The ID of an object
+  """
+  id: ID!
+
+  """
+  Identifies the keyword name.
+  """
+  name: String!
+
+  """
+  The number of posts associated with this keyword.
+  """
+  postCount: Int!
+
+  """
+  All Posts associated with this keyword.
+  """
+  posts(
+    """
+    Returns the items in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the first n items from the list.
+    """
+    first: Int
+
+    """
+    Returns the items in the list that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Returns the last n items from the list.
+    """
+    last: Int
+  ): PostConnection
+}

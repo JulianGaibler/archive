@@ -47,9 +47,9 @@
     post: postObject,
     loading,
     isInNewPostMode,
+    items,
   } = editManager
 
-  let itemObject = $derived($postObject ? $postObject.items!.edges! : [])
   let dropzone = $state<HTMLElement | undefined>(undefined)
   let fileInput = $state<HTMLInputElement | undefined>(undefined)
   let showDropzone = $state(false)
@@ -114,19 +114,19 @@
 
   // Reorder functionality
   function openReorderModal() {
-    const items = itemObject
-      .filter((item) => item?.node)
+    const itemsForReorder = $items
+      .filter((item) => item.type === 'existing') // Only existing items can be reordered
       .map((item) => {
-        const node = item!.node!
         let thumbnail: string | undefined = undefined
+        const data = item.data
 
         // Handle different thumbnail types based on item type
-        if ('thumbnailPath' in node && node.thumbnailPath) {
-          thumbnail = node.thumbnailPath
+        if ('thumbnailPath' in data && data.thumbnailPath) {
+          thumbnail = data.thumbnailPath
         } else if (
-          'ampThumbnail' in node &&
-          Array.isArray(node.ampThumbnail) &&
-          node.ampThumbnail.length > 0
+          'ampThumbnail' in data &&
+          Array.isArray(data.ampThumbnail) &&
+          data.ampThumbnail.length > 0
         ) {
           // For audio items, we could generate a thumbnail from ampThumbnail data
           // For now, we'll leave it undefined
@@ -134,13 +134,13 @@
         }
 
         return {
-          id: node.id,
-          description: node.description || 'No description',
-          caption: 'caption' in node ? node.caption : undefined,
+          id: item.id,
+          description: item.description.value || 'No description',
+          caption: item.caption?.value,
           thumbnail,
         }
       })
-    reorderItems = items
+    reorderItems = itemsForReorder
     showReorderModal = true
   }
 
@@ -319,8 +319,9 @@
           variant="primary"
           loading={$loading}
           disabled={$isInNewPostMode &&
-            Object.keys($editData.uploadItems).length === 0}
-          >{$isInNewPostMode ? 'Create Post' : 'Save'}</Button
+            Object.values($editData.items).filter(
+              (item) => item.type === 'upload',
+            ).length === 0}>{$isInNewPostMode ? 'Create Post' : 'Save'}</Button
         >
       {:else if !(isNewPost && import.meta.env.SSR)}
         <Button
@@ -345,25 +346,17 @@
     {#if isNewPost && import.meta.env.SSR}
       <!-- Empty items during SSR loading -->
     {:else}
-      {#each itemObject as item (item?.node?.id)}
-        {#if item?.node}
-          <PostItem
-            bind:editData={$editData}
-            loading={$loading}
-            itemData={item.node}
-            onMoveItem={openMoveModal}
-            onDeleteItem={handleDeleteItem}
-          />
-        {/if}
+      {#each $items as item (item.id)}
+        <PostItem
+          bind:editData={$editData}
+          loading={$loading}
+          {item}
+          onMoveItem={openMoveModal}
+          onDeleteItem={handleDeleteItem}
+          removeUploadItem={editManager.removeUploadItem}
+        />
       {/each}
       {#if $editData !== undefined}
-        {#each Object.keys($editData.uploadItems) as key (key)}
-          <PostItem
-            bind:editData={$editData}
-            uploadItemIndex={key}
-            loading={$loading}
-          />
-        {/each}
         <button
           class="tint--tinted upload-button"
           onclick={() => fileInput?.click()}
@@ -411,7 +404,9 @@
 <Modal open={$editData?.isUploading} notClosable>
   <div class="upload-progress">
     <h2 class="tint--type-title-serif-3">
-      Uploading {$editData?.uploadItems.length} items
+      Uploading {Object.values($editData?.items || {}).filter(
+        (item) => item.type === 'upload',
+      ).length} items
     </h2>
     <ProgressBar progress={$progress?.percentage || 0} active showProgress />
     <Button

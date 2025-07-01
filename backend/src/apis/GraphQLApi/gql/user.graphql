@@ -1,0 +1,104 @@
+"""
+A user is an account that can make new content.
+"""
+type User implements Node {
+  """
+  The ID of an object
+  """
+  id: ID!
+
+  """
+  The username used to login.
+  """
+  username: String!
+
+  """
+  The user's profile name.
+  """
+  name: String!
+
+  """
+  Name of the user's profile picture.
+  """
+  profilePicture: String
+
+  """
+  Shows if the user has a connected Telegram Account.
+  """
+  linkedTelegram: Boolean
+
+  """
+  The number of posts created by this user.
+  """
+  postCount: Int!
+
+  """
+  All Posts associated with this user.
+  """
+  posts(
+    """
+    Returns the items in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the first n items from the list.
+    """
+    first: Int
+
+    """
+    Returns the items in the list that come before the specified cursor.
+    """
+    before: String
+
+    """
+    Returns the last n items from the list.
+    """
+    last: Int
+  ): PostConnection
+}
+
+"""
+Represents a Session object of an user.
+"""
+type Session implements Node {
+  """
+  The ID of an object
+  """
+  id: ID!
+
+  """
+  User associated with that session
+  """
+  user: User
+
+  """
+  Indicates if this is the current session.
+  """
+  current: Boolean!
+
+  """
+  Last known User-Agent string of this session.
+  """
+  userAgent: String!
+
+  """
+  IP with which the session was created.
+  """
+  firstIp: String!
+
+  """
+  Last IP that used this session.
+  """
+  latestIp: String!
+
+  """
+  Identifies the date and time when the session was created.
+  """
+  createdAt: DateTime!
+
+  """
+  Identifies the date and time when the session was last used.
+  """
+  updatedAt: DateTime!
+}
