@@ -23,6 +23,31 @@ const { signedIn, me, error } = Astro.locals.me
   </div>
 </header>
 
+<script>
+  let ticking = false
+  function checkHeaderScroll() {
+    const header = document.querySelector('header')
+    if (header) {
+      if (window.scrollY > 10) {
+        header.classList.add('scrolled')
+      } else {
+        header.classList.remove('scrolled')
+      }
+    }
+  }
+  function onScroll() {
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        checkHeaderScroll()
+        ticking = false
+      })
+      ticking = true
+    }
+  }
+  window.addEventListener('scroll', onScroll, { passive: true })
+  checkHeaderScroll()
+</script>
+
 <style lang="sass">
   header
     display: flex
@@ -31,6 +56,17 @@ const { signedIn, me, error } = Astro.locals.me
     height: 72px
     padding-inline: tint.$size-24
     background-color: var(--tint-bg)
+    @media (max-width: tint.$breakpoint-md)
+      position: sticky
+      top: 0
+      z-index: 1000
+      background: linear-gradient(#ffffff, #ffffff00)
+      transition: box-shadow 0.3s ease-in-out, background-color 0.3s ease-in-out
+      &.scrolled
+        box-shadow: var(--tint-card-shadow), inset 0 -1px 0px 0px #0000000f
+        // set to 90% opacity and set background blur
+        background-color: rgba(255, 255, 255, 0.8)
+        backdrop-filter: blur(8px)
 
   a
     text-decoration: none

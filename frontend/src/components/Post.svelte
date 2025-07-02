@@ -236,7 +236,30 @@
     await editManager.deleteItem(itemId)
   }
 
+  // Share functionality
+  async function handleShare() {
+    try {
+      await navigator.share({
+        title: $postObject?.title
+          ? `${$postObject?.title} | Archive`
+          : 'Post on Archive',
+        url: window.location.href,
+      })
+    } catch (_error) {
+      // Ignore
+    }
+  }
+
   const moreActions: MenuItem[] = [
+    ...(typeof navigator !== 'undefined' && 'share' in navigator
+      ? ([
+          {
+            label: 'Share',
+            onClick: handleShare,
+          } as MenuItem,
+          MENU_SEPARATOR,
+        ] as MenuItem[])
+      : []),
     { label: 'Reorder items', onClick: openReorderModal },
     { label: 'Merge post', onClick: openMergeModal },
     MENU_SEPARATOR,
