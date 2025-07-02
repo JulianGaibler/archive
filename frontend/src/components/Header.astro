@@ -60,13 +60,22 @@ const { signedIn, me, error } = Astro.locals.me
       position: sticky
       top: 0
       z-index: 1000
-      background-image: linear-gradient(#ffffff, #ffffff00)
+      background-image: linear-gradient(var(--tint-bg),color-mix(in srgb, var(--tint-bg) 0%, transparent))
       transition: box-shadow 0.3s ease-in-out, background-color 0.3s ease-in-out
       &.scrolled
-        box-shadow: var(--tint-card-shadow), inset 0 -1px 0px 0px #0000000f
-        // set to 90% opacity and set background blur
-        background-color: rgba(255, 255, 255, 0.8)
+        box-shadow: var(--tint-card-shadow), inset 0 -1px 0px 0px rgba(0, 0, 0, 0.06)
+        background-color: color-mix(in srgb, var(--tint-bg) 80%, transparent)
         backdrop-filter: blur(8px)
+
+  header.scrolled
+    @media (prefers-reduced-transparency: reduce)
+      background-color: var(--tint-bg)
+      backdrop-filter: none
+    @media (forced-colors: active)
+      background-color: var(--tint-bg)
+      backdrop-filter: none
+      box-shadow: none
+      border-bottom: 1px solid var(--tint-card-border)
 
   a
     text-decoration: none
