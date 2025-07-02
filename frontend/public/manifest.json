@@ -1,6 +1,6 @@
 {
-  "theme_color": "#d4213a",
-  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "background_color": "#d4213a",
   "orientation": "any",
   "display": "standalone",
   "name": "Archive",
