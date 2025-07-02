@@ -28,9 +28,9 @@ try {
   error = hasAuthenticationError(result, Astro.response)
   if (!error && !result.data?.node) {
     error = handleError(404, Astro.response)
+  } else if (!error) {
+    post = result.data.node as PostNode
   }
-
-  post = result.data.node as PostNode
 } catch (graphqlError: unknown) {
   console.error('GraphQL error in [postId].astro:', graphqlError)
 

@@ -53,7 +53,7 @@ export function handleError(
   // Check for authentication errors and override status code
   if (errorOrGraphqlResponse && isAuthenticationError(errorOrGraphqlResponse)) {
     statusCode = 401
-  } else if (statusCode !== 404) {
+  } else if (statusCode < 400 || statusCode >= 499) {
     console.error('Error occurred:', statusCode, errorOrGraphqlResponse)
   }
 

@@ -36,7 +36,7 @@ export default class AuthCookieUtils {
       httpOnly: true,
       secure: isProduction,
       maxAge: COOKIE_MAX_AGE,
-      sameSite: 'strict' as const,
+      sameSite: 'lax' as const,
     }
 
     res.cookie(SESSION_COOKIE_NAME, sessionId, cookieOptions)
@@ -50,7 +50,7 @@ export default class AuthCookieUtils {
       httpOnly: true,
       secure: isProduction,
       expires: new Date(0),
-      sameSite: 'strict' as const,
+      sameSite: 'lax' as const,
     }
 
     res.cookie(SESSION_COOKIE_NAME, '', expiredCookieOptions)

@@ -1,6 +1,11 @@
 # Changelog
 # Labels: [Added], [Fixed], [Improved], [Removed], [Deprecated], [Security]
 
+2.1.1:
+  date: '2025-07-02'
+  changes:
+    - '[Fixed] No longer shows incorrect error messages when viewing posts while not logged in'
+    - '[Fixed] Changed Cookie settings so Archive links can be opened from other apps without being logged out'
 2.1.0:
   date: '2025-07-01'
   notes: |

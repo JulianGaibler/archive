@@ -1,11 +1,8 @@
 # ToDo
 
-## 2.1
-
-- Ensure errors are handled properly
-
-# 2.1.1
+# 2.1.2
 - Store correct IP address in sessions
+- Fix error messages from Database constraints
 
 # 2.2
 
