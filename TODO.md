@@ -1,9 +1,5 @@
 # ToDo
 
-# 2.1.2
-- Store correct IP address in sessions
-- Fix error messages from Database constraints
-
 # 2.2
 
 - Move to blobstorage system

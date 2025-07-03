@@ -18,6 +18,41 @@ import AuthCookieUtils, {
 } from '@src/apis/GraphQLApi/AuthCookieUtils.js'
 import SessionActions from '@src/actions/SessionActions.js'
 
+/**
+ * Extracts the real client IP address from the request, handling reverse proxy
+ * scenarios
+ *
+ * @param req Express request object
+ * @returns The client IP address
+ */
+function extractClientIp(req: express.Request): string {
+  // Check X-Forwarded-For header first (most common for reverse proxies)
+  const xForwardedFor = req.headers['x-forwarded-for']
+  if (xForwardedFor) {
+    // X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
+    // The first IP is typically the original client IP
+    const ips = Array.isArray(xForwardedFor) ? xForwardedFor[0] : xForwardedFor
+    const clientIp = ips.split(',')[0].trim()
+    if (clientIp) {
+      return clientIp
+    }
+  }
+
+  // Fallback to other common headers
+  const xRealIp = req.headers['x-real-ip']
+  if (xRealIp && typeof xRealIp === 'string') {
+    return xRealIp.trim()
+  }
+
+  const xClientIp = req.headers['x-client-ip']
+  if (xClientIp && typeof xClientIp === 'string') {
+    return xClientIp.trim()
+  }
+
+  // Final fallback to req.ip (direct connection or when no proxy headers)
+  return req.ip || 'unknown'
+}
+
 const loaders = {
   item: ItemModel.getLoaders,
   keyword: KeywordModel.getLoaders,
@@ -80,7 +115,10 @@ export default class Context {
     if (args.type === 'http') {
       newContext.req = args.req
       newContext.res = args.res
+
+      const clientIp = extractClientIp(newContext.req)
       const cookies = AuthCookieUtils.getAuthCookies(newContext.req)
+
       if (cookies) {
         const userAgent = newContext.req.headers['user-agent']
           ? newContext.req.headers['user-agent']
@@ -91,7 +129,7 @@ export default class Context {
             secureSessionId: cookies.secureSessionId,
             token: cookies.token,
             userAgent,
-            latestIp: newContext.req.ip || '',
+            latestIp: clientIp,
           },
           Context.db,
         )

@@ -3,6 +3,7 @@ import UserModel, { UserExternal } from '@src/models/UserModel.js'
 import Context from '@src/Context.js'
 import {
   AuthorizationError,
+  DatabaseError,
   InputError,
   NotFoundError,
   RequestError,
@@ -369,14 +370,22 @@ const PostActions = {
       // }
 
       // Update the post
-      const [updatedPost] = await tx
-        .update(postTable)
-        .set({
-          title: vFields.title,
-          language: vFields.language,
-        })
-        .where(eq(postTable.id, postIId))
-        .returning()
+
+      let updatedPost: PostInternal
+
+      try {
+        const result = await tx
+          .update(postTable)
+          .set({
+            title: vFields.title,
+            language: vFields.language,
+          })
+          .where(eq(postTable.id, postIId))
+          .returning()
+        updatedPost = result[0]
+      } catch (error) {
+        throw new DatabaseError(error)
+      }
 
       const keywordIIds = vFields.keywords.map((id) =>
         KeywordModel.decodeId(id),

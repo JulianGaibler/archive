@@ -1,6 +1,12 @@
 # Changelog
 # Labels: [Added], [Fixed], [Improved], [Removed], [Deprecated], [Security]
 
+2.1.2:
+  date: '2025-07-02' # FIXME
+  changes:
+    - '[Improved] Archive is now installable as a Progressive Web App (PWA)'
+    - '[Fixed] Session management interface now shows the correct IP address'
+    - '[Fixed] Better handling of database errors, especially when titles are not unique'
 2.1.1:
   date: '2025-07-02'
   changes:

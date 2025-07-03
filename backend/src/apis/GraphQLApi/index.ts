@@ -93,6 +93,17 @@ export default class {
           )
         }
 
+        if (
+          err.message.startsWith('Failed query:') &&
+          err.extensions?.code === 'INTERNAL_SERVER_ERROR'
+        ) {
+          return {
+            ...err,
+            message:
+              'An internal server error occurred (Database query error).',
+          }
+        }
+
         return err
       },
       plugins: [

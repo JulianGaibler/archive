@@ -41,6 +41,7 @@
     "pg-escape": "^0.2.0",
     "pg-ipc": "^1.0.5",
     "pg-listen": "^1.7.0",
+    "postgres": "^3.4.7",
     "sharp": "^0.34.2",
     "string-strip-html": "^13.4.12",
     "telegraf": "^4.16.3",
