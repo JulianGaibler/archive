@@ -7,14 +7,20 @@ import { postResolvers } from './post.js'
 import {
   getItemSubtype,
   itemResolvers,
-  mediaItemResolvers,
-  visualMediaItemResolvers,
   processingItemResolvers,
   videoItemResolvers,
   imageItemResolvers,
   gifItemResolvers,
   audioItemResolvers,
 } from './item.js'
+import {
+  fileResolvers,
+  photoFileResolvers,
+  videoFileResolvers,
+  gifFileResolvers,
+  audioFileResolvers,
+  profilePictureFileResolvers,
+} from './file.js'
 import HashId, { HashIdTypes } from '@src/models/HashId.js'
 import { GraphQLScalarType, Kind } from 'graphql'
 import { sessionResolvers } from './session.js'
@@ -34,13 +40,19 @@ export const resolvers: Resolvers = {
   Keyword: keywordResolvers,
   Session: sessionResolvers,
   Item: itemResolvers,
-  MediaItem: mediaItemResolvers,
-  VisualMediaItem: visualMediaItemResolvers,
   ProcessingItem: processingItemResolvers,
   VideoItem: videoItemResolvers,
   ImageItem: imageItemResolvers,
   GifItem: gifItemResolvers,
   AudioItem: audioItemResolvers,
+
+  // File type resolvers
+  File: fileResolvers,
+  PhotoFile: photoFileResolvers,
+  VideoFile: videoFileResolvers,
+  GifFile: gifFileResolvers,
+  AudioFile: audioFileResolvers,
+  ProfilePictureFile: profilePictureFileResolvers,
 
   // Union/Interface resolvers
   Node: {

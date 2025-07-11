@@ -3,6 +3,7 @@ import { MutationResolvers } from '../generated-types.js'
 import KeywordActions from '@src/actions/KeywordActions.js'
 import PostActions from '@src/actions/PostActions.js'
 import SessionActions from '@src/actions/SessionActions.js'
+import FileActions from '@src/actions/FileActions.js'
 import AuthCookieUtils from '../AuthCookieUtils.js'
 
 export const mutationResolvers: MutationResolvers = {
@@ -39,6 +40,15 @@ export const mutationResolvers: MutationResolvers = {
   revokeSession: async (_, args, ctx) => SessionActions.mRevoke(ctx, args),
 
   unlinkTelegram: async (_, _args, ctx) => UserActions.mUnlinkTelegram(ctx),
+
+  uploadItemFile: async (_, args, ctx) =>
+    FileActions.mUploadItemFile(ctx, {
+      file: args.file,
+      type: args.type || undefined, // Convert null to undefined
+    }),
+
+  deleteTemporaryFile: async (_, args, ctx) =>
+    FileActions.mDeleteTemporaryFile(ctx, args),
 
   uploadProfilePicture: async (_, args, ctx) =>
     UserActions.mUploadProfilePicture(ctx, args),

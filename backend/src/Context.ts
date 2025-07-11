@@ -9,6 +9,7 @@ import {
   PostModel,
   SessionModel,
   UserModel,
+  FileModel,
 } from '@src/models/index.js'
 import FileStorage from '@src/files/FileStorage.js'
 import { PostgresPubSub } from '@src/pubsub/index.js'
@@ -59,6 +60,7 @@ const loaders = {
   post: PostModel.getLoaders,
   session: SessionModel.getLoaders,
   user: UserModel.getLoaders,
+  file: FileModel.getLoaders,
 }
 
 type Loaders = {

@@ -103,7 +103,7 @@ const ENV_VARIABLES = [
     name: 'BACKEND_FILE_SERVE_PATH',
     description: 'Backend file serve path',
     type: 'string',
-    fallback: '/content',
+    fallback: '/files',
   },
 
   // Upload configuration

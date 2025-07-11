@@ -295,6 +295,35 @@ const SessionActions = {
       )
     }
   },
+
+  /**
+   * Clean up expired sessions
+   *
+   * @param ctx
+   * @returns The number of sessions that were deleted
+   */
+  async mCleanupExpiredSessions(ctx: Context): Promise<number> {
+    ctx.isPrivileged()
+
+    const cutoffTime = Date.now() - SESSION_EXPIRY_TIME
+
+    const expiredSessions = await ctx.db
+      .select({ id: sessionTable.id })
+      .from(sessionTable)
+      .where(sql`${sessionTable.updatedAt} < ${cutoffTime}`)
+
+    if (expiredSessions.length === 0) {
+      return 0
+    }
+
+    const sessionIds = expiredSessions.map((s) => s.id)
+
+    await ctx.db
+      .delete(sessionTable)
+      .where(inArray(sessionTable.id, sessionIds))
+
+    return expiredSessions.length
+  },
 }
 
 export default SessionActions

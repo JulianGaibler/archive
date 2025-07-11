@@ -1,38 +1,37 @@
 <script lang="ts">
-  import { getConvertedSrcPath } from '@src/utils'
+  import type { ItemDataFragment } from '@src/generated/graphql'
+  import { getResourceUrl } from '@src/utils/resource-urls'
+  import CustomVideoPlayer from './CustomVideoPlayer.svelte'
+  import CustomAudioPlayer from './CustomAudioPlayer.svelte'
 
-  type Item = {
-    compressedPath: string
-    __typename: string
-  }
+  // Create a minimal type that only includes what ItemMedia needs from the generated types
+  export type MediaItemData =
+    | Pick<
+        Extract<ItemDataFragment, { __typename: 'AudioItem' }>,
+        '__typename' | 'file'
+      >
+    | Pick<
+        Extract<ItemDataFragment, { __typename: 'GifItem' }>,
+        '__typename' | 'file'
+      >
+    | Pick<
+        Extract<ItemDataFragment, { __typename: 'ImageItem' }>,
+        '__typename' | 'file'
+      >
+    | Pick<
+        Extract<ItemDataFragment, { __typename: 'VideoItem' }>,
+        '__typename' | 'file'
+      >
+    | Pick<
+        Extract<ItemDataFragment, { __typename: 'ProcessingItem' }>,
+        '__typename'
+      >
 
   interface Props {
-    item?: Item
-    file?: File
+    item?: MediaItemData
   }
 
-  let { item, file }: Props = $props()
-
-  // Helper function to determine media type from File
-  function getMediaType(file: File): 'image' | 'video' | 'gif' | 'unsupported' {
-    const mimeType = file.type.toLowerCase()
-
-    if (mimeType.startsWith('image/')) {
-      if (mimeType === 'image/gif') {
-        return 'gif'
-      }
-      return 'image'
-    } else if (mimeType.startsWith('video/')) {
-      return 'video'
-    }
-
-    return 'unsupported'
-  }
-
-  // Helper function to create object URL for File
-  function getFileUrl(file: File): string {
-    return URL.createObjectURL(file)
-  }
+  let { item }: Props = $props()
 
   // Determine what we're rendering
   let mediaType = $derived(
@@ -43,56 +42,85 @@
           ? 'video'
           : item.__typename === 'GifItem'
             ? 'gif'
-            : 'unsupported'
-      : file
-        ? getMediaType(file)
-        : 'unsupported',
+            : item.__typename === 'AudioItem'
+              ? 'audio'
+              : 'unsupported'
+      : 'unsupported',
   )
 
   let isImage = $derived(mediaType === 'image')
   let isVideo = $derived(mediaType === 'video')
   let isGif = $derived(mediaType === 'gif')
+  let isAudio = $derived(mediaType === 'audio')
+
+  // Get the appropriate file path for the item
+  let itemSrc = $derived(
+    item && 'file' in item && item.file
+      ? 'compressedPath' in item.file
+        ? item.file.compressedPath
+        : undefined
+      : undefined,
+  )
+
+  // Get thumbnail path for video items
+  let thumbnailPath = $derived(
+    item && 'file' in item && item.file && 'thumbnailPath' in item.file
+      ? item.file.thumbnailPath || undefined
+      : undefined,
+  )
+
+  // Get poster thumbnail path for video items (larger thumbnail used as poster)
+  let posterThumbnailPath = $derived(
+    item && 'file' in item && item.file && 'posterThumbnailPath' in item.file
+      ? item.file.posterThumbnailPath || undefined
+      : undefined,
+  )
+
+  // Get waveform data for audio items (type cast for now since it's not in the fragment)
+  let waveformData = $derived(
+    item && 'file' in item && item.file && 'waveform' in item.file
+      ? (item.file.waveform as number[] | undefined)
+      : undefined,
+  )
 </script>
 
-<div class="container tint--plain">
+<div
+  class="media-container tint--plain"
+  class:backdrop={isImage || isVideo || isGif}
+>
   {#if isImage}
     <picture>
-      {#if item}
-        <img
-          src={getConvertedSrcPath(item.compressedPath, item.__typename)}
-          alt="No alt text provided"
-        />
-      {:else if file}
-        <img src={getFileUrl(file)} alt="No alt text provided" />
+      {#if item && itemSrc}
+        <img src={getResourceUrl(itemSrc)} alt="No alt text provided" />
       {/if}
     </picture>
-  {:else if isVideo || isGif}
-    <video controls={isVideo} loop={isGif} autoplay={isGif} muted={isGif}>
-      {#if item}
-        <source
-          src={getConvertedSrcPath(item.compressedPath, item.__typename)}
-          type="video/mp4"
-        />
-      {:else if file}
-        <source src={getFileUrl(file)} type={file.type} />
+  {:else if isVideo}
+    {#if item && itemSrc}
+      <CustomVideoPlayer src={itemSrc} {thumbnailPath} {posterThumbnailPath} />
+    {/if}
+  {:else if isGif}
+    <video controls={false} loop autoplay muted>
+      {#if item && itemSrc}
+        <source src={getResourceUrl(itemSrc)} type="video/mp4" />
       {/if}
     </video>
+  {:else if isAudio}
+    {#if item && itemSrc}
+      <CustomAudioPlayer src={itemSrc} waveform={waveformData} />
+    {/if}
   {:else}
     <div class="unsupported-file">
       <p>Unsupported file type</p>
-      {#if file}
-        <p class="file-info">{file.name} ({file.type || 'unknown type'})</p>
-      {/if}
     </div>
   {/if}
 </div>
 
 <style lang="sass">
-.container
-  background: var(--tint-bg)
-  line-height: 0
+.media-container
   display: flex
   justify-content: center
+  &.backdrop
+    background: var(--tint-bg)
   img, video
     max-width: 100%
     min-height: tint.$size-80
@@ -110,8 +138,4 @@
   p
     margin: 0.5rem 0
     line-height: 1.4
-    
-  .file-info
-    font-size: 0.875rem
-    opacity: 0.8
 </style>

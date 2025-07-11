@@ -69,9 +69,9 @@ enum Language {
 }
 
 """
-The possible states of a task.
+The possible states of file processing.
 """
-enum TaskStatus {
+enum FileProcessingStatus {
   """
   The processing was successful.
   """
@@ -141,4 +141,29 @@ enum UpdateKind {
   Contains a deleted object
   """
   DELETED
+}
+
+"""
+File types that can be uploaded and processed.
+"""
+enum FileType {
+  """
+  A video with sound.
+  """
+  VIDEO
+
+  """
+  An image.
+  """
+  IMAGE
+
+  """
+  A video without sound (animated image).
+  """
+  GIF
+
+  """
+  A sound file.
+  """
+  AUDIO
 }

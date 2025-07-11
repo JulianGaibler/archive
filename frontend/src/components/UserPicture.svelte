@@ -6,40 +6,41 @@
 
   interface Props {
     // only need profilePicture and username
-    user: Pick<User, 'profilePicture' | 'username'>
+    user: Pick<User, 'username'> & {
+      profilePicture?: Pick<
+        NonNullable<User['profilePicture']>,
+        'profilePicture256' | 'profilePicture64'
+      > | null
+    }
     size?: Sizes
     showUsername?: boolean
   }
 
   let { user, size = '32', showUsername = false }: Props = $props()
 
-  function getPictureSize(size: Sizes) {
+  function getPictureSize(size: Sizes): string {
     switch (size) {
       case '16':
-        return '32'
+        return user.profilePicture!.profilePicture64
       case '32':
-        return '80'
+        return user.profilePicture!.profilePicture64
       case '64':
-        return '256'
+        return user.profilePicture!.profilePicture256
       case '128':
-        return '256'
+        return user.profilePicture!.profilePicture256
     }
   }
 
-  let pictureSize = $derived(getPictureSize(size))
+  let pictureUrl = $derived(getResourceUrl(getPictureSize(size)))
 </script>
 
 {#if !showUsername}
-  <img
-    class={`x${size}`}
-    src={getResourceUrl(`upic/${user.profilePicture}-${pictureSize}.jpeg`)}
-    alt={user.username}
-  />
+  <img class={`x${size}`} src={pictureUrl} alt={user.username} />
 {:else}
   <a href={`/humans/${user.username}`}>
     <img
       class={`x${size}`}
-      src={getResourceUrl(`upic/${user.profilePicture}-${pictureSize}.jpeg`)}
+      src={pictureUrl}
       alt={user.username}
       aria-hidden="true"
     />

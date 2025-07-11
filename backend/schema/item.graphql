@@ -15,23 +15,6 @@ interface Item implements Node {
 }
 
 """
-Interface for media items.
-"""
-interface MediaItem {
-  caption: String!
-  originalPath: String!
-  compressedPath: String!
-}
-
-"""
-Interface for visual media items.
-"""
-interface VisualMediaItem {
-  relativeHeight: Float!
-  thumbnailPath: String
-}
-
-"""
 An item that is being processed.
 """
 type ProcessingItem implements Item & Node {
@@ -45,15 +28,12 @@ type ProcessingItem implements Item & Node {
   description: String!
   updatedAt: DateTime!
   createdAt: DateTime!
-  taskProgress: Int
-  taskStatus: TaskStatus!
-  taskNotes: String
 }
 
 """
 A video item.
 """
-type VideoItem implements Item & MediaItem & VisualMediaItem & Node {
+type VideoItem implements Item & Node {
   """
   The ID of an object
   """
@@ -65,16 +45,13 @@ type VideoItem implements Item & MediaItem & VisualMediaItem & Node {
   updatedAt: DateTime!
   createdAt: DateTime!
   caption: String!
-  originalPath: String!
-  compressedPath: String!
-  relativeHeight: Float!
-  thumbnailPath: String
+  file: VideoFile!
 }
 
 """
 An image item.
 """
-type ImageItem implements Item & MediaItem & VisualMediaItem & Node {
+type ImageItem implements Item & Node {
   """
   The ID of an object
   """
@@ -86,16 +63,13 @@ type ImageItem implements Item & MediaItem & VisualMediaItem & Node {
   updatedAt: DateTime!
   createdAt: DateTime!
   caption: String!
-  originalPath: String!
-  compressedPath: String!
-  relativeHeight: Float!
-  thumbnailPath: String
+  file: PhotoFile!
 }
 
 """
 A GIF item.
 """
-type GifItem implements Item & MediaItem & VisualMediaItem & Node {
+type GifItem implements Item & Node {
   """
   The ID of an object
   """
@@ -107,16 +81,13 @@ type GifItem implements Item & MediaItem & VisualMediaItem & Node {
   updatedAt: DateTime!
   createdAt: DateTime!
   caption: String!
-  originalPath: String!
-  compressedPath: String!
-  relativeHeight: Float!
-  thumbnailPath: String
+  file: GifFile!
 }
 
 """
 An audio item.
 """
-type AudioItem implements Item & MediaItem & Node {
+type AudioItem implements Item & Node {
   """
   The ID of an object
   """
@@ -128,7 +99,5 @@ type AudioItem implements Item & MediaItem & Node {
   updatedAt: DateTime!
   createdAt: DateTime!
   caption: String!
-  originalPath: String!
-  compressedPath: String!
-  ampThumbnail: [Float!]!
+  file: AudioFile!
 }

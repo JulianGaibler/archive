@@ -23,6 +23,7 @@ const config: CodegenConfig = {
           Item: "@src/models/ItemModel.js#ItemExternal",
           Keyword: "@src/models/KeywordModel.js#KeywordExternal",
           Session: "@src/models/SessionModel.js#SessionExternal",
+          File: "@src/models/FileModel.js#FileExternal",
           FileUpload: "graphql-upload/processRequest.mjs#FileUpload",
         },
         scalars: {

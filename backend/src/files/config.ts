@@ -46,22 +46,52 @@ export const itemTypes: ItemTypeConfig = {
     compressed: ['gif', 'mp4'],
     thumbnail: ['jpeg'],
   },
+  AUDIO: {
+    compressed: ['mp3'],
+    thumbnail: [],
+  },
 }
 
 export const videoEncodingOptions = {
   mp4: {
     video: [
-      '-pix_fmt yuv420p',
-      '-vsync 1',
-      '-vcodec libx264',
-      '-profile:v main',
-      '-tune film',
-      '-g 60',
-      '-x264opts no-scenecut',
-      '-max_muxing_queue_size 1024',
-      '-f mp4',
+      '-pix_fmt',
+      'yuv420p',
+      '-vsync',
+      '1',
+      '-vcodec',
+      'libx264',
+      '-profile:v',
+      'main',
+      '-tune',
+      'film',
+      '-g',
+      '60',
+      '-x264opts',
+      'no-scenecut',
+      '-max_muxing_queue_size',
+      '1024',
+      '-f',
+      'mp4',
     ],
-    audio: ['-acodec aac', '-ac 2', '-ar 44100'],
+    audio: ['-acodec', 'aac', '-ac', '2', '-ar', '44100'],
+  },
+}
+
+export const audioEncodingOptions = {
+  mp3: {
+    audio: [
+      '-acodec',
+      'libmp3lame',
+      '-ac',
+      '2', // Stereo
+      '-ar',
+      '44100', // 44.1 kHz sample rate
+      '-b:a',
+      '128k', // 128 kbps bitrate (good balance of quality/size)
+      '-f',
+      'mp3',
+    ],
   },
 }
 
@@ -78,5 +108,10 @@ export const processingConfig = {
     maxHeight: 720,
     thumbnailWidth: 400,
     thumbnailDuration: 7.5,
+  },
+  audio: {
+    waveformSamples: 80, // Maximum samples for full waveform
+    waveformThumbnailSamples: 12, // Fixed samples for thumbnail
+    waveformSampleInterval: 0.5, // Sample every 0.5 seconds
   },
 }

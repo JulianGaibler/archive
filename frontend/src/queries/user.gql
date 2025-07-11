@@ -4,7 +4,10 @@ query me {
   me {
     name
     username
-    profilePicture
+    profilePicture {
+      profilePicture256
+      profilePicture64
+    }
     linkedTelegram
   }
 }
@@ -14,7 +17,10 @@ query User($username: String!) {
     id
     username
     name
-    profilePicture
+    profilePicture {
+      profilePicture256
+      profilePicture64
+    }
     posts {
       totalCount
     }
@@ -27,7 +33,10 @@ query Users($after: String, $search: String) {
       id
       username
       name
-      profilePicture
+      profilePicture {
+        profilePicture256
+        profilePicture64
+      }
       postCount
     }
     hasNextPage
@@ -40,7 +49,10 @@ query UserWithPosts($username: String!, $after: String, $byContent: String) {
     id
     username
     name
-    profilePicture
+    profilePicture {
+      profilePicture256
+      profilePicture64
+    }
     postCount
   }
   posts(first: 24, after: $after, byContent: $byContent, byUsers: [$username]) {

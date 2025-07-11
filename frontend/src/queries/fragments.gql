@@ -6,21 +6,74 @@ fragment ItemData on Item {
   id
   creator {
     username
-    profilePicture
+    profilePicture {
+      profilePicture256
+      profilePicture64
+    }
   }
-  ... on MediaItem {
+  ... on VideoItem {
+    file {
+      __typename
+      id
+      processingStatus
+      processingProgress
+      processingNotes
+      originalPath
+      compressedPath
+      thumbnailPath
+      posterThumbnailPath
+      relativeHeight
+    }
     caption
-    originalPath
-    compressedPath
+    position
   }
-  ... on VisualMediaItem {
-    relativeHeight
-    thumbnailPath
+  ... on ImageItem {
+    file {
+      __typename
+      id
+      processingStatus
+      processingProgress
+      processingNotes
+      originalPath
+      compressedPath
+      thumbnailPath
+      relativeHeight
+    }
+    caption
+    position
+  }
+  ... on GifItem {
+    file {
+      __typename
+      id
+      processingStatus
+      processingProgress
+      processingNotes
+      originalPath
+      compressedPath
+      compressedGifPath
+      thumbnailPath
+      relativeHeight
+    }
+    caption
+    position
+  }
+  ... on AudioItem {
+    file {
+      __typename
+      id
+      processingStatus
+      processingProgress
+      processingNotes
+      originalPath
+      compressedPath
+      waveform
+    }
+    caption
+    position
   }
   ... on ProcessingItem {
-    taskProgress
-    taskStatus
-    taskNotes
+    position
   }
 }
 
@@ -33,7 +86,10 @@ fragment PostData on Post {
   creator {
     name
     username
-    profilePicture
+    profilePicture {
+      profilePicture256
+      profilePicture64
+    }
   }
   keywords {
     name
@@ -51,7 +107,10 @@ fragment PostsConnection on PostConnection {
     id
     title
     creator {
-      profilePicture
+      profilePicture {
+        profilePicture256
+        profilePicture64
+      }
       username
     }
     items(first: 1) {
@@ -59,12 +118,36 @@ fragment PostsConnection on PostConnection {
       nodes {
         id
         __typename
-        ... on VisualMediaItem {
-          relativeHeight
-          thumbnailPath
+        ... on VideoItem {
+          file {
+            __typename
+            relativeHeight
+            thumbnailPath
+            posterThumbnailPath
+          }
+        }
+        ... on ImageItem {
+          file {
+            __typename
+            relativeHeight
+            thumbnailPath
+          }
+        }
+        ... on GifItem {
+          file {
+            __typename
+            relativeHeight
+            thumbnailPath
+          }
         }
         ... on AudioItem {
-          ampThumbnail
+          caption
+          description
+          file {
+            __typename
+            waveform
+            waveformThumbnail
+          }
         }
       }
     }

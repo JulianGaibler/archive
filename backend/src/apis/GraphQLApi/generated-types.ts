@@ -10,6 +10,7 @@ import { PostExternal } from '@src/models/PostModel.js'
 import { ItemExternal } from '@src/models/ItemModel.js'
 import { KeywordExternal } from '@src/models/KeywordModel.js'
 import { SessionExternal } from '@src/models/SessionModel.js'
+import { FileExternal } from '@src/models/FileModel.js'
 import { FileUpload } from 'graphql-upload/processRequest.mjs'
 import { Context } from '@src/server.js'
 export type Maybe<T> = T | null
@@ -49,20 +50,34 @@ export type Scalars = {
   Upload: { input: Promise<FileUpload>; output: Promise<FileUpload> }
 }
 
+/** An audio file. */
+export type AudioFile = File & {
+  __typename?: 'AudioFile'
+  compressedPath: Scalars['String']['output']
+  createdAt: Scalars['DateTime']['output']
+  creator: User
+  /** The file UUID */
+  id: Scalars['String']['output']
+  originalPath: Scalars['String']['output']
+  processingNotes?: Maybe<Scalars['String']['output']>
+  processingProgress?: Maybe<Scalars['Int']['output']>
+  processingStatus: FileProcessingStatus
+  updatedAt: Scalars['DateTime']['output']
+  waveform: Array<Scalars['Float']['output']>
+  waveformThumbnail: Array<Scalars['Float']['output']>
+}
+
 /** An audio item. */
 export type AudioItem = Item &
-  MediaItem &
   Node & {
     __typename?: 'AudioItem'
-    ampThumbnail: Array<Scalars['Float']['output']>
     caption: Scalars['String']['output']
-    compressedPath: Scalars['String']['output']
     createdAt: Scalars['DateTime']['output']
     creator: User
     description: Scalars['String']['output']
+    file: AudioFile
     /** The ID of an object */
     id: Scalars['ID']['output']
-    originalPath: Scalars['String']['output']
     position: Scalars['Int']['output']
     post: Post
     updatedAt: Scalars['DateTime']['output']
@@ -73,6 +88,53 @@ export type EditItemInput = {
   description?: InputMaybe<Scalars['String']['input']>
   /** The ID of the item to edit. */
   id: Scalars['ID']['input']
+}
+
+/** Base interface for all file types. */
+export type File = {
+  createdAt: Scalars['DateTime']['output']
+  creator: User
+  /** The file UUID */
+  id: Scalars['String']['output']
+  processingNotes?: Maybe<Scalars['String']['output']>
+  processingProgress?: Maybe<Scalars['Int']['output']>
+  processingStatus: FileProcessingStatus
+  updatedAt: Scalars['DateTime']['output']
+}
+
+/** The possible states of file processing. */
+export enum FileProcessingStatus {
+  /** The processing was successful. */
+  Done = 'DONE',
+  /** The processing has failed. */
+  Failed = 'FAILED',
+  /** The file is being processed. */
+  Processing = 'PROCESSING',
+  /** The file is waiting to be processed. */
+  Queued = 'QUEUED',
+}
+
+/** Update data of a file's current processing status. */
+export type FileProcessingUpdate = {
+  __typename?: 'FileProcessingUpdate'
+  /** The updated file. */
+  file: File
+  /** The ID of the file */
+  id: Scalars['ID']['output']
+  /** Indicates what kind of update this is. */
+  kind: UpdateKind
+}
+
+/** File types that can be uploaded and processed. */
+export enum FileType {
+  /** A sound file. */
+  Audio = 'AUDIO',
+  /** A video without sound (animated image). */
+  Gif = 'GIF',
+  /** An image. */
+  Image = 'IMAGE',
+  /** A video with sound. */
+  Video = 'VIDEO',
 }
 
 /** Possible formats a post can have. */
@@ -89,45 +151,53 @@ export enum Format {
   Video = 'VIDEO',
 }
 
+/** A GIF file. */
+export type GifFile = File & {
+  __typename?: 'GifFile'
+  compressedGifPath: Scalars['String']['output']
+  compressedPath: Scalars['String']['output']
+  createdAt: Scalars['DateTime']['output']
+  creator: User
+  /** The file UUID */
+  id: Scalars['String']['output']
+  originalPath: Scalars['String']['output']
+  processingNotes?: Maybe<Scalars['String']['output']>
+  processingProgress?: Maybe<Scalars['Int']['output']>
+  processingStatus: FileProcessingStatus
+  relativeHeight: Scalars['Float']['output']
+  thumbnailPath?: Maybe<Scalars['String']['output']>
+  updatedAt: Scalars['DateTime']['output']
+}
+
 /** A GIF item. */
 export type GifItem = Item &
-  MediaItem &
-  Node &
-  VisualMediaItem & {
+  Node & {
     __typename?: 'GifItem'
     caption: Scalars['String']['output']
-    compressedPath: Scalars['String']['output']
     createdAt: Scalars['DateTime']['output']
     creator: User
     description: Scalars['String']['output']
+    file: GifFile
     /** The ID of an object */
     id: Scalars['ID']['output']
-    originalPath: Scalars['String']['output']
     position: Scalars['Int']['output']
     post: Post
-    relativeHeight: Scalars['Float']['output']
-    thumbnailPath?: Maybe<Scalars['String']['output']>
     updatedAt: Scalars['DateTime']['output']
   }
 
 /** An image item. */
 export type ImageItem = Item &
-  MediaItem &
-  Node &
-  VisualMediaItem & {
+  Node & {
     __typename?: 'ImageItem'
     caption: Scalars['String']['output']
-    compressedPath: Scalars['String']['output']
     createdAt: Scalars['DateTime']['output']
     creator: User
     description: Scalars['String']['output']
+    file: PhotoFile
     /** The ID of an object */
     id: Scalars['ID']['output']
-    originalPath: Scalars['String']['output']
     position: Scalars['Int']['output']
     post: Post
-    relativeHeight: Scalars['Float']['output']
-    thumbnailPath?: Maybe<Scalars['String']['output']>
     updatedAt: Scalars['DateTime']['output']
   }
 
@@ -218,13 +288,6 @@ export enum Language {
   Turkish = 'TURKISH',
 }
 
-/** Interface for media items. */
-export type MediaItem = {
-  caption: Scalars['String']['output']
-  compressedPath: Scalars['String']['output']
-  originalPath: Scalars['String']['output']
-}
-
 export type Mutation = {
   __typename?: 'Mutation'
   /** Changes the name of the current user. */
@@ -249,6 +312,8 @@ export type Mutation = {
    * the deleted post.
    */
   deletePost: Scalars['ID']['output']
+  /** Deletes a temporary file that has not been claimed by a resource. */
+  deleteTemporaryFile: Scalars['Boolean']['output']
   /** Edits a post. */
   editPost: Post
   /** Associates the Telegram ID of a user with their Archive Profil. */
@@ -284,6 +349,11 @@ export type Mutation = {
   signup: Scalars['Boolean']['output']
   /** Removed Telegram ID from Archive profile. */
   unlinkTelegram: Scalars['Boolean']['output']
+  /**
+   * Uploads a new file for an item. File starts processing immediately and
+   * expires in 2 hours if not attached to a post. Returns the file ID.
+   */
+  uploadItemFile: Scalars['ID']['output']
   /** Sets the profile picture of the current user. */
   uploadProfilePicture: Scalars['Boolean']['output']
 }
@@ -317,6 +387,10 @@ export type MutationDeleteKeywordArgs = {
 
 export type MutationDeletePostArgs = {
   postId: Scalars['ID']['input']
+}
+
+export type MutationDeleteTemporaryFileArgs = {
+  fileId: Scalars['String']['input']
 }
 
 export type MutationEditPostArgs = {
@@ -369,6 +443,11 @@ export type MutationSignupArgs = {
   username: Scalars['String']['input']
 }
 
+export type MutationUploadItemFileArgs = {
+  file: Scalars['Upload']['input']
+  type?: InputMaybe<FileType>
+}
+
 export type MutationUploadProfilePictureArgs = {
   file: Scalars['Upload']['input']
 }
@@ -376,14 +455,31 @@ export type MutationUploadProfilePictureArgs = {
 export type NewItemInput = {
   caption?: InputMaybe<Scalars['String']['input']>
   description?: InputMaybe<Scalars['String']['input']>
-  /** The file to upload. */
-  file: Scalars['Upload']['input']
+  /** A file to be added as a new item. */
+  fileId: Scalars['String']['input']
 }
 
 /** An object with an ID */
 export type Node = {
   /** The id of the object. */
   id: Scalars['ID']['output']
+}
+
+/** A photo file. */
+export type PhotoFile = File & {
+  __typename?: 'PhotoFile'
+  compressedPath: Scalars['String']['output']
+  createdAt: Scalars['DateTime']['output']
+  creator: User
+  /** The file UUID */
+  id: Scalars['String']['output']
+  originalPath: Scalars['String']['output']
+  processingNotes?: Maybe<Scalars['String']['output']>
+  processingProgress?: Maybe<Scalars['Int']['output']>
+  processingStatus: FileProcessingStatus
+  relativeHeight: Scalars['Float']['output']
+  thumbnailPath?: Maybe<Scalars['String']['output']>
+  updatedAt: Scalars['DateTime']['output']
 }
 
 /** A post. */
@@ -440,11 +536,23 @@ export type ProcessingItem = Item &
     id: Scalars['ID']['output']
     position: Scalars['Int']['output']
     post: Post
-    taskNotes?: Maybe<Scalars['String']['output']>
-    taskProgress?: Maybe<Scalars['Int']['output']>
-    taskStatus: TaskStatus
     updatedAt: Scalars['DateTime']['output']
   }
+
+/** A profile picture file. */
+export type ProfilePictureFile = File & {
+  __typename?: 'ProfilePictureFile'
+  createdAt: Scalars['DateTime']['output']
+  creator: User
+  /** The file UUID */
+  id: Scalars['String']['output']
+  processingNotes?: Maybe<Scalars['String']['output']>
+  processingProgress?: Maybe<Scalars['Int']['output']>
+  processingStatus: FileProcessingStatus
+  profilePicture64: Scalars['String']['output']
+  profilePicture256: Scalars['String']['output']
+  updatedAt: Scalars['DateTime']['output']
+}
 
 export type Query = {
   __typename?: 'Query'
@@ -534,35 +642,12 @@ export type Session = Node & {
 
 export type Subscription = {
   __typename?: 'Subscription'
-  /** Returns updates from tasks. */
-  taskUpdates: TaskUpdate
+  /** Returns updates from file processing. */
+  fileProcessingUpdates: FileProcessingUpdate
 }
 
-export type SubscriptionTaskUpdatesArgs = {
+export type SubscriptionFileProcessingUpdatesArgs = {
   ids: Array<Scalars['String']['input']>
-}
-
-/** The possible states of a task. */
-export enum TaskStatus {
-  /** The processing was successful. */
-  Done = 'DONE',
-  /** The processing has failed. */
-  Failed = 'FAILED',
-  /** The file is being processed. */
-  Processing = 'PROCESSING',
-  /** The file is waiting to be processed. */
-  Queued = 'QUEUED',
-}
-
-/** Update data of a tasks current status. */
-export type TaskUpdate = {
-  __typename?: 'TaskUpdate'
-  /** The ID of an object */
-  id: Scalars['ID']['output']
-  /** The updated or created item. */
-  item?: Maybe<Item>
-  /** Indicates what kind of update this is. */
-  kind: UpdateKind
 }
 
 /**
@@ -591,8 +676,8 @@ export type User = Node & {
   postCount: Scalars['Int']['output']
   /** All Posts associated with this user. */
   posts?: Maybe<PostConnection>
-  /** Name of the user's profile picture. */
-  profilePicture?: Maybe<Scalars['String']['output']>
+  /** Profile picture file containing different sizes. */
+  profilePicture?: Maybe<ProfilePictureFile>
   /** The username used to login. */
   username: Scalars['String']['output']
 }
@@ -622,32 +707,39 @@ export type UserConnection = {
   totalCount: Scalars['Int']['output']
 }
 
+/** A video file. */
+export type VideoFile = File & {
+  __typename?: 'VideoFile'
+  compressedPath: Scalars['String']['output']
+  createdAt: Scalars['DateTime']['output']
+  creator: User
+  /** The file UUID */
+  id: Scalars['String']['output']
+  originalPath: Scalars['String']['output']
+  posterThumbnailPath?: Maybe<Scalars['String']['output']>
+  processingNotes?: Maybe<Scalars['String']['output']>
+  processingProgress?: Maybe<Scalars['Int']['output']>
+  processingStatus: FileProcessingStatus
+  relativeHeight: Scalars['Float']['output']
+  thumbnailPath?: Maybe<Scalars['String']['output']>
+  updatedAt: Scalars['DateTime']['output']
+}
+
 /** A video item. */
 export type VideoItem = Item &
-  MediaItem &
-  Node &
-  VisualMediaItem & {
+  Node & {
     __typename?: 'VideoItem'
     caption: Scalars['String']['output']
-    compressedPath: Scalars['String']['output']
     createdAt: Scalars['DateTime']['output']
     creator: User
     description: Scalars['String']['output']
+    file: VideoFile
     /** The ID of an object */
     id: Scalars['ID']['output']
-    originalPath: Scalars['String']['output']
     position: Scalars['Int']['output']
     post: Post
-    relativeHeight: Scalars['Float']['output']
-    thumbnailPath?: Maybe<Scalars['String']['output']>
     updatedAt: Scalars['DateTime']['output']
   }
-
-/** Interface for visual media items. */
-export type VisualMediaItem = {
-  relativeHeight: Scalars['Float']['output']
-  thumbnailPath?: Maybe<Scalars['String']['output']>
-}
 
 export type WithIndex<TObject> = TObject & Record<string, any>
 export type ResolversObject<TObject> = WithIndex<TObject>
@@ -760,55 +852,51 @@ export type DirectiveResolverFn<
 /** Mapping of interface types */
 export type ResolversInterfaceTypes<_RefType extends Record<string, unknown>> =
   ResolversObject<{
+    File:
+      | (Omit<AudioFile, 'creator'> & { creator: _RefType['User'] })
+      | (Omit<GifFile, 'creator'> & { creator: _RefType['User'] })
+      | (Omit<PhotoFile, 'creator'> & { creator: _RefType['User'] })
+      | (Omit<ProfilePictureFile, 'creator'> & { creator: _RefType['User'] })
+      | (Omit<VideoFile, 'creator'> & { creator: _RefType['User'] })
     Item:
-      | (Omit<AudioItem, 'creator' | 'post'> & {
+      | (Omit<AudioItem, 'creator' | 'file' | 'post'> & {
           creator: _RefType['User']
+          file: _RefType['AudioFile']
           post: _RefType['Post']
         })
-      | (Omit<GifItem, 'creator' | 'post'> & {
+      | (Omit<GifItem, 'creator' | 'file' | 'post'> & {
           creator: _RefType['User']
+          file: _RefType['GifFile']
           post: _RefType['Post']
         })
-      | (Omit<ImageItem, 'creator' | 'post'> & {
+      | (Omit<ImageItem, 'creator' | 'file' | 'post'> & {
           creator: _RefType['User']
+          file: _RefType['PhotoFile']
           post: _RefType['Post']
         })
       | (Omit<ProcessingItem, 'creator' | 'post'> & {
           creator: _RefType['User']
           post: _RefType['Post']
         })
-      | (Omit<VideoItem, 'creator' | 'post'> & {
+      | (Omit<VideoItem, 'creator' | 'file' | 'post'> & {
           creator: _RefType['User']
-          post: _RefType['Post']
-        })
-    MediaItem:
-      | (Omit<AudioItem, 'creator' | 'post'> & {
-          creator: _RefType['User']
-          post: _RefType['Post']
-        })
-      | (Omit<GifItem, 'creator' | 'post'> & {
-          creator: _RefType['User']
-          post: _RefType['Post']
-        })
-      | (Omit<ImageItem, 'creator' | 'post'> & {
-          creator: _RefType['User']
-          post: _RefType['Post']
-        })
-      | (Omit<VideoItem, 'creator' | 'post'> & {
-          creator: _RefType['User']
+          file: _RefType['VideoFile']
           post: _RefType['Post']
         })
     Node:
-      | (Omit<AudioItem, 'creator' | 'post'> & {
+      | (Omit<AudioItem, 'creator' | 'file' | 'post'> & {
           creator: _RefType['User']
+          file: _RefType['AudioFile']
           post: _RefType['Post']
         })
-      | (Omit<GifItem, 'creator' | 'post'> & {
+      | (Omit<GifItem, 'creator' | 'file' | 'post'> & {
           creator: _RefType['User']
+          file: _RefType['GifFile']
           post: _RefType['Post']
         })
-      | (Omit<ImageItem, 'creator' | 'post'> & {
+      | (Omit<ImageItem, 'creator' | 'file' | 'post'> & {
           creator: _RefType['User']
+          file: _RefType['PhotoFile']
           post: _RefType['Post']
         })
       | KeywordExternal
@@ -819,48 +907,51 @@ export type ResolversInterfaceTypes<_RefType extends Record<string, unknown>> =
         })
       | SessionExternal
       | UserExternal
-      | (Omit<VideoItem, 'creator' | 'post'> & {
+      | (Omit<VideoItem, 'creator' | 'file' | 'post'> & {
           creator: _RefType['User']
-          post: _RefType['Post']
-        })
-    VisualMediaItem:
-      | (Omit<GifItem, 'creator' | 'post'> & {
-          creator: _RefType['User']
-          post: _RefType['Post']
-        })
-      | (Omit<ImageItem, 'creator' | 'post'> & {
-          creator: _RefType['User']
-          post: _RefType['Post']
-        })
-      | (Omit<VideoItem, 'creator' | 'post'> & {
-          creator: _RefType['User']
+          file: _RefType['VideoFile']
           post: _RefType['Post']
         })
   }>
 
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = ResolversObject<{
+  AudioFile: ResolverTypeWrapper<
+    Omit<AudioFile, 'creator'> & { creator: ResolversTypes['User'] }
+  >
   AudioItem: ResolverTypeWrapper<
-    Omit<AudioItem, 'creator' | 'post'> & {
+    Omit<AudioItem, 'creator' | 'file' | 'post'> & {
       creator: ResolversTypes['User']
+      file: ResolversTypes['AudioFile']
       post: ResolversTypes['Post']
     }
   >
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>
   EditItemInput: EditItemInput
+  File: ResolverTypeWrapper<FileExternal>
+  FileProcessingStatus: FileProcessingStatus
+  FileProcessingUpdate: ResolverTypeWrapper<
+    Omit<FileProcessingUpdate, 'file'> & { file: ResolversTypes['File'] }
+  >
+  FileType: FileType
   Float: ResolverTypeWrapper<Scalars['Float']['output']>
   Format: Format
+  GifFile: ResolverTypeWrapper<
+    Omit<GifFile, 'creator'> & { creator: ResolversTypes['User'] }
+  >
   GifItem: ResolverTypeWrapper<
-    Omit<GifItem, 'creator' | 'post'> & {
+    Omit<GifItem, 'creator' | 'file' | 'post'> & {
       creator: ResolversTypes['User']
+      file: ResolversTypes['GifFile']
       post: ResolversTypes['Post']
     }
   >
   ID: ResolverTypeWrapper<Scalars['ID']['output']>
   ImageItem: ResolverTypeWrapper<
-    Omit<ImageItem, 'creator' | 'post'> & {
+    Omit<ImageItem, 'creator' | 'file' | 'post'> & {
       creator: ResolversTypes['User']
+      file: ResolversTypes['PhotoFile']
       post: ResolversTypes['Post']
     }
   >
@@ -876,12 +967,12 @@ export type ResolversTypes = ResolversObject<{
     }
   >
   Language: Language
-  MediaItem: ResolverTypeWrapper<
-    ResolversInterfaceTypes<ResolversTypes>['MediaItem']
-  >
   Mutation: ResolverTypeWrapper<{}>
   NewItemInput: NewItemInput
   Node: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Node']>
+  PhotoFile: ResolverTypeWrapper<
+    Omit<PhotoFile, 'creator'> & { creator: ResolversTypes['User'] }
+  >
   Post: ResolverTypeWrapper<PostExternal>
   PostConnection: ResolverTypeWrapper<
     Omit<PostConnection, 'nodes'> & { nodes: Array<ResolversTypes['Post']> }
@@ -892,48 +983,59 @@ export type ResolversTypes = ResolversObject<{
       post: ResolversTypes['Post']
     }
   >
+  ProfilePictureFile: ResolverTypeWrapper<
+    Omit<ProfilePictureFile, 'creator'> & { creator: ResolversTypes['User'] }
+  >
   Query: ResolverTypeWrapper<{}>
   Session: ResolverTypeWrapper<SessionExternal>
   String: ResolverTypeWrapper<Scalars['String']['output']>
   Subscription: ResolverTypeWrapper<{}>
-  TaskStatus: TaskStatus
-  TaskUpdate: ResolverTypeWrapper<
-    Omit<TaskUpdate, 'item'> & { item?: Maybe<ResolversTypes['Item']> }
-  >
   UpdateKind: UpdateKind
   Upload: ResolverTypeWrapper<Scalars['Upload']['output']>
   User: ResolverTypeWrapper<UserExternal>
   UserConnection: ResolverTypeWrapper<
     Omit<UserConnection, 'nodes'> & { nodes: Array<ResolversTypes['User']> }
   >
+  VideoFile: ResolverTypeWrapper<
+    Omit<VideoFile, 'creator'> & { creator: ResolversTypes['User'] }
+  >
   VideoItem: ResolverTypeWrapper<
-    Omit<VideoItem, 'creator' | 'post'> & {
+    Omit<VideoItem, 'creator' | 'file' | 'post'> & {
       creator: ResolversTypes['User']
+      file: ResolversTypes['VideoFile']
       post: ResolversTypes['Post']
     }
-  >
-  VisualMediaItem: ResolverTypeWrapper<
-    ResolversInterfaceTypes<ResolversTypes>['VisualMediaItem']
   >
 }>
 
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = ResolversObject<{
-  AudioItem: Omit<AudioItem, 'creator' | 'post'> & {
+  AudioFile: Omit<AudioFile, 'creator'> & {
     creator: ResolversParentTypes['User']
+  }
+  AudioItem: Omit<AudioItem, 'creator' | 'file' | 'post'> & {
+    creator: ResolversParentTypes['User']
+    file: ResolversParentTypes['AudioFile']
     post: ResolversParentTypes['Post']
   }
   Boolean: Scalars['Boolean']['output']
   DateTime: Scalars['DateTime']['output']
   EditItemInput: EditItemInput
+  File: FileExternal
+  FileProcessingUpdate: Omit<FileProcessingUpdate, 'file'> & {
+    file: ResolversParentTypes['File']
+  }
   Float: Scalars['Float']['output']
-  GifItem: Omit<GifItem, 'creator' | 'post'> & {
+  GifFile: Omit<GifFile, 'creator'> & { creator: ResolversParentTypes['User'] }
+  GifItem: Omit<GifItem, 'creator' | 'file' | 'post'> & {
     creator: ResolversParentTypes['User']
+    file: ResolversParentTypes['GifFile']
     post: ResolversParentTypes['Post']
   }
   ID: Scalars['ID']['output']
-  ImageItem: Omit<ImageItem, 'creator' | 'post'> & {
+  ImageItem: Omit<ImageItem, 'creator' | 'file' | 'post'> & {
     creator: ResolversParentTypes['User']
+    file: ResolversParentTypes['PhotoFile']
     post: ResolversParentTypes['Post']
   }
   Int: Scalars['Int']['output']
@@ -945,10 +1047,12 @@ export type ResolversParentTypes = ResolversObject<{
   KeywordConnection: Omit<KeywordConnection, 'nodes'> & {
     nodes: Array<ResolversParentTypes['Keyword']>
   }
-  MediaItem: ResolversInterfaceTypes<ResolversParentTypes>['MediaItem']
   Mutation: {}
   NewItemInput: NewItemInput
   Node: ResolversInterfaceTypes<ResolversParentTypes>['Node']
+  PhotoFile: Omit<PhotoFile, 'creator'> & {
+    creator: ResolversParentTypes['User']
+  }
   Post: PostExternal
   PostConnection: Omit<PostConnection, 'nodes'> & {
     nodes: Array<ResolversParentTypes['Post']>
@@ -957,23 +1061,61 @@ export type ResolversParentTypes = ResolversObject<{
     creator: ResolversParentTypes['User']
     post: ResolversParentTypes['Post']
   }
+  ProfilePictureFile: Omit<ProfilePictureFile, 'creator'> & {
+    creator: ResolversParentTypes['User']
+  }
   Query: {}
   Session: SessionExternal
   String: Scalars['String']['output']
   Subscription: {}
-  TaskUpdate: Omit<TaskUpdate, 'item'> & {
-    item?: Maybe<ResolversParentTypes['Item']>
-  }
   Upload: Scalars['Upload']['output']
   User: UserExternal
   UserConnection: Omit<UserConnection, 'nodes'> & {
     nodes: Array<ResolversParentTypes['User']>
   }
-  VideoItem: Omit<VideoItem, 'creator' | 'post'> & {
+  VideoFile: Omit<VideoFile, 'creator'> & {
     creator: ResolversParentTypes['User']
+  }
+  VideoItem: Omit<VideoItem, 'creator' | 'file' | 'post'> & {
+    creator: ResolversParentTypes['User']
+    file: ResolversParentTypes['VideoFile']
     post: ResolversParentTypes['Post']
   }
-  VisualMediaItem: ResolversInterfaceTypes<ResolversParentTypes>['VisualMediaItem']
+}>
+
+export type AudioFileResolvers<
+  ContextType = Context,
+  ParentType extends
+    ResolversParentTypes['AudioFile'] = ResolversParentTypes['AudioFile'],
+> = ResolversObject<{
+  compressedPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
+  creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
+  id?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  originalPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  processingNotes?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >
+  processingProgress?: Resolver<
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >
+  processingStatus?: Resolver<
+    ResolversTypes['FileProcessingStatus'],
+    ParentType,
+    ContextType
+  >
+  updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
+  waveform?: Resolver<Array<ResolversTypes['Float']>, ParentType, ContextType>
+  waveformThumbnail?: Resolver<
+    Array<ResolversTypes['Float']>,
+    ParentType,
+    ContextType
+  >
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
 export type AudioItemResolvers<
@@ -981,18 +1123,12 @@ export type AudioItemResolvers<
   ParentType extends
     ResolversParentTypes['AudioItem'] = ResolversParentTypes['AudioItem'],
 > = ResolversObject<{
-  ampThumbnail?: Resolver<
-    Array<ResolversTypes['Float']>,
-    ParentType,
-    ContextType
-  >
   caption?: Resolver<ResolversTypes['String'], ParentType, ContextType>
-  compressedPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
   description?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  file?: Resolver<ResolversTypes['AudioFile'], ParentType, ContextType>
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
-  originalPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   position?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
   post?: Resolver<ResolversTypes['Post'], ParentType, ContextType>
   updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
@@ -1004,20 +1140,78 @@ export interface DateTimeScalarConfig
   name: 'DateTime'
 }
 
-export type GifItemResolvers<
+export type FileResolvers<
   ContextType = Context,
   ParentType extends
-    ResolversParentTypes['GifItem'] = ResolversParentTypes['GifItem'],
+    ResolversParentTypes['File'] = ResolversParentTypes['File'],
 > = ResolversObject<{
-  caption?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  __resolveType: TypeResolveFn<
+    'AudioFile' | 'GifFile' | 'PhotoFile' | 'ProfilePictureFile' | 'VideoFile',
+    ParentType,
+    ContextType
+  >
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
+  creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
+  id?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  processingNotes?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >
+  processingProgress?: Resolver<
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >
+  processingStatus?: Resolver<
+    ResolversTypes['FileProcessingStatus'],
+    ParentType,
+    ContextType
+  >
+  updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
+}>
+
+export type FileProcessingUpdateResolvers<
+  ContextType = Context,
+  ParentType extends
+    ResolversParentTypes['FileProcessingUpdate'] = ResolversParentTypes['FileProcessingUpdate'],
+> = ResolversObject<{
+  file?: Resolver<ResolversTypes['File'], ParentType, ContextType>
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
+  kind?: Resolver<ResolversTypes['UpdateKind'], ParentType, ContextType>
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
+}>
+
+export type GifFileResolvers<
+  ContextType = Context,
+  ParentType extends
+    ResolversParentTypes['GifFile'] = ResolversParentTypes['GifFile'],
+> = ResolversObject<{
+  compressedGifPath?: Resolver<
+    ResolversTypes['String'],
+    ParentType,
+    ContextType
+  >
   compressedPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
-  description?: Resolver<ResolversTypes['String'], ParentType, ContextType>
-  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
+  id?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   originalPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
-  position?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
-  post?: Resolver<ResolversTypes['Post'], ParentType, ContextType>
+  processingNotes?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >
+  processingProgress?: Resolver<
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >
+  processingStatus?: Resolver<
+    ResolversTypes['FileProcessingStatus'],
+    ParentType,
+    ContextType
+  >
   relativeHeight?: Resolver<ResolversTypes['Float'], ParentType, ContextType>
   thumbnailPath?: Resolver<
     Maybe<ResolversTypes['String']>,
@@ -1028,26 +1222,36 @@ export type GifItemResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
+export type GifItemResolvers<
+  ContextType = Context,
+  ParentType extends
+    ResolversParentTypes['GifItem'] = ResolversParentTypes['GifItem'],
+> = ResolversObject<{
+  caption?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
+  creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
+  description?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  file?: Resolver<ResolversTypes['GifFile'], ParentType, ContextType>
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
+  position?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
+  post?: Resolver<ResolversTypes['Post'], ParentType, ContextType>
+  updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
+}>
+
 export type ImageItemResolvers<
   ContextType = Context,
   ParentType extends
     ResolversParentTypes['ImageItem'] = ResolversParentTypes['ImageItem'],
 > = ResolversObject<{
   caption?: Resolver<ResolversTypes['String'], ParentType, ContextType>
-  compressedPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
   description?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  file?: Resolver<ResolversTypes['PhotoFile'], ParentType, ContextType>
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
-  originalPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   position?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
   post?: Resolver<ResolversTypes['Post'], ParentType, ContextType>
-  relativeHeight?: Resolver<ResolversTypes['Float'], ParentType, ContextType>
-  thumbnailPath?: Resolver<
-    Maybe<ResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >
   updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
@@ -1124,21 +1328,6 @@ export type KeywordConnectionResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
-export type MediaItemResolvers<
-  ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['MediaItem'] = ResolversParentTypes['MediaItem'],
-> = ResolversObject<{
-  __resolveType: TypeResolveFn<
-    'AudioItem' | 'GifItem' | 'ImageItem' | 'VideoItem',
-    ParentType,
-    ContextType
-  >
-  caption?: Resolver<ResolversTypes['String'], ParentType, ContextType>
-  compressedPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
-  originalPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
-}>
-
 export type MutationResolvers<
   ContextType = Context,
   ParentType extends
@@ -1190,6 +1379,12 @@ export type MutationResolvers<
     ParentType,
     ContextType,
     RequireFields<MutationDeletePostArgs, 'postId'>
+  >
+  deleteTemporaryFile?: Resolver<
+    ResolversTypes['Boolean'],
+    ParentType,
+    ContextType,
+    RequireFields<MutationDeleteTemporaryFileArgs, 'fileId'>
   >
   editPost?: Resolver<
     ResolversTypes['Post'],
@@ -1256,6 +1451,12 @@ export type MutationResolvers<
     RequireFields<MutationSignupArgs, 'name' | 'password' | 'username'>
   >
   unlinkTelegram?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>
+  uploadItemFile?: Resolver<
+    ResolversTypes['ID'],
+    ParentType,
+    ContextType,
+    RequireFields<MutationUploadItemFileArgs, 'file'>
+  >
   uploadProfilePicture?: Resolver<
     ResolversTypes['Boolean'],
     ParentType,
@@ -1283,6 +1484,41 @@ export type NodeResolvers<
     ContextType
   >
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
+}>
+
+export type PhotoFileResolvers<
+  ContextType = Context,
+  ParentType extends
+    ResolversParentTypes['PhotoFile'] = ResolversParentTypes['PhotoFile'],
+> = ResolversObject<{
+  compressedPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
+  creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
+  id?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  originalPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  processingNotes?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >
+  processingProgress?: Resolver<
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >
+  processingStatus?: Resolver<
+    ResolversTypes['FileProcessingStatus'],
+    ParentType,
+    ContextType
+  >
+  relativeHeight?: Resolver<ResolversTypes['Float'], ParentType, ContextType>
+  thumbnailPath?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >
+  updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
 export type PostResolvers<
@@ -1335,9 +1571,39 @@ export type ProcessingItemResolvers<
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
   position?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
   post?: Resolver<ResolversTypes['Post'], ParentType, ContextType>
-  taskNotes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>
-  taskProgress?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>
-  taskStatus?: Resolver<ResolversTypes['TaskStatus'], ParentType, ContextType>
+  updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
+}>
+
+export type ProfilePictureFileResolvers<
+  ContextType = Context,
+  ParentType extends
+    ResolversParentTypes['ProfilePictureFile'] = ResolversParentTypes['ProfilePictureFile'],
+> = ResolversObject<{
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
+  creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
+  id?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  processingNotes?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >
+  processingProgress?: Resolver<
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >
+  processingStatus?: Resolver<
+    ResolversTypes['FileProcessingStatus'],
+    ParentType,
+    ContextType
+  >
+  profilePicture64?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  profilePicture256?: Resolver<
+    ResolversTypes['String'],
+    ParentType,
+    ContextType
+  >
   updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
@@ -1418,24 +1684,13 @@ export type SubscriptionResolvers<
   ParentType extends
     ResolversParentTypes['Subscription'] = ResolversParentTypes['Subscription'],
 > = ResolversObject<{
-  taskUpdates?: SubscriptionResolver<
-    ResolversTypes['TaskUpdate'],
-    'taskUpdates',
+  fileProcessingUpdates?: SubscriptionResolver<
+    ResolversTypes['FileProcessingUpdate'],
+    'fileProcessingUpdates',
     ParentType,
     ContextType,
-    RequireFields<SubscriptionTaskUpdatesArgs, 'ids'>
+    RequireFields<SubscriptionFileProcessingUpdatesArgs, 'ids'>
   >
-}>
-
-export type TaskUpdateResolvers<
-  ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['TaskUpdate'] = ResolversParentTypes['TaskUpdate'],
-> = ResolversObject<{
-  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
-  item?: Resolver<Maybe<ResolversTypes['Item']>, ParentType, ContextType>
-  kind?: Resolver<ResolversTypes['UpdateKind'], ParentType, ContextType>
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
 export interface UploadScalarConfig
@@ -1463,7 +1718,7 @@ export type UserResolvers<
     Partial<UserPostsArgs>
   >
   profilePicture?: Resolver<
-    Maybe<ResolversTypes['String']>,
+    Maybe<ResolversTypes['ProfilePictureFile']>,
     ParentType,
     ContextType
   >
@@ -1489,20 +1744,36 @@ export type UserConnectionResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
-export type VideoItemResolvers<
+export type VideoFileResolvers<
   ContextType = Context,
   ParentType extends
-    ResolversParentTypes['VideoItem'] = ResolversParentTypes['VideoItem'],
+    ResolversParentTypes['VideoFile'] = ResolversParentTypes['VideoFile'],
 > = ResolversObject<{
-  caption?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   compressedPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
-  description?: Resolver<ResolversTypes['String'], ParentType, ContextType>
-  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
+  id?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   originalPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
-  position?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
-  post?: Resolver<ResolversTypes['Post'], ParentType, ContextType>
+  posterThumbnailPath?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >
+  processingNotes?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >
+  processingProgress?: Resolver<
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >
+  processingStatus?: Resolver<
+    ResolversTypes['FileProcessingStatus'],
+    ParentType,
+    ContextType
+  >
   relativeHeight?: Resolver<ResolversTypes['Float'], ParentType, ContextType>
   thumbnailPath?: Resolver<
     Maybe<ResolversTypes['String']>,
@@ -1513,46 +1784,49 @@ export type VideoItemResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
-export type VisualMediaItemResolvers<
+export type VideoItemResolvers<
   ContextType = Context,
   ParentType extends
-    ResolversParentTypes['VisualMediaItem'] = ResolversParentTypes['VisualMediaItem'],
+    ResolversParentTypes['VideoItem'] = ResolversParentTypes['VideoItem'],
 > = ResolversObject<{
-  __resolveType: TypeResolveFn<
-    'GifItem' | 'ImageItem' | 'VideoItem',
-    ParentType,
-    ContextType
-  >
-  relativeHeight?: Resolver<ResolversTypes['Float'], ParentType, ContextType>
-  thumbnailPath?: Resolver<
-    Maybe<ResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >
+  caption?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
+  creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
+  description?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  file?: Resolver<ResolversTypes['VideoFile'], ParentType, ContextType>
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
+  position?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
+  post?: Resolver<ResolversTypes['Post'], ParentType, ContextType>
+  updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
 export type Resolvers<ContextType = Context> = ResolversObject<{
+  AudioFile?: AudioFileResolvers<ContextType>
   AudioItem?: AudioItemResolvers<ContextType>
   DateTime?: GraphQLScalarType
+  File?: FileResolvers<ContextType>
+  FileProcessingUpdate?: FileProcessingUpdateResolvers<ContextType>
+  GifFile?: GifFileResolvers<ContextType>
   GifItem?: GifItemResolvers<ContextType>
   ImageItem?: ImageItemResolvers<ContextType>
   Item?: ItemResolvers<ContextType>
   ItemConnection?: ItemConnectionResolvers<ContextType>
   Keyword?: KeywordResolvers<ContextType>
   KeywordConnection?: KeywordConnectionResolvers<ContextType>
-  MediaItem?: MediaItemResolvers<ContextType>
   Mutation?: MutationResolvers<ContextType>
   Node?: NodeResolvers<ContextType>
+  PhotoFile?: PhotoFileResolvers<ContextType>
   Post?: PostResolvers<ContextType>
   PostConnection?: PostConnectionResolvers<ContextType>
   ProcessingItem?: ProcessingItemResolvers<ContextType>
+  ProfilePictureFile?: ProfilePictureFileResolvers<ContextType>
   Query?: QueryResolvers<ContextType>
   Session?: SessionResolvers<ContextType>
   Subscription?: SubscriptionResolvers<ContextType>
-  TaskUpdate?: TaskUpdateResolvers<ContextType>
   Upload?: GraphQLScalarType
   User?: UserResolvers<ContextType>
   UserConnection?: UserConnectionResolvers<ContextType>
+  VideoFile?: VideoFileResolvers<ContextType>
   VideoItem?: VideoItemResolvers<ContextType>
-  VisualMediaItem?: VisualMediaItemResolvers<ContextType>
 }>

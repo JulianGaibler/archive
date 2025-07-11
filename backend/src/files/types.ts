@@ -6,6 +6,7 @@ export enum FileType {
   VIDEO = 'VIDEO',
   IMAGE = 'IMAGE',
   GIF = 'GIF',
+  AUDIO = 'AUDIO',
 }
 
 export interface FileProcessingResult {
@@ -13,28 +14,27 @@ export interface FileProcessingResult {
   createdFiles: {
     compressed: Record<string, string>
     thumbnail: Record<string, string>
+    posterThumbnail?: Record<string, string> // Optional, only for videos
     original: string
   }
+  waveform?: number[]
+  waveformThumbnail?: number[]
 }
 
 export interface ProcessingProgress {
   taskProgress: number
 }
 
-export interface TaskUpdate {
-  itemId: number
-  changes: TaskChanges
+export interface FileUpdate {
+  fileId: string
+  changes: FileProcessingChanges
 }
 
-export interface TaskChanges {
-  type?: FileType
-  taskStatus?: 'PROCESSING' | 'DONE' | 'FAILED'
-  taskProgress?: number
-  taskNotes?: string
-  relativeHeight?: string
-  compressedPath?: string
-  thumbnailPath?: string
-  originalPath?: string
+export interface FileProcessingStatusUpdate {
+  fileId: string
+  status: 'QUEUED' | 'PROCESSING' | 'DONE' | 'FAILED'
+  progress?: number
+  notes?: string | null
 }
 
 export interface Task {
@@ -92,7 +92,18 @@ export interface CompressedFilePaths {
   [key: string]: string | undefined
 }
 
-export type UpdateCallback = (changes: Partial<TaskChanges>) => Promise<void>
+export type UpdateCallback = (
+  changes: Partial<FileProcessingChanges>,
+) => Promise<void>
+export type FileUpdateCallback = (
+  changes: Partial<FileProcessingChanges>,
+) => Promise<void>
+
+export interface FileProcessingChanges {
+  processingStatus?: 'QUEUED' | 'PROCESSING' | 'DONE' | 'FAILED'
+  processingProgress?: number
+  processingNotes?: string | null
+}
 
 export type StreamFactory = () => Readable
 

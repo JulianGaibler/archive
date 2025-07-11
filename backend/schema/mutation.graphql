@@ -9,9 +9,9 @@ input EditItemInput {
 
 input NewItemInput {
   """
-  The file to upload.
+  A file to be added as a new item.
   """
-  file: Upload!
+  fileId: String!
   description: String
   caption: String
 }
@@ -79,6 +79,34 @@ type Mutation {
     """
     newItems: [NewItemInput!]
   ): Post!
+
+  """
+  Uploads a new file for an item. File starts processing immediately and
+  expires in 2 hours if not attached to a post. Returns the file ID.
+  """
+  uploadItemFile(
+    """
+    The file to upload.
+    """
+    file: Upload!
+
+    """
+    Optional type to convert the file to. Valid conversions are:
+    Video to Gif, Gif to Video, Video to Audio.
+    If not provided, the type will be inferred from the file.
+    """
+    type: FileType
+  ): ID!
+
+  """
+  Deletes a temporary file that has not been claimed by a resource.
+  """
+  deleteTemporaryFile(
+    """
+    The ID of the file to delete.
+    """
+    fileId: String!
+  ): Boolean!
 
   """
   Deletes a post and all its associated items and files.

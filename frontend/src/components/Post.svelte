@@ -5,8 +5,6 @@
   import KeywordPicker from '@src/components/KeywordPicker.svelte'
   import { formatDate, titleCase } from '@src/utils'
   import Button from 'tint/components/Button.svelte'
-  import Modal from 'tint/components/Modal.svelte'
-  import ProgressBar from 'tint/components/ProgressBar.svelte'
   import Select from 'tint/components/Select.svelte'
   import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
   import Dialog, { type OpenDialog } from 'tint/components/Dialog.svelte'
@@ -68,8 +66,6 @@
   let moveLoading = $state(false)
   let selectedItemId = $state<string | undefined>(undefined)
 
-  let progress = $derived($editData?.uploadController?.progress)
-
   onMount(() => {
     if ($isInNewPostMode) {
       editManager.startEdit()
@@ -122,24 +118,23 @@
       .map((item) => {
         let thumbnail: string | undefined = undefined
         const data = item.data
-
+        console.log('Reorder item data:', data)
         // Handle different thumbnail types based on item type
-        if ('thumbnailPath' in data && data.thumbnailPath) {
-          thumbnail = data.thumbnailPath
-        } else if (
-          'ampThumbnail' in data &&
-          Array.isArray(data.ampThumbnail) &&
-          data.ampThumbnail.length > 0
+        if (
+          data.__typename === 'ImageItem' ||
+          data.__typename === 'GifItem' ||
+          data.__typename === 'VideoItem'
         ) {
-          // For audio items, we could generate a thumbnail from ampThumbnail data
-          // For now, we'll leave it undefined
-          thumbnail = undefined
+          if (data.file.thumbnailPath) {
+            thumbnail = data.file.thumbnailPath
+          }
         }
 
         return {
           id: item.id,
           description: item.description.value || 'No description',
           caption: item.caption?.value,
+          typename: data.__typename,
           thumbnail,
         }
       })
@@ -442,23 +437,6 @@
 
 <Dialog bind:openDialog />
 
-<Modal open={$editData?.isUploading} notClosable>
-  <div class="upload-progress">
-    <h2 class="tint--type-title-serif-3">
-      Uploading {Object.values($editData?.items || {}).filter(
-        (item) => item.type === 'upload',
-      ).length} items
-    </h2>
-    <ProgressBar progress={$progress?.percentage || 0} active showProgress />
-    <Button
-      small
-      onclick={() => {
-        editManager.cancelUpload()
-      }}>Cancel upload</Button
-    >
-  </div>
-</Modal>
-
 <Menu
   variant="button"
   bind:contextClick={buttonClick}
@@ -622,15 +600,6 @@
       height: tint.$size-64
   &.show
     visibility: initial
-
-.upload-progress
-  box-sizing: border-box
-  width: min(500px, calc(100vw - tint.$size-32))
-  display: flex
-  flex-direction: column
-  align-items: center
-  gap: tint.$size-32
-  padding: tint.$size-32
 
 .loading-container
   display: flex

@@ -1,9 +1,13 @@
 # Changelog
 # Labels: [Added], [Fixed], [Improved], [Removed], [Deprecated], [Security]
 
-2.1.2:
+2.2.0:
   date: '2025-07-02' # FIXME
+  notes: |
+     Archive 2.2
   changes:
+    - '[Added] Support for audio files'
+    - '[Improved] When adding files to a post, they are now instantly uploaded and processed'
     - '[Improved] Archive is now installable as a Progressive Web App (PWA)'
     - '[Fixed] Session management interface now shows the correct IP address'
     - '[Fixed] Better handling of database errors, especially when titles are not unique'

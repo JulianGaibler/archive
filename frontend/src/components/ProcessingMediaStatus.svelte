@@ -1,53 +1,111 @@
 <script lang="ts">
   import ProgressBar from 'tint/components/ProgressBar.svelte'
   import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
+  import Button from 'tint/components/Button.svelte'
   import IconQueued from 'tint/icons/20-queue.svg?raw'
   import IconWarning from 'tint/icons/20-warning.svg?raw'
   import IconDone from 'tint/icons/20-done.svg?raw'
-  import { TaskStatus } from '@src/generated/graphql'
+  import { FileProcessingStatus } from '@src/generated/graphql'
+  import type { UploadController } from '@src/utils/custom-fetch'
 
-  type Item = {
-    __typename: 'ProcessingItem'
-    taskProgress?: number | null
-    taskStatus: TaskStatus
-    taskNotes?: string | null
+  type ProcessingFile = {
+    id: string
+    processingStatus: FileProcessingStatus
+    processingProgress?: number | null
+    processingNotes?: string | null
+  }
+
+  type UploadItem = {
+    isUploading: boolean
+    uploadError?: string
+    isQueued?: boolean
+    uploadController?: UploadController
   }
 
   interface Props {
-    item?: Item
+    file?: ProcessingFile
+    uploadItem?: UploadItem
+    onCancel?: () => void
   }
 
-  let { item }: Props = $props()
+  let { file, uploadItem, onCancel }: Props = $props()
+
+  // For upload items, we show upload-specific UI
+  // For processing files, we show processing status
+  const isUpload = !!uploadItem
+  const isProcessing = !!file
+
+  // Get upload progress if available
+  let uploadProgress = $state<number | undefined>(undefined)
+
+  // Subscribe to upload progress
+  $effect(() => {
+    if (uploadItem?.uploadController?.progress) {
+      const unsubscribe = uploadItem.uploadController.progress.subscribe(
+        (progress) => {
+          uploadProgress = progress.percentage || 0
+        },
+      )
+      return unsubscribe
+    }
+  })
 </script>
 
 <div class="container tint--tinted">
   <div class="inner">
-    {#if item}
-      {#if item.taskStatus === TaskStatus.Queued}
+    {#if isUpload && uploadItem}
+      {#if uploadItem.isQueued}
+        {@html IconQueued}
+        <span>Queued for upload</span>
+        {#if onCancel}
+          <Button small onclick={onCancel}>Remove</Button>
+        {/if}
+      {:else if uploadItem.isUploading}
+        {#if uploadProgress !== undefined}
+          <ProgressBar progress={uploadProgress} showProgress />
+        {:else}
+          <LoadingIndicator />
+        {/if}
+        <span>Uploading file...</span>
+        {#if onCancel}
+          <Button small onclick={onCancel}>Cancel upload</Button>
+        {/if}
+      {:else if uploadItem.uploadError}
+        {@html IconWarning}
+        <span>Upload failed: {uploadItem.uploadError}</span>
+        {#if onCancel}
+          <Button small onclick={onCancel}>Remove</Button>
+        {/if}
+      {:else}
+        {@html IconDone}
+        <span>Upload complete</span>
+      {/if}
+    {:else if isProcessing && file}
+      {#if file.processingStatus === FileProcessingStatus.Queued}
         {@html IconQueued}
         <span>Processing is queued</span>
-      {:else if item.taskStatus === TaskStatus.Processing && (item.taskProgress === null || item.taskProgress === undefined)}
+      {:else if file.processingStatus === FileProcessingStatus.Processing && (file.processingProgress === null || file.processingProgress === undefined)}
         <LoadingIndicator />
-        <span>Processing is in progress but no progress is available</span>
-      {:else if item.taskStatus === TaskStatus.Processing && item.taskProgress !== null}
-        <ProgressBar progress={item.taskProgress} showProgress />
-        <span>Processing item</span>
-      {:else if item.taskStatus === TaskStatus.Failed}
+        <span>Processing file...</span>
+      {:else if file.processingStatus === FileProcessingStatus.Processing && file.processingProgress !== null}
+        <ProgressBar progress={file.processingProgress || 0} showProgress />
+        <span>Processing file...</span>
+      {:else if file.processingStatus === FileProcessingStatus.Failed}
         {@html IconWarning}
         <span>Processing failed</span>
-      {:else if item.taskStatus === TaskStatus.Done}
+      {:else if file.processingStatus === FileProcessingStatus.Done}
         {@html IconDone}
-        <span>File should be available momentarily</span>
+        <span>Processing complete</span>
       {/if}
 
-      {#if item.taskNotes}
+      {#if file.processingNotes}
         <details>
           <summary>Task notes</summary>
-          <code>{item.taskNotes ?? 'No notes available.'}</code>
+          <code>{file.processingNotes ?? 'No notes available.'}</code>
         </details>
       {/if}
     {:else}
-      <span>No item provided.</span>
+      <span>No file or upload item provided.</span>
     {/if}
   </div>
 </div>
@@ -58,6 +116,7 @@
   color: var(--tint-text-accent)
   border-radius: tint.$size-12
   padding: tint.$size-16
+  background: var(--tint-bg)
 .inner
   max-width: 256px
   margin: 0 auto

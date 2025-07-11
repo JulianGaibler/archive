@@ -121,9 +121,9 @@ export default class Connection {
         retryLimit: 10,
       })
       await Connection.pubSubInstance.connect()
-      console.log('PubSub connection established successfully')
+      console.log('📤 PubSub connection established successfully')
     } catch (error) {
-      console.error('Error connecting to PubSub:', error)
+      console.error('📤 Error connecting to PubSub:', error)
       if (Connection.pubSubInstance) {
         try {
           await Connection.pubSubInstance.close()

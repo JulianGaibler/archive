@@ -25,6 +25,7 @@
     byUsers = $bindable(null),
     showAddPostButton = false,
   }: Props = $props()
+
   let columns = $state(4)
 
   type PostNode = NonNullable<NonNullable<PostsQuery['posts']>['nodes']>
@@ -59,8 +60,11 @@
       // Use 16:9 aspect ratio (56.25%) as fallback for posts without items or relative height
       const firstItem = postNode?.items?.nodes?.[0]
       const relativeHeight =
-        firstItem && 'relativeHeight' in firstItem
-          ? firstItem.relativeHeight
+        firstItem &&
+        'file' in firstItem &&
+        firstItem.file &&
+        'relativeHeight' in firstItem.file
+          ? firstItem.file.relativeHeight
           : 56.25
       columnHeights[shortestColumn] += relativeHeight
       columnPosts[shortestColumn].push(postNode)
@@ -173,12 +177,27 @@
         {#each column as postNode (postNode?.id)}
           {@const firstItem = postNode?.items?.nodes?.[0]}
           {@const relativeHeight =
-            firstItem && 'relativeHeight' in firstItem
-              ? firstItem.relativeHeight
+            firstItem &&
+            'file' in firstItem &&
+            firstItem.file &&
+            'relativeHeight' in firstItem.file
+              ? firstItem.file.relativeHeight
               : 56.25}
           {@const thumbnailPath =
-            firstItem && 'thumbnailPath' in firstItem
-              ? firstItem.thumbnailPath
+            firstItem &&
+            'file' in firstItem &&
+            firstItem.file &&
+            'thumbnailPath' in firstItem.file &&
+            firstItem.file.thumbnailPath
+              ? firstItem.file.thumbnailPath
+              : null}
+          {@const waveformThumbnail =
+            firstItem &&
+            'file' in firstItem &&
+            firstItem.file &&
+            'waveformThumbnail' in firstItem.file &&
+            firstItem.file.waveformThumbnail
+              ? firstItem.file.waveformThumbnail
               : null}
           <a
             class="tint--tinted post"
@@ -188,9 +207,28 @@
             {#if thumbnailPath}
               <img
                 loading="lazy"
-                src={getResourceUrl(`${thumbnailPath}.jpeg`)}
+                src={getResourceUrl(thumbnailPath)}
                 alt="Preview of {postNode?.title}"
               />
+            {:else if waveformThumbnail}
+              <div class="waveform-container" aria-hidden="true">
+                <div class="waveform">
+                  {#each waveformThumbnail as value, index (index)}
+                    <span style="--audio-amp: {value}"></span>
+                  {/each}
+                </div>
+                {#if postNode.items?.nodes?.[0]}
+                  {#if postNode.items.nodes[0].__typename === 'AudioItem' && postNode.items.nodes[0].caption}
+                    <span class="tint--type-body-serif-small"
+                      >{postNode.items.nodes[0].caption}</span
+                    >
+                  {:else if 'description' in postNode.items.nodes[0] && postNode.items.nodes[0].description}
+                    <span class="tint--type-body-serif-small"
+                      >{postNode.items.nodes[0].description}</span
+                    >
+                  {/if}
+                {/if}
+              </div>
             {:else}
               <div class="placeholder">
                 <span>No preview available</span>
@@ -317,6 +355,37 @@
     &:hover
       .info
         opacity: 1
+
+  .waveform-container
+    inset: 0
+    position: absolute
+    color: var(--tint-text-accent)
+    padding: tint.$size-24
+    display: flex
+    flex-direction: column
+    gap: tint.$size-8
+    > span
+      text-align: center
+      overflow: hidden
+      text-overflow: ellipsis
+      white-space: nowrap
+    .waveform
+      flex: 1
+      display: flex
+      align-items: center
+      justify-content: space-between
+      padding-inline: tint.$size-32
+      padding-block: tint.$size-8
+      gap: 2px
+      span
+        flex: 1
+        border-radius: 100px
+        height: calc(var(--audio-amp) * 100%)
+        min-height: tint.$size-12
+        background: currentColor
+        max-width: 6px
+        min-width: 2px
+
 
   .more
     display: flex

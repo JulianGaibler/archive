@@ -16,22 +16,39 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean; }
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
+  /** A timestamp encoded as milliseconds since Unix Epoch in UTC. */
   DateTime: { input: any; output: any; }
+  /** The `Upload` scalar type represents a file upload. */
   Upload: { input: any; output: any; }
 };
 
-/** An audio item. */
-export type AudioItem = Item & MediaItem & Node & {
-  __typename?: 'AudioItem';
-  ampThumbnail: Array<Scalars['Float']['output']>;
-  caption: Scalars['String']['output'];
+/** An audio file. */
+export type AudioFile = File & {
+  __typename?: 'AudioFile';
   compressedPath: Scalars['String']['output'];
   createdAt: Scalars['DateTime']['output'];
   creator: User;
+  /** The file UUID */
+  id: Scalars['String']['output'];
+  originalPath: Scalars['String']['output'];
+  processingNotes?: Maybe<Scalars['String']['output']>;
+  processingProgress?: Maybe<Scalars['Int']['output']>;
+  processingStatus: FileProcessingStatus;
+  updatedAt: Scalars['DateTime']['output'];
+  waveform: Array<Scalars['Float']['output']>;
+  waveformThumbnail: Array<Scalars['Float']['output']>;
+};
+
+/** An audio item. */
+export type AudioItem = Item & Node & {
+  __typename?: 'AudioItem';
+  caption: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  creator: User;
   description: Scalars['String']['output'];
+  file: AudioFile;
   /** The ID of an object */
   id: Scalars['ID']['output'];
-  originalPath: Scalars['String']['output'];
   position: Scalars['Int']['output'];
   post: Post;
   updatedAt: Scalars['DateTime']['output'];
@@ -43,6 +60,53 @@ export type EditItemInput = {
   /** The ID of the item to edit. */
   id: Scalars['ID']['input'];
 };
+
+/** Base interface for all file types. */
+export type File = {
+  createdAt: Scalars['DateTime']['output'];
+  creator: User;
+  /** The file UUID */
+  id: Scalars['String']['output'];
+  processingNotes?: Maybe<Scalars['String']['output']>;
+  processingProgress?: Maybe<Scalars['Int']['output']>;
+  processingStatus: FileProcessingStatus;
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+/** The possible states of file processing. */
+export enum FileProcessingStatus {
+  /** The processing was successful. */
+  Done = 'DONE',
+  /** The processing has failed. */
+  Failed = 'FAILED',
+  /** The file is being processed. */
+  Processing = 'PROCESSING',
+  /** The file is waiting to be processed. */
+  Queued = 'QUEUED'
+}
+
+/** Update data of a file's current processing status. */
+export type FileProcessingUpdate = {
+  __typename?: 'FileProcessingUpdate';
+  /** The updated file. */
+  file: File;
+  /** The ID of the file */
+  id: Scalars['ID']['output'];
+  /** Indicates what kind of update this is. */
+  kind: UpdateKind;
+};
+
+/** File types that can be uploaded and processed. */
+export enum FileType {
+  /** A sound file. */
+  Audio = 'AUDIO',
+  /** A video without sound (animated image). */
+  Gif = 'GIF',
+  /** An image. */
+  Image = 'IMAGE',
+  /** A video with sound. */
+  Video = 'VIDEO'
+}
 
 /** Possible formats a post can have. */
 export enum Format {
@@ -58,39 +122,51 @@ export enum Format {
   Video = 'VIDEO'
 }
 
-/** A GIF item. */
-export type GifItem = Item & MediaItem & Node & VisualMediaItem & {
-  __typename?: 'GifItem';
-  caption: Scalars['String']['output'];
+/** A GIF file. */
+export type GifFile = File & {
+  __typename?: 'GifFile';
+  compressedGifPath: Scalars['String']['output'];
   compressedPath: Scalars['String']['output'];
   createdAt: Scalars['DateTime']['output'];
   creator: User;
-  description: Scalars['String']['output'];
-  /** The ID of an object */
-  id: Scalars['ID']['output'];
+  /** The file UUID */
+  id: Scalars['String']['output'];
   originalPath: Scalars['String']['output'];
-  position: Scalars['Int']['output'];
-  post: Post;
+  processingNotes?: Maybe<Scalars['String']['output']>;
+  processingProgress?: Maybe<Scalars['Int']['output']>;
+  processingStatus: FileProcessingStatus;
   relativeHeight: Scalars['Float']['output'];
   thumbnailPath?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTime']['output'];
 };
 
-/** An image item. */
-export type ImageItem = Item & MediaItem & Node & VisualMediaItem & {
-  __typename?: 'ImageItem';
+/** A GIF item. */
+export type GifItem = Item & Node & {
+  __typename?: 'GifItem';
   caption: Scalars['String']['output'];
-  compressedPath: Scalars['String']['output'];
   createdAt: Scalars['DateTime']['output'];
   creator: User;
   description: Scalars['String']['output'];
+  file: GifFile;
   /** The ID of an object */
   id: Scalars['ID']['output'];
-  originalPath: Scalars['String']['output'];
   position: Scalars['Int']['output'];
   post: Post;
-  relativeHeight: Scalars['Float']['output'];
-  thumbnailPath?: Maybe<Scalars['String']['output']>;
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+/** An image item. */
+export type ImageItem = Item & Node & {
+  __typename?: 'ImageItem';
+  caption: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  creator: User;
+  description: Scalars['String']['output'];
+  file: PhotoFile;
+  /** The ID of an object */
+  id: Scalars['ID']['output'];
+  position: Scalars['Int']['output'];
+  post: Post;
   updatedAt: Scalars['DateTime']['output'];
 };
 
@@ -182,13 +258,6 @@ export enum Language {
   Turkish = 'TURKISH'
 }
 
-/** Interface for media items. */
-export type MediaItem = {
-  caption: Scalars['String']['output'];
-  compressedPath: Scalars['String']['output'];
-  originalPath: Scalars['String']['output'];
-};
-
 export type Mutation = {
   __typename?: 'Mutation';
   /** Changes the name of the current user. */
@@ -213,6 +282,8 @@ export type Mutation = {
    * Returns the ID of the deleted post.
    */
   deletePost: Scalars['ID']['output'];
+  /** Deletes a temporary file that has not been claimed by a resource. */
+  deleteTemporaryFile: Scalars['Boolean']['output'];
   /** Edits a post. */
   editPost: Post;
   /** Associates the Telegram ID of a user with their Archive Profil. */
@@ -247,6 +318,11 @@ export type Mutation = {
   signup: Scalars['Boolean']['output'];
   /** Removed Telegram ID from Archive profile. */
   unlinkTelegram: Scalars['Boolean']['output'];
+  /**
+   * Uploads a new file for an item. File starts processing immediately and
+   * expires in 2 hours if not attached to a post. Returns the file ID.
+   */
+  uploadItemFile: Scalars['ID']['output'];
   /** Sets the profile picture of the current user. */
   uploadProfilePicture: Scalars['Boolean']['output'];
 };
@@ -287,6 +363,11 @@ export type MutationDeleteKeywordArgs = {
 
 export type MutationDeletePostArgs = {
   postId: Scalars['ID']['input'];
+};
+
+
+export type MutationDeleteTemporaryFileArgs = {
+  fileId: Scalars['String']['input'];
 };
 
 
@@ -349,6 +430,12 @@ export type MutationSignupArgs = {
 };
 
 
+export type MutationUploadItemFileArgs = {
+  file: Scalars['Upload']['input'];
+  type?: InputMaybe<FileType>;
+};
+
+
 export type MutationUploadProfilePictureArgs = {
   file: Scalars['Upload']['input'];
 };
@@ -356,14 +443,31 @@ export type MutationUploadProfilePictureArgs = {
 export type NewItemInput = {
   caption?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
-  /** The file to upload. */
-  file: Scalars['Upload']['input'];
+  /** A file to be added as a new item. */
+  fileId: Scalars['String']['input'];
 };
 
 /** An object with an ID */
 export type Node = {
   /** The id of the object. */
   id: Scalars['ID']['output'];
+};
+
+/** A photo file. */
+export type PhotoFile = File & {
+  __typename?: 'PhotoFile';
+  compressedPath: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  creator: User;
+  /** The file UUID */
+  id: Scalars['String']['output'];
+  originalPath: Scalars['String']['output'];
+  processingNotes?: Maybe<Scalars['String']['output']>;
+  processingProgress?: Maybe<Scalars['Int']['output']>;
+  processingStatus: FileProcessingStatus;
+  relativeHeight: Scalars['Float']['output'];
+  thumbnailPath?: Maybe<Scalars['String']['output']>;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 /** A post. */
@@ -420,14 +524,28 @@ export type ProcessingItem = Item & Node & {
   id: Scalars['ID']['output'];
   position: Scalars['Int']['output'];
   post: Post;
-  taskNotes?: Maybe<Scalars['String']['output']>;
-  taskProgress?: Maybe<Scalars['Int']['output']>;
-  taskStatus: TaskStatus;
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+/** A profile picture file. */
+export type ProfilePictureFile = File & {
+  __typename?: 'ProfilePictureFile';
+  createdAt: Scalars['DateTime']['output'];
+  creator: User;
+  /** The file UUID */
+  id: Scalars['String']['output'];
+  processingNotes?: Maybe<Scalars['String']['output']>;
+  processingProgress?: Maybe<Scalars['Int']['output']>;
+  processingStatus: FileProcessingStatus;
+  profilePicture64: Scalars['String']['output'];
+  profilePicture256: Scalars['String']['output'];
   updatedAt: Scalars['DateTime']['output'];
 };
 
 export type Query = {
   __typename?: 'Query';
+  /** Returns a list of posts. */
+  items?: Maybe<ItemConnection>;
   /** Returns a list of keywords. */
   keywords?: Maybe<KeywordConnection>;
   /** Returns the currently authenticated user. */
@@ -444,6 +562,14 @@ export type Query = {
   userSessions: Array<Session>;
   /** Returns a list of users. */
   users?: Maybe<UserConnection>;
+};
+
+
+export type QueryItemsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  byContent?: InputMaybe<Scalars['String']['input']>;
+  byUsers?: InputMaybe<Array<Scalars['String']['input']>>;
+  first?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -511,36 +637,13 @@ export type Session = Node & {
 
 export type Subscription = {
   __typename?: 'Subscription';
-  /** Returns updates from tasks. */
-  taskUpdates: TaskUpdate;
+  /** Returns updates from file processing. */
+  fileProcessingUpdates: FileProcessingUpdate;
 };
 
 
-export type SubscriptionTaskUpdatesArgs = {
+export type SubscriptionFileProcessingUpdatesArgs = {
   ids: Array<Scalars['String']['input']>;
-};
-
-/** The possible states of a task. */
-export enum TaskStatus {
-  /** The processing was successful. */
-  Done = 'DONE',
-  /** The processing has failed. */
-  Failed = 'FAILED',
-  /** The file is being processed. */
-  Processing = 'PROCESSING',
-  /** The file is waiting to be processed. */
-  Queued = 'QUEUED'
-}
-
-/** Update data of a tasks current status. */
-export type TaskUpdate = {
-  __typename?: 'TaskUpdate';
-  /** The ID of an object */
-  id: Scalars['ID']['output'];
-  /** The updated or created item. */
-  item?: Maybe<Item>;
-  /** Indicates what kind of update this is. */
-  kind: UpdateKind;
 };
 
 /** Enum that specifies if an update contains a new object, an update or if an object has been deleted. */
@@ -566,8 +669,8 @@ export type User = Node & {
   postCount: Scalars['Int']['output'];
   /** All Posts associated with this user. */
   posts?: Maybe<PostConnection>;
-  /** Name of the user's profile picture. */
-  profilePicture?: Maybe<Scalars['String']['output']>;
+  /** Profile picture file containing different sizes. */
+  profilePicture?: Maybe<ProfilePictureFile>;
   /** The username used to login. */
   username: Scalars['String']['output'];
 };
@@ -598,34 +701,43 @@ export type UserConnection = {
   totalCount: Scalars['Int']['output'];
 };
 
-/** A video item. */
-export type VideoItem = Item & MediaItem & Node & VisualMediaItem & {
-  __typename?: 'VideoItem';
-  caption: Scalars['String']['output'];
+/** A video file. */
+export type VideoFile = File & {
+  __typename?: 'VideoFile';
   compressedPath: Scalars['String']['output'];
   createdAt: Scalars['DateTime']['output'];
   creator: User;
-  description: Scalars['String']['output'];
-  /** The ID of an object */
-  id: Scalars['ID']['output'];
+  /** The file UUID */
+  id: Scalars['String']['output'];
   originalPath: Scalars['String']['output'];
-  position: Scalars['Int']['output'];
-  post: Post;
+  posterThumbnailPath?: Maybe<Scalars['String']['output']>;
+  processingNotes?: Maybe<Scalars['String']['output']>;
+  processingProgress?: Maybe<Scalars['Int']['output']>;
+  processingStatus: FileProcessingStatus;
   relativeHeight: Scalars['Float']['output'];
   thumbnailPath?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTime']['output'];
 };
 
-/** Interface for visual media items. */
-export type VisualMediaItem = {
-  relativeHeight: Scalars['Float']['output'];
-  thumbnailPath?: Maybe<Scalars['String']['output']>;
+/** A video item. */
+export type VideoItem = Item & Node & {
+  __typename?: 'VideoItem';
+  caption: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  creator: User;
+  description: Scalars['String']['output'];
+  file: VideoFile;
+  /** The ID of an object */
+  id: Scalars['ID']['output'];
+  position: Scalars['Int']['output'];
+  post: Post;
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type SettingsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type SettingsQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, linkedTelegram?: boolean | null } | null, userSessions: Array<{ __typename?: 'Session', createdAt: any, firstIp: string, id: string, latestIp: string, current: boolean, userAgent: string, updatedAt: any }> };
+export type SettingsQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, linkedTelegram?: boolean | null, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } | null, userSessions: Array<{ __typename?: 'Session', createdAt: any, firstIp: string, id: string, latestIp: string, current: boolean, userAgent: string, updatedAt: any }> };
 
 export type LoginMutationVariables = Exact<{
   username: Scalars['String']['input'];
@@ -640,21 +752,21 @@ export type LogoutMutationVariables = Exact<{ [key: string]: never; }>;
 
 export type LogoutMutation = { __typename?: 'Mutation', logout: boolean };
 
-type ItemData_AudioItem_Fragment = { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
+type ItemData_AudioItem_Fragment = { __typename: 'AudioItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'AudioFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, waveform: Array<number> }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } };
 
-type ItemData_GifItem_Fragment = { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
+type ItemData_GifItem_Fragment = { __typename: 'GifItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'GifFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, compressedGifPath: string, thumbnailPath?: string | null, relativeHeight: number }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } };
 
-type ItemData_ImageItem_Fragment = { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
+type ItemData_ImageItem_Fragment = { __typename: 'ImageItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'PhotoFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, thumbnailPath?: string | null, relativeHeight: number }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } };
 
-type ItemData_ProcessingItem_Fragment = { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
+type ItemData_ProcessingItem_Fragment = { __typename: 'ProcessingItem', position: number, createdAt: any, description: string, id: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } };
 
-type ItemData_VideoItem_Fragment = { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } };
+type ItemData_VideoItem_Fragment = { __typename: 'VideoItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'VideoFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, thumbnailPath?: string | null, posterThumbnailPath?: string | null, relativeHeight: number }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } };
 
 export type ItemDataFragment = ItemData_AudioItem_Fragment | ItemData_GifItem_Fragment | ItemData_ImageItem_Fragment | ItemData_ProcessingItem_Fragment | ItemData_VideoItem_Fragment;
 
-export type PostDataFragment = { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', nodes: Array<{ __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } }> } };
+export type PostDataFragment = { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', nodes: Array<{ __typename: 'AudioItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'AudioFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, waveform: Array<number> }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } } | { __typename: 'GifItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'GifFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, compressedGifPath: string, thumbnailPath?: string | null, relativeHeight: number }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } } | { __typename: 'ImageItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'PhotoFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, thumbnailPath?: string | null, relativeHeight: number }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } } | { __typename: 'ProcessingItem', position: number, createdAt: any, description: string, id: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } } | { __typename: 'VideoItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'VideoFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, thumbnailPath?: string | null, posterThumbnailPath?: string | null, relativeHeight: number }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }> } };
 
-export type PostsConnectionFragment = { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, nodes: Array<{ __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string }> } }> };
+export type PostsConnectionFragment = { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }, items: { __typename?: 'ItemConnection', totalCount: number, nodes: Array<{ __typename: 'AudioItem', caption: string, description: string, id: string, file: { __typename: 'AudioFile', waveform: Array<number>, waveformThumbnail: Array<number> } } | { __typename: 'GifItem', id: string, file: { __typename: 'GifFile', relativeHeight: number, thumbnailPath?: string | null } } | { __typename: 'ImageItem', id: string, file: { __typename: 'PhotoFile', relativeHeight: number, thumbnailPath?: string | null } } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', id: string, file: { __typename: 'VideoFile', relativeHeight: number, thumbnailPath?: string | null, posterThumbnailPath?: string | null } }> } }> };
 
 export type KeywordsQueryVariables = Exact<{
   after?: InputMaybe<Scalars['String']['input']>;
@@ -678,7 +790,7 @@ export type KeywordWithPostsQueryVariables = Exact<{
 }>;
 
 
-export type KeywordWithPostsQuery = { __typename?: 'Query', keyword: { __typename: 'AudioItem' } | { __typename: 'GifItem' } | { __typename: 'ImageItem' } | { __typename: 'Keyword', name: string, postCount: number } | { __typename: 'Post' } | { __typename: 'ProcessingItem' } | { __typename: 'Session' } | { __typename: 'User' } | { __typename: 'VideoItem' }, posts?: { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, nodes: Array<{ __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string }> } }> } | null };
+export type KeywordWithPostsQuery = { __typename?: 'Query', keyword: { __typename: 'AudioItem' } | { __typename: 'GifItem' } | { __typename: 'ImageItem' } | { __typename: 'Keyword', name: string, postCount: number } | { __typename: 'Post' } | { __typename: 'ProcessingItem' } | { __typename: 'Session' } | { __typename: 'User' } | { __typename: 'VideoItem' }, posts?: { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }, items: { __typename?: 'ItemConnection', totalCount: number, nodes: Array<{ __typename: 'AudioItem', caption: string, description: string, id: string, file: { __typename: 'AudioFile', waveform: Array<number>, waveformThumbnail: Array<number> } } | { __typename: 'GifItem', id: string, file: { __typename: 'GifFile', relativeHeight: number, thumbnailPath?: string | null } } | { __typename: 'ImageItem', id: string, file: { __typename: 'PhotoFile', relativeHeight: number, thumbnailPath?: string | null } } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', id: string, file: { __typename: 'VideoFile', relativeHeight: number, thumbnailPath?: string | null, posterThumbnailPath?: string | null } }> } }> } | null };
 
 export type CreateKeywordMutationVariables = Exact<{
   name: Scalars['String']['input'];
@@ -692,7 +804,7 @@ export type PostQueryVariables = Exact<{
 }>;
 
 
-export type PostQuery = { __typename?: 'Query', node: { __typename?: 'AudioItem' } | { __typename?: 'GifItem' } | { __typename?: 'ImageItem' } | { __typename?: 'Keyword' } | { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', nodes: Array<{ __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } }> } } | { __typename?: 'ProcessingItem' } | { __typename?: 'Session' } | { __typename?: 'User' } | { __typename?: 'VideoItem' } };
+export type PostQuery = { __typename?: 'Query', node: { __typename?: 'AudioItem' } | { __typename?: 'GifItem' } | { __typename?: 'ImageItem' } | { __typename?: 'Keyword' } | { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', nodes: Array<{ __typename: 'AudioItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'AudioFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, waveform: Array<number> }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } } | { __typename: 'GifItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'GifFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, compressedGifPath: string, thumbnailPath?: string | null, relativeHeight: number }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } } | { __typename: 'ImageItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'PhotoFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, thumbnailPath?: string | null, relativeHeight: number }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } } | { __typename: 'ProcessingItem', position: number, createdAt: any, description: string, id: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } } | { __typename: 'VideoItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'VideoFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, thumbnailPath?: string | null, posterThumbnailPath?: string | null, relativeHeight: number }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }> } } | { __typename?: 'ProcessingItem' } | { __typename?: 'Session' } | { __typename?: 'User' } | { __typename?: 'VideoItem' } };
 
 export type PostsQueryVariables = Exact<{
   after?: InputMaybe<Scalars['String']['input']>;
@@ -702,7 +814,7 @@ export type PostsQueryVariables = Exact<{
 }>;
 
 
-export type PostsQuery = { __typename?: 'Query', posts?: { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, nodes: Array<{ __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string }> } }> } | null };
+export type PostsQuery = { __typename?: 'Query', posts?: { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }, items: { __typename?: 'ItemConnection', totalCount: number, nodes: Array<{ __typename: 'AudioItem', caption: string, description: string, id: string, file: { __typename: 'AudioFile', waveform: Array<number>, waveformThumbnail: Array<number> } } | { __typename: 'GifItem', id: string, file: { __typename: 'GifFile', relativeHeight: number, thumbnailPath?: string | null } } | { __typename: 'ImageItem', id: string, file: { __typename: 'PhotoFile', relativeHeight: number, thumbnailPath?: string | null } } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', id: string, file: { __typename: 'VideoFile', relativeHeight: number, thumbnailPath?: string | null, posterThumbnailPath?: string | null } }> } }> } | null };
 
 export type PostsTextOnlyQueryVariables = Exact<{
   after?: InputMaybe<Scalars['String']['input']>;
@@ -719,7 +831,15 @@ export type CreatePostMutationVariables = Exact<{
 }>;
 
 
-export type CreatePostMutation = { __typename?: 'Mutation', createPost: { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', nodes: Array<{ __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } }> } } };
+export type CreatePostMutation = { __typename?: 'Mutation', createPost: { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', nodes: Array<{ __typename: 'AudioItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'AudioFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, waveform: Array<number> }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } } | { __typename: 'GifItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'GifFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, compressedGifPath: string, thumbnailPath?: string | null, relativeHeight: number }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } } | { __typename: 'ImageItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'PhotoFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, thumbnailPath?: string | null, relativeHeight: number }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } } | { __typename: 'ProcessingItem', position: number, createdAt: any, description: string, id: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } } | { __typename: 'VideoItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'VideoFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, thumbnailPath?: string | null, posterThumbnailPath?: string | null, relativeHeight: number }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }> } } };
+
+export type UploadItemFileMutationVariables = Exact<{
+  file: Scalars['Upload']['input'];
+  type?: InputMaybe<FileType>;
+}>;
+
+
+export type UploadItemFileMutation = { __typename?: 'Mutation', uploadItemFile: string };
 
 export type EditPostMutationVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -731,7 +851,7 @@ export type EditPostMutationVariables = Exact<{
 }>;
 
 
-export type EditPostMutation = { __typename?: 'Mutation', editPost: { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: string | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', nodes: Array<{ __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } }> } } };
+export type EditPostMutation = { __typename?: 'Mutation', editPost: { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', nodes: Array<{ __typename: 'AudioItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'AudioFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, waveform: Array<number> }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } } | { __typename: 'GifItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'GifFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, compressedGifPath: string, thumbnailPath?: string | null, relativeHeight: number }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } } | { __typename: 'ImageItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'PhotoFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, thumbnailPath?: string | null, relativeHeight: number }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } } | { __typename: 'ProcessingItem', position: number, createdAt: any, description: string, id: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } } | { __typename: 'VideoItem', caption: string, position: number, createdAt: any, description: string, id: string, file: { __typename: 'VideoFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, originalPath: string, compressedPath: string, thumbnailPath?: string | null, posterThumbnailPath?: string | null, relativeHeight: number }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }> } } };
 
 export type DeleteItemMutationVariables = Exact<{
   deleteItemId: Scalars['ID']['input'];
@@ -746,6 +866,13 @@ export type DeletePostMutationVariables = Exact<{
 
 
 export type DeletePostMutation = { __typename?: 'Mutation', deletePost: string };
+
+export type DeleteTemporaryFileMutationVariables = Exact<{
+  fileId: Scalars['String']['input'];
+}>;
+
+
+export type DeleteTemporaryFileMutation = { __typename?: 'Mutation', deleteTemporaryFile: boolean };
 
 export type MergePostMutationVariables = Exact<{
   sourcePostId: Scalars['ID']['input'];
@@ -773,12 +900,12 @@ export type MoveItemMutationVariables = Exact<{
 
 export type MoveItemMutation = { __typename?: 'Mutation', moveItem: boolean };
 
-export type TaskUpdatesSubscriptionVariables = Exact<{
+export type FileProcessingUpdatesSubscriptionVariables = Exact<{
   ids: Array<Scalars['String']['input']> | Scalars['String']['input'];
 }>;
 
 
-export type TaskUpdatesSubscription = { __typename?: 'Subscription', taskUpdates: { __typename?: 'TaskUpdate', kind: UpdateKind, item?: { __typename: 'AudioItem', caption: string, originalPath: string, compressedPath: string, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'GifItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ImageItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'ProcessingItem', taskProgress?: number | null, taskStatus: TaskStatus, taskNotes?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | { __typename: 'VideoItem', caption: string, originalPath: string, compressedPath: string, relativeHeight: number, thumbnailPath?: string | null, createdAt: any, description: string, position: number, id: string, creator: { __typename?: 'User', username: string, profilePicture?: string | null } } | null } };
+export type FileProcessingUpdatesSubscription = { __typename?: 'Subscription', fileProcessingUpdates: { __typename?: 'FileProcessingUpdate', kind: UpdateKind, file: { __typename?: 'AudioFile', originalPath: string, compressedPath: string, waveform: Array<number>, waveformThumbnail: Array<number>, id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null } | { __typename?: 'GifFile', originalPath: string, compressedPath: string, compressedGifPath: string, thumbnailPath?: string | null, relativeHeight: number, id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null } | { __typename?: 'PhotoFile', originalPath: string, compressedPath: string, thumbnailPath?: string | null, relativeHeight: number, id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null } | { __typename?: 'ProfilePictureFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null } | { __typename?: 'VideoFile', originalPath: string, compressedPath: string, thumbnailPath?: string | null, posterThumbnailPath?: string | null, relativeHeight: number, id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null } } };
 
 export type ChangeNameMutationVariables = Exact<{
   newName: Scalars['String']['input'];
@@ -829,14 +956,14 @@ export type UnlinkTelegramMutation = { __typename?: 'Mutation', unlinkTelegram: 
 export type MeQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type MeQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, profilePicture?: string | null, linkedTelegram?: boolean | null } | null };
+export type MeQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, linkedTelegram?: boolean | null, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } | null };
 
 export type UserQueryVariables = Exact<{
   username: Scalars['String']['input'];
 }>;
 
 
-export type UserQuery = { __typename?: 'Query', user?: { __typename?: 'User', id: string, username: string, name: string, profilePicture?: string | null, posts?: { __typename?: 'PostConnection', totalCount: number } | null } | null };
+export type UserQuery = { __typename?: 'Query', user?: { __typename?: 'User', id: string, username: string, name: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null, posts?: { __typename?: 'PostConnection', totalCount: number } | null } | null };
 
 export type UsersQueryVariables = Exact<{
   after?: InputMaybe<Scalars['String']['input']>;
@@ -844,7 +971,7 @@ export type UsersQueryVariables = Exact<{
 }>;
 
 
-export type UsersQuery = { __typename?: 'Query', users?: { __typename?: 'UserConnection', hasNextPage: boolean, endCursor?: string | null, nodes: Array<{ __typename?: 'User', id: string, username: string, name: string, profilePicture?: string | null, postCount: number }> } | null };
+export type UsersQuery = { __typename?: 'Query', users?: { __typename?: 'UserConnection', hasNextPage: boolean, endCursor?: string | null, nodes: Array<{ __typename?: 'User', id: string, username: string, name: string, postCount: number, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }> } | null };
 
 export type UserWithPostsQueryVariables = Exact<{
   username: Scalars['String']['input'];
@@ -853,7 +980,7 @@ export type UserWithPostsQueryVariables = Exact<{
 }>;
 
 
-export type UserWithPostsQuery = { __typename?: 'Query', user?: { __typename?: 'User', id: string, username: string, name: string, profilePicture?: string | null, postCount: number } | null, posts?: { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', profilePicture?: string | null, username: string }, items: { __typename?: 'ItemConnection', totalCount: number, nodes: Array<{ __typename: 'AudioItem', ampThumbnail: Array<number>, id: string } | { __typename: 'GifItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ImageItem', relativeHeight: number, thumbnailPath?: string | null, id: string } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', relativeHeight: number, thumbnailPath?: string | null, id: string }> } }> } | null };
+export type UserWithPostsQuery = { __typename?: 'Query', user?: { __typename?: 'User', id: string, username: string, name: string, postCount: number, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } | null, posts?: { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }, items: { __typename?: 'ItemConnection', totalCount: number, nodes: Array<{ __typename: 'AudioItem', caption: string, description: string, id: string, file: { __typename: 'AudioFile', waveform: Array<number>, waveformThumbnail: Array<number> } } | { __typename: 'GifItem', id: string, file: { __typename: 'GifFile', relativeHeight: number, thumbnailPath?: string | null } } | { __typename: 'ImageItem', id: string, file: { __typename: 'PhotoFile', relativeHeight: number, thumbnailPath?: string | null } } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', id: string, file: { __typename: 'VideoFile', relativeHeight: number, thumbnailPath?: string | null, posterThumbnailPath?: string | null } }> } }> } | null };
 
 export const ItemDataFragmentDoc = gql`
     fragment ItemData on Item {
@@ -864,21 +991,74 @@ export const ItemDataFragmentDoc = gql`
   id
   creator {
     username
-    profilePicture
+    profilePicture {
+      profilePicture256
+      profilePicture64
+    }
   }
-  ... on MediaItem {
+  ... on VideoItem {
+    file {
+      __typename
+      id
+      processingStatus
+      processingProgress
+      processingNotes
+      originalPath
+      compressedPath
+      thumbnailPath
+      posterThumbnailPath
+      relativeHeight
+    }
     caption
-    originalPath
-    compressedPath
+    position
   }
-  ... on VisualMediaItem {
-    relativeHeight
-    thumbnailPath
+  ... on ImageItem {
+    file {
+      __typename
+      id
+      processingStatus
+      processingProgress
+      processingNotes
+      originalPath
+      compressedPath
+      thumbnailPath
+      relativeHeight
+    }
+    caption
+    position
+  }
+  ... on GifItem {
+    file {
+      __typename
+      id
+      processingStatus
+      processingProgress
+      processingNotes
+      originalPath
+      compressedPath
+      compressedGifPath
+      thumbnailPath
+      relativeHeight
+    }
+    caption
+    position
+  }
+  ... on AudioItem {
+    file {
+      __typename
+      id
+      processingStatus
+      processingProgress
+      processingNotes
+      originalPath
+      compressedPath
+      waveform
+    }
+    caption
+    position
   }
   ... on ProcessingItem {
-    taskProgress
-    taskStatus
-    taskNotes
+    position
   }
 }
     `;
@@ -892,7 +1072,10 @@ export const PostDataFragmentDoc = gql`
   creator {
     name
     username
-    profilePicture
+    profilePicture {
+      profilePicture256
+      profilePicture64
+    }
   }
   keywords {
     name
@@ -911,7 +1094,10 @@ export const PostsConnectionFragmentDoc = gql`
     id
     title
     creator {
-      profilePicture
+      profilePicture {
+        profilePicture256
+        profilePicture64
+      }
       username
     }
     items(first: 1) {
@@ -919,12 +1105,36 @@ export const PostsConnectionFragmentDoc = gql`
       nodes {
         id
         __typename
-        ... on VisualMediaItem {
-          relativeHeight
-          thumbnailPath
+        ... on VideoItem {
+          file {
+            __typename
+            relativeHeight
+            thumbnailPath
+            posterThumbnailPath
+          }
+        }
+        ... on ImageItem {
+          file {
+            __typename
+            relativeHeight
+            thumbnailPath
+          }
+        }
+        ... on GifItem {
+          file {
+            __typename
+            relativeHeight
+            thumbnailPath
+          }
         }
         ... on AudioItem {
-          ampThumbnail
+          caption
+          description
+          file {
+            __typename
+            waveform
+            waveformThumbnail
+          }
         }
       }
     }
@@ -939,7 +1149,10 @@ export const SettingsDocument = gql`
   me {
     name
     username
-    profilePicture
+    profilePicture {
+      profilePicture256
+      profilePicture64
+    }
     linkedTelegram
   }
   userSessions {
@@ -1050,6 +1263,11 @@ export const CreatePostDocument = gql`
   }
 }
     ${PostDataFragmentDoc}`;
+export const UploadItemFileDocument = gql`
+    mutation uploadItemFile($file: Upload!, $type: FileType) {
+  uploadItemFile(file: $file, type: $type)
+}
+    `;
 export const EditPostDocument = gql`
     mutation editPost($id: ID!, $title: String!, $keywords: [ID!]!, $language: Language!, $items: [EditItemInput!], $newItems: [NewItemInput!]) {
   editPost(
@@ -1072,6 +1290,11 @@ export const DeleteItemDocument = gql`
 export const DeletePostDocument = gql`
     mutation deletePost($deletePostId: ID!) {
   deletePost(postId: $deletePostId)
+}
+    `;
+export const DeleteTemporaryFileDocument = gql`
+    mutation deleteTemporaryFile($fileId: String!) {
+  deleteTemporaryFile(fileId: $fileId)
 }
     `;
 export const MergePostDocument = gql`
@@ -1097,16 +1320,45 @@ export const MoveItemDocument = gql`
   )
 }
     `;
-export const TaskUpdatesDocument = gql`
-    subscription taskUpdates($ids: [String!]!) {
-  taskUpdates(ids: $ids) {
+export const FileProcessingUpdatesDocument = gql`
+    subscription fileProcessingUpdates($ids: [String!]!) {
+  fileProcessingUpdates(ids: $ids) {
     kind
-    item {
-      ...ItemData
+    file {
+      id
+      processingStatus
+      processingProgress
+      processingNotes
+      ... on PhotoFile {
+        originalPath
+        compressedPath
+        thumbnailPath
+        relativeHeight
+      }
+      ... on VideoFile {
+        originalPath
+        compressedPath
+        thumbnailPath
+        posterThumbnailPath
+        relativeHeight
+      }
+      ... on GifFile {
+        originalPath
+        compressedPath
+        compressedGifPath
+        thumbnailPath
+        relativeHeight
+      }
+      ... on AudioFile {
+        originalPath
+        compressedPath
+        waveform
+        waveformThumbnail
+      }
     }
   }
 }
-    ${ItemDataFragmentDoc}`;
+    `;
 export const ChangeNameDocument = gql`
     mutation changeName($newName: String!) {
   changeName(newName: $newName)
@@ -1147,7 +1399,10 @@ export const MeDocument = gql`
   me {
     name
     username
-    profilePicture
+    profilePicture {
+      profilePicture256
+      profilePicture64
+    }
     linkedTelegram
   }
 }
@@ -1158,7 +1413,10 @@ export const UserDocument = gql`
     id
     username
     name
-    profilePicture
+    profilePicture {
+      profilePicture256
+      profilePicture64
+    }
     posts {
       totalCount
     }
@@ -1172,7 +1430,10 @@ export const UsersDocument = gql`
       id
       username
       name
-      profilePicture
+      profilePicture {
+        profilePicture256
+        profilePicture64
+      }
       postCount
     }
     hasNextPage
@@ -1186,7 +1447,10 @@ export const UserWithPostsDocument = gql`
     id
     username
     name
-    profilePicture
+    profilePicture {
+      profilePicture256
+      profilePicture64
+    }
     postCount
   }
   posts(first: 24, after: $after, byContent: $byContent, byUsers: [$username]) {
@@ -1210,13 +1474,15 @@ const PostDocumentString = print(PostDocument);
 const PostsDocumentString = print(PostsDocument);
 const PostsTextOnlyDocumentString = print(PostsTextOnlyDocument);
 const CreatePostDocumentString = print(CreatePostDocument);
+const UploadItemFileDocumentString = print(UploadItemFileDocument);
 const EditPostDocumentString = print(EditPostDocument);
 const DeleteItemDocumentString = print(DeleteItemDocument);
 const DeletePostDocumentString = print(DeletePostDocument);
+const DeleteTemporaryFileDocumentString = print(DeleteTemporaryFileDocument);
 const MergePostDocumentString = print(MergePostDocument);
 const ReorderItemDocumentString = print(ReorderItemDocument);
 const MoveItemDocumentString = print(MoveItemDocument);
-const TaskUpdatesDocumentString = print(TaskUpdatesDocument);
+const FileProcessingUpdatesDocumentString = print(FileProcessingUpdatesDocument);
 const ChangeNameDocumentString = print(ChangeNameDocument);
 const ChangePasswordDocumentString = print(ChangePasswordDocument);
 const UploadPictureDocumentString = print(UploadPictureDocument);
@@ -1263,6 +1529,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     createPost(variables: CreatePostMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: CreatePostMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<CreatePostMutation>(CreatePostDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'createPost', 'mutation', variables);
     },
+    uploadItemFile(variables: UploadItemFileMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: UploadItemFileMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<UploadItemFileMutation>(UploadItemFileDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'uploadItemFile', 'mutation', variables);
+    },
     editPost(variables: EditPostMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: EditPostMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<EditPostMutation>(EditPostDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'editPost', 'mutation', variables);
     },
@@ -1271,6 +1540,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     deletePost(variables: DeletePostMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: DeletePostMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<DeletePostMutation>(DeletePostDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'deletePost', 'mutation', variables);
+    },
+    deleteTemporaryFile(variables: DeleteTemporaryFileMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: DeleteTemporaryFileMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<DeleteTemporaryFileMutation>(DeleteTemporaryFileDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'deleteTemporaryFile', 'mutation', variables);
     },
     mergePost(variables: MergePostMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: MergePostMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<MergePostMutation>(MergePostDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'mergePost', 'mutation', variables);
@@ -1281,8 +1553,8 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     moveItem(variables: MoveItemMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: MoveItemMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<MoveItemMutation>(MoveItemDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'moveItem', 'mutation', variables);
     },
-    taskUpdates(variables: TaskUpdatesSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: TaskUpdatesSubscription; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
-        return withWrapper((wrappedRequestHeaders) => client.rawRequest<TaskUpdatesSubscription>(TaskUpdatesDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'taskUpdates', 'subscription', variables);
+    fileProcessingUpdates(variables: FileProcessingUpdatesSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: FileProcessingUpdatesSubscription; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<FileProcessingUpdatesSubscription>(FileProcessingUpdatesDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'fileProcessingUpdates', 'subscription', variables);
     },
     changeName(variables: ChangeNameMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ChangeNameMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<ChangeNameMutation>(ChangeNameDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'changeName', 'mutation', variables);
