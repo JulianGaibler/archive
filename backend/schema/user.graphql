@@ -18,9 +18,9 @@ type User implements Node {
   name: String!
 
   """
-  Name of the user's profile picture.
+  Profile picture file containing different sizes.
   """
-  profilePicture: String
+  profilePicture: ProfilePictureFile
 
   """
   Shows if the user has a connected Telegram Account.

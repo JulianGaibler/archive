@@ -6,8 +6,11 @@
   import ProcessingMediaStatus from '@src/components/ProcessingMediaStatus.svelte'
   import Menu, { type ContextClickHandler } from 'tint/components/Menu.svelte'
   import IconMore from 'tint/icons/20-more.svg?raw'
-  import { formatDate, getConvertedSrcPath, getPlainSrcPath } from '@src/utils'
+  import { formatDate } from '@src/utils'
+  import { FileProcessingStatus, FileType } from '@src/generated/graphql'
   import type { PostUpdate, EditableItem } from '@src/utils/edit-manager'
+  import { getResourceUrl } from '@src/utils/resource-urls'
+  import type { MediaItemData } from '@src/components/ItemMedia.svelte'
 
   type Props = {
     loading: boolean
@@ -16,6 +19,7 @@
     onMoveItem?: (itemId: string) => void
     onDeleteItem?: (itemId: string) => void
     removeUploadItem?: (itemId: string) => void
+    cancelUploadItem?: (itemId: string) => void
   }
 
   let {
@@ -25,6 +29,7 @@
     onMoveItem,
     onDeleteItem,
     removeUploadItem,
+    cancelUploadItem,
   }: Props = $props()
 
   function forceUpdateEditData() {
@@ -47,21 +52,35 @@
   const itemActions = $derived([
     ...(onMoveItem &&
     item.type === 'existing' &&
-    item.data.__typename !== 'ProcessingItem'
+    !(
+      'file' in item.data &&
+      item.data.file &&
+      (item.data.file.processingStatus === FileProcessingStatus.Queued ||
+        item.data.file.processingStatus === FileProcessingStatus.Processing)
+    )
       ? [{ label: 'Move to another post', onClick: () => onMoveItem(item.id) }]
       : []),
     ...(onDeleteItem &&
     item.type === 'existing' &&
-    (item.data.__typename !== 'ProcessingItem' ||
-      (item.data.__typename === 'ProcessingItem' &&
-        (item.data.taskStatus === 'FAILED' || item.data.taskStatus === 'DONE')))
+    !(
+      'file' in item.data &&
+      item.data.file &&
+      (item.data.file.processingStatus === FileProcessingStatus.Queued ||
+        item.data.file.processingStatus === FileProcessingStatus.Processing)
+    )
       ? [{ label: 'Delete item', onClick: () => onDeleteItem(item.id) }]
       : []),
   ])
 
   function handleRemoveUploadItem() {
-    if (item.type === 'upload' && removeUploadItem) {
-      removeUploadItem(item.id)
+    if (item.type === 'upload') {
+      if ((item.isUploading || item.isQueued) && cancelUploadItem) {
+        // Cancel active or queued uploads
+        cancelUploadItem(item.id)
+      } else if (removeUploadItem) {
+        // Remove completed uploads
+        removeUploadItem(item.id)
+      }
     }
   }
 </script>
@@ -69,8 +88,8 @@
 <article>
   <!-- <pre>{JSON.stringify(item, null, 2)}</pre> -->
   {#if item.type === 'existing'}
-    {#if item.data.__typename === 'ProcessingItem'}
-      <ProcessingMediaStatus item={item.data} />
+    {#if 'file' in item.data && item.data.file && (item.data.file.processingStatus === FileProcessingStatus.Queued || item.data.file.processingStatus === FileProcessingStatus.Processing)}
+      <ProcessingMediaStatus file={item.data.file} />
     {:else}
       <ItemMedia item={item.data} />
     {/if}
@@ -82,20 +101,21 @@
         <li>{formatDate(new Date(item.data.createdAt))}</li>
       </ul>
       <div class="actions">
-        {#if 'originalPath' in item.data}
+        {#if 'file' in item.data && item.data.file && 'originalPath' in item.data.file}
           <Button
             small={true}
             download={`archive-${item.id}`}
-            href={getPlainSrcPath(item.data.originalPath)}>Original</Button
+            href={getResourceUrl(item.data.file.originalPath)}>Original</Button
           >
         {/if}
-        {#if 'compressedPath' in item.data}
+        {#if 'file' in item.data && item.data.file && 'compressedPath' in item.data.file}
           <Button
             small={true}
             download={`archive-${item.id}-original`}
-            href={getConvertedSrcPath(
-              item.data.compressedPath,
-              item.data.__typename,
+            href={getResourceUrl(
+              'compressedGifPath' in item.data.file
+                ? item.data.file.compressedGifPath
+                : item.data.file.compressedPath,
             )}>Compressed</Button
           >
         {/if}
@@ -111,7 +131,59 @@
       </div>
     </div>
   {:else if item.type === 'upload'}
-    <ItemMedia file={item.file} />
+    {#if item.isQueued}
+      <ProcessingMediaStatus
+        uploadItem={{
+          isUploading: false,
+          uploadError: undefined,
+          isQueued: true,
+        }}
+        onCancel={handleRemoveUploadItem}
+      />
+    {:else if item.isUploading}
+      <ProcessingMediaStatus
+        uploadItem={{
+          isUploading: true,
+          uploadError: undefined,
+          uploadController: item.uploadController,
+        }}
+        onCancel={handleRemoveUploadItem}
+      />
+    {:else if item.uploadError}
+      <ProcessingMediaStatus
+        uploadItem={{ isUploading: false, uploadError: item.uploadError }}
+        onCancel={handleRemoveUploadItem}
+      />
+    {:else if item.processingStatus === FileProcessingStatus.Done && item.processedFile}
+      <!-- File is done processing, show the actual media -->
+      <ItemMedia
+        item={{
+          __typename:
+            item.fileType === FileType.Image
+              ? 'ImageItem'
+              : item.fileType === FileType.Video
+                ? 'VideoItem'
+                : item.fileType === FileType.Gif
+                  ? 'GifItem'
+                  : 'AudioItem',
+          file: item.processedFile,
+        } as MediaItemData}
+      />
+    {:else if item.processingStatus && (item.processingStatus === FileProcessingStatus.Queued || item.processingStatus === FileProcessingStatus.Processing)}
+      <ProcessingMediaStatus
+        file={{
+          id: item.fileId || '',
+          processingStatus: item.processingStatus,
+          processingProgress: item.processingProgress,
+          processingNotes: item.processingNotes,
+        }}
+      />
+    {:else}
+      <!-- File is uploaded and not currently processing, show processing complete status -->
+      <ProcessingMediaStatus
+        uploadItem={{ isUploading: false, uploadError: undefined }}
+      />
+    {/if}
     <div class="info">
       <div class="actions standalone">
         <Button small={true} onclick={handleRemoveUploadItem}>Remove</Button>

@@ -26,6 +26,7 @@ const schemaPath = join(process.cwd(), 'schema')
 const typeDefs = [
   'shared.graphql',
   'pagination.graphql',
+  'file.graphql',
   'user.graphql',
   'post.graphql',
   'item.graphql',

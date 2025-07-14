@@ -1,4 +1,9 @@
-import ffmpeg, { FfmpegCommand } from 'fluent-ffmpeg'
+import ffmpeg, {
+  FFmpeg as FFmpegWrapper,
+  ffprobe,
+  FfmpegCommand,
+  FFProbeMetadata,
+} from './ffmpeg-wrapper.js'
 import fs from 'fs'
 import sharp from 'sharp'
 import stream, { Readable } from 'stream'
@@ -10,22 +15,24 @@ import { InputError } from '@src/errors/index.js'
 import {
   FileType,
   FileProcessingResult,
-  UpdateCallback,
+  FileUpdateCallback,
   StreamFactory,
 } from './types.js'
 import {
   profilePictureOptions,
   itemTypes,
   videoEncodingOptions,
+  audioEncodingOptions,
+  audioNormalizationOptions,
   processingConfig,
 } from './config.js'
 
 const pipeline = util.promisify(stream.pipeline)
 
 export default class FileProcessor {
-  private readonly updateCallback: UpdateCallback
+  private readonly updateCallback: FileUpdateCallback
 
-  constructor(updateCallback: UpdateCallback) {
+  constructor(updateCallback: FileUpdateCallback) {
     this.updateCallback = updateCallback
   }
 
@@ -98,9 +105,9 @@ export default class FileProcessor {
 
     // Probe video duration
     const duration = await new Promise<number>((resolve, reject) => {
-      ffmpeg.ffprobe(filePath, (err, metadata) => {
+      ffprobe(filePath, (err: Error | null, metadata?: FFProbeMetadata) => {
         if (err) return reject(err)
-        resolve(metadata.format.duration || 0)
+        resolve(metadata?.format?.duration || 0)
       })
     })
     let screenshotTime = 1
@@ -131,6 +138,18 @@ export default class FileProcessor {
       directory,
     )
 
+    // Create poster thumbnail for videos (larger thumbnail at compressed video dimensions)
+    const videoOutputHeight =
+      height > processingConfig.video.maxHeight
+        ? processingConfig.video.maxHeight
+        : height
+    const posterThumbnailPaths = await this.createPosterThumbnail(
+      () => fs.createReadStream(tmpPath),
+      directory,
+      videoOutputHeight,
+      width,
+    )
+
     fileUtils.remove(tmpPath)
     tmpDir.removeCallback()
 
@@ -142,7 +161,7 @@ export default class FileProcessor {
       renderProgress[idx] = progress
       const average =
         renderProgress.reduce((a, b) => a + b, 0) / renderProgress.length
-      this.updateCallback({ taskProgress: Math.floor(average) })
+      this.updateCallback({ processingProgress: Math.floor(average) })
     }
 
     const renderVideo = (
@@ -174,29 +193,83 @@ export default class FileProcessor {
       })
     }
 
+    const renderVideoWithNormalization = async (
+      renderIdx: number,
+      inputPath: string,
+      outputPath: string,
+      size?: string,
+      videoOptions: string[] = [],
+      audioOptions: string[] = [],
+      hasAudio = true,
+    ): Promise<void> => {
+      if (!hasAudio) {
+        // No audio, use standard video rendering
+        return renderVideo(renderIdx, inputPath, outputPath, size, [
+          ...videoOptions,
+          '-an', // No audio
+        ])
+      }
+
+      // Create temp file for normalized audio processing
+      const tmpDir = tmp.dirSync({ postfix: '-audio-norm' })
+      const tempOutputPath = fileUtils.resolvePath(
+        tmpDir.name,
+        'temp_normalized.mp4',
+      )
+
+      try {
+        // Use audio normalization with progress tracking
+        await FFmpegWrapper.normalizeAudio(inputPath, tempOutputPath, {
+          videoOptions: [
+            ...videoOptions,
+            ...(size
+              ? size.startsWith('?x')
+                ? ['-vf', `scale=-2:${size.substring(2)}`]
+                : ['-s', size]
+              : []),
+          ],
+          audioOptions,
+          normalizationOptions: audioNormalizationOptions.ebuR128,
+          onProgress: (progress: { percent?: number }) => {
+            if (progress.percent !== undefined) {
+              updateProgress(renderIdx, progress.percent)
+            }
+          },
+        })
+
+        // Move the temp file to final destination
+        await fileUtils.moveAsync(tempOutputPath, outputPath)
+      } finally {
+        // Clean up temp directory
+        tmpDir.removeCallback()
+      }
+    }
+
     const mp4VideoOptions = videoEncodingOptions.mp4.video
     const mp4AudioOptions = videoEncodingOptions.mp4.audio
 
-    // Render main video
+    // Render main video with audio normalization
     const outputHeight =
       height > processingConfig.video.maxHeight
         ? processingConfig.video.maxHeight
         : height
 
-    const renderA = renderVideo(
+    const renderA = renderVideoWithNormalization(
       0,
       filePath,
       filePaths.mp4!,
       `?x${outputHeight}`,
       [
         ...mp4VideoOptions,
-        ...(fileType === FileType.VIDEO
-          ? [...mp4AudioOptions, '-b:a 192k']
-          : ['-an']),
-        '-b:v 2500k',
-        '-bufsize 2000k',
-        '-maxrate 4500k',
+        '-b:v',
+        '2500k',
+        '-bufsize',
+        '2000k',
+        '-maxrate',
+        '4500k',
       ],
+      fileType === FileType.VIDEO ? [...mp4AudioOptions, '-b:a', '192k'] : [],
+      fileType === FileType.VIDEO, // hasAudio
     )
 
     const promises = [renderA]
@@ -208,7 +281,7 @@ export default class FileProcessor {
         filePath,
         filePaths.gif,
         undefined,
-        ['-f gif'],
+        [],
         (f: FfmpegCommand) => {
           f.addOption(
             '-filter_complex',
@@ -220,15 +293,95 @@ export default class FileProcessor {
     }
 
     await Promise.all(promises)
-    await this.updateCallback({ taskProgress: 100 })
+    await this.updateCallback({ processingProgress: 100 })
 
     return {
       relHeight: round((height / width) * 100, 4),
       createdFiles: {
         compressed: filePaths,
         thumbnail: thumbnailPaths,
+        posterThumbnail: posterThumbnailPaths,
         original: filePath,
       },
+    }
+  }
+  async processAudio(
+    filePath: string,
+    directory: string,
+  ): Promise<FileProcessingResult> {
+    const compressed = fileUtils.resolvePath(directory, 'audio')
+    const filePaths = {
+      mp3: `${compressed}.mp3`,
+    }
+
+    // Get audio metadata
+    const duration = await new Promise<number>((resolve, reject) => {
+      ffprobe(filePath, (err: Error | null, metadata?: FFProbeMetadata) => {
+        if (err) return reject(err)
+        resolve(metadata?.format?.duration || 0)
+      })
+    })
+
+    if (duration <= 0) {
+      throw new InputError('Invalid audio file or could not determine duration')
+    }
+
+    // Generate waveform data (10% of processing time)
+    this.updateCallback({ processingProgress: 5 })
+
+    // Calculate samples for full waveform (6 samples per second, max 80)
+    const samplesPerSecond = 8
+    const targetSamples = Math.min(
+      processingConfig.audio.waveformSamples,
+      Math.ceil(duration * samplesPerSecond),
+    )
+
+    const waveformData = await FFmpegWrapper.generateWaveform(filePath, {
+      samples: targetSamples,
+      channel: 'mono',
+    })
+
+    this.updateCallback({ processingProgress: 15 })
+
+    // Generate thumbnail waveform (always 12 samples)
+    const thumbnailWaveformData = await FFmpegWrapper.generateWaveform(
+      filePath,
+      {
+        samples: processingConfig.audio.waveformThumbnailSamples,
+        channel: 'mono',
+      },
+    )
+
+    this.updateCallback({ processingProgress: 25 })
+
+    // Compress to MP3 with audio normalization (75% of processing time)
+    const mp3AudioOptions = audioEncodingOptions.mp3.audio
+
+    await FFmpegWrapper.normalizeAudio(filePath, filePaths.mp3!, {
+      audioOptions: mp3AudioOptions,
+      normalizationOptions: audioNormalizationOptions.ebuR128,
+      onProgress: (progress: { percent?: number }) => {
+        if (progress.percent !== undefined) {
+          // Map progress from 25% to 95% (70% of total processing)
+          const mappedProgress = 25 + progress.percent * 0.7
+          this.updateCallback({
+            processingProgress: Math.floor(mappedProgress),
+          })
+        }
+      },
+    })
+
+    await this.updateCallback({ processingProgress: 100 })
+
+    return {
+      relHeight: 0, // Not applicable for audio
+      createdFiles: {
+        compressed: filePaths,
+        thumbnail: {}, // No thumbnail for audio
+        original: filePath,
+      },
+      waveform: waveformData.peaks,
+      waveformThumbnail: thumbnailWaveformData.peaks,
     }
   }
 
@@ -251,6 +404,52 @@ export default class FileProcessor {
         processingConfig.thumbnail.maxSize,
         { fit: sharp.fit.inside },
       )
+
+    const [err1] = await to(
+      pipeline(
+        createReadStream(),
+        transform.clone().toFormat('jpeg', {
+          quality: processingConfig.thumbnail.jpegQuality,
+          progressive: true,
+        }),
+        wsJpeg,
+      ),
+    )
+    if (err1) throw err1
+
+    return filePaths
+  }
+
+  /**
+   * Creates a poster thumbnail for videos that matches the dimensions of the
+   * compressed video This is used as a poster image for the video player
+   *
+   * @param createReadStream Function that creates a readable stream
+   * @param directory Directory to store the thumbnail
+   * @param maxHeight Maximum height of the poster thumbnail
+   * @param originalWidth Original width of the video
+   * @returns Object containing the poster thumbnail file path
+   */
+  private async createPosterThumbnail(
+    createReadStream: StreamFactory,
+    directory: string,
+    maxHeight: number,
+    _originalWidth: number,
+  ): Promise<{ jpeg: string }> {
+    const compressed = fileUtils.resolvePath(directory, 'poster-thumbnail')
+    const filePaths = {
+      jpeg: `${compressed}.jpeg`,
+    }
+
+    const wsJpeg = fs.createWriteStream(filePaths.jpeg)
+
+    const transform = sharp()
+      .rotate()
+      .removeAlpha()
+      .resize(undefined, maxHeight, {
+        fit: sharp.fit.inside,
+        withoutEnlargement: true,
+      })
 
     const [err1] = await to(
       pipeline(

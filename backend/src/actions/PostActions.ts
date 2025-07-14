@@ -9,7 +9,6 @@ import {
   RequestError,
   validateInput,
 } from '@src/errors/index.js'
-import { FileUpload } from 'graphql-upload/processRequest.mjs'
 import KeywordModel, { KeywordExternal } from '@src/models/KeywordModel.js'
 import {
   eq,
@@ -31,6 +30,8 @@ import PaginationUtils, {
   PaginationArgs,
   Connection,
 } from './PaginationUtils.js'
+import FileActions from './FileActions.js'
+import FileModel from '@src/models/FileModel.js'
 import z from 'zod/v4'
 
 const postTable = PostModel.table
@@ -336,7 +337,7 @@ const PostActions = {
         | null
       newItems?:
         | {
-            file: Promise<FileUpload>
+            fileId: string // File UUID from FileActions.mUploadItemFile
             caption?: ItemExternal['caption'] | null
             description?: ItemExternal['description'] | null
           }[]
@@ -348,9 +349,6 @@ const PostActions = {
     const vFields = validateInput(editPostSchema, fields)
 
     const postIId = PostModel.decodeId(vFields.postId)
-
-    let filesForStorage: { item: ItemInternal; file: Promise<FileUpload> }[] =
-      []
 
     const updatedPost = await ctx.db.transaction(async (tx) => {
       // Verify post exists and user has permission
@@ -496,6 +494,17 @@ const PostActions = {
           highestPositionResult[0]?.maxPosition || 0,
         )
 
+        // Validate that all file IDs exist and are not already attached to items
+        const fileIds = vFields.newItems.map((item) => item.fileId)
+        const existingFiles = await ctx.db
+          .select({ id: FileModel.table.id })
+          .from(FileModel.table)
+          .where(inArray(FileModel.table.id, fileIds))
+
+        if (existingFiles.length !== fileIds.length) {
+          throw new InputError('Some file IDs are invalid or do not exist')
+        }
+
         // Create new items data
         const newItemsToCreate = vFields.newItems.map((item, index) => ({
           type: 'PROCESSING' as const,
@@ -503,25 +512,15 @@ const PostActions = {
           description: item.description || '',
           postId: postIId,
           creatorId: userIId,
-          taskStatus: 'QUEUED' as const,
-          taskProgress: 0,
-          taskNotes: '',
           position: highestPosition + index + 1,
+          fileId: item.fileId,
         }))
+
         // Insert new items
-        const createdItems = await tx
-          .insert(itemTable)
-          .values(newItemsToCreate)
-          .returning()
+        await tx.insert(itemTable).values(newItemsToCreate).returning()
 
-        // Store files after transaction commits successfully
-
-        filesForStorage = createdItems.map((item, index) => ({
-          item,
-          file: vFields.newItems![index].file,
-        }))
-
-        // Store files asynchronously after transaction
+        // Remove expiry from the files since they're now attached to a post
+        await FileActions.mRemoveFileExpiry(ctx, fileIds)
       }
 
       // Reorder items to eliminate gaps using raw SQL
@@ -529,27 +528,6 @@ const PostActions = {
 
       return updatedPost
     })
-
-    for (const { item, file } of filesForStorage) {
-      try {
-        await Context.fileStorage.storeFile(
-          ctx,
-          file,
-          ItemModel.encodeId(item.id),
-        )
-      } catch (error: unknown) {
-        console.error(
-          `Failed to store file for item ${ItemModel.encodeId(item.id)}:`,
-          error,
-        )
-        throw new RequestError(
-          `Failed to store file for item ${ItemModel.encodeId(item.id)}. Please try again.`,
-        )
-      }
-    }
-
-    // Trigger file processing queue
-    Context.fileStorage.checkQueue()
 
     return PostModel.makeExternal(updatedPost)
   },
@@ -586,20 +564,12 @@ const PostActions = {
 
       // Delete all files associated with items
       if (items.length > 0) {
-        const itemsForDeletion = items
-          .filter(
-            (item) =>
-              item.originalPath && item.thumbnailPath && item.compressedPath,
-          )
-          .map((item) => ({
-            type: item.type,
-            originalPath: item.originalPath!,
-            thumbnailPath: item.thumbnailPath!,
-            compressedPath: item.compressedPath!,
-          }))
+        const fileIds = items
+          .filter((item) => item.fileId !== null)
+          .map((item) => item.fileId!)
 
-        if (itemsForDeletion.length > 0) {
-          await Context.fileStorage.deleteFiles(itemsForDeletion)
+        if (fileIds.length > 0) {
+          await FileActions._mDeleteFiles(ctx, fileIds)
         }
       }
 
@@ -643,15 +613,8 @@ const PostActions = {
       // }
 
       // Delete associated files
-      if (item.originalPath && item.thumbnailPath && item.compressedPath) {
-        await Context.fileStorage.deleteFiles([
-          {
-            type: item.type,
-            originalPath: item.originalPath,
-            thumbnailPath: item.thumbnailPath,
-            compressedPath: item.compressedPath,
-          },
-        ])
+      if (item.fileId) {
+        await FileActions._mDeleteFile(ctx, item.fileId)
       }
 
       // Delete the item
@@ -712,8 +675,8 @@ const PostActions = {
         (item) => item.postId !== internalPostId,
       )
       if (itemsNotInPost.length > 0) {
-        const externalIds = itemsNotInPost.map(
-          (item) => ItemModel.makeExternal(item).id,
+        const externalIds = itemsNotInPost.map((item) =>
+          ItemModel.encodeId(item.id),
         )
         throw new InputError(
           `Items ${externalIds.join(', ')} do not belong to the specified post`,
@@ -783,7 +746,10 @@ const PostActions = {
         .where(eq(itemTable.postId, internalPostId))
         .orderBy(itemTable.position)
 
-      return allItemsInNewOrder.map((item) => ItemModel.makeExternal(item).id)
+      const externalIds = allItemsInNewOrder.map((item) =>
+        ItemModel.encodeId(item.id),
+      )
+      return externalIds
     })
   },
 
@@ -1285,7 +1251,7 @@ const editPostSchema = z.object({
   newItems: z
     .array(
       z.object({
-        file: z.any(), // or whatever validation you need for FileUpload
+        fileId: z.string().uuid(), // File UUID from FileActions.mUploadItemFile
         caption: ItemModel.schema.shape.caption.optional(),
         description: ItemModel.schema.shape.description.optional(),
       }),

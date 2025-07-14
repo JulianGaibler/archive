@@ -75,3 +75,20 @@ $colors-dark: (
     card-shadow: '0 5px 40px #000000a4, inset 0 2px 0 -1px #ffffff60',
   ),
 );
+
+$colors-player: (
+  bg: #1a1a1a,
+  text: #ffffff,
+  text-secondary: #cccccc,
+  text-accent: #d4213a,
+  text-link: #ffffff,
+  action-primary: #ffffff,
+  action-primary-text: #000000,
+  action-secondary: #ffffff,
+  action-secondary-text: #ffffff,
+  action-primary-hover: #cccccc,
+  action-primary-active: #999999,
+  action-secondary-hover: #ffffff49,
+  action-secondary-active: #ffffff9a,
+  input-bg: #222222,
+);

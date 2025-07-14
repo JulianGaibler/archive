@@ -1,11 +1,11 @@
 type Subscription {
   """
-  Returns updates from tasks.
+  Returns updates from file processing.
   """
-  taskUpdates(
+  fileProcessingUpdates(
     """
-    List of Task IDs.
+    List of File IDs.
     """
     ids: [String!]!
-  ): TaskUpdate!
+  ): FileProcessingUpdate!
 }

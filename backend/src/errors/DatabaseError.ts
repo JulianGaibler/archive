@@ -34,11 +34,11 @@ export default class DatabaseError extends GraphQLError {
     if (!DatabaseError.isPostgresError(dbError)) {
       return {
         message: 'A database error occurred. Please try again later.',
-        code: 'REQUEST_ERROR'
+        code: 'REQUEST_ERROR',
       }
     }
 
-    const dbErrorObj = (dbError as unknown) as { cause: DatabaseErrorCause }
+    const dbErrorObj = dbError as unknown as { cause: DatabaseErrorCause }
     const error = dbErrorObj.cause
     const errorCode = error.code
 
@@ -56,44 +56,46 @@ export default class DatabaseError extends GraphQLError {
       case '42P01': // undefined_table
         return {
           message: 'The requested resource could not be found.',
-          code: 'REQUEST_ERROR'
+          code: 'REQUEST_ERROR',
         }
 
       case '42703': // undefined_column
         return {
           message: 'Invalid field specified in the request.',
-          code: 'REQUEST_ERROR'
+          code: 'REQUEST_ERROR',
         }
 
       case '42601': // syntax_error
       case '42000': // syntax_error_or_access_rule_violation
         return {
           message: 'Invalid request format.',
-          code: 'REQUEST_ERROR'
+          code: 'REQUEST_ERROR',
         }
 
       case '53300': // too_many_connections
         return {
           message: 'Service is currently busy. Please try again in a moment.',
-          code: 'REQUEST_ERROR'
+          code: 'REQUEST_ERROR',
         }
 
       case '08006': // connection_failure
       case '08001': // sqlclient_unable_to_establish_sqlconnection
         return {
           message: 'Service temporarily unavailable. Please try again later.',
-          code: 'REQUEST_ERROR'
+          code: 'REQUEST_ERROR',
         }
 
       default:
         return {
           message: 'A database error occurred. Please try again later.',
-          code: 'REQUEST_ERROR'
+          code: 'REQUEST_ERROR',
         }
     }
   }
 
-  private static isPostgresError(error: unknown): error is { cause: DatabaseErrorCause } {
+  private static isPostgresError(
+    error: unknown,
+  ): error is { cause: DatabaseErrorCause } {
     if (
       typeof error !== 'object' ||
       error === null ||
@@ -137,7 +139,7 @@ export default class DatabaseError extends GraphQLError {
         /^(\w+)_.*_unique$/,
         /^(\w+)_.*_key$/,
         /^unique_(\w+)_/,
-        /^(\w+)_unique$/
+        /^(\w+)_unique$/,
       ]
 
       for (const pattern of constraintPatterns) {
@@ -155,14 +157,15 @@ export default class DatabaseError extends GraphQLError {
     }
 
     // Generate user-friendly message
-    const message = fieldName && ALLOWED_FIELDS.includes(fieldName)
-      ? `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} already exists.`
-      : 'This item already exists.'
+    const message =
+      fieldName && ALLOWED_FIELDS.includes(fieldName)
+        ? `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} already exists.`
+        : 'This item already exists.'
 
     return {
       message,
       code: 'INPUT_ERROR',
-      field: fieldName
+      field: fieldName,
     }
   }
 
@@ -176,18 +179,19 @@ export default class DatabaseError extends GraphQLError {
     if (detail && detail.includes('is not present in table')) {
       return {
         message: 'The referenced item does not exist.',
-        code: 'INPUT_ERROR'
+        code: 'INPUT_ERROR',
       }
     } else if (detail && detail.includes('is still referenced')) {
       return {
-        message: 'This item cannot be deleted because it is being used elsewhere.',
-        code: 'INPUT_ERROR'
+        message:
+          'This item cannot be deleted because it is being used elsewhere.',
+        code: 'INPUT_ERROR',
       }
     }
 
     return {
       message: 'Invalid relationship specified.',
-      code: 'INPUT_ERROR'
+      code: 'INPUT_ERROR',
     }
   }
 
@@ -203,19 +207,23 @@ export default class DatabaseError extends GraphQLError {
       if (constraintName.includes('email')) {
         return {
           message: 'Please enter a valid email address.',
-          code: 'INPUT_ERROR'
+          code: 'INPUT_ERROR',
         }
-      } else if (constraintName.includes('length') || constraintName.includes('min') || constraintName.includes('max')) {
+      } else if (
+        constraintName.includes('length') ||
+        constraintName.includes('min') ||
+        constraintName.includes('max')
+      ) {
         return {
           message: 'Value does not meet length requirements.',
-          code: 'INPUT_ERROR'
+          code: 'INPUT_ERROR',
         }
       }
     }
 
     return {
       message: 'Invalid value provided.',
-      code: 'INPUT_ERROR'
+      code: 'INPUT_ERROR',
     }
   }
 }

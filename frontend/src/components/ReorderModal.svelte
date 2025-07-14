@@ -8,6 +8,7 @@
     id: string
     description: string
     caption?: string
+    typename: string
     thumbnail?: string
   }
 
@@ -76,11 +77,22 @@
       {#each reorderedItems as item (item.id)}
         <li class="reorder-item">
           <div class="item-content">
-            <div class="thumbnail {item.thumbnail ? '' : 'placeholder'}">
-              {#if item.thumbnail}
-                <img src={getResourceUrl(`${item.thumbnail}.jpeg`)} alt="" />
-              {/if}
-            </div>
+            {#if item.thumbnail}
+              <div class="thumbnail" aria-hidden="true">
+                <img src={getResourceUrl(item.thumbnail)} alt="" />
+              </div>
+            {:else if item.typename === 'AudioItem'}
+              <div class="thumbnail audio tint--tinted" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            {:else}
+              <div class="thumbnail placeholder" aria-hidden="true">
+                <span>No Thumbnail</span>
+              </div>
+            {/if}
             <div class="meta">
               <p>{item.description}</p>
               {#if item.caption}<p class="caption">{item.caption}</p>{/if}
@@ -151,19 +163,35 @@
   border-radius: tint.$size-4
   overflow: hidden
   flex-shrink: 0
-  background: var(--tint-bg-tertiary)
   display: flex
   align-items: center
   justify-content: center
   background-color: var(--tint-input-bg)
-
+  box-sizing: border-box
   img
     width: 100%
     height: 100%
     object-fit: contain
-
-  &.placeholder
-    background: var(--tint-bg-quaternary)
+  &.audio
+    display: flex
+    align-items: center
+    gap: tint.$size-4
+    padding: tint.$size-8
+    span
+      display: block
+      width: tint.$size-4
+      border-radius: tint.$size-8
+      background: var(--tint-text-accent)
+      &:nth-child(1)
+        height: 50%
+      &:nth-child(2)
+        height: 80%
+      &:nth-child(3)
+        height: 90%
+      &:nth-child(4)
+        height: 40%
+  // &.placeholder
+  //   background: var(--tint-bg)
 
 .meta
   flex: 1

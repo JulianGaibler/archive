@@ -1,9 +1,9 @@
 """
-Update data of a tasks current status.
+Update data of a file's current processing status.
 """
-type TaskUpdate {
+type FileProcessingUpdate {
   """
-  The ID of an object
+  The ID of the file
   """
   id: ID!
 
@@ -13,7 +13,7 @@ type TaskUpdate {
   kind: UpdateKind!
 
   """
-  The updated or created item.
+  The updated file.
   """
-  item: Item
+  file: File!
 }

@@ -1,11 +1,12 @@
 import { get, writable, derived } from 'svelte/store'
 import {
   Language,
+  FileType,
+  FileProcessingStatus,
   type getSdk,
   type PostQuery,
-  TaskStatus,
-  TaskUpdatesDocument,
-  type TaskUpdatesSubscription,
+  FileProcessingUpdatesDocument,
+  type FileProcessingUpdatesSubscription,
 } from '@src/generated/graphql'
 import { print } from 'graphql'
 import { getOperationResultError } from '@src/graphql-errors'
@@ -17,12 +18,12 @@ import {
   type UpdateValue,
 } from './edit-utils'
 import type { OpenDialog } from 'tint/components/Dialog.svelte'
-import { webSubscriptionsClient } from '@src/gql-client'
 import {
   createUploadController,
   UPLOAD_ID_HEADER,
   type UploadController,
 } from './custom-fetch'
+import { webSubscriptionsClient } from '@src/gql-client'
 
 type PostItemType = NonNullable<PostQuery['node']> & { __typename: 'Post' }
 
@@ -39,10 +40,22 @@ export type UploadItem = {
   type: 'upload'
   id: string
   file: File
+  fileType: FileType // Store the determined file type
+  fileId?: string // File ID returned from uploadItemFile
+  isUploading: boolean
+  isQueued: boolean // Whether the item is queued for upload
+  uploadError?: string
+  uploadController?: UploadController // Upload controller for progress and cancellation
   keywords: UpdateValue<string[]>
   description: UpdateValue<string>
   caption: UpdateValue<string> | undefined
   language: UpdateValue<Language>
+  // Processing information (set after upload when monitoring file processing)
+  processingStatus?: FileProcessingStatus
+  processingProgress?: number | null
+  processingNotes?: string | null
+  // Complete file data when processing is done (for display purposes)
+  processedFile?: FileProcessingUpdatesSubscription['fileProcessingUpdates']['file']
 }
 
 export type EditableItem = ExistingItem | UploadItem
@@ -52,7 +65,8 @@ export type PostUpdate = {
   language: UpdateValue<Language>
   keywords: UpdateValue<string[]>
   items: Record<string, EditableItem>
-  uploadController?: UploadController
+  uploadQueue: string[] // Queue of upload item IDs waiting to be uploaded
+  currentUploadId?: string // ID of the file currently being uploaded
   isUploading: boolean
 }
 
@@ -86,7 +100,7 @@ export function createEditManager(
           data: node,
           description: { value: node.description, error: undefined },
           caption:
-            'caption' in node
+            'caption' in node && typeof node.caption === 'string'
               ? { value: node.caption, error: undefined }
               : undefined,
           position: { value: node.position, error: undefined },
@@ -99,31 +113,40 @@ export function createEditManager(
   let openDialog: OpenDialog | undefined = undefined
   let subscriptionUnsubscribe: (() => void) | undefined = undefined
 
-  // Function to get processing items that need to be monitored
-  const getProcessingItemIds = (postData: PostItemType): string[] => {
-    const processingIds: string[] = []
-
-    postData.items.nodes?.forEach((item) => {
-      if (item && item.__typename === 'ProcessingItem') {
-        // Monitor items that are not FAILED or DONE
-        if (
-          item.taskStatus !== TaskStatus.Failed &&
-          item.taskStatus !== TaskStatus.Done
-        ) {
-          processingIds.push(item.id)
-        }
-      }
-    })
-
-    return processingIds
-  }
-
-  // Function to start subscription for processing items
+  // Function to start subscription for processing files
   const startProcessingSubscription = () => {
     const currentPost = get(post)
-    if (!currentPost) return
+    const currentData = get(data)
 
-    const processingIds = getProcessingItemIds(currentPost)
+    // Get processing IDs from both post data and edit data
+    const processingIds: string[] = []
+
+    // Add file IDs from existing items that are still processing
+    if (currentPost) {
+      currentPost.items.nodes?.forEach((item) => {
+        if (item && 'file' in item && item.file) {
+          // Monitor files that are not FAILED or DONE
+          if (
+            item.file.processingStatus !== FileProcessingStatus.Failed &&
+            item.file.processingStatus !== FileProcessingStatus.Done
+          ) {
+            processingIds.push(item.file.id)
+          }
+        }
+      })
+    }
+
+    // Add file IDs from uploaded items in edit data
+    if (currentData) {
+      Object.values(currentData.items).forEach((item) => {
+        if (item.type === 'upload' && item.fileId && !item.uploadError) {
+          // Only add if we don't already have it from the post data
+          if (!processingIds.includes(item.fileId)) {
+            processingIds.push(item.fileId)
+          }
+        }
+      })
+    }
 
     if (processingIds.length === 0 || !webSubscriptionsClient) {
       return
@@ -137,7 +160,7 @@ export function createEditManager(
 
     // Set up new subscription
     const subscription = webSubscriptionsClient.iterate({
-      query: print(TaskUpdatesDocument),
+      query: print(FileProcessingUpdatesDocument),
       variables: { ids: processingIds },
     })
 
@@ -149,12 +172,12 @@ export function createEditManager(
             console.error('Subscription errors:', result.errors)
           }
           const subscriptionData = result.data as
-            | TaskUpdatesSubscription
+            | FileProcessingUpdatesSubscription
             | undefined
-          if (subscriptionData?.taskUpdates?.item) {
-            const updatedItem = subscriptionData.taskUpdates.item
+          if (subscriptionData?.fileProcessingUpdates?.file) {
+            const updatedFile = subscriptionData.fileProcessingUpdates.file
 
-            // Update the post data with the new item information
+            // Update the post data with the new file information
             post.update((currentPost) => {
               if (!currentPost) return currentPost
 
@@ -163,8 +186,71 @@ export function createEditManager(
 
               if (newPost.items.nodes) {
                 newPost.items.nodes = newPost.items.nodes.map((node) => {
-                  if (node && node.id === updatedItem.id) {
-                    return updatedItem
+                  if (
+                    node &&
+                    'file' in node &&
+                    node.file &&
+                    node.file.id === updatedFile.id
+                  ) {
+                    // Update only the processing-related fields and paths that can change
+                    const updatedNode = { ...node }
+                    const nodeFile = (updatedNode as { file: typeof node.file })
+                      .file
+
+                    // Update core processing fields
+                    nodeFile.processingStatus = updatedFile.processingStatus
+                    nodeFile.processingProgress = updatedFile.processingProgress
+                    nodeFile.processingNotes = updatedFile.processingNotes
+
+                    // Update paths if they exist in the updated file
+                    if (
+                      'originalPath' in nodeFile &&
+                      'originalPath' in updatedFile
+                    ) {
+                      nodeFile.originalPath = updatedFile.originalPath
+                    }
+                    if (
+                      'compressedPath' in nodeFile &&
+                      'compressedPath' in updatedFile
+                    ) {
+                      nodeFile.compressedPath = updatedFile.compressedPath
+                    }
+                    if (
+                      'thumbnailPath' in nodeFile &&
+                      'thumbnailPath' in updatedFile
+                    ) {
+                      nodeFile.thumbnailPath = updatedFile.thumbnailPath
+                    }
+                    if (
+                      'posterThumbnailPath' in nodeFile &&
+                      'posterThumbnailPath' in updatedFile
+                    ) {
+                      nodeFile.posterThumbnailPath =
+                        updatedFile.posterThumbnailPath
+                    }
+                    if (
+                      'compressedGifPath' in nodeFile &&
+                      'compressedGifPath' in updatedFile
+                    ) {
+                      nodeFile.compressedGifPath = updatedFile.compressedGifPath
+                    }
+                    if (
+                      'relativeHeight' in nodeFile &&
+                      'relativeHeight' in updatedFile
+                    ) {
+                      nodeFile.relativeHeight = updatedFile.relativeHeight
+                    }
+                    if ('waveform' in nodeFile && 'waveform' in updatedFile) {
+                      nodeFile.waveform = updatedFile.waveform
+                    }
+                    if (
+                      'waveformThumbnail' in nodeFile &&
+                      'waveformThumbnail' in updatedFile
+                    ) {
+                      nodeFile.waveformThumbnail = updatedFile.waveformThumbnail
+                    }
+
+                    return updatedNode
                   }
                   return node
                 })
@@ -176,32 +262,137 @@ export function createEditManager(
             data.update((currentData) => {
               if (!currentData) return currentData
 
-              if (
-                currentData.items[updatedItem.id] &&
-                currentData.items[updatedItem.id].type === 'existing'
-              ) {
-                const existingItem = currentData.items[
-                  updatedItem.id
-                ] as ExistingItem
-                existingItem.data = updatedItem
-              }
+              // Find the item with this file and update it
+              Object.values(currentData.items).forEach((item) => {
+                if (
+                  item.type === 'existing' &&
+                  'file' in item.data &&
+                  item.data.file &&
+                  item.data.file.id === updatedFile.id
+                ) {
+                  // Update the file data with new processing information and paths
+                  const itemFile = item.data.file
+
+                  // Update core processing fields
+                  itemFile.processingStatus = updatedFile.processingStatus
+                  itemFile.processingProgress = updatedFile.processingProgress
+                  itemFile.processingNotes = updatedFile.processingNotes
+
+                  // Update paths if they exist in the updated file
+                  if (
+                    'originalPath' in itemFile &&
+                    'originalPath' in updatedFile
+                  ) {
+                    itemFile.originalPath = updatedFile.originalPath
+                  }
+                  if (
+                    'compressedPath' in itemFile &&
+                    'compressedPath' in updatedFile
+                  ) {
+                    itemFile.compressedPath = updatedFile.compressedPath
+                  }
+                  if (
+                    'thumbnailPath' in itemFile &&
+                    'thumbnailPath' in updatedFile
+                  ) {
+                    itemFile.thumbnailPath = updatedFile.thumbnailPath
+                  }
+                  if (
+                    'posterThumbnailPath' in itemFile &&
+                    'posterThumbnailPath' in updatedFile
+                  ) {
+                    itemFile.posterThumbnailPath =
+                      updatedFile.posterThumbnailPath
+                  }
+                  if (
+                    'compressedGifPath' in itemFile &&
+                    'compressedGifPath' in updatedFile
+                  ) {
+                    itemFile.compressedGifPath = updatedFile.compressedGifPath
+                  }
+                  if (
+                    'relativeHeight' in itemFile &&
+                    'relativeHeight' in updatedFile
+                  ) {
+                    itemFile.relativeHeight = updatedFile.relativeHeight
+                  }
+                  if ('waveform' in itemFile && 'waveform' in updatedFile) {
+                    itemFile.waveform = updatedFile.waveform
+                  }
+                  if (
+                    'waveformThumbnail' in itemFile &&
+                    'waveformThumbnail' in updatedFile
+                  ) {
+                    itemFile.waveformThumbnail = updatedFile.waveformThumbnail
+                  }
+                } else if (
+                  item.type === 'upload' &&
+                  item.fileId === updatedFile.id
+                ) {
+                  // Update uploaded item processing status and store complete file data
+                  const uploadItem = item as UploadItem
+                  uploadItem.processingStatus = updatedFile.processingStatus
+                  uploadItem.processingProgress = updatedFile.processingProgress
+                  uploadItem.processingNotes = updatedFile.processingNotes
+
+                  // When processing is complete, store the complete file data for display
+                  if (
+                    updatedFile.processingStatus === FileProcessingStatus.Done
+                  ) {
+                    uploadItem.processedFile = updatedFile
+                  }
+                }
+              })
 
               return currentData
             })
 
             // Check if we should stop the subscription
             const updatedPost = get(post)
-            if (updatedPost) {
-              const remainingProcessingIds = getProcessingItemIds(updatedPost)
+            const updatedData = get(data)
 
-              if (remainingProcessingIds.length === 0) {
-                // No more processing items, stop subscription
-                if (subscriptionUnsubscribe) {
-                  subscriptionUnsubscribe()
-                  subscriptionUnsubscribe = undefined
+            // Calculate remaining processing IDs using the same logic as startProcessingSubscription
+            const remainingProcessingIds: string[] = []
+
+            // Add file IDs from existing items that are still processing
+            if (updatedPost) {
+              updatedPost.items.nodes?.forEach((item) => {
+                if (item && 'file' in item && item.file) {
+                  // Monitor files that are not FAILED or DONE
+                  if (
+                    item.file.processingStatus !==
+                      FileProcessingStatus.Failed &&
+                    item.file.processingStatus !== FileProcessingStatus.Done
+                  ) {
+                    remainingProcessingIds.push(item.file.id)
+                  }
                 }
-                break
+              })
+            }
+
+            // Add file IDs from uploaded items in edit data
+            if (updatedData) {
+              Object.values(updatedData.items).forEach((item) => {
+                if (
+                  item.type === 'upload' &&
+                  item.fileId &&
+                  !item.uploadError
+                ) {
+                  // Only add if we don't already have it from the post data
+                  if (!remainingProcessingIds.includes(item.fileId)) {
+                    remainingProcessingIds.push(item.fileId)
+                  }
+                }
+              })
+            }
+
+            if (remainingProcessingIds.length === 0) {
+              // No more processing files, stop subscription
+              if (subscriptionUnsubscribe) {
+                subscriptionUnsubscribe()
+                subscriptionUnsubscribe = undefined
               }
+              break
             }
           }
         }
@@ -214,7 +405,6 @@ export function createEditManager(
         }
       }
     }
-
     // Start processing subscription in the background
     processSubscription()
 
@@ -229,11 +419,85 @@ export function createEditManager(
     startProcessingSubscription()
   }
 
-  const cancelEdit = () => {
-    // Cancel any ongoing upload
+  // Add beforeunload handler to warn about processing items
+  const handleBeforeUnload = (event: BeforeUnloadEvent) => {
     const $data = get(data)
-    if ($data?.uploadController && $data.isUploading) {
-      $data.uploadController.abort()
+    const hasProcessingItems =
+      $data &&
+      Object.values($data.items).some(
+        (item) =>
+          (item.type === 'upload' &&
+            (item.isUploading ||
+              item.isQueued ||
+              (item.processingStatus &&
+                item.processingStatus !== FileProcessingStatus.Done &&
+                item.processingStatus !== FileProcessingStatus.Failed))) ||
+          (item.type === 'existing' &&
+            'file' in item.data &&
+            item.data.file &&
+            item.data.file.processingStatus !== FileProcessingStatus.Done &&
+            item.data.file.processingStatus !== FileProcessingStatus.Failed),
+      )
+
+    if (hasProcessingItems) {
+      event.preventDefault()
+      event.returnValue =
+        'Files are still uploading or processing. Are you sure you want to leave?'
+      return 'Files are still uploading or processing. Are you sure you want to leave?'
+    }
+  }
+
+  // Add event listener when edit mode starts
+  let beforeUnloadAdded = false
+
+  const cancelEdit = () => {
+    const $data = get(data)
+
+    // Check if there are any processing items or active uploads
+    const hasProcessingItems =
+      $data &&
+      Object.values($data.items).some(
+        (item) =>
+          (item.type === 'upload' &&
+            (item.isUploading ||
+              item.isQueued ||
+              (item.processingStatus &&
+                item.processingStatus !== FileProcessingStatus.Done &&
+                item.processingStatus !== FileProcessingStatus.Failed))) ||
+          (item.type === 'existing' &&
+            'file' in item.data &&
+            item.data.file &&
+            item.data.file.processingStatus !== FileProcessingStatus.Done &&
+            item.data.file.processingStatus !== FileProcessingStatus.Failed),
+      )
+
+    if (hasProcessingItems) {
+      const confirmed = openDialog?.({
+        variant: 'transaction',
+        heading: 'Cancel while processing?',
+        children:
+          'Some files are still uploading or processing. Are you sure you want to cancel? This will stop all uploads and you may lose progress.',
+        actionLabel: 'Yes, cancel anyway',
+      })
+
+      if (!confirmed) {
+        return false
+      }
+    }
+
+    // Cancel any ongoing uploads
+    if ($data?.isUploading) {
+      cancelUpload()
+    }
+
+    // Cancel all queued uploads
+    if ($data && $data.uploadQueue.length > 0) {
+      $data.uploadQueue.forEach((itemId) => {
+        const item = $data.items[itemId] as UploadItem
+        if (item?.uploadController) {
+          item.uploadController.abort()
+        }
+      })
     }
 
     // Clean up subscription
@@ -251,6 +515,12 @@ export function createEditManager(
     data.set(undefined)
     loading.set(false)
     globalError.set(undefined)
+
+    // Remove beforeunload handler
+    if (typeof window !== 'undefined' && beforeUnloadAdded) {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      beforeUnloadAdded = false
+    }
   }
 
   const setOpenDialog = (dialog: OpenDialog | undefined) => {
@@ -263,6 +533,12 @@ export function createEditManager(
       return clearValidationErrors(current)
     })
 
+    // Add beforeunload handler
+    if (typeof window !== 'undefined' && !beforeUnloadAdded) {
+      window.addEventListener('beforeunload', handleBeforeUnload)
+      beforeUnloadAdded = true
+    }
+
     const postObject = get(post)
 
     if (get(isInNewPostMode)) {
@@ -272,7 +548,8 @@ export function createEditManager(
         language: createUpdateValue(Language.English),
         keywords: createUpdateValue([]),
         items: {},
-        uploadController: undefined,
+        uploadQueue: [],
+        currentUploadId: undefined,
         isUploading: false,
       })
     } else {
@@ -289,7 +566,9 @@ export function createEditManager(
             data: node,
             description: createUpdateValue(node.description),
             caption:
-              'caption' in node ? createUpdateValue(node.caption) : undefined,
+              'caption' in node && typeof node.caption === 'string'
+                ? { value: node.caption, error: undefined }
+                : undefined,
             position: createUpdateValue(node.position),
           }
         }
@@ -302,61 +581,300 @@ export function createEditManager(
           postObject.keywords.map((keyword) => keyword.id),
         ),
         items: existingItems,
-        uploadController: undefined,
+        uploadQueue: [],
+        currentUploadId: undefined,
         isUploading: false,
       })
     }
   }
 
-  const addFile = (file: File) => {
+  const addFile = async (file: File) => {
     if (get(loading)) return
+
     const type = file.type.split('/')[0]
-    if (type !== 'image' && type !== 'video') {
+    if (type !== 'image' && type !== 'video' && type !== 'audio') {
       openDialog?.({
         heading: 'Unsupported file type',
         children: `The file type${file.type && ` "${file.type}"`} is not supported for upload.`,
       })
       return
     }
+
+    // For video files, ask the user how they want to treat it
+    let fileType: FileType
+    if (type === 'video') {
+      fileType = FileType.Video
+    } else if (type === 'audio') {
+      fileType = FileType.Audio
+    } else if (file.type === 'image/gif') {
+      fileType = FileType.Gif
+    } else {
+      fileType = FileType.Image
+    }
+
+    // Create upload item and add to queue
+    const uploadId = crypto.randomUUID()
     data.update((current) => {
       if (!current) return current
-      current.items[file.name] = {
+
+      // Create the upload item
+      current.items[uploadId] = {
         type: 'upload',
-        id: file.name,
+        id: uploadId,
         file,
+        fileType,
+        fileId: undefined,
+        isUploading: false,
+        isQueued: true,
+        uploadError: undefined,
+        uploadController: undefined,
         keywords: createUpdateValue([]),
         description: createUpdateValue(''),
-        caption: createUpdateValue(''),
+        caption:
+          fileType === FileType.Image ||
+          fileType === FileType.Video ||
+          fileType === FileType.Audio ||
+          fileType === FileType.Gif
+            ? createUpdateValue('')
+            : undefined,
         language: createUpdateValue(Language.English),
       }
+
+      // Add to queue
+      current.uploadQueue.push(uploadId)
+
       return current
     })
+
+    // Start processing the queue
+    processUploadQueue()
   }
 
-  const cancelUpload = () => {
-    const $data = get(data)
-    if ($data?.uploadController && $data.isUploading) {
-      $data.uploadController.abort()
+  // Process the upload queue - upload one file at a time
+  const processUploadQueue = async () => {
+    const currentData = get(data)
+    if (!currentData || currentData.uploadQueue.length === 0) {
+      return
+    }
+
+    // If we think we're uploading but there's no current upload ID, reset the state
+    if (currentData.isUploading && !currentData.currentUploadId) {
       data.update((current) => {
         if (current) {
           current.isUploading = false
-          current.uploadController = undefined
         }
         return current
       })
     }
+
+    // Don't start a new upload if one is already in progress
+    if (currentData.isUploading) {
+      return
+    }
+
+    const uploadId = currentData.uploadQueue[0]
+    const uploadItem = currentData.items[uploadId] as UploadItem
+
+    if (!uploadItem || uploadItem.type !== 'upload') {
+      // Remove invalid item from queue and continue
+      data.update((current) => {
+        if (current) {
+          current.uploadQueue.shift()
+        }
+        return current
+      })
+      processUploadQueue()
+      return
+    }
+
+    // Create upload controller
+    const [uploadIdHeader, uploadController] = createUploadController()
+
+    // Update item to uploading state
+    data.update((current) => {
+      if (!current) return current
+
+      const item = current.items[uploadId] as UploadItem
+      item.isUploading = true
+      item.isQueued = false
+      item.uploadController = uploadController
+      current.currentUploadId = uploadId
+      current.isUploading = true
+
+      return current
+    })
+
+    try {
+      // Prepare headers for upload
+      const headers: Record<string, string> = {}
+      if (uploadIdHeader) {
+        headers[UPLOAD_ID_HEADER] = uploadIdHeader
+      }
+
+      // Upload the file
+      const result = await sdk.uploadItemFile(
+        {
+          file: uploadItem.file,
+          type: uploadItem.fileType,
+        },
+        headers,
+      )
+
+      const error = getOperationResultError(result)
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      const fileId = result.data.uploadItemFile
+
+      // Update the upload item with the file ID and mark as completed
+      data.update((current) => {
+        if (!current || !current.items[uploadId]) return current
+
+        const item = current.items[uploadId] as UploadItem
+        item.fileId = fileId
+        item.isUploading = false
+        item.uploadController = undefined
+
+        // Remove from queue
+        current.uploadQueue = current.uploadQueue.filter(
+          (id) => id !== uploadId,
+        )
+        current.currentUploadId = undefined
+        current.isUploading = false
+
+        return current
+      })
+
+      // Start monitoring the uploaded file for processing updates
+      startProcessingSubscription()
+
+      // Continue processing queue
+      processUploadQueue()
+    } catch (error) {
+      console.error('Upload failed:', error)
+
+      // Check if it was aborted
+      if (uploadController.signal.aborted) {
+        // Remove aborted item completely
+        data.update((current) => {
+          if (!current) return current
+
+          delete current.items[uploadId]
+          current.uploadQueue = current.uploadQueue.filter(
+            (id) => id !== uploadId,
+          )
+          current.currentUploadId = undefined
+          current.isUploading = false
+
+          return current
+        })
+      } else {
+        // Update the upload item with error
+        data.update((current) => {
+          if (!current || !current.items[uploadId]) return current
+
+          const item = current.items[uploadId] as UploadItem
+          item.isUploading = false
+          item.uploadError =
+            error instanceof Error ? error.message : 'Upload failed'
+          item.uploadController = undefined
+
+          // Remove from queue
+          current.uploadQueue = current.uploadQueue.filter(
+            (id) => id !== uploadId,
+          )
+          current.currentUploadId = undefined
+          current.isUploading = false
+
+          return current
+        })
+      }
+
+      // Continue processing queue even after error
+      processUploadQueue()
+    }
+  }
+
+  const cancelUpload = () => {
+    const $data = get(data)
+    if ($data?.isUploading && $data.currentUploadId) {
+      const uploadItem = $data.items[$data.currentUploadId] as UploadItem
+      if (uploadItem?.uploadController) {
+        uploadItem.uploadController.abort()
+      }
+    }
+  }
+
+  const cancelUploadItem = (itemId: string) => {
+    data.update((current) => {
+      if (!current) return current
+
+      const item = current.items[itemId]
+      if (item?.type === 'upload') {
+        if (item.isUploading && item.uploadController) {
+          // Cancel active upload
+          item.uploadController.abort()
+          // Reset global upload state immediately to prevent race conditions
+          if (current.currentUploadId === itemId) {
+            current.currentUploadId = undefined
+            current.isUploading = false
+          }
+        } else if (item.isQueued) {
+          // Remove from queue
+          current.uploadQueue = current.uploadQueue.filter(
+            (id) => id !== itemId,
+          )
+          delete current.items[itemId]
+        } else {
+          // Just remove the item
+          delete current.items[itemId]
+        }
+      }
+
+      return current
+    })
+
+    // After cancelling, continue processing the queue in case there are other items waiting
+    processUploadQueue()
   }
 
   const submitEdit = async () => {
     const $data = get(data)
     if (!$data) return
 
+    // Don't allow submit while uploading
+    if ($data.isUploading) {
+      openDialog?.({
+        heading: 'Upload in progress',
+        children:
+          'Please wait for the current upload to complete before submitting.',
+      })
+      return
+    }
+
+    // Check if all upload items have file IDs and no errors
+    const uploadItems = Object.values($data.items).filter(
+      (item): item is UploadItem => item.type === 'upload',
+    )
+    const hasIncompleteUploads = uploadItems.some(
+      (item) => !item.fileId || item.uploadError,
+    )
+
+    if (hasIncompleteUploads) {
+      openDialog?.({
+        heading: 'Upload errors',
+        children:
+          'Some files failed to upload. Please remove them or try uploading again.',
+      })
+      return
+    }
+
     // Serialize the edit data for API consumption
     const serializedData = serializeEditData($data)
-    const hasNewFiles = serializedData.uploadItems.length > 0
 
     // For new posts, require at least one file
-    if (get(isInNewPostMode) && !hasNewFiles) {
+    if (get(isInNewPostMode) && serializedData.uploadItems.length === 0) {
       openDialog?.({
         heading: 'No items to upload',
         children: 'Please add at least one file before creating a post.',
@@ -372,8 +890,6 @@ export function createEditManager(
       data.update((current) => {
         if (current) {
           current = clearValidationErrors(current)
-          current.isUploading = false
-          current.uploadController = undefined
 
           const errorResult = getOperationResultError(error)
 
@@ -383,15 +899,12 @@ export function createEditManager(
             // serialize current data to preserve UpdateValue wrappers
             const serializedWithValidation =
               serializeEditDataWithValidation(current)
-            console.log(
-              'Serialized data with validation:',
-              serializedWithValidation,
-            )
             const { validationTarget, unassignableErrors } =
               setValidationErrors(serializedWithValidation, errorResult.issues)
             const deserializedData = deserializeEditDataWithValidation(
               validationTarget,
               postData,
+              current,
             )
 
             // set the globalError store. If there are no unassignableErrors, just say there were errors, otherwise also show them. If it is more than one, show a list.
@@ -455,23 +968,6 @@ export function createEditManager(
       const postObject = get(post)
       if (!postObject) return
 
-      let uploadId: string | undefined
-      let uploadController: UploadController | undefined
-      const headers: Record<string, string> = {}
-
-      // Set up upload controller if we have files to upload
-      if (hasNewFiles) {
-        ;[uploadId, uploadController] = createUploadController()
-        headers[UPLOAD_ID_HEADER] = uploadId!
-        data.update((current) => {
-          if (current) {
-            current.uploadController = uploadController
-            current.isUploading = true
-          }
-          return current
-        })
-      }
-
       // Extract core values for API call using the utility function
       const coreValues = extractValues({
         title: $data.title,
@@ -479,28 +975,22 @@ export function createEditManager(
         keywords: $data.keywords,
       })
 
-      // Serialize the edit data for API consumption
-      const serializedData = serializeEditData($data)
-
-      const editResult = await sdk.editPost(
-        {
-          id: postObject.id,
-          title: coreValues.title,
-          language: coreValues.language,
-          keywords: coreValues.keywords,
-          items: serializedData.existingItems.map((item) => ({
-            id: item.id,
-            description: item.description,
-            caption: item.caption,
-          })),
-          newItems: serializedData.uploadItems.map((uploadItem) => ({
-            file: uploadItem.file,
-            description: uploadItem.description,
-            caption: uploadItem.caption,
-          })),
-        },
-        headers,
-      )
+      const editResult = await sdk.editPost({
+        id: postObject.id,
+        title: coreValues.title,
+        language: coreValues.language,
+        keywords: coreValues.keywords,
+        items: serializedData.existingItems.map((item) => ({
+          id: item.id,
+          description: item.description,
+          caption: item.caption,
+        })),
+        newItems: serializedData.uploadItems.map((uploadItem) => ({
+          fileId: uploadItem.fileId,
+          description: uploadItem.description,
+          caption: uploadItem.caption,
+        })),
+      })
 
       if (getOperationResultError(editResult)) {
         handleError(editResult)
@@ -509,11 +999,13 @@ export function createEditManager(
       } else {
         post.set(editResult.data.editPost as PostItemType)
         // Clear edit data since update was successful
+
         data.set(undefined)
         globalError.set(undefined)
       }
 
-      // Restart subscription for any new processing items
+      // Restart subscription after edit (whether successful or not)
+      // This ensures we monitor any files that were added to the post
       startProcessingSubscription()
     } catch (err) {
       handleError(err)
@@ -561,10 +1053,24 @@ export function createEditManager(
 
         if (newPost.items.nodes) {
           newPost.items.nodes = newPost.items.nodes.filter(
-            (node) => node.id !== itemId,
+            (node) => node && node.id !== itemId,
           )
         }
         return newPost
+      })
+
+      // Also update edit data if it exists
+      data.update((currentData) => {
+        if (!currentData) return currentData
+
+        // Remove the item from edit data if it exists
+        if (currentData.items[itemId]) {
+          const updatedData = { ...currentData }
+          updatedData.items = { ...updatedData.items }
+          delete updatedData.items[itemId]
+          return updatedData
+        }
+        return currentData
       })
 
       return true
@@ -794,6 +1300,15 @@ export function createEditManager(
     data.update((current) => {
       if (!current) return current
       if (current.items[itemId] && current.items[itemId].type === 'upload') {
+        if (current.items[itemId].fileId) {
+          sdk
+            .deleteTemporaryFile({
+              fileId: current.items[itemId].fileId,
+            })
+            .catch((error) => {
+              console.warn('Failed to delete temporary file:', error)
+            })
+        }
         delete current.items[itemId]
       }
       return current
@@ -806,11 +1321,12 @@ export function createEditManager(
     loading,
     globalError,
     isInNewPostMode,
-    items, // Expose the items derived store
+    items,
     startEdit,
     cancelEdit,
     addFile,
     removeUploadItem,
+    cancelUploadItem,
     submitEdit,
     setOpenDialog,
     cancelUpload,
@@ -831,7 +1347,7 @@ export type SerializedEditItem = {
 }
 
 export type SerializedUploadItem = {
-  file: File
+  fileId: string
   description: string
   caption?: string
   keywords: string[]
@@ -854,7 +1370,7 @@ export type SerializedEditItemWithValidation = {
 }
 
 export type SerializedUploadItemWithValidation = {
-  file: UpdateValue<File>
+  fileId: UpdateValue<string>
   description: UpdateValue<string>
   caption?: UpdateValue<string>
   keywords: UpdateValue<string[]>
@@ -893,10 +1409,12 @@ export function serializeEditData(data: PostUpdate): SerializedEditData {
     )
 
   const uploadItems = Object.values(data.items)
-    .filter((item): item is UploadItem => item.type === 'upload')
+    .filter(
+      (item): item is UploadItem => item.type === 'upload' && !!item.fileId,
+    )
     .map(
       (item): SerializedUploadItem => ({
-        file: item.file,
+        fileId: item.fileId!,
         description: item.description.value,
         caption: item.caption?.value,
         keywords: item.keywords.value,
@@ -951,28 +1469,16 @@ export function deserializeEditData(
     }
   })
 
-  // Convert upload items
-  serialized.uploadItems.forEach((serializedItem, index) => {
-    const id = serializedItem.file.name || `upload-${index}`
-    items[id] = {
-      type: 'upload',
-      id,
-      file: serializedItem.file,
-      keywords: createUpdateValue(serializedItem.keywords),
-      description: createUpdateValue(serializedItem.description),
-      caption: serializedItem.caption
-        ? createUpdateValue(serializedItem.caption)
-        : undefined,
-      language: createUpdateValue(serializedItem.language),
-    }
-  })
+  // Note: Upload items are not included in deserialization because they're
+  // created during the upload process, not from saved data
 
   return {
     title: createUpdateValue(serialized.title),
     language: createUpdateValue(serialized.language),
     keywords: createUpdateValue(serialized.keywords),
     items,
-    uploadController: undefined,
+    uploadQueue: [],
+    currentUploadId: undefined,
     isUploading: false,
   }
 }
@@ -1003,10 +1509,12 @@ export function serializeEditDataWithValidation(
     )
 
   const newItems = Object.values(data.items)
-    .filter((item): item is UploadItem => item.type === 'upload')
+    .filter(
+      (item): item is UploadItem => item.type === 'upload' && !!item.fileId,
+    )
     .map(
       (item): SerializedUploadItemWithValidation => ({
-        file: createUpdateValue(item.file),
+        fileId: createUpdateValue(item.fileId!),
         description: item.description,
         caption: item.caption,
         keywords: item.keywords,
@@ -1034,11 +1542,13 @@ export function serializeEditDataWithValidation(
  *   validation errors
  * @param postData - Optional post data to populate item.data fields for
  *   existing items
+ * @param currentData - Current PostUpdate data to preserve upload items
  * @returns PostUpdate - Complex structure with validation errors preserved
  */
 export function deserializeEditDataWithValidation(
   serialized: SerializedEditDataWithValidation,
   postData?: PostItemType,
+  currentData?: PostUpdate,
 ): PostUpdate {
   const items: Record<string, EditableItem> = {}
 
@@ -1058,26 +1568,43 @@ export function deserializeEditDataWithValidation(
     }
   })
 
-  // Convert upload items
-  serialized.newItems.forEach((serializedItem, index) => {
-    const id = serializedItem.file.value.name || `upload-${index}`
-    items[id] = {
-      type: 'upload',
-      id,
-      file: serializedItem.file.value,
-      keywords: serializedItem.keywords,
-      description: serializedItem.description,
-      caption: serializedItem.caption,
-      language: serializedItem.language,
-    }
-  })
+  // Convert new items (upload items) by finding them in current data and applying validation errors
+  if (currentData) {
+    serialized.newItems.forEach((serializedNewItem) => {
+      const fileId = serializedNewItem.fileId.value
+      // Find the corresponding upload item in current data by fileId
+      const currentUploadItem = Object.values(currentData.items).find(
+        (item): item is UploadItem =>
+          item.type === 'upload' && item.fileId === fileId,
+      )
+
+      if (currentUploadItem) {
+        // Preserve the original upload item but update the fields that have validation errors
+        items[currentUploadItem.id] = {
+          ...currentUploadItem,
+          description: serializedNewItem.description,
+          caption: serializedNewItem.caption,
+          keywords: serializedNewItem.keywords,
+          language: serializedNewItem.language,
+        }
+      }
+    })
+
+    // Also preserve any upload items that don't have fileIds yet (still uploading or queued)
+    Object.values(currentData.items).forEach((item) => {
+      if (item.type === 'upload' && !item.fileId) {
+        items[item.id] = item
+      }
+    })
+  }
 
   return {
     title: serialized.title,
     language: serialized.language,
     keywords: serialized.keywords,
     items,
-    uploadController: undefined,
-    isUploading: false,
+    uploadQueue: currentData?.uploadQueue || [],
+    currentUploadId: currentData?.currentUploadId,
+    isUploading: currentData?.isUploading || false,
   }
 }

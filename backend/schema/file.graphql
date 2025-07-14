@@ -1,0 +1,115 @@
+"""
+Base interface for all file types.
+"""
+interface File {
+  """
+  The file UUID
+  """
+  id: String!
+  creator: User!
+  processingStatus: FileProcessingStatus!
+  processingProgress: Int
+  processingNotes: String
+  updatedAt: DateTime!
+  createdAt: DateTime!
+}
+
+"""
+A photo file.
+"""
+type PhotoFile implements File {
+  """
+  The file UUID
+  """
+  id: String!
+  creator: User!
+  processingStatus: FileProcessingStatus!
+  processingProgress: Int
+  processingNotes: String
+  updatedAt: DateTime!
+  createdAt: DateTime!
+  originalPath: String!
+  thumbnailPath: String
+  compressedPath: String!
+  relativeHeight: Float!
+}
+
+"""
+A video file.
+"""
+type VideoFile implements File {
+  """
+  The file UUID
+  """
+  id: String!
+  creator: User!
+  processingStatus: FileProcessingStatus!
+  processingProgress: Int
+  processingNotes: String
+  updatedAt: DateTime!
+  createdAt: DateTime!
+  originalPath: String!
+  thumbnailPath: String
+  posterThumbnailPath: String
+  compressedPath: String!
+  relativeHeight: Float!
+}
+
+"""
+A GIF file.
+"""
+type GifFile implements File {
+  """
+  The file UUID
+  """
+  id: String!
+  creator: User!
+  processingStatus: FileProcessingStatus!
+  processingProgress: Int
+  processingNotes: String
+  updatedAt: DateTime!
+  createdAt: DateTime!
+  originalPath: String!
+  thumbnailPath: String
+  compressedPath: String!
+  compressedGifPath: String!
+  relativeHeight: Float!
+}
+
+"""
+An audio file.
+"""
+type AudioFile implements File {
+  """
+  The file UUID
+  """
+  id: String!
+  creator: User!
+  processingStatus: FileProcessingStatus!
+  processingProgress: Int
+  processingNotes: String
+  updatedAt: DateTime!
+  createdAt: DateTime!
+  originalPath: String!
+  compressedPath: String!
+  waveform: [Float!]!
+  waveformThumbnail: [Float!]!
+}
+
+"""
+A profile picture file.
+"""
+type ProfilePictureFile implements File {
+  """
+  The file UUID
+  """
+  id: String!
+  creator: User!
+  processingStatus: FileProcessingStatus!
+  processingProgress: Int
+  processingNotes: String
+  updatedAt: DateTime!
+  createdAt: DateTime!
+  profilePicture256: String!
+  profilePicture64: String!
+}

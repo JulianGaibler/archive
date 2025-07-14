@@ -18,6 +18,7 @@ import RateLimiter from '@src/middleware/RateLimiter.js'
 import env from '@src/utils/env.js'
 import PaginationUtils, { PaginationArgs } from './PaginationUtils.js'
 import { validateAuth } from '@src/apis/TelegramBot/index.js'
+import FileActions from './FileActions.js'
 import z from 'zod/v4'
 
 const userTable = UserModel.table
@@ -90,7 +91,7 @@ const UserActions = {
           username: userTable.username,
           name: userTable.name,
           password: userTable.password,
-          profilePicture: userTable.profilePicture,
+          profilePictureFileId: userTable.profilePictureFileId,
           telegramId: userTable.telegramId,
           updatedAt: userTable.updatedAt,
           createdAt: userTable.createdAt,
@@ -103,7 +104,7 @@ const UserActions = {
           userTable.id,
           userTable.username,
           userTable.name,
-          userTable.profilePicture,
+          userTable.profilePictureFileId,
           userTable.password,
           userTable.updatedAt,
           userTable.createdAt,
@@ -258,7 +259,6 @@ const UserActions = {
     ctx: Context,
     fields: { file: Promise<FileUpload> },
   ) {
-    console.log('Uploading profile picture', fields)
     const userIId = ctx.isAuthenticated()
     const [user] = await ctx.db
       .select()
@@ -270,18 +270,25 @@ const UserActions = {
     if (!fields.file) {
       throw new InputError('No file provided')
     }
-    const filename = await Context.fileStorage.setProfilePicture(fields.file)
-    if (user.profilePicture !== null) {
+
+    // Upload file using FileActions
+    const fileId = await FileActions.mUploadProfilePictureFile(ctx, fields)
+
+    // Delete old profile picture if it exists
+    if (user.profilePictureFileId !== null) {
       try {
-        await Context.fileStorage.deleteProfilePicture(user.profilePicture)
+        await FileActions._mDeleteFile(ctx, user.profilePictureFileId)
       } catch (e) {
-        Context.fileStorage.deleteProfilePicture(filename)
+        // If old file deletion fails, delete the new file and re-throw
+        await FileActions._mDeleteFile(ctx, fileId)
         throw e
       }
     }
+
+    // Update user with new profile picture file ID
     await ctx.db
       .update(userTable)
-      .set({ profilePicture: filename })
+      .set({ profilePictureFileId: fileId })
       .where(eq(userTable.id, userIId))
     return true
   },
@@ -295,13 +302,13 @@ const UserActions = {
     if (!user) {
       throw new AuthenticationError('This should not have happened.')
     }
-    if (user.profilePicture === null) {
+    if (user.profilePictureFileId === null) {
       throw new AuthenticationError('There is no profile picture to clear.')
     }
-    await Context.fileStorage.deleteProfilePicture(user.profilePicture)
+    await FileActions._mDeleteFile(ctx, user.profilePictureFileId)
     await ctx.db
       .update(userTable)
-      .set({ profilePicture: null })
+      .set({ profilePictureFileId: null })
       .where(eq(userTable.id, userIId))
     return true
   },

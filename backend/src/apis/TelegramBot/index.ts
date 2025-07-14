@@ -7,6 +7,7 @@ import { ItemExternal } from '@src/models/ItemModel.js'
 
 import UserActions from '@src/actions/UserActions.js'
 import ItemActions from '@src/actions/ItemActions.js'
+import FileActions from '@src/actions/FileActions.js'
 import Context from '@src/Context.js'
 import env from '@src/utils/env.js'
 import UserModel from '@src/models/UserModel.js'
@@ -30,6 +31,12 @@ const HEALTH_CHECK_TIMEOUT = 30 * 1000 // 30 seconds
 
 type ItemWithPost = ItemExternal & {
   post: PostExternal | null
+  filePaths?: {
+    originalPath: string | null
+    compressedPath: string | null
+    thumbnailPath: string | null
+    posterThumbnailPath: string | null
+  } | null
 }
 
 export default class TelegramBot {
@@ -418,13 +425,45 @@ async function inlineQuery(ctx: Context | null, msgCtx: any) {
       }
     })
 
+    const filePathsPromises = nodes.map(async (item) => {
+      return {
+        itemId: item.id,
+        paths: await FileActions.qItemFilePaths(ctx!, item.fileId),
+      }
+    })
+
+    const filePathsResults = await Promise.all(filePathsPromises)
+    const filePathsMap = new Map<
+      string,
+      {
+        originalPath: string | null
+        compressedPath: string | null
+        thumbnailPath: string | null
+        posterThumbnailPath: string | null
+      }
+    >()
+    filePathsResults.forEach((result) => {
+      if (result) {
+        filePathsMap.set(result.itemId, result.paths)
+      }
+    })
+
     const nodesWithPosts: ItemWithPost[] = nodes.map((item) => {
       const post = postMap.get(item.postId) || null
+      const filePaths = filePathsMap.get(item.id) || null
       return {
         ...item,
         post,
+        filePaths,
       }
     })
+
+    console.debug('filePathsResults', filePathsResults)
+    console.debug('nodesWithPosts', nodesWithPosts)
+    console.debug(
+      'convertToInlineQueryResult(nodesWithPosts),',
+      convertToInlineQueryResult(nodesWithPosts),
+    )
 
     await msgCtx.telegram.answerInlineQuery(
       id,
@@ -500,20 +539,33 @@ function convertToInlineQueryResult(items: ItemWithPost[]) {
       description,
     }
 
+    // Get file paths if available
+    const paths = item.filePaths
+
     if (item.type === 'IMAGE') {
       return {
         ...base,
         type: 'photo',
-        photo_url: `${ORIGIN}${item.compressedPath}.jpeg`,
-        thumb_url: `${ORIGIN}${item.thumbnailPath}.jpeg`,
+        photo_url: paths?.compressedPath
+          ? `${ORIGIN}${paths.compressedPath}`
+          : undefined,
+        thumb_url: paths?.thumbnailPath
+          ? `${ORIGIN}${paths.thumbnailPath}`
+          : undefined,
       }
     }
     if (item.type === 'VIDEO') {
       return {
         ...base,
         type: 'video',
-        video_url: `${ORIGIN}${item.compressedPath}.mp4`,
-        thumb_url: `${ORIGIN}${item.thumbnailPath}.jpeg`,
+        video_url: paths?.compressedPath
+          ? `${ORIGIN}${paths.compressedPath}`
+          : undefined,
+        video_file_id: item.id,
+        thumb_url:
+          paths?.posterThumbnailPath || paths?.thumbnailPath
+            ? `${ORIGIN}${paths.posterThumbnailPath || paths.thumbnailPath}`
+            : undefined,
         mime_type: 'video/mp4',
       }
     }
@@ -521,8 +573,22 @@ function convertToInlineQueryResult(items: ItemWithPost[]) {
       return {
         ...base,
         type: 'mpeg4_gif',
-        mpeg4_url: `${ORIGIN}${item.compressedPath}.mp4`,
-        thumb_url: `${ORIGIN}${item.thumbnailPath}.jpeg`,
+        mpeg4_url: paths?.compressedPath
+          ? `${ORIGIN}${paths.compressedPath}`
+          : undefined,
+        mpeg4_file_id: item.id,
+        thumb_url: paths?.thumbnailPath
+          ? `${ORIGIN}${paths.thumbnailPath}`
+          : undefined,
+      }
+    }
+    if (item.type === 'AUDIO') {
+      return {
+        ...base,
+        type: 'audio',
+        audio_url: paths?.compressedPath
+          ? `${ORIGIN}${paths.compressedPath}`
+          : undefined,
       }
     }
 

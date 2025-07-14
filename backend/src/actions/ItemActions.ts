@@ -30,7 +30,7 @@ const ItemActions = {
     const id = ItemModel.decodeId(fields.itemId)
     const itm = await ctx.dataLoaders.item.getById.load(id)
     if (!itm) throw new NotFoundError('Item not found.')
-    return ItemModel.makeExternal(itm)
+    return await ItemModel.makeExternal(itm)
   },
 
   async qItemsByPost(
@@ -49,7 +49,7 @@ const ItemActions = {
     const pagedItems = allItems.slice(offset, offset + limit)
 
     return PaginationUtils.createConnection(
-      pagedItems.map(ItemModel.makeExternal),
+      await Promise.all(pagedItems.map((item) => ItemModel.makeExternal(item))),
       allItems.length,
       paginationInfo,
     )
@@ -222,9 +222,11 @@ const ItemActions = {
     }
 
     // Convert internal items to external format
-    const externalData = items.map((itemInternal) => {
-      return ItemModel.makeExternal(itemInternal)
-    })
+    const externalData = await Promise.all(
+      items.map(async (itemInternal) => {
+        return await ItemModel.makeExternal(itemInternal)
+      }),
+    )
 
     return PaginationUtils.createConnection<ItemExternal>(
       externalData,

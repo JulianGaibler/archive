@@ -14,12 +14,13 @@
 
 # 2.4
 
-- Add support for audio
 - Set GIF/video mode when uploading
 - Add PDF support
+- Meme templates
+- Download trimmed youtube videos
+- Add support for captions
+- crop and trim videos
 
 # Future
 
-- Add support for captions
-- Download trimmed youtube videos
 - imgproxy?

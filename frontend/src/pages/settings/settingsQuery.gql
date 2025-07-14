@@ -2,7 +2,10 @@ query settings {
   me {
     name
     username
-    profilePicture
+    profilePicture {
+      profilePicture256
+      profilePicture64
+    }
     linkedTelegram
   }
   userSessions {

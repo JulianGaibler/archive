@@ -8,6 +8,7 @@ import GraphQLApi from './apis/GraphQLApi/index.js'
 import env from './utils/env.js'
 import Context from './Context.js'
 import Connection from './Connection.js'
+import CleanupService from './services/CleanupService.js'
 
 const corsOptions: cors.CorsOptions = {
   credentials: true,
@@ -35,6 +36,7 @@ export default class {
   app: express.Application
   gqlApi: GraphQLApi
   combinedServer: HttpServer
+  cleanupService: CleanupService | null = null
 
   constructor() {
     // Setup express
@@ -76,12 +78,23 @@ export default class {
           await Connection.db.execute('SELECT 1')
         }
 
+        // Get cleanup service status
+        const cleanupStatus = this.cleanupService?.getStatus() || {
+          isRunning: false,
+          nextScheduled: null,
+        }
+
         res.status(200).json({
           status: 'healthy',
           timestamp: new Date().toISOString(),
           uptime: process.uptime(),
           environment: env.NODE_ENV,
           database: Connection.db ? 'connected' : 'not_initialized',
+          cleanup: {
+            serviceActive: !!this.cleanupService,
+            isRunning: cleanupStatus.isRunning,
+            nextScheduled: cleanupStatus.nextScheduled?.toISOString() || null,
+          },
         })
       } catch (error) {
         res.status(503).json({
@@ -107,6 +120,11 @@ export default class {
       this.combinedServer.listen(OPTIONS.port, () => {
         console.log(`🔥 Server running on port ${OPTIONS.port}...`)
         Context.db = Connection.getDB()
+
+        // Start the cleanup service
+        this.cleanupService = new CleanupService()
+        console.log('🧹 Cleanup service started')
+
         resolve(null)
       })
     })
@@ -114,6 +132,12 @@ export default class {
 
   stop() {
     return new Promise((resolve) => {
+      // Stop the cleanup service first
+      if (this.cleanupService) {
+        this.cleanupService.stop()
+        this.cleanupService = null
+      }
+
       if (this.combinedServer !== null) {
         this.combinedServer.close(resolve)
       } else resolve(null)

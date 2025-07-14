@@ -43,6 +43,10 @@ mutation createPost($title: String!, $language: Language!, $keywords: [ID!]) {
   }
 }
 
+mutation uploadItemFile($file: Upload!, $type: FileType) {
+  uploadItemFile(file: $file, type: $type)
+}
+
 mutation editPost(
   $id: ID!
   $title: String!
@@ -71,6 +75,10 @@ mutation deletePost($deletePostId: ID!) {
   deletePost(postId: $deletePostId)
 }
 
+mutation deleteTemporaryFile($fileId: String!) {
+  deleteTemporaryFile(fileId: $fileId)
+}
+
 mutation mergePost(
   $sourcePostId: ID!
   $targetPostId: ID!
@@ -95,11 +103,40 @@ mutation moveItem($itemId: ID!, $targetPostId: ID!, $keepEmptyPost: Boolean) {
   )
 }
 
-subscription taskUpdates($ids: [String!]!) {
-  taskUpdates(ids: $ids) {
+subscription fileProcessingUpdates($ids: [String!]!) {
+  fileProcessingUpdates(ids: $ids) {
     kind
-    item {
-      ...ItemData
+    file {
+      id
+      processingStatus
+      processingProgress
+      processingNotes
+      ... on PhotoFile {
+        originalPath
+        compressedPath
+        thumbnailPath
+        relativeHeight
+      }
+      ... on VideoFile {
+        originalPath
+        compressedPath
+        thumbnailPath
+        posterThumbnailPath
+        relativeHeight
+      }
+      ... on GifFile {
+        originalPath
+        compressedPath
+        compressedGifPath
+        thumbnailPath
+        relativeHeight
+      }
+      ... on AudioFile {
+        originalPath
+        compressedPath
+        waveform
+        waveformThumbnail
+      }
     }
   }
 }

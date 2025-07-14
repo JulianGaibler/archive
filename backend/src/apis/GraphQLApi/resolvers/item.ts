@@ -4,13 +4,12 @@ import {
   GifItemResolvers,
   ImageItemResolvers,
   ItemResolvers,
-  MediaItemResolvers,
   ProcessingItemResolvers,
   VideoItemResolvers,
-  VisualMediaItemResolvers,
 } from '../generated-types.js'
 import PostActions from '@src/actions/PostActions.js'
 import Context from '@src/Context.js'
+import FileActions from '@src/actions/FileActions.js'
 
 export const itemResolvers: ItemResolvers = {
   creator: async (parent, _args, ctx) =>
@@ -22,29 +21,15 @@ export const itemResolvers: ItemResolvers = {
   __resolveType: (obj) => getItemSubtype(obj),
 }
 
-export const mediaItemResolvers: MediaItemResolvers = {
-  __resolveType: (obj) =>
-    getItemSubtype(obj as unknown as { type: string }) as
-      | 'AudioItem'
-      | 'GifItem'
-      | 'ImageItem'
-      | 'VideoItem',
-}
-
-export const visualMediaItemResolvers: VisualMediaItemResolvers = {
-  __resolveType: (obj) =>
-    getItemSubtype(obj as unknown as { type: string }) as
-      | 'GifItem'
-      | 'ImageItem'
-      | 'VideoItem',
-}
-
 // This is a workaround to avoid TypeScript errors.
-// Looks like it assumes the parent is the Interface type
+// The parent is the actual database record
 type ActualParent = {
   creatorId: string
   postId: string
+  fileId: string | null
+  type: string
 }
+
 function createConcreteItemResolvers<
   TParent extends { creator: { id: string }; post: { id: string } },
 >() {
@@ -66,18 +51,66 @@ export const processingItemResolvers: ProcessingItemResolvers = {
 
 export const videoItemResolvers: VideoItemResolvers = {
   ...createConcreteItemResolvers(),
+  file: async (parent: unknown, _args: unknown, ctx: Context) => {
+    const actualParent = parent as ActualParent
+    if (!actualParent.fileId) {
+      throw new Error('Video item missing file ID')
+    }
+    const file = await FileActions.qFile(ctx, actualParent.fileId)
+    if (!file) {
+      throw new Error('File not found')
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return file as any // Type assertion needed for GraphQL interface pattern
+  },
 }
 
 export const imageItemResolvers: ImageItemResolvers = {
   ...createConcreteItemResolvers(),
+  file: async (parent: unknown, _args: unknown, ctx: Context) => {
+    const actualParent = parent as ActualParent
+    if (!actualParent.fileId) {
+      throw new Error('Image item missing file ID')
+    }
+    const file = await FileActions.qFile(ctx, actualParent.fileId)
+    if (!file) {
+      throw new Error('File not found')
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return file as any // Type assertion needed for GraphQL interface pattern
+  },
 }
 
 export const gifItemResolvers: GifItemResolvers = {
   ...createConcreteItemResolvers(),
+  file: async (parent: unknown, _args: unknown, ctx: Context) => {
+    const actualParent = parent as ActualParent
+    if (!actualParent.fileId) {
+      throw new Error('GIF item missing file ID')
+    }
+    const file = await FileActions.qFile(ctx, actualParent.fileId)
+    if (!file) {
+      throw new Error('File not found')
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return file as any // Type assertion needed for GraphQL interface pattern
+  },
 }
 
 export const audioItemResolvers: AudioItemResolvers = {
   ...createConcreteItemResolvers(),
+  file: async (parent: unknown, _args: unknown, ctx: Context) => {
+    const actualParent = parent as ActualParent
+    if (!actualParent.fileId) {
+      throw new Error('Audio item missing file ID')
+    }
+    const file = await FileActions.qFile(ctx, actualParent.fileId)
+    if (!file) {
+      throw new Error('File not found')
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return file as any // Type assertion needed for GraphQL interface pattern
+  },
 }
 
 export function getItemSubtype(item: { type: string }) {

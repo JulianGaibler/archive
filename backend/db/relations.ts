@@ -1,20 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { user, post, item, session, keyword, keywordToPost } from "./schema";
-
-export const postRelations = relations(post, ({one, many}) => ({
-	user: one(user, {
-		fields: [post.creatorId],
-		references: [user.id]
-	}),
-	items: many(item),
-	keywordToPosts: many(keywordToPost),
-}));
-
-export const userRelations = relations(user, ({many}) => ({
-	posts: many(post),
-	items: many(item),
-	sessions: many(session),
-}));
+import { user, item, post, file, session, fileMigrationLog, fileVariant, keyword, keywordToPost } from "./schema";
 
 export const itemRelations = relations(item, ({one}) => ({
 	user: one(user, {
@@ -25,12 +10,72 @@ export const itemRelations = relations(item, ({one}) => ({
 		fields: [item.postId],
 		references: [post.id]
 	}),
+	file: one(file, {
+		fields: [item.fileId],
+		references: [file.id]
+	}),
+}));
+
+export const userRelations = relations(user, ({one, many}) => ({
+	items: many(item),
+	posts: many(post),
+	sessions: many(session),
+	files: many(file, {
+		relationName: "file_creatorId_user_id"
+	}),
+	file: one(file, {
+		fields: [user.profilePictureFileId],
+		references: [file.id],
+		relationName: "user_profilePictureFileId_file_id"
+	}),
+}));
+
+export const postRelations = relations(post, ({one, many}) => ({
+	items: many(item),
+	user: one(user, {
+		fields: [post.creatorId],
+		references: [user.id]
+	}),
+	keywordToPosts: many(keywordToPost),
+}));
+
+export const fileRelations = relations(file, ({one, many}) => ({
+	items: many(item),
+	user: one(user, {
+		fields: [file.creatorId],
+		references: [user.id],
+		relationName: "file_creatorId_user_id"
+	}),
+	fileMigrationLogs: many(fileMigrationLog),
+	users: many(user, {
+		relationName: "user_profilePictureFileId_file_id"
+	}),
+	fileVariants: many(fileVariant),
 }));
 
 export const sessionRelations = relations(session, ({one}) => ({
 	user: one(user, {
 		fields: [session.userId],
 		references: [user.id]
+	}),
+}));
+
+export const fileMigrationLogRelations = relations(fileMigrationLog, ({one}) => ({
+	file: one(file, {
+		fields: [fileMigrationLog.fileId],
+		references: [file.id]
+	}),
+	fileVariant: one(fileVariant, {
+		fields: [fileMigrationLog.fileId],
+		references: [fileVariant.file]
+	}),
+}));
+
+export const fileVariantRelations = relations(fileVariant, ({one, many}) => ({
+	fileMigrationLogs: many(fileMigrationLog),
+	file: one(file, {
+		fields: [fileVariant.file],
+		references: [file.id]
 	}),
 }));
 
