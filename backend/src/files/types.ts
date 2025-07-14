@@ -74,7 +74,7 @@ export interface ProfilePictureSize {
 export interface VideoRenderOptions {
   size?: string
   outputOptions: string[]
-  optionsCallback?: (ffmpeg: import('fluent-ffmpeg').FfmpegCommand) => void
+  optionsCallback?: (ffmpeg: unknown) => void
 }
 
 export interface ThumbnailPaths {
