@@ -1,4 +1,5 @@
 import ffmpeg, {
+  FFmpeg as FFmpegWrapper,
   ffprobe,
   FfmpegCommand,
   FFProbeMetadata,
@@ -22,6 +23,7 @@ import {
   itemTypes,
   videoEncodingOptions,
   audioEncodingOptions,
+  audioNormalizationOptions,
   processingConfig,
 } from './config.js'
 
@@ -191,25 +193,74 @@ export default class FileProcessor {
       })
     }
 
+    const renderVideoWithNormalization = async (
+      renderIdx: number,
+      inputPath: string,
+      outputPath: string,
+      size?: string,
+      videoOptions: string[] = [],
+      audioOptions: string[] = [],
+      hasAudio = true,
+    ): Promise<void> => {
+      if (!hasAudio) {
+        // No audio, use standard video rendering
+        return renderVideo(renderIdx, inputPath, outputPath, size, [
+          ...videoOptions,
+          '-an', // No audio
+        ])
+      }
+
+      // Create temp file for normalized audio processing
+      const tmpDir = tmp.dirSync({ postfix: '-audio-norm' })
+      const tempOutputPath = fileUtils.resolvePath(
+        tmpDir.name,
+        'temp_normalized.mp4',
+      )
+
+      try {
+        // Use audio normalization with progress tracking
+        await FFmpegWrapper.normalizeAudio(inputPath, tempOutputPath, {
+          videoOptions: [
+            ...videoOptions,
+            ...(size
+              ? size.startsWith('?x')
+                ? ['-vf', `scale=-2:${size.substring(2)}`]
+                : ['-s', size]
+              : []),
+          ],
+          audioOptions,
+          normalizationOptions: audioNormalizationOptions.ebuR128,
+          onProgress: (progress: { percent?: number }) => {
+            if (progress.percent !== undefined) {
+              updateProgress(renderIdx, progress.percent)
+            }
+          },
+        })
+
+        // Move the temp file to final destination
+        await fileUtils.moveAsync(tempOutputPath, outputPath)
+      } finally {
+        // Clean up temp directory
+        tmpDir.removeCallback()
+      }
+    }
+
     const mp4VideoOptions = videoEncodingOptions.mp4.video
     const mp4AudioOptions = videoEncodingOptions.mp4.audio
 
-    // Render main video
+    // Render main video with audio normalization
     const outputHeight =
       height > processingConfig.video.maxHeight
         ? processingConfig.video.maxHeight
         : height
 
-    const renderA = renderVideo(
+    const renderA = renderVideoWithNormalization(
       0,
       filePath,
       filePaths.mp4!,
       `?x${outputHeight}`,
       [
         ...mp4VideoOptions,
-        ...(fileType === FileType.VIDEO
-          ? [...mp4AudioOptions, '-b:a', '192k']
-          : ['-an']),
         '-b:v',
         '2500k',
         '-bufsize',
@@ -217,6 +268,8 @@ export default class FileProcessor {
         '-maxrate',
         '4500k',
       ],
+      fileType === FileType.VIDEO ? [...mp4AudioOptions, '-b:a', '192k'] : [],
+      fileType === FileType.VIDEO, // hasAudio
     )
 
     const promises = [renderA]
@@ -228,7 +281,7 @@ export default class FileProcessor {
         filePath,
         filePaths.gif,
         undefined,
-        ['-f gif'],
+        [],
         (f: FfmpegCommand) => {
           f.addOption(
             '-filter_complex',
@@ -276,8 +329,6 @@ export default class FileProcessor {
     // Generate waveform data (10% of processing time)
     this.updateCallback({ processingProgress: 5 })
 
-    const { FFmpeg } = await import('./ffmpeg-wrapper.js')
-
     // Calculate samples for full waveform (6 samples per second, max 80)
     const samplesPerSecond = 8
     const targetSamples = Math.min(
@@ -285,7 +336,7 @@ export default class FileProcessor {
       Math.ceil(duration * samplesPerSecond),
     )
 
-    const waveformData = await FFmpeg.generateWaveform(filePath, {
+    const waveformData = await FFmpegWrapper.generateWaveform(filePath, {
       samples: targetSamples,
       channel: 'mono',
     })
@@ -293,20 +344,22 @@ export default class FileProcessor {
     this.updateCallback({ processingProgress: 15 })
 
     // Generate thumbnail waveform (always 12 samples)
-    const thumbnailWaveformData = await FFmpeg.generateWaveform(filePath, {
-      samples: processingConfig.audio.waveformThumbnailSamples,
-      channel: 'mono',
-    })
+    const thumbnailWaveformData = await FFmpegWrapper.generateWaveform(
+      filePath,
+      {
+        samples: processingConfig.audio.waveformThumbnailSamples,
+        channel: 'mono',
+      },
+    )
 
     this.updateCallback({ processingProgress: 25 })
 
-    // Compress to MP3 (75% of processing time)
+    // Compress to MP3 with audio normalization (75% of processing time)
     const mp3AudioOptions = audioEncodingOptions.mp3.audio
 
-    const { FFmpeg: FFmpegStatic } = await import('./ffmpeg-wrapper.js')
-
-    await FFmpegStatic.convert(filePath, filePaths.mp3!, {
-      outputOptions: mp3AudioOptions,
+    await FFmpegWrapper.normalizeAudio(filePath, filePaths.mp3!, {
+      audioOptions: mp3AudioOptions,
+      normalizationOptions: audioNormalizationOptions.ebuR128,
       onProgress: (progress: { percent?: number }) => {
         if (progress.percent !== undefined) {
           // Map progress from 25% to 95% (70% of total processing)

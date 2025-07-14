@@ -297,7 +297,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     WHERE mapping.thumbnail_path IS NOT NULL AND mapping.thumbnail_path != '';
   `);
 
-  // Insert compressed variants
+  // Insert compressed variants for ALL files (not just those that had compressed_path)
   pgm.sql(`
     INSERT INTO file_variant (file, variant, mime_type, extension, size_bytes, meta, updated_at, created_at)
     SELECT
@@ -318,10 +318,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       mapping.updated_at,
       mapping.created_at
     FROM temp_item_file_mapping mapping
-    WHERE mapping.compressed_path IS NOT NULL AND mapping.compressed_path != '';
+    WHERE mapping.original_path IS NOT NULL AND mapping.original_path != '';
   `);
 
-  // Insert compressed GIF variants (only for GIF items)
+  // Insert compressed GIF variants for ALL GIF files
   pgm.sql(`
     INSERT INTO file_variant (file, variant, mime_type, extension, size_bytes, meta, updated_at, created_at)
     SELECT
@@ -338,7 +338,28 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       mapping.updated_at,
       mapping.created_at
     FROM temp_item_file_mapping mapping
-    WHERE mapping.compressed_path IS NOT NULL AND mapping.compressed_path != '' AND mapping.type = 'GIF';
+    WHERE mapping.original_path IS NOT NULL AND mapping.original_path != '' AND mapping.type = 'GIF';
+  `);
+
+  // Insert thumbnail poster variants (for VIDEO and GIF items)
+  pgm.sql(`
+    INSERT INTO file_variant (file, variant, mime_type, extension, size_bytes, meta, updated_at, created_at)
+    SELECT
+      mapping.file_id,
+      'THUMBNAIL_POSTER'::variant_type,
+      'image/jpeg',
+      'jpeg',
+      0,
+      CASE
+        WHEN mapping.relative_height IS NOT NULL THEN
+          json_build_object('relative_height', mapping.relative_height::text::float)
+        ELSE '{}'::json
+      END,
+      mapping.updated_at,
+      mapping.created_at
+    FROM temp_item_file_mapping mapping
+    WHERE mapping.original_path IS NOT NULL AND mapping.original_path != ''
+    AND mapping.type IN ('VIDEO', 'GIF');
   `);
 
   // Create migration log entries for item files
@@ -368,9 +389,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
       UNION ALL
 
-      -- Compressed files
+      -- Compressed files (re-encoded from ORIGINAL)
       SELECT
-        mapping.compressed_path as old_path,
+        mapping.original_path as old_path,
         mapping.file_id,
         'COMPRESSED' as variant_type,
         CASE
@@ -379,19 +400,75 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
           ELSE 'jpeg'
         END as extension
       FROM temp_item_file_mapping mapping
-      WHERE mapping.compressed_path IS NOT NULL AND mapping.compressed_path != ''
+      WHERE mapping.original_path IS NOT NULL AND mapping.original_path != ''
+      AND EXISTS (
+        SELECT 1 FROM file_variant fv
+        WHERE fv.file = mapping.file_id AND fv.variant = 'COMPRESSED'
+      )
 
       UNION ALL
 
-      -- Compressed GIF files (only for GIF items)
+      -- Compressed GIF files (re-encoded from ORIGINAL, only for GIF items)
       SELECT
-        mapping.compressed_path as old_path,
+        mapping.original_path as old_path,
         mapping.file_id,
         'COMPRESSED_GIF' as variant_type,
         'gif' as extension
       FROM temp_item_file_mapping mapping
-      WHERE mapping.compressed_path IS NOT NULL AND mapping.compressed_path != '' AND mapping.type = 'GIF'
+      WHERE mapping.original_path IS NOT NULL AND mapping.original_path != ''
+      AND mapping.type = 'GIF'
+      AND EXISTS (
+        SELECT 1 FROM file_variant fv
+        WHERE fv.file = mapping.file_id AND fv.variant = 'COMPRESSED_GIF'
+      )
+
+      UNION ALL
+
+      -- Thumbnail poster files (generated from original video files)
+      SELECT
+        mapping.original_path as old_path,
+        mapping.file_id,
+        'THUMBNAIL_POSTER' as variant_type,
+        'jpeg' as extension
+      FROM temp_item_file_mapping mapping
+      WHERE mapping.original_path IS NOT NULL AND mapping.original_path != ''
+      AND mapping.type IN ('VIDEO', 'GIF')
     ) migration_entries;
+  `);
+
+  // Add deletion entries for old compressed files (since they will be re-encoded from ORIGINAL)
+  pgm.sql(`
+    INSERT INTO file_migration_log (old_path, file_id, variant_type, extension, migration_status)
+    SELECT old_path, NULL, NULL, extension, 'DELETE'
+    FROM (
+      -- Delete old compressed files
+      SELECT
+        mapping.compressed_path as old_path,
+        'jpeg' as extension
+      FROM temp_item_file_mapping mapping
+      WHERE mapping.compressed_path IS NOT NULL AND mapping.compressed_path != ''
+      AND mapping.type NOT IN ('VIDEO', 'GIF')
+
+      UNION ALL
+
+      -- Delete old compressed video/gif files (mp4)
+      SELECT
+        mapping.compressed_path as old_path,
+        'mp4' as extension
+      FROM temp_item_file_mapping mapping
+      WHERE mapping.compressed_path IS NOT NULL AND mapping.compressed_path != ''
+      AND mapping.type IN ('VIDEO', 'GIF')
+
+      UNION ALL
+
+      -- Delete old compressed GIF files (original .gif versions)
+      SELECT
+        mapping.compressed_path as old_path,
+        'gif' as extension
+      FROM temp_item_file_mapping mapping
+      WHERE mapping.compressed_path IS NOT NULL AND mapping.compressed_path != ''
+      AND mapping.type = 'GIF'
+    ) delete_entries;
   `);
 
   // Add new file_id column to item table
@@ -443,6 +520,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.dropColumn('user', 'profile_picture');
 
   // Drop the format enum since item type is now stored in file table
+  pgm.dropTable('temp_item_file_mapping');
   pgm.dropType('format');
 
   // Clean up helper functions (they were only needed for the migration)

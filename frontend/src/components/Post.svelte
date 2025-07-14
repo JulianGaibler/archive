@@ -118,7 +118,6 @@
       .map((item) => {
         let thumbnail: string | undefined = undefined
         const data = item.data
-        console.log('Reorder item data:', data)
         // Handle different thumbnail types based on item type
         if (
           data.__typename === 'ImageItem' ||

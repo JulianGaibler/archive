@@ -411,7 +411,6 @@
       ] as MenuItem[]
     }
     const tracks = Array.from(videoElement.textTracks)
-    console.log('Available caption tracks:', tracks)
     return [
       {
         label: 'Off',

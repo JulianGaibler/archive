@@ -57,57 +57,64 @@ export const videoEncodingOptions = {
     video: [
       '-pix_fmt',
       'yuv420p',
-      '-vsync',
-      '1',
       '-vcodec',
       'libx264',
-      '-profile:v',
-      'main',
+      '-preset',
+      'slower',
+      '-crf',
+      '22',
       '-tune',
       'film',
       '-g',
       '60',
-      '-x264opts',
-      'no-scenecut',
+      '-movflags',
+      '+faststart',
       '-max_muxing_queue_size',
       '1024',
-      '-f',
-      'mp4',
     ],
-    audio: ['-acodec', 'aac', '-ac', '2', '-ar', '44100'],
+    audio: ['-acodec', 'aac', '-ac', '2', '-ar', '44100', '-b:a', '192k'],
   },
 }
 
 export const audioEncodingOptions = {
   mp3: {
-    audio: [
-      '-acodec',
-      'libmp3lame',
-      '-ac',
-      '2', // Stereo
-      '-ar',
-      '44100', // 44.1 kHz sample rate
-      '-b:a',
-      '128k', // 128 kbps bitrate (good balance of quality/size)
-      '-f',
-      'mp3',
-    ],
+    audio: ['-acodec', 'libmp3lame', '-ar', '44100', '-b:a', '192k'],
+  },
+}
+
+export const audioNormalizationOptions = {
+  ebuR128: {
+    // EBU R128 loudness normalization standards
+    integratedLoudness: -16, // LUFS (Loudness Units Full Scale)
+    truePeak: -1.5, // dBTP (True Peak)
+    loudnessRange: 11, // LU (Loudness Units)
+    // Enable for enhanced quality (slower processing)
+    dualMono: true,
+    linear: true,
+    // Filter options for analysis pass
+    analysisFilter: 'loudnorm=I=-16:TP=-1.5:LRA=11:print_format=summary',
+    // Template for processing pass (measurements will be injected)
+    processingFilterTemplate:
+      'loudnorm=I=-16:TP=-1.5:LRA=11:measured_I={measured_I}:measured_LRA={measured_LRA}:measured_TP={measured_TP}:measured_thresh={measured_thresh}:offset={offset}:linear={linear}:dual_mono={dual_mono}',
   },
 }
 
 export const processingConfig = {
   image: {
-    maxSize: 900,
+    maxSize: 1080,
     jpegQuality: 91,
   },
   thumbnail: {
-    maxSize: 400,
+    maxSize: 600,
+    jpegQuality: 50,
+  },
+  posterThumbnail: {
+    maxHeight: 1080,
     jpegQuality: 50,
   },
   video: {
-    maxHeight: 720,
+    maxHeight: 1080,
     thumbnailWidth: 400,
-    thumbnailDuration: 7.5,
   },
   audio: {
     waveformSamples: 80, // Maximum samples for full waveform

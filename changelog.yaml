@@ -2,13 +2,18 @@
 # Labels: [Added], [Fixed], [Improved], [Removed], [Deprecated], [Security]
 
 2.2.0:
-  date: '2025-07-02' # FIXME
+  date: '2025-07-14'
   notes: |
-     Archive 2.2
+    With Archive 2.2, the file handling has been completely rewritten. The new system allows files to be uploaded and processed while still editing a post, and **supports audio files** alongside images and videos. The new processing system also normalizes audio levels for videos and audio files, and compression settings have been updated for better quality. These changes have been applied to all existing posts!
   changes:
     - '[Added] Support for audio files'
-    - '[Improved] When adding files to a post, they are now instantly uploaded and processed'
+    - '[Added] Custom player for audio and videos'
+    - '[Improved] Sound for videos and audio files is now normalized (EBU R 128)'
     - '[Improved] Archive is now installable as a Progressive Web App (PWA)'
+    - '[Improved] Updated video and image compression settings for better quality'
+    - '[Improved] Video playback should now start faster'
+    - '[Improved] Compressed videos and images now have a max size of 1080p (up from 720p)'
+    - '[Improved] When adding files to a post, they are now instantly uploaded and processed'
     - '[Fixed] Session management interface now shows the correct IP address'
     - '[Fixed] Better handling of database errors, especially when titles are not unique'
 2.1.1:

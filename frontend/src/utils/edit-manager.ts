@@ -148,7 +148,6 @@ export function createEditManager(
       })
     }
 
-    console.log(`Processing IDs to monitor: ${processingIds.join(', ')}`)
     if (processingIds.length === 0 || !webSubscriptionsClient) {
       return
     }
@@ -748,7 +747,6 @@ export function createEditManager(
       })
 
       // Start monitoring the uploaded file for processing updates
-      console.log('File upload completed, starting processing subscription...')
       startProcessingSubscription()
 
       // Continue processing queue

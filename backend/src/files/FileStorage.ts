@@ -177,10 +177,8 @@ export default class FileStorage {
 
   /** Checks the queue and processes the next file if available */
   async checkQueue(): Promise<void> {
-    console.log('AAAAAAA Checking file processing queue...')
     try {
       const fileId = await this.queue.checkQueue()
-      console.log(`AAAAAAA Next file to process: ${fileId}`)
       if (fileId !== undefined) {
         await this.processFile(fileId)
       }
@@ -197,7 +195,6 @@ export default class FileStorage {
    */
   private async processFile(fileId: string): Promise<void> {
     const ctx = Context.createPrivilegedContext()
-    console.log(`AAAAAAA Processing file with ID: ${fileId}`)
     try {
       const filePath = this.pathManager.getQueuePath(fileId)
       const updateCallback: FileUpdateCallback = async (changes) => {

@@ -47,6 +47,22 @@ export interface WaveformData {
   sampleRate: number // Effective sample rate of the waveform data
 }
 
+export interface AudioNormalizationMeasurements {
+  input_i: number // Integrated loudness
+  input_lra: number // Loudness range
+  input_tp: number // True peak
+  input_thresh: number // Threshold
+  target_offset: number // Offset
+}
+
+export interface AudioNormalizationOptions {
+  integratedLoudness?: number // Target integrated loudness in LUFS (default: -16)
+  truePeak?: number // Target true peak in dBTP (default: -1.5)
+  loudnessRange?: number // Target loudness range in LU (default: 11)
+  linear?: boolean // Linear normalization (default: true)
+  dualMono?: boolean // Dual mono processing (default: true)
+}
+
 type ProgressCallback = (progress: FFmpegProgress) => void
 type ErrorCallback = (error: Error) => void
 type EndCallback = () => void
@@ -465,6 +481,164 @@ export class FFmpegWrapper {
         reject(new Error(`Failed to spawn ffmpeg: ${error.message}`))
       })
     })
+  }
+
+  /**
+   * Analyzes audio for EBU R128 loudness normalization measurements
+   *
+   * @param inputPath Path to the input audio/video file
+   * @param options Normalization options
+   * @returns Promise resolving to normalization measurements
+   */
+  static async analyzeAudioLoudness(
+    inputPath: string,
+    options: AudioNormalizationOptions = {},
+  ): Promise<AudioNormalizationMeasurements> {
+    const {
+      integratedLoudness = -16,
+      truePeak = -1.5,
+      loudnessRange = 11,
+      linear = true,
+    } = options
+
+    return new Promise((resolve, reject) => {
+      const args = [
+        '-hide_banner',
+        '-nostats',
+        '-i',
+        inputPath,
+        '-af',
+        `loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}:print_format=json:linear=${linear ? 'true' : 'false'}`,
+        '-f',
+        'null',
+        '-',
+      ]
+
+      const process = spawn('ffmpeg', args)
+      let stderr = ''
+
+      process.stderr.on('data', (data) => {
+        stderr += data.toString()
+      })
+
+      process.on('close', (code) => {
+        if (code !== 0) {
+          reject(
+            new Error(`Audio analysis failed with code ${code}: ${stderr}`),
+          )
+          return
+        }
+
+        try {
+          // Parse loudnorm measurements from stderr
+          const measurements = FFmpegWrapper.parseLoudnormMeasurements(stderr)
+          resolve(measurements)
+        } catch (error) {
+          reject(new Error(`Failed to parse loudnorm measurements: ${error}`))
+        }
+      })
+
+      process.on('error', (error) => {
+        reject(
+          new Error(
+            `Failed to spawn ffmpeg for audio analysis: ${error.message}`,
+          ),
+        )
+      })
+    })
+  }
+
+  /**
+   * Applies audio normalization using EBU R128 standards with two-pass
+   * processing
+   *
+   * @param inputPath Path to the input audio/video file
+   * @param outputPath Path for the output file
+   * @param options Normalization and encoding options
+   * @returns Promise resolving when normalization is complete
+   */
+  static async normalizeAudio(
+    inputPath: string,
+    outputPath: string,
+    options: {
+      audioOptions?: string[]
+      videoOptions?: string[]
+      normalizationOptions?: AudioNormalizationOptions
+      onProgress?: (progress: FFmpegProgress) => void
+    } = {},
+  ): Promise<void> {
+    const {
+      integratedLoudness = -16,
+      truePeak = -1.5,
+      loudnessRange = 11,
+      linear = true,
+      dualMono = true,
+    } = options.normalizationOptions || {}
+
+    // Pass 1: Analyze audio for measurements
+    const measurements = await FFmpegWrapper.analyzeAudioLoudness(inputPath, {
+      integratedLoudness,
+      truePeak,
+      loudnessRange,
+    })
+
+    // Pass 2: Apply normalization with measurements
+    const audioFilter = `loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}:linear=${linear ? 'true' : 'false'}:measured_I=${measurements.input_i}:measured_LRA=${measurements.input_lra}:measured_TP=${measurements.input_tp}:measured_thresh=${measurements.input_thresh}:offset=${measurements.target_offset}:dual_mono=${dualMono ? 'true' : 'false'}`
+
+    return FFmpegWrapper.convert(inputPath, outputPath, {
+      outputOptions: [
+        '-af',
+        audioFilter,
+        ...(options.audioOptions || []),
+        ...(options.videoOptions || []),
+      ],
+      onProgress: options.onProgress,
+    })
+  }
+
+  /**
+   * Parses loudnorm measurements from ffmpeg stderr output
+   *
+   * @param stderr The stderr output from ffmpeg loudnorm analysis
+   * @returns Parsed measurements object
+   */
+  static parseLoudnormMeasurements(
+    stderr: string,
+  ): AudioNormalizationMeasurements {
+    // Extract JSON from ffmpeg output
+    const match = stderr.match(/\{[\s\S]*?\}/m)
+    if (!match) {
+      throw new Error('Could not find loudnorm JSON output')
+    }
+
+    try {
+      const jsonData = JSON.parse(match[0])
+
+      // Validate that all required measurements were found
+      const requiredKeys = [
+        'input_i',
+        'input_lra',
+        'input_tp',
+        'input_thresh',
+        'target_offset',
+      ]
+
+      for (const key of requiredKeys) {
+        if (jsonData[key] === undefined) {
+          throw new Error(`Missing required measurement: ${key}`)
+        }
+      }
+
+      return {
+        input_i: parseFloat(jsonData.input_i),
+        input_lra: parseFloat(jsonData.input_lra),
+        input_tp: parseFloat(jsonData.input_tp),
+        input_thresh: parseFloat(jsonData.input_thresh),
+        target_offset: parseFloat(jsonData.target_offset),
+      }
+    } catch (error) {
+      throw new Error(`Failed to parse loudnorm JSON: ${error}`)
+    }
   }
 
   static async convert(

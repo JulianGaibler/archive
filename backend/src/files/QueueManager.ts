@@ -1,4 +1,3 @@
-import { Mutex } from 'async-mutex'
 import Context from '../Context.js'
 import FileActions from '@src/actions/FileActions.js'
 
@@ -8,19 +7,14 @@ export interface QueueManager {
 }
 
 export class FileProcessingQueue implements QueueManager {
-  private readonly fileMutex: Mutex
   private isProcessing = false
 
-  constructor() {
-    this.fileMutex = new Mutex()
-  }
+  constructor() {}
 
   async checkQueue(): Promise<string | undefined> {
     if (this.isProcessing) {
       return undefined
     }
-
-    const release = await this.fileMutex.acquire()
 
     try {
       this.isProcessing = true
@@ -47,7 +41,6 @@ export class FileProcessingQueue implements QueueManager {
       throw error
     } finally {
       this.isProcessing = false
-      release()
     }
   }
 

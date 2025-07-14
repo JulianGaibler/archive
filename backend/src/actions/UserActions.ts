@@ -259,7 +259,6 @@ const UserActions = {
     ctx: Context,
     fields: { file: Promise<FileUpload> },
   ) {
-    console.log('Uploading profile picture', fields)
     const userIId = ctx.isAuthenticated()
     const [user] = await ctx.db
       .select()

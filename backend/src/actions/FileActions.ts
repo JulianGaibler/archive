@@ -218,7 +218,7 @@ const FileActions = {
     // Set expiry to 2 hours from now
     const expireBy = Date.now() + 2 * 60 * 60 * 1000
 
-    return await ctx.db.transaction(async (tx) => {
+    const fileId = await ctx.db.transaction(async (tx) => {
       // Create the file record first to get the ID
       const [newFile] = await tx
         .insert(fileTable)
@@ -246,8 +246,6 @@ const FileActions = {
           .update(fileTable)
           .set({ type })
           .where(eq(fileTable.id, newFile.id))
-
-        Context.fileStorage.checkQueue()
       } catch (error) {
         // If file operations fail, clean up the database record
         await tx.delete(fileTable).where(eq(fileTable.id, newFile.id))
@@ -256,6 +254,11 @@ const FileActions = {
 
       return newFile.id
     })
+
+    // Call checkQueue after the transaction is committed
+    Context.fileStorage.checkQueue()
+
+    return fileId
   },
 
   /** Upload a new profile picture file. Returns the file ID. */
@@ -454,8 +457,6 @@ const FileActions = {
   ): Promise<void> {
     await ctx.db.update(fileTable).set(changes).where(eq(fileTable.id, fileId))
 
-    console.log(`UPDATED file processing update for ${fileId}`, changes)
-
     // Publish file processing update if status or progress changed
     if (changes.processingStatus || changes.processingProgress !== undefined) {
       // for done and wait, let's wait 1 second to ensure all processing is complete and slow clients have subscription updates
@@ -465,7 +466,6 @@ const FileActions = {
       ) {
         await new Promise((resolve) => setTimeout(resolve, 1000))
       }
-      console.log(`Publishing file processing update for ${fileId}`)
       await this._publishFileProcessingUpdate(ctx, fileId)
     }
   },
@@ -692,31 +692,15 @@ const FileActions = {
     return {
       asyncIteratorFn: () => wrappedAsyncIterator,
       filterFn: (payload: FileProcessingUpdatePayload | undefined): boolean => {
-        console.debug(
-          `File processing subscription filter: fileIds=${JSON.stringify(fields.fileIds)}, payload=${JSON.stringify(payload)}`,
-        )
-
         // If payload is undefined, do not pass the filter
         if (!payload) {
-          console.debug(
-            'File processing subscription filter: payload is undefined, skipping',
-          )
           return false
         }
-
         // If no specific file IDs are requested, allow all
         if (!fields.fileIds || fields.fileIds.length === 0) {
-          console.debug(
-            'File processing subscription filter: no specific file IDs requested, allowing all',
-          )
           return true
         }
-
         // Filter to only include files that match the requested external IDs
-        console.debug(
-          `File processing subscription filter: checking if file ${payload.file.id} is in requested IDs:`,
-          fields.fileIds.includes(payload.file.id),
-        )
         return fields.fileIds.includes(payload.file.id)
       },
     }
@@ -783,6 +767,9 @@ const FileActions = {
 
     // Build paths
     const originalPath = original ? this.buildFilePath(fileId, original) : null
+    const compressedPath = compressed
+      ? this.buildFilePath(fileId, compressed)
+      : null
     const compressedGifPath = compressedGif
       ? this.buildFilePath(fileId, compressedGif)
       : null
@@ -802,16 +789,10 @@ const FileActions = {
     // Get all metadata in one call
     const metadata = await this.qFileMetadata(ctx, fileId, true)
 
-    // For GIFs, prefer COMPRESSED_GIF over COMPRESSED for the compressed path
-    const preferredCompressed = compressedGif || compressed
-    const finalCompressedPath = preferredCompressed
-      ? this.buildFilePath(fileId, preferredCompressed)
-      : null
-
     return {
       ...fileExternal,
       originalPath,
-      compressedPath: finalCompressedPath,
+      compressedPath,
       thumbnailPath,
       posterThumbnailPath,
       compressedGifPath,
