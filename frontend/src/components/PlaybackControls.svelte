@@ -225,108 +225,106 @@
 {/if}
 
 <style lang="sass">
-.media-controls
+:global(.media-controls)
   color: var(--tint-text)
 
-.progress-container, .controls-row
-  z-index: 2
-  position: relative
+  .progress-container, .controls-row
+    z-index: 2
+    position: relative
 
-.progress-container
-  margin-bottom: tint.$size-12
+  .progress-container
+    margin-bottom: tint.$size-12
 
-.progress-bar
-  width: 100%
-  height: tint.$size-4
-  background: color-mix(in srgb, var(--tint-action-secondary) 20%, transparent)
-  border-radius: tint.$size-2
-  appearance: none
-  outline: none
-  cursor: pointer
-  &::-webkit-slider-thumb
+  .progress-bar
+    width: 100%
+    height: tint.$size-4
+    background: color-mix(in srgb, var(--tint-action-secondary) 20%, transparent)
+    border-radius: tint.$size-2
     appearance: none
-    width: tint.$size-16
-    height: tint.$size-16
-    border-radius: 50%
-    background: var(--tint-action-primary)
+    outline: none
     cursor: pointer
-  &::-moz-range-thumb
-    width: tint.$size-16
-    height: tint.$size-16
-    border-radius: 50%
-    background: var(--tint-action-primary)
-    cursor: pointer
-    border: none
+    &::-webkit-slider-thumb
+      appearance: none
+      width: tint.$size-16
+      height: tint.$size-16
+      border-radius: 50%
+      background: var(--tint-action-primary)
+      cursor: pointer
+    &::-moz-range-thumb
+      width: tint.$size-16
+      height: tint.$size-16
+      border-radius: 50%
+      background: var(--tint-action-primary)
+      cursor: pointer
+      border: none
 
-.controls-row
-  display: flex
-  align-items: center
-  justify-content: space-between
-  gap: tint.$size-12
-  flex-wrap: wrap
-  :global(.tint--button.play-pause-button)
-    width: tint.$size-80
-  :global(.tint--button.small.play-pause-button)
-    width: tint.$size-64
+  .controls-row
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: tint.$size-12
+    flex-wrap: wrap
+    :global(.tint--button.play-pause-button)
+      width: tint.$size-80
+    :global(.tint--button.small.play-pause-button)
+      width: tint.$size-64
 
-.controls-left,
-.controls-right
-  display: flex
-  align-items: center
-  gap: tint.$size-8
-  flex-wrap: wrap
-
-@media (max-width: tint.$breakpoint-sm)
-  .controls-row,
   .controls-left,
   .controls-right
-    justify-content: center
+    display: flex
+    align-items: center
+    gap: tint.$size-8
+    flex-wrap: wrap
 
-.volume-control
-  display: flex
-  align-items: center
-  gap: tint.$size-4
+  @media (max-width: tint.$breakpoint-sm)
+    .controls-row,
+    .controls-left,
+    .controls-right
+      justify-content: center
 
-.volume-slider
-  width: 80px
-  height: tint.$size-4
-  background: color-mix(in srgb, var(--tint-action-secondary) 20%, transparent)
-  border-radius: tint.$size-2
-  appearance: none
-  outline: none
+  .volume-control
+    display: flex
+    align-items: center
+    gap: tint.$size-4
 
-  &::-webkit-slider-thumb
+  .volume-slider
+    width: 80px
+    height: tint.$size-4
+    background: color-mix(in srgb, var(--tint-action-secondary) 20%, transparent)
+    border-radius: tint.$size-2
     appearance: none
-    width: tint.$size-12
-    height: tint.$size-12
-    border-radius: 50%
-    background: var(--tint-action-secondary)
-    cursor: pointer
+    outline: none
+    &::-webkit-slider-thumb
+      appearance: none
+      width: tint.$size-12
+      height: tint.$size-12
+      border-radius: 50%
+      background: var(--tint-action-secondary)
+      cursor: pointer
+    &::-moz-range-thumb
+      width: tint.$size-12
+      height: tint.$size-12
+      border-radius: 50%
+      background: var(--tint-action-secondary)
+      cursor: pointer
+      border: none
 
-  &::-moz-range-thumb
-    width: tint.$size-12
-    height: tint.$size-12
-    border-radius: 50%
-    background: var(--tint-action-secondary)
-    cursor: pointer
-    border: none
+  .time-display
+    color: var(--tint-text-secondary)
+    white-space: nowrap
+    padding-inline: tint.$size-12
 
-.time-display
-  color: var(--tint-text-secondary)
-  white-space: nowrap
-  padding-inline: tint.$size-12
-
-.speed-control button
-  color: var(--tint-text)
-  background: none
-  border-radius: tint.$size-64
-  border: 2px solid
-  padding-inline: tint.$size-8
-  padding-block: tint.$size-4
-  text-transform: uppercase
-  @include tint.effect-focus()
-  &:hover
-    background: var(--tint-action-secondary-hover)
-  &:active
-    background: var(--tint-action-secondary-active)
+  .speed-control button
+    color: var(--tint-text)
+    background: none
+    border-radius: tint.$size-64
+    border: 2px solid
+    padding-inline: tint.$size-8
+    padding-block: tint.$size-4
+    text-transform: uppercase
+    @include tint.effect-focus()
+    &:hover
+      background: var(--tint-action-secondary-hover)
+    &:active
+      background: var(--tint-action-secondary-active)
 </style>

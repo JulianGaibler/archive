@@ -1,5 +1,5 @@
 <script lang="ts">
-  import MediaControls from './MediaControls.svelte'
+  import PlaybackControls from './PlaybackControls.svelte'
   import { getResourceUrl } from '../utils/resource-urls'
 
   interface Props {
@@ -240,7 +240,7 @@
         </div>
       {/if}
 
-      <MediaControls
+      <PlaybackControls
         {isPlaying}
         {currentTime}
         {duration}
@@ -336,6 +336,8 @@ noscript audio
   justify-content: space-between
   height: 100%
   gap: tint.$size-2
+  @media (max-width: tint.$breakpoint-sm)
+    gap: 0
 
 .waveform-bar
   flex: 1
@@ -347,6 +349,8 @@ noscript audio
   opacity: 0.6
   border-radius: tint.$size-80
   min-width: 2px
+  @media (max-width: tint.$breakpoint-sm)
+    min-width: none
   &:hover
     background: var(--tint-action-secondary-active)
   &.active

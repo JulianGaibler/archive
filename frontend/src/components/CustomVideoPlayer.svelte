@@ -1,7 +1,7 @@
 <script lang="ts">
   import Button from 'tint/components/Button.svelte'
   import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
-  import MediaControls from './MediaControls.svelte'
+  import PlaybackControls from './PlaybackControls.svelte'
   import { getResourceUrl } from '@src/utils/resource-urls'
 
   import IconFullscreen from 'tint/icons/20-fullscreen.svg?raw'
@@ -629,7 +629,6 @@
           : undefined,
   )
 
-  // Event handlers for MediaControls
   function handleSeek(value: number) {
     const seekTime = (value / 100) * duration
     videoElement.currentTime = seekTime
@@ -729,7 +728,7 @@
         onclick={(e) => e.stopPropagation()}
         onpointerdown={(e) => e.stopPropagation()}
       >
-        <MediaControls
+        <PlaybackControls
           {isPlaying}
           {currentTime}
           {duration}
@@ -781,7 +780,7 @@
               {@html isFullscreen ? IconFullscreenExit : IconFullscreen}
             </Button>
           {/snippet}
-        </MediaControls>
+        </PlaybackControls>
       </div>
 
       {#if showLoadingIndicator}
@@ -795,7 +794,6 @@
 </div>
 
 <style lang="sass">
-@use 'tint/styles/bootstrap' as bootstrap
 @use '../styles/colors'
 
 .video-player
@@ -803,7 +801,7 @@
   width: 100%
   max-width: 100%
   position: relative
-  @include bootstrap.generate-css-vars(colors.$colors-player)
+  @include tint.bootstrap-generate-css-vars(colors.$colors-player)
 
   &:fullscreen
     width: 100vw
