@@ -1,7 +1,6 @@
 import Context from '../Context.js'
-import { createId } from '@paralleldrive/cuid2'
 import FileProcessor from './FileProcessor.js'
-import { fileTypeFromBuffer, fileTypeFromFile } from 'file-type'
+import { fileTypeFromStream, fileTypeFromFile } from 'file-type'
 import fs from 'fs'
 import path from 'path'
 import stream from 'stream'
@@ -10,11 +9,20 @@ import { FileInternal } from '@src/models/FileModel.js'
 import tmp from 'tmp'
 import util from 'util'
 import { FileUpload } from 'graphql-upload/processRequest.mjs'
-import { InputError } from '@src/errors/index.js'
+import { InputError, RequestError } from '@src/errors/index.js'
 import * as fileUtils from './file-utils.js'
-import { FileType, FileUpdateCallback, FileProcessingResult } from './types.js'
+import {
+  FileType,
+  FileProcessingResult,
+  FileUpdateCallback,
+} from './types.js'
+import {
+  ModificationActionData,
+  getPersistentModifications,
+} from './processing-metadata.js'
 import { FilePathManager } from './FilePathManager.js'
 import { FileProcessingQueue } from './QueueManager.js'
+import { FFmpegWrapper } from './ffmpeg-wrapper.js'
 
 const pipeline = util.promisify(stream.pipeline)
 
@@ -35,37 +43,49 @@ export default class FileStorage {
     this.queue = new FileProcessingQueue()
   }
 
-  /**
-   * Stores an uploaded file to the queue for processing
+    /**
+   * Analyzes and stores an uploaded file to the queue for processing
    *
    * @param {Context} _ctx The context object
    * @param {Promise<FileUpload>} upload The file upload promise
    * @param {string} fileId The file ID to associate with the upload
-   * @returns {Promise<void>}
+   * @returns {Promise<FileAnalysisResult>} The analysis result
    */
-  async storeFile(
+  async queueFileFromUpload(
     _ctx: Context,
     upload: Promise<FileUpload>,
     fileId: string,
-  ): Promise<void> {
+    limitType?: ('VIDEO' | 'IMAGE' | 'GIF' | 'AUDIO')[],
+  ): Promise<FileAnalysisResult> {
     const { createReadStream } = await upload
 
-    // Read the stream to a buffer to get file type
-    const chunks: Buffer[] = []
-    const stream = createReadStream()
-
-    for await (const chunk of stream) {
-      chunks.push(chunk)
-    }
-
-    const buffer = Buffer.concat(chunks)
-    const fileTypeResult = await fileTypeFromBuffer(buffer)
+    const fileTypeResult = await fileTypeFromStream(createReadStream())
 
     if (!fileTypeResult) {
       throw new InputError('File-Type not recognized')
     }
 
     const { mime } = fileTypeResult
+
+    // Determine the inferred type from MIME
+    let inferredType: 'VIDEO' | 'IMAGE' | 'GIF' | 'AUDIO'
+    if (mime === 'image/gif') {
+      inferredType = 'GIF'
+    } else if (mime.startsWith('image/')) {
+      inferredType = 'IMAGE'
+    } else if (mime.startsWith('video/')) {
+      inferredType = 'VIDEO'
+    } else if (mime.startsWith('audio/')) {
+      inferredType = 'AUDIO'
+    } else {
+      throw new InputError('File-Type is not supported')
+    }
+
+    if (limitType && !limitType.includes(inferredType)) {
+      throw new InputError(`File-Type ${inferredType} is not allowed`)
+    }
+
+    // Validate file type
     this.validateFileType(mime) // Throws if unsupported
 
     const queuePath = this.pathManager.getQueuePath(fileId)
@@ -74,49 +94,128 @@ export default class FileStorage {
     await fs.promises.mkdir(path.dirname(queuePath), { recursive: true })
 
     // Write buffer to file
-    await fs.promises.writeFile(queuePath, buffer)
+    await fs.promises.writeFile(queuePath, createReadStream())
+
+    return {
+      type: inferredType,
+      mimeType: mime,
+    }
   }
 
+
   /**
-   * Stores an uploaded profile picture file to the queue for processing
+   * Queues a file for processing by copying the original variant of a source file to the queue path of a target file.
    *
-   * @param {Context} _ctx The context object
-   * @param {Promise<FileUpload>} upload The file upload promise
-   * @param {string} fileId The file ID to associate with the upload
-   * @returns {Promise<void>}
+   * @param ctx - The request context containing user and environment information.
+   * @param srcFileId - The ID of the source file to copy from.
+   * @param targetFileId - The ID of the target file to queue for processing.
+   * @returns The ID of the target file.
+   * @throws {InputError} If the source file is not found.
+   * @throws {RequestError} If the original variant is not found or the source file does not exist on disk.
    */
-  async storeProfilePictureFile(
-    _ctx: Context,
-    upload: Promise<FileUpload>,
-    fileId: string,
-  ): Promise<void> {
-    const { createReadStream } = await upload
-
-    // Read the stream to a buffer to get file type
-    const chunks: Buffer[] = []
-    const stream = createReadStream()
-
-    for await (const chunk of stream) {
-      chunks.push(chunk)
+  async queueFileFromOtherFile(
+    ctx: Context,
+    srcFileId: string,
+    targetFileId: string,
+  ) {
+    const sourceFile = await FileActions._qFileInternal(ctx, srcFileId)
+    if (!sourceFile) {
+      throw new InputError('Source file not found')
+    }
+    const targetFile = await FileActions._qFileInternal(ctx, targetFileId)
+    if (!targetFile) {
+      throw new InputError('Target file not found')
     }
 
-    const buffer = Buffer.concat(chunks)
-    const fileTypeResult = await fileTypeFromBuffer(buffer)
-
-    if (!fileTypeResult) {
-      throw new InputError('File-Type not recognized')
+    // Get the original variant path
+    const fileVariants = await FileActions._qFileVariantsInternal(ctx, srcFileId)
+    const originalVariant = fileVariants.find(v => v.variant === 'ORIGINAL')
+    if (!originalVariant) {
+      throw new RequestError('Original variant not found for source file')
     }
 
-    const { mime } = fileTypeResult
-    this.validateFileType(mime) // Profile pictures must be images but we'll validate with existing function
+    const sourcePath = this.pathManager.getVariantPath(srcFileId, 'ORIGINAL', originalVariant.extension)
 
-    const queuePath = this.pathManager.getQueuePath(fileId)
+    // Ensure the source file exists
+    if (!fs.existsSync(sourcePath)) {
+      throw new RequestError('Source file does not exist on disk')
+    }
 
-    // Ensure directory exists
-    await fs.promises.mkdir(path.dirname(queuePath), { recursive: true })
+    let modifications: ModificationActionData
+    if (
+      'processingMeta' in targetFile &&
+      targetFile.processingMeta &&
+      typeof targetFile.processingMeta === 'object' &&
+      'newModifications' in (targetFile.processingMeta as Record<string, unknown>)
+    ) {
+      modifications = (targetFile.processingMeta as { newModifications: ModificationActionData }).newModifications
+    } else {
+      throw new RequestError('Missing processingMeta or newModifications in target file')
+    }
 
-    // Write buffer to file
-    await fs.promises.writeFile(queuePath, buffer)
+    if (modifications.fileType) {
+      const srcKind = this.getFileKind(originalVariant.mimeType)
+      const targetType = modifications.fileType
+      const validConversions = new Set([
+        'video->gif',
+        'gif->video',
+        'video->audio',
+      ])
+      const conversionKey = `${srcKind}->${targetType.toLowerCase()}`
+      if (
+        srcKind !== targetType.toLowerCase() &&
+        !validConversions.has(conversionKey)
+      ) {
+        throw new InputError(
+          `Invalid conversion: ${conversionKey}. Valid conversions are: video->gif, gif->video, video->audio.`
+        )
+      }
+    }
+
+    if (modifications.crop) {
+      // only works for videos and gifs
+      const srcKind = this.determineFileType(originalVariant.mimeType)
+      if (srcKind !== FileType.VIDEO && srcKind !== FileType.GIF && srcKind !== FileType.IMAGE) {
+        throw new InputError(`Invalid file type for cropping: ${srcKind}. Only videos and images can be cropped.`)
+      }
+
+      // Validate cropping parameters using ffprobe to ensure result is at least 100x100 pixels
+      const crop = modifications.crop as { left: number; right: number; top: number; bottom: number }
+
+      // Use ffprobe directly (async/await) to validate cropping parameters
+      const metadata = await FFmpegWrapper.ffprobe(sourcePath)
+      if (!metadata) {
+        throw new InputError('Failed to probe media file for cropping validation')
+      }
+
+      // Find the video stream with dimensions
+      const stream = metadata.streams.find((s) => s.codec_type === 'video' && s.width && s.height)
+      if (!stream) {
+        throw new InputError('Could not determine media dimensions for cropping')
+      }
+
+      const width = stream.width
+      const height = stream.height
+
+      if (typeof width !== 'number' || typeof height !== 'number') {
+        throw new InputError('Invalid media dimensions: width and height must be numbers')
+      }
+
+      // Calculate resulting dimensions after cropping
+      const resultWidth = width - crop.left - crop.right
+      const resultHeight = height - crop.top - crop.bottom
+
+      // Enforce minimum dimensions of 100x100
+      if (resultWidth < 100 || resultHeight < 100) {
+        throw new InputError(`Resulting media dimensions after cropping (${resultWidth}x${resultHeight}) must be at least 100x100 pixels`)
+      }
+    }
+
+    // Copy the source file to the queue path
+    const queuePath = this.pathManager.getQueuePath(targetFileId)
+    await fs.promises.copyFile(sourcePath, queuePath)
+
+    return targetFileId
   }
 
   /**
@@ -141,38 +240,6 @@ export default class FileStorage {
     })
 
     await Promise.all(deletionPromises)
-  }
-
-  /**
-   * Creates profile picture files and returns the generic filename
-   *
-   * @param {Promise<FileUpload>} upload The file upload promise
-   * @returns {Promise<string>} The generic filename
-   */
-  async setProfilePicture(upload: Promise<FileUpload>): Promise<string> {
-    const { createReadStream } = await upload
-    const filename = `pb-${createId()}`
-
-    await FileProcessor.createProfilePicture(
-      createReadStream(),
-      [this.pathManager.getDirectoryPath('profilePictures')],
-      filename,
-    )
-
-    return filename
-  }
-
-  /**
-   * Deletes all variants of a profile picture
-   *
-   * @param {string} filename The filename to delete
-   * @returns {Promise<void>}
-   */
-  async deleteProfilePicture(filename: string): Promise<void> {
-    return FileProcessor.deleteProfilePicture(
-      [this.pathManager.getDirectoryPath('profilePictures')],
-      filename,
-    )
   }
 
   /** Checks the queue and processes the next file if available */
@@ -218,10 +285,24 @@ export default class FileStorage {
           filePath,
           tmpDir.name,
           updateCallback,
+          file,
         )
         await this.moveProcessedFiles(result, file, fileId, updateCallback)
 
-        // Clean up
+        // Clean up original file if this was a reprocessing operation
+        if (file.processingMeta &&
+            typeof file.processingMeta === 'object' &&
+            'originalFile' in file.processingMeta) {
+          const originalFileId = (file.processingMeta as { originalFile: string }).originalFile
+          try {
+            await FileActions._mDeleteFile(ctx, originalFileId)
+          } catch (error) {
+            console.warn(`Failed to clean up original file ${originalFileId} after reprocessing:`, error)
+            // Don't fail the processing if cleanup fails
+          }
+        }
+
+        // Clean up queue file
         fileUtils.remove(filePath)
       } catch (error) {
         console.error(`Error processing file ${fileId}:`, error)
@@ -232,7 +313,6 @@ export default class FileStorage {
         })
       } finally {
         tmpDir.removeCallback()
-        // Continue processing queue
       }
     } catch (error) {
       console.error(`Error setting up processing for file ${fileId}:`, error)
@@ -248,6 +328,7 @@ export default class FileStorage {
     filePath: string,
     tmpDirName: string,
     updateCallback: FileUpdateCallback,
+    file: FileInternal,
   ) {
     const processor = new FileProcessor(updateCallback)
 
@@ -257,20 +338,36 @@ export default class FileStorage {
     }
 
     const mime = fileTypeResult.mime
-    const fileType = this.determineFileType(mime)
+    let targetFileType = this.determineFileType(mime)
 
-    let result
-    if (fileType === FileType.GIF || fileType === FileType.VIDEO) {
-      result = await processor.processVideo(filePath, tmpDirName, fileType)
-    } else if (fileType === FileType.IMAGE) {
-      result = await processor.processImage(filePath, tmpDirName)
-    } else if (fileType === FileType.AUDIO) {
-      result = await processor.processAudio(filePath, tmpDirName)
-    } else {
-      throw new InputError(`Unsupported file type: ${fileType}`)
+    // Check if we need to convert to a different file type
+    if (file.type && file.type !== targetFileType) {
+      // Validate the conversion is allowed
+      this.validateFileTypeConversion(targetFileType, file.type)
+      // Map string type to FileType enum
+      if (file.type === 'VIDEO') targetFileType = FileType.VIDEO
+      else if (file.type === 'GIF') targetFileType = FileType.GIF
+      else if (file.type === 'AUDIO') targetFileType = FileType.AUDIO
+      else if (file.type === 'IMAGE') targetFileType = FileType.IMAGE
     }
 
-    return { result, fileType, originalMimeType: mime }
+    // Extract modifications from the file
+    const modificationsData = file.modifications || {}
+    const modifications = getPersistentModifications(modificationsData)
+    const modificationArray = modifications ? [modifications] : []
+
+    let result
+    if (targetFileType === FileType.GIF || targetFileType === FileType.VIDEO) {
+      result = await processor.processVideo(filePath, tmpDirName, targetFileType, modificationArray)
+    } else if (targetFileType === FileType.IMAGE) {
+      result = await processor.processImage(filePath, tmpDirName, modificationArray)
+    } else if (targetFileType === FileType.AUDIO) {
+      result = await processor.processAudio(filePath, tmpDirName, modificationArray)
+    } else {
+      throw new InputError(`Unsupported file type: ${targetFileType}`)
+    }
+
+    return { result, fileType: targetFileType, originalMimeType: mime }
   }
 
   /**
@@ -531,6 +628,29 @@ export default class FileStorage {
   }
 
   /**
+   * Validates that a file type conversion is allowed
+   *
+   * @param {FileType} sourceType The source file type
+   * @param {string} targetType The target file type
+   * @returns {void}
+   */
+  private validateFileTypeConversion(sourceType: FileType, targetType: string): void {
+    const allowedConversions: Record<FileType, string[]> = {
+      [FileType.VIDEO]: ['VIDEO', 'GIF', 'AUDIO'],
+      [FileType.GIF]: ['VIDEO', 'GIF'],
+      [FileType.IMAGE]: ['IMAGE'],
+      [FileType.AUDIO]: ['AUDIO'],
+    }
+
+    const allowed = allowedConversions[sourceType]
+    if (!allowed || !allowed.includes(targetType)) {
+      throw new InputError(
+        `Invalid file type conversion: ${sourceType} cannot be converted to ${targetType}`
+      )
+    }
+  }
+
+  /**
    * Determines the file type enum from MIME type
    *
    * @param mimeType
@@ -609,165 +729,6 @@ export default class FileStorage {
     } catch (error) {
       console.warn(`Could not get file size for ${filePath}:`, error)
       return 0
-    }
-  }
-
-  /**
-   * Analyzes an uploaded file to determine its type and validates conversion if
-   * requested
-   *
-   * @param {Promise<FileUpload>} upload The file upload promise
-   * @param {string} [explicitType] Optional explicit type for conversion
-   * @returns {Promise<FileAnalysisResult>} The analysis result
-   */
-  async analyzeFileUpload(
-    upload: Promise<FileUpload>,
-    explicitType?: 'VIDEO' | 'IMAGE' | 'GIF' | 'AUDIO',
-  ): Promise<FileAnalysisResult> {
-    const { createReadStream } = await upload
-
-    // Read a small chunk to determine file type
-    const stream = createReadStream()
-    const chunks: Buffer[] = []
-    let totalSize = 0
-    const maxChunkSize = 4096 // 4KB should be enough for file type detection
-
-    for await (const chunk of stream) {
-      chunks.push(chunk)
-      totalSize += chunk.length
-      if (totalSize >= maxChunkSize) {
-        break
-      }
-    }
-
-    const buffer = Buffer.concat(chunks)
-    const fileTypeResult = await fileTypeFromBuffer(buffer)
-
-    if (!fileTypeResult) {
-      throw new InputError('File-Type not recognized')
-    }
-
-    const { mime } = fileTypeResult
-
-    // Determine the inferred type from MIME
-    let inferredType: 'VIDEO' | 'IMAGE' | 'GIF' | 'AUDIO'
-    if (mime === 'image/gif') {
-      inferredType = 'GIF'
-    } else if (mime.startsWith('image/')) {
-      inferredType = 'IMAGE'
-    } else if (mime.startsWith('video/')) {
-      inferredType = 'VIDEO'
-    } else if (mime.startsWith('audio/')) {
-      inferredType = 'AUDIO'
-    } else {
-      throw new InputError('File-Type is not supported')
-    }
-
-    // If explicit type is provided, validate the conversion
-    if (explicitType) {
-      const validConversions = new Set([
-        'VIDEO->GIF',
-        'GIF->VIDEO',
-        'VIDEO->AUDIO',
-      ])
-
-      const conversionKey = `${inferredType}->${explicitType}`
-      if (
-        inferredType !== explicitType &&
-        !validConversions.has(conversionKey)
-      ) {
-        throw new InputError(
-          `Invalid conversion: ${conversionKey}. Valid conversions are: Video to Gif, Gif to Video, Video to Audio`,
-        )
-      }
-
-      return { type: explicitType, mimeType: mime }
-    }
-
-    return { type: inferredType, mimeType: mime }
-  }
-
-  /**
-   * Analyzes and stores an uploaded file to the queue for processing
-   *
-   * @param {Context} _ctx The context object
-   * @param {Promise<FileUpload>} upload The file upload promise
-   * @param {string} fileId The file ID to associate with the upload
-   * @param {string} [explicitType] Optional explicit type for conversion
-   * @returns {Promise<FileAnalysisResult>} The analysis result
-   */
-  async analyzeAndStoreFile(
-    _ctx: Context,
-    upload: Promise<FileUpload>,
-    fileId: string,
-    explicitType?: 'VIDEO' | 'IMAGE' | 'GIF' | 'AUDIO',
-  ): Promise<FileAnalysisResult> {
-    const { createReadStream } = await upload
-
-    // Read the stream to a buffer to get file type and store the file
-    const chunks: Buffer[] = []
-    const stream = createReadStream()
-
-    for await (const chunk of stream) {
-      chunks.push(chunk)
-    }
-
-    const buffer = Buffer.concat(chunks)
-    const fileTypeResult = await fileTypeFromBuffer(buffer)
-
-    if (!fileTypeResult) {
-      throw new InputError('File-Type not recognized')
-    }
-
-    const { mime } = fileTypeResult
-
-    // Determine the inferred type from MIME
-    let inferredType: 'VIDEO' | 'IMAGE' | 'GIF' | 'AUDIO'
-    if (mime === 'image/gif') {
-      inferredType = 'GIF'
-    } else if (mime.startsWith('image/')) {
-      inferredType = 'IMAGE'
-    } else if (mime.startsWith('video/')) {
-      inferredType = 'VIDEO'
-    } else if (mime.startsWith('audio/')) {
-      inferredType = 'AUDIO'
-    } else {
-      throw new InputError('File-Type is not supported')
-    }
-
-    // If explicit type is provided, validate the conversion
-    if (explicitType) {
-      const validConversions = new Set([
-        'VIDEO->GIF',
-        'GIF->VIDEO',
-        'VIDEO->AUDIO',
-      ])
-
-      const conversionKey = `${inferredType}->${explicitType}`
-      if (
-        inferredType !== explicitType &&
-        !validConversions.has(conversionKey)
-      ) {
-        throw new InputError(
-          `Invalid conversion: ${conversionKey}. Valid conversions are: Video to Gif, Gif to Video, Video to Audio`,
-        )
-      }
-    }
-
-    // Validate file type
-    this.validateFileType(mime) // Throws if unsupported
-
-    const queuePath = this.pathManager.getQueuePath(fileId)
-
-    // Ensure directory exists
-    await fs.promises.mkdir(path.dirname(queuePath), { recursive: true })
-
-    // Write buffer to file
-    await fs.promises.writeFile(queuePath, buffer)
-
-    return {
-      type: explicitType || inferredType,
-      mimeType: mime,
     }
   }
 

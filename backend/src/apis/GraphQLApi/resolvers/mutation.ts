@@ -4,6 +4,7 @@ import KeywordActions from '@src/actions/KeywordActions.js'
 import PostActions from '@src/actions/PostActions.js'
 import SessionActions from '@src/actions/SessionActions.js'
 import FileActions from '@src/actions/FileActions.js'
+import ItemActions from '@src/actions/ItemActions.js'
 import AuthCookieUtils from '../AuthCookieUtils.js'
 
 export const mutationResolvers: MutationResolvers = {
@@ -44,7 +45,7 @@ export const mutationResolvers: MutationResolvers = {
   uploadItemFile: async (_, args, ctx) =>
     FileActions.mUploadItemFile(ctx, {
       file: args.file,
-      type: args.type || undefined, // Convert null to undefined
+      // type: args.type || undefined, // Convert null to undefined
     }),
 
   deleteTemporaryFile: async (_, args, ctx) =>
@@ -74,4 +75,13 @@ export const mutationResolvers: MutationResolvers = {
     }
     return rv
   },
+
+  convertItem: async (_, args, ctx) => ItemActions.mConvertItem(ctx, {
+    itemId: args.itemId,
+    convertTo: args.targetType,
+  }),
+
+  cropItem: async (_, args, ctx) => ItemActions.mCropItem(ctx, args),
+
+  trimItem: async (_, args, ctx) => ItemActions.mTrimItem(ctx, args),
 }

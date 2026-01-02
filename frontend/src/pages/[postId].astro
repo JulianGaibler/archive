@@ -2,6 +2,7 @@
 import Layout from '@src/layouts/Layout.astro'
 import Post from '@src/components/Post.svelte'
 import ErrorPage from '@src/components/ErrorPage.astro'
+import util from 'node:util'
 
 import { getSdk, type PostQuery } from '@src/generated/graphql'
 import { handleError, hasAuthenticationError } from '@src/utils/page-errors'
@@ -30,6 +31,7 @@ try {
     error = handleError(404, Astro.response)
   } else if (!error) {
     post = result.data.node as PostNode
+    console.log('Post fetched successfully:', util.inspect(post, { depth: null, colors: true }))
   }
 } catch (graphqlError: unknown) {
   console.error('GraphQL error in [postId].astro:', graphqlError)

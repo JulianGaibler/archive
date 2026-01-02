@@ -20,6 +20,8 @@
     onDeleteItem?: (itemId: string) => void
     removeUploadItem?: (itemId: string) => void
     cancelUploadItem?: (itemId: string) => void
+    onConvertItem?: (itemId: string, targetType: FileType) => Promise<boolean>
+    onCropItem?: (itemId: string, crop: { left: number, top: number, right: number, bottom: number }) => Promise<boolean>
   }
 
   let {
@@ -30,6 +32,8 @@
     onDeleteItem,
     removeUploadItem,
     cancelUploadItem,
+    onConvertItem,
+    onCropItem,
   }: Props = $props()
 
   function forceUpdateEditData() {
@@ -48,6 +52,84 @@
   })
 
   let buttonClick: ContextClickHandler | undefined = $state(undefined)
+
+  // Conversion and cropping functions
+  async function handleConvertToVideo() {
+    if (item.type === 'existing' && onConvertItem) {
+      await onConvertItem(item.id, FileType.Video)
+    }
+  }
+
+  async function handleConvertToGif() {
+    if (item.type === 'existing' && onConvertItem) {
+      await onConvertItem(item.id, FileType.Gif)
+    }
+  }
+
+  async function handleConvertToAudio() {
+    if (item.type === 'existing' && onConvertItem) {
+      await onConvertItem(item.id, FileType.Audio)
+    }
+  }
+
+  // Placeholder cropping function - could be enhanced with a crop UI later
+  async function handleCropItem() {
+    if (item.type === 'existing' && onCropItem) {
+      // For now, use some default crop values as a placeholder
+      // In a real implementation, this would open a crop UI
+      await onCropItem(item.id, {
+        left: 0,
+        top: 0,
+        right: 100,
+        bottom: 100
+      })
+    }
+  }
+
+  // Helper function to determine what conversions are available
+  function getAvailableConversions() {
+    if (item.type !== 'existing' || !('file' in item.data) || !item.data.file) {
+      return []
+    }
+
+    // Determine current file type from the item's __typename
+    let currentType: FileType | null = null
+    
+    if (item.data.__typename === 'VideoItem') {
+      currentType = FileType.Video
+    } else if (item.data.__typename === 'GifItem') {
+      currentType = FileType.Gif
+    } else if (item.data.__typename === 'ImageItem') {
+      currentType = FileType.Image
+    } else if (item.data.__typename === 'AudioItem') {
+      currentType = FileType.Audio
+    }
+
+    if (!currentType) return []
+
+    const conversions = []
+
+    // Add conversion options based on current file type
+    if (currentType === FileType.Video) {
+      conversions.push(
+        { label: 'Convert to GIF', onClick: handleConvertToGif },
+        { label: 'Convert to Audio', onClick: handleConvertToAudio }
+      )
+    } else if (currentType === FileType.Gif) {
+      conversions.push(
+        { label: 'Convert to Video', onClick: handleConvertToVideo }
+      )
+    }
+
+    // Add crop option for video and image types
+    if (currentType === FileType.Video || currentType === FileType.Image || currentType === FileType.Gif) {
+      conversions.push(
+        { label: 'Crop', onClick: handleCropItem }
+      )
+    }
+
+    return conversions
+  }
 
   const itemActions = $derived([
     ...(onMoveItem &&
@@ -70,6 +152,8 @@
     )
       ? [{ label: 'Delete item', onClick: () => onDeleteItem(item.id) }]
       : []),
+    // Add conversion options
+    ...getAvailableConversions(),
   ])
 
   function handleRemoveUploadItem() {
@@ -86,9 +170,8 @@
 </script>
 
 <article>
-  <!-- <pre>{JSON.stringify(item, null, 2)}</pre> -->
   {#if item.type === 'existing'}
-    {#if 'file' in item.data && item.data.file && (item.data.file.processingStatus === FileProcessingStatus.Queued || item.data.file.processingStatus === FileProcessingStatus.Processing)}
+    {#if 'file' in item.data && item.data.file && (item.data.file.processingStatus === FileProcessingStatus.Queued || item.data.file.processingStatus === FileProcessingStatus.Processing || item.data.file.processingStatus === FileProcessingStatus.Failed)}
       <ProcessingMediaStatus file={item.data.file} />
     {:else}
       <ItemMedia item={item.data} />
@@ -169,7 +252,7 @@
           file: item.processedFile,
         } as MediaItemData}
       />
-    {:else if item.processingStatus && (item.processingStatus === FileProcessingStatus.Queued || item.processingStatus === FileProcessingStatus.Processing)}
+    {:else if item.processingStatus && (item.processingStatus === FileProcessingStatus.Queued || item.processingStatus === FileProcessingStatus.Processing || item.processingStatus === FileProcessingStatus.Failed)}
       <ProcessingMediaStatus
         file={{
           id: item.fileId || '',

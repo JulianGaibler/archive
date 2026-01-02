@@ -17,6 +17,7 @@ import {
 import { z } from 'zod/v4'
 import topics from '@src/pubsub/topics.js'
 import ActionUtils from './ActionUtils.js'
+import { getPersistentModifications, ModificationActionData, ModificationActions } from '@src/files/processing-metadata.js'
 
 // Type for file processing subscription payloads
 interface FileProcessingUpdatePayload {
@@ -111,30 +112,30 @@ const FileActions = {
     return file || null
   },
 
-  /** Get files that are queued for processing (internal) */
-  async _qQueuedFilesInternal(ctx: Context): Promise<FileInternal[]> {
-    return await ctx.db
+  /** Get files that are queued for processing (internal)
+   * If includeProcessing is true, returns files that are either queued or processing.
+   */
+  async _qQueuedFilesInternal(
+    ctx: Context,
+    options?: { includeProcessing?: boolean; limit?: number }
+  ): Promise<FileInternal[]> {
+    const { includeProcessing = false, limit = 10 } = options || {}
+    const statuses = includeProcessing
+      ? ['QUEUED', 'PROCESSING'] as const
+      : ['QUEUED'] as const
+
+    let query = ctx.db
       .select()
       .from(fileTable)
-      .where(eq(fileTable.processingStatus, 'QUEUED'))
+      .where(inArray(fileTable.processingStatus, statuses))
       .orderBy(fileTable.createdAt)
-      .limit(10)
-  },
+      .$dynamic()
 
-  /** Get files that are either queued or processing (internal) */
-  async _qActiveFilesInternal(ctx: Context): Promise<FileInternal[]> {
-    return await ctx.db
-      .select()
-      .from(fileTable)
-      .where(inArray(fileTable.processingStatus, ['QUEUED', 'PROCESSING']))
-      .orderBy(fileTable.createdAt)
-  },
+    if (limit) {
+      query = query.limit(limit)
+    }
 
-  /// Utility functions
-
-  /** Build file path for a variant */
-  buildFilePath(fileId: string, variant: FileVariantInternal): string {
-    return `content/${fileId}/${variant.variant}.${variant.extension}`
+    return await query
   },
 
   /** Get profile picture paths for a user */
@@ -158,10 +159,10 @@ const FileActions = {
 
     return {
       profilePicture256: profile256
-        ? this.buildFilePath(profilePictureFileId, profile256)
+        ? buildFilePath(profilePictureFileId, profile256)
         : null,
       profilePicture64: profile64
-        ? this.buildFilePath(profilePictureFileId, profile64)
+        ? buildFilePath(profilePictureFileId, profile64)
         : null,
     }
   },
@@ -187,16 +188,16 @@ const FileActions = {
     )
 
     return {
-      originalPath: original ? this.buildFilePath(fileId, original) : null,
+      originalPath: original ? buildFilePath(fileId, original) : null,
       compressedPath: compressed
-        ? this.buildFilePath(fileId, compressed)
+        ? buildFilePath(fileId, compressed)
         : null,
-      thumbnailPath: thumbnail ? this.buildFilePath(fileId, thumbnail) : null,
+      thumbnailPath: thumbnail ? buildFilePath(fileId, thumbnail) : null,
       posterThumbnailPath: posterThumbnail
-        ? this.buildFilePath(fileId, posterThumbnail)
+        ? buildFilePath(fileId, posterThumbnail)
         : null,
       compressedGifPath: compressedGif
-        ? this.buildFilePath(fileId, compressedGif)
+        ? buildFilePath(fileId, compressedGif)
         : null,
     }
   },
@@ -209,7 +210,6 @@ const FileActions = {
     ctx: Context,
     fields: {
       file: Promise<FileUpload>
-      type?: 'VIDEO' | 'IMAGE' | 'GIF' | 'AUDIO'
     },
   ): Promise<string> {
     const creatorId = ctx.isAuthenticated()
@@ -234,11 +234,10 @@ const FileActions = {
 
       // Analyze and store the file
       try {
-        const { type } = await Context.fileStorage.analyzeAndStoreFile(
+        const { type } = await Context.fileStorage.queueFileFromUpload(
           ctx,
           vFields.file,
           newFile.id,
-          vFields.type,
         )
 
         // Update the file record with the correct type
@@ -287,10 +286,11 @@ const FileActions = {
 
       // Start file processing
       try {
-        await Context.fileStorage.storeProfilePictureFile(
+        await Context.fileStorage.queueFileFromUpload(
           ctx,
           fields.file,
           newFile.id,
+          ['IMAGE',  'GIF']
         )
         Context.fileStorage.checkQueue()
       } catch (error) {
@@ -301,6 +301,89 @@ const FileActions = {
 
       return newFile.id
     })
+  },
+
+  /** Reprocess a file by creating a new file record based on the source file, with processing reset and meta.originalFile set */
+  async _mReprocessFile(
+    ctx: Context,
+    fields: {
+      sourceFileId: string
+      addModifications?: ModificationActionData
+      removeModifications?: ModificationActions[]
+      clearAllModifications?: boolean
+    },
+  ): Promise<string> {
+    const userId = ctx.isAuthenticated()
+
+    // Fetch the source file
+    const sourceFile = await this._qFileInternal(ctx, fields.sourceFileId)
+    if (!sourceFile) {
+      throw new NotFoundError('Source file not found')
+    }
+
+    let newModifications: ModificationActionData = {}
+
+    if (!fields.clearAllModifications) {
+      // Start with a copy of the source file's modifications
+      newModifications = {
+        ...sourceFile.modifications as ModificationActionData,
+      }
+
+      if (fields.removeModifications) {
+        for (const key of fields.removeModifications) {
+          delete newModifications[key]
+        }
+      }
+    }
+
+    let fileType = sourceFile.type
+
+    if (fields.addModifications) {
+      if (fields.addModifications.fileType) {
+        fileType = fields.addModifications.fileType
+        delete fields.addModifications.fileType
+      }
+
+      Object.assign(newModifications, fields.addModifications)
+    }
+
+    // Use a transaction for file creation and queueing
+    const newFileId = await ctx.db.transaction(async (tx) => {
+      // Create new file record with processing reset and meta.originalFile
+      const [newFile] = await tx
+        .insert(fileTable)
+        .values({
+          creatorId: userId,
+          type: fileType,
+          processingStatus: 'QUEUED',
+          processingProgress: 0,
+          processingNotes: null,
+          expireBy: null,
+          processingMeta: { originalFile: fields.sourceFileId, newModifications },
+          modifications: getPersistentModifications(newModifications),
+        })
+        .returning()
+
+      ctx.dataLoaders.file.getById.prime(newFile.id, newFile)
+
+      try {
+        await Context.fileStorage.queueFileFromOtherFile(
+          ctx,
+          sourceFile.id,
+          newFile.id,
+        )
+      } catch (error) {
+        // If queueing fails, delete the new file record
+        await tx.delete(fileTable).where(eq(fileTable.id, newFile.id))
+        throw error
+      }
+
+      return newFile.id
+    })
+
+    Context.fileStorage.checkQueue()
+
+    return newFileId
   },
 
   /** Remove expiry from files when they are attached to posts */
@@ -339,7 +422,10 @@ const FileActions = {
     return expiredFiles.length
   },
 
-  /** Delete files (internal) - permanently removes files and their variants */
+  /** Delete files (internal) - permanently removes files and their variants
+   * Note: We explicitly delete file variants first because we use RESTRICT
+   * instead of CASCADE to maintain strict 1:1 relationship between DB entries and disk files
+   */
   async _mDeleteFiles(ctx: Context, fileIds: string[]): Promise<void> {
     if (fileIds.length === 0) return
 
@@ -766,24 +852,24 @@ const FileActions = {
     const profile64 = variants.find((v) => v.variant === 'PROFILE_64')
 
     // Build paths
-    const originalPath = original ? this.buildFilePath(fileId, original) : null
+    const originalPath = original ? buildFilePath(fileId, original) : null
     const compressedPath = compressed
-      ? this.buildFilePath(fileId, compressed)
+      ? buildFilePath(fileId, compressed)
       : null
     const compressedGifPath = compressedGif
-      ? this.buildFilePath(fileId, compressedGif)
+      ? buildFilePath(fileId, compressedGif)
       : null
     const thumbnailPath = thumbnail
-      ? this.buildFilePath(fileId, thumbnail)
+      ? buildFilePath(fileId, thumbnail)
       : null
     const posterThumbnailPath = posterThumbnail
-      ? this.buildFilePath(fileId, posterThumbnail)
+      ? buildFilePath(fileId, posterThumbnail)
       : null
     const profilePicture256 = profile256
-      ? this.buildFilePath(fileId, profile256)
+      ? buildFilePath(fileId, profile256)
       : null
     const profilePicture64 = profile64
-      ? this.buildFilePath(fileId, profile64)
+      ? buildFilePath(fileId, profile64)
       : null
 
     // Get all metadata in one call
@@ -882,10 +968,13 @@ const FileActions = {
   },
 }
 
+function buildFilePath(fileId: string, variant: FileVariantInternal): string {
+  return `content/${fileId}/${variant.variant}.${variant.extension}`
+}
+
 // Validation schemas
 const uploadFileSchema = z.object({
-  file: z.any(), // FileUpload type
-  type: z.enum(['VIDEO', 'IMAGE', 'GIF', 'AUDIO']).optional(),
+  file: z.any(),
 })
 
 export default FileActions

@@ -13,10 +13,11 @@ import PaginationUtils, {
   PaginationArgs,
   Connection,
 } from './PaginationUtils.js'
-import { NotFoundError } from '@src/errors/index.js'
+import { NotFoundError, InputError } from '@src/errors/index.js'
 import PostModel from '@src/models/PostModel.js'
 import { UserExternal, UserInternal } from '@src/models/UserModel.js'
-
+import { CropMetadata, TrimMetadata, ModificationActions } from '@src/files/processing-metadata.js'
+import FileActions from './FileActions.js'
 const itemTable = ItemModel.table
 const itemSearchView = ItemModel.itemSearchView
 
@@ -233,6 +234,142 @@ const ItemActions = {
       totalCount,
       paginationInfo,
     )
+  },
+
+  /// Mutations
+
+
+  /**
+   * Modifies an existing item by reprocessing its associated file.
+   */
+  async _mModifyItem(
+    ctx: Context,
+    fields: {
+      itemId: ItemExternal['id']
+    } & Omit<Parameters<typeof FileActions._mReprocessFile>[1], 'sourceFileId'>
+  ): Promise<string> {
+    ctx.isAuthenticated()
+
+    // Get the item
+    const itemId = ItemModel.decodeId(fields.itemId)
+    const item = await ctx.dataLoaders.item.getById.load(itemId)
+    if (!item) {
+      throw new NotFoundError('Item not found')
+    }
+
+    // Check if item has a file
+    if (!item.fileId) {
+      throw new InputError('Item does not have an associated file')
+    }
+
+    const newFileId = await FileActions._mReprocessFile(ctx, {
+      ...fields,
+      sourceFileId: item.fileId,
+    })
+
+    return newFileId
+  },
+
+  /**
+   * Modifies an item by applying a crop modification.
+   */
+  async mCropItem(
+    ctx: Context,
+    fields: {
+      itemId: ItemExternal['id']
+      crop: CropMetadata
+    },
+  ): Promise<string> {
+    return await ItemActions._mModifyItem(ctx, {
+      itemId: fields.itemId,
+      addModifications: {
+        crop: fields.crop,
+      },
+    })
+  },
+
+  /**
+   * Trims an item by applying a trim modification.
+   */
+  async mTrimItem(
+    ctx: Context,
+    fields: {
+      itemId: ItemExternal['id']
+      trim: TrimMetadata
+    },
+  ): Promise<string> {
+    return await ItemActions._mModifyItem(ctx, {
+      itemId: fields.itemId,
+      addModifications: {
+        trim: fields.trim,
+      },
+    })
+  },
+
+  /**
+   * Converts the file type of an item to the specified format.
+   */
+  async mConvertItem(
+    ctx: Context,
+    fields: {
+      itemId: ItemExternal['id']
+      convertTo: 'VIDEO' | 'IMAGE' | 'GIF' | 'AUDIO'
+    },
+  ): Promise<string> {
+    return await ItemActions._mModifyItem(ctx, {
+      itemId: fields.itemId,
+      addModifications: {
+        fileType: fields.convertTo,
+      },
+    })
+  },
+
+  /**
+   * Removes specified modifications from an item or clears all modifications if specified.
+   */
+  async mRemoveModifications(
+    ctx: Context,
+    fields: {
+      itemId: ItemExternal['id']
+      removeModifications: ModificationActions[]
+      clearAllModifications?: boolean
+    },
+  ): Promise<string> {
+    return await ItemActions._mModifyItem(ctx, {
+      itemId: fields.itemId,
+      removeModifications: fields.removeModifications,
+      clearAllModifications: fields.clearAllModifications,
+    })
+  },
+
+  /**
+   * Replace the file reference in an item with a new file
+   * This is used when processing completes successfully
+   */
+  async _mReplaceItemFile(
+    ctx: Context,
+    itemId: number,
+    newFileId: string
+  ): Promise<void> {
+    await ctx.db
+      .update(itemTable)
+      .set({ fileId: newFileId })
+      .where(eq(itemTable.id, itemId))
+  },
+
+  /**
+   * Revert the file reference in an item back to original file
+   * This is used when processing fails
+   */
+  async _mRevertItemFile(
+    ctx: Context,
+    itemId: number,
+    originalFileId: string
+  ): Promise<void> {
+    await ctx.db
+      .update(itemTable)
+      .set({ fileId: originalFileId })
+      .where(eq(itemTable.id, itemId))
   },
 }
 

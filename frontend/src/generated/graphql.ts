@@ -54,6 +54,21 @@ export type AudioItem = Item & Node & {
   updatedAt: Scalars['DateTime']['output'];
 };
 
+/**
+ * Input type for cropping parameters.
+ * Defines a rectangular area to crop from a file.
+ */
+export type CropInput = {
+  /** Bottom edge of the crop area in pixels. */
+  bottom: Scalars['Int']['input'];
+  /** Left edge of the crop area in pixels. */
+  left: Scalars['Int']['input'];
+  /** Right edge of the crop area in pixels. */
+  right: Scalars['Int']['input'];
+  /** Top edge of the crop area in pixels. */
+  top: Scalars['Int']['input'];
+};
+
 export type EditItemInput = {
   caption?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
@@ -266,10 +281,22 @@ export type Mutation = {
   changePassword: Scalars['Boolean']['output'];
   /** Deletes the profile picture of the current user. */
   clearProfilePicture: Scalars['Boolean']['output'];
+  /**
+   * Convert an item's file to a different format.
+   * Creates new variants while preserving the original.
+   * Returns the new file ID for subscription.
+   */
+  convertItem: Scalars['String']['output'];
   /** Creates a new keyword. */
   createKeyword: Keyword;
   /** Creates a new Post */
   createPost: Post;
+  /**
+   * Crop an item's file.
+   * Creates new variants with crop applied while preserving the original.
+   * Returns the new file ID for subscription.
+   */
+  cropItem: Scalars['String']['output'];
   /**
    * Deletes an item from a post and reorders remaining items.
    * Returns the ID of the deleted item.
@@ -339,6 +366,13 @@ export type MutationChangePasswordArgs = {
 };
 
 
+export type MutationConvertItemArgs = {
+  crop?: InputMaybe<CropInput>;
+  itemId: Scalars['ID']['input'];
+  targetType: FileType;
+};
+
+
 export type MutationCreateKeywordArgs = {
   name: Scalars['String']['input'];
 };
@@ -348,6 +382,12 @@ export type MutationCreatePostArgs = {
   keywords?: InputMaybe<Array<Scalars['ID']['input']>>;
   language: Language;
   title: Scalars['String']['input'];
+};
+
+
+export type MutationCropItemArgs = {
+  crop: CropInput;
+  itemId: Scalars['ID']['input'];
 };
 
 
@@ -768,6 +808,23 @@ export type PostDataFragment = { __typename?: 'Post', id: string, title: string,
 
 export type PostsConnectionFragment = { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }, items: { __typename?: 'ItemConnection', totalCount: number, nodes: Array<{ __typename: 'AudioItem', caption: string, description: string, id: string, file: { __typename: 'AudioFile', waveform: Array<number>, waveformThumbnail: Array<number> } } | { __typename: 'GifItem', id: string, file: { __typename: 'GifFile', relativeHeight: number, thumbnailPath?: string | null } } | { __typename: 'ImageItem', id: string, file: { __typename: 'PhotoFile', relativeHeight: number, thumbnailPath?: string | null } } | { __typename: 'ProcessingItem', id: string } | { __typename: 'VideoItem', id: string, file: { __typename: 'VideoFile', relativeHeight: number, thumbnailPath?: string | null, posterThumbnailPath?: string | null } }> } }> };
 
+export type ConvertItemMutationVariables = Exact<{
+  itemId: Scalars['ID']['input'];
+  targetType: FileType;
+  crop?: InputMaybe<CropInput>;
+}>;
+
+
+export type ConvertItemMutation = { __typename?: 'Mutation', convertItem: string };
+
+export type CropItemMutationVariables = Exact<{
+  itemId: Scalars['ID']['input'];
+  crop: CropInput;
+}>;
+
+
+export type CropItemMutation = { __typename?: 'Mutation', cropItem: string };
+
 export type KeywordsQueryVariables = Exact<{
   after?: InputMaybe<Scalars['String']['input']>;
   byName?: InputMaybe<Scalars['String']['input']>;
@@ -1176,6 +1233,16 @@ export const LogoutDocument = gql`
   logout
 }
     `;
+export const ConvertItemDocument = gql`
+    mutation convertItem($itemId: ID!, $targetType: FileType!, $crop: CropInput) {
+  convertItem(itemId: $itemId, targetType: $targetType, crop: $crop)
+}
+    `;
+export const CropItemDocument = gql`
+    mutation cropItem($itemId: ID!, $crop: CropInput!) {
+  cropItem(itemId: $itemId, crop: $crop)
+}
+    `;
 export const KeywordsDocument = gql`
     query Keywords($after: String, $byName: String) {
   keywords(first: 48, after: $after, sortByPostCount: true, byName: $byName) {
@@ -1466,6 +1533,8 @@ const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationTy
 const SettingsDocumentString = print(SettingsDocument);
 const LoginDocumentString = print(LoginDocument);
 const LogoutDocumentString = print(LogoutDocument);
+const ConvertItemDocumentString = print(ConvertItemDocument);
+const CropItemDocumentString = print(CropItemDocument);
 const KeywordsDocumentString = print(KeywordsDocument);
 const KeywordSearchDocumentString = print(KeywordSearchDocument);
 const KeywordWithPostsDocumentString = print(KeywordWithPostsDocument);
@@ -1504,6 +1573,12 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     logout(variables?: LogoutMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: LogoutMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<LogoutMutation>(LogoutDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'logout', 'mutation', variables);
+    },
+    convertItem(variables: ConvertItemMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ConvertItemMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ConvertItemMutation>(ConvertItemDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'convertItem', 'mutation', variables);
+    },
+    cropItem(variables: CropItemMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: CropItemMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<CropItemMutation>(CropItemDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'cropItem', 'mutation', variables);
     },
     Keywords(variables?: KeywordsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: KeywordsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<KeywordsQuery>(KeywordsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Keywords', 'query', variables);

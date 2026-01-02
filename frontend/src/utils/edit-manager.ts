@@ -1296,6 +1296,86 @@ export function createEditManager(
     }
   }
 
+  const convertItem = async (itemId: string, targetType: FileType) => {
+    try {
+      loading.set(true)
+      const result = await sdk.convertItem({
+        itemId,
+        targetType,
+      })
+
+      const error = getOperationResultError(result)
+      if (error) {
+        console.error(result)
+        openDialog?.({
+          heading: 'Conversion Error',
+          children: `Failed to start conversion: ${error}`,
+        })
+        return false
+      }
+
+      // Show success message
+      openDialog?.({
+        heading: 'Conversion Started',
+        children: 'The conversion has been queued and will begin shortly. You will see progress updates here.',
+      })
+
+      // Restart subscription to monitor the conversion process
+      startProcessingSubscription()
+
+      return true
+    } catch (err) {
+      console.error(err)
+      openDialog?.({
+        heading: 'Conversion Error',
+        children: 'Failed to start conversion. Please try again.',
+      })
+      return false
+    } finally {
+      loading.set(false)
+    }
+  }
+
+  const cropItem = async (itemId: string, crop: { left: number, top: number, right: number, bottom: number }) => {
+    try {
+      loading.set(true)
+      const result = await sdk.cropItem({
+        itemId,
+        crop,
+      })
+
+      const error = getOperationResultError(result)
+      if (error) {
+        console.error(result)
+        openDialog?.({
+          heading: 'Crop Error',
+          children: `Failed to start cropping: ${error}`,
+        })
+        return false
+      }
+
+      // Show success message
+      openDialog?.({
+        heading: 'Cropping Started',
+        children: 'The cropping has been queued and will begin shortly. You will see progress updates here.',
+      })
+
+      // Restart subscription to monitor the cropping process
+      startProcessingSubscription()
+
+      return true
+    } catch (err) {
+      console.error(err)
+      openDialog?.({
+        heading: 'Crop Error',
+        children: 'Failed to start cropping. Please try again.',
+      })
+      return false
+    } finally {
+      loading.set(false)
+    }
+  }
+
   const removeUploadItem = (itemId: string) => {
     data.update((current) => {
       if (!current) return current
@@ -1336,6 +1416,8 @@ export function createEditManager(
     reorderItems,
     mergePost,
     moveItem,
+    convertItem,
+    cropItem,
   }
 }
 

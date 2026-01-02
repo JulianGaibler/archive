@@ -308,4 +308,60 @@ type Mutation {
     """
     newPassword: String!
   ): Boolean!
+
+  """
+  Convert an item's file to a different format.
+  Creates new variants while preserving the original.
+  Returns the new file ID for subscription.
+  """
+  convertItem(
+    """
+    The ID of the item to convert.
+    """
+    itemId: ID!
+
+    """
+    The target file type to convert to.
+    """
+    targetType: FileType!
+
+    """
+    Optional crop parameters to apply during conversion.
+    """
+    crop: CropInput
+  ): String!
+
+  """
+  Crop an item's file.
+  Creates new variants with crop applied while preserving the original.
+  Returns the new file ID for subscription.
+  """
+  cropItem(
+    """
+    The ID of the item to crop.
+    """
+    itemId: ID!
+
+    """
+    The crop parameters specifying the area to keep.
+    """
+    crop: CropInput!
+  ): String!
+
+  """
+  Trim an item's file.
+  Creates new variants with trim applied while preserving the original.
+  Returns the new file ID for subscription.
+  """
+  trimItem(
+    """
+    The ID of the item to trim.
+    """
+    itemId: ID!
+
+    """
+    The trim parameters specifying the time range to keep.
+    """
+    trim: TrimInput!
+  ): String!
 }

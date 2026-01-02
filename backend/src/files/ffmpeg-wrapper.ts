@@ -690,6 +690,8 @@ export class FFmpegWrapper {
       // Add output path and overwrite flag
       args.push('-y', outputPath)
 
+      console.log('Running ffmpeg with args:', args)
+
       const process = spawn('ffmpeg', args)
       let stderr = ''
 

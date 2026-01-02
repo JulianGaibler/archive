@@ -1,0 +1,7 @@
+mutation convertItem($itemId: ID!, $targetType: FileType!, $crop: CropInput) {
+  convertItem(itemId: $itemId, targetType: $targetType, crop: $crop)
+}
+
+mutation cropItem($itemId: ID!, $crop: CropInput!) {
+  cropItem(itemId: $itemId, crop: $crop)
+}

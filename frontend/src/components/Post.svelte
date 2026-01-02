@@ -389,6 +389,8 @@
           onMoveItem={openMoveModal}
           onDeleteItem={handleDeleteItem}
           removeUploadItem={editManager.removeUploadItem}
+          onConvertItem={editManager.convertItem}
+          onCropItem={editManager.cropItem}
         />
       {/each}
       {#if $editData !== undefined}

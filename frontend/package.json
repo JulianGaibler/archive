@@ -13,10 +13,10 @@
     "generate": "graphql-codegen --config codegen.ts"
   },
   "dependencies": {
-    "@astrojs/node": "^9.3.0",
-    "@astrojs/svelte": "^7.1.0",
+    "@astrojs/node": "^9.4.4",
+    "@astrojs/svelte": "^7.2.0",
     "@types/cookie": "^0.6.0",
-    "astro": "^5.11.1",
+    "astro": "^5.13.11",
     "cookie": "^1.0.2",
     "graphql": "^16.11.0",
     "graphql-request": "^7.2.0",
