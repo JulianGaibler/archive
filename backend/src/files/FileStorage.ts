@@ -6,16 +6,14 @@ import path from 'path'
 import stream from 'stream'
 import FileActions from '@src/actions/FileActions.js'
 import { FileInternal } from '@src/models/FileModel.js'
+import ItemModel from '@src/models/ItemModel.js'
+import { eq } from 'drizzle-orm'
 import tmp from 'tmp'
 import util from 'util'
 import { FileUpload } from 'graphql-upload/processRequest.mjs'
 import { InputError, RequestError } from '@src/errors/index.js'
 import * as fileUtils from './file-utils.js'
-import {
-  FileType,
-  FileProcessingResult,
-  FileUpdateCallback,
-} from './types.js'
+import { FileType, FileProcessingResult, FileUpdateCallback } from './types.js'
 import {
   ModificationActionData,
   getPersistentModifications,
@@ -25,6 +23,7 @@ import { FileProcessingQueue } from './QueueManager.js'
 import { FFmpegWrapper } from './ffmpeg-wrapper.js'
 
 const pipeline = util.promisify(stream.pipeline)
+const itemTable = ItemModel.table
 
 export { FileType }
 
@@ -43,7 +42,7 @@ export default class FileStorage {
     this.queue = new FileProcessingQueue()
   }
 
-    /**
+  /**
    * Analyzes and stores an uploaded file to the queue for processing
    *
    * @param {Context} _ctx The context object
@@ -102,16 +101,18 @@ export default class FileStorage {
     }
   }
 
-
   /**
-   * Queues a file for processing by copying the original variant of a source file to the queue path of a target file.
+   * Queues a file for processing by copying the original variant of a source
+   * file to the queue path of a target file.
    *
-   * @param ctx - The request context containing user and environment information.
+   * @param ctx - The request context containing user and environment
+   *   information.
    * @param srcFileId - The ID of the source file to copy from.
    * @param targetFileId - The ID of the target file to queue for processing.
    * @returns The ID of the target file.
    * @throws {InputError} If the source file is not found.
-   * @throws {RequestError} If the original variant is not found or the source file does not exist on disk.
+   * @throws {RequestError} If the original variant is not found or the source
+   *   file does not exist on disk.
    */
   async queueFileFromOtherFile(
     ctx: Context,
@@ -128,13 +129,20 @@ export default class FileStorage {
     }
 
     // Get the original variant path
-    const fileVariants = await FileActions._qFileVariantsInternal(ctx, srcFileId)
-    const originalVariant = fileVariants.find(v => v.variant === 'ORIGINAL')
+    const fileVariants = await FileActions._qFileVariantsInternal(
+      ctx,
+      srcFileId,
+    )
+    const originalVariant = fileVariants.find((v) => v.variant === 'ORIGINAL')
     if (!originalVariant) {
       throw new RequestError('Original variant not found for source file')
     }
 
-    const sourcePath = this.pathManager.getVariantPath(srcFileId, 'ORIGINAL', originalVariant.extension)
+    const sourcePath = this.pathManager.getVariantPath(
+      srcFileId,
+      'ORIGINAL',
+      originalVariant.extension,
+    )
 
     // Ensure the source file exists
     if (!fs.existsSync(sourcePath)) {
@@ -146,11 +154,18 @@ export default class FileStorage {
       'processingMeta' in targetFile &&
       targetFile.processingMeta &&
       typeof targetFile.processingMeta === 'object' &&
-      'newModifications' in (targetFile.processingMeta as Record<string, unknown>)
+      'newModifications' in
+        (targetFile.processingMeta as Record<string, unknown>)
     ) {
-      modifications = (targetFile.processingMeta as { newModifications: ModificationActionData }).newModifications
+      modifications = (
+        targetFile.processingMeta as {
+          newModifications: ModificationActionData
+        }
+      ).newModifications
     } else {
-      throw new RequestError('Missing processingMeta or newModifications in target file')
+      throw new RequestError(
+        'Missing processingMeta or newModifications in target file',
+      )
     }
 
     if (modifications.fileType) {
@@ -167,7 +182,7 @@ export default class FileStorage {
         !validConversions.has(conversionKey)
       ) {
         throw new InputError(
-          `Invalid conversion: ${conversionKey}. Valid conversions are: video->gif, gif->video, video->audio.`
+          `Invalid conversion: ${conversionKey}. Valid conversions are: video->gif, gif->video, video->audio.`,
         )
       }
     }
@@ -175,30 +190,49 @@ export default class FileStorage {
     if (modifications.crop) {
       // only works for videos and gifs
       const srcKind = this.determineFileType(originalVariant.mimeType)
-      if (srcKind !== FileType.VIDEO && srcKind !== FileType.GIF && srcKind !== FileType.IMAGE) {
-        throw new InputError(`Invalid file type for cropping: ${srcKind}. Only videos and images can be cropped.`)
+      if (
+        srcKind !== FileType.VIDEO &&
+        srcKind !== FileType.GIF &&
+        srcKind !== FileType.IMAGE
+      ) {
+        throw new InputError(
+          `Invalid file type for cropping: ${srcKind}. Only videos and images can be cropped.`,
+        )
       }
 
       // Validate cropping parameters using ffprobe to ensure result is at least 100x100 pixels
-      const crop = modifications.crop as { left: number; right: number; top: number; bottom: number }
+      const crop = modifications.crop as {
+        left: number
+        right: number
+        top: number
+        bottom: number
+      }
 
       // Use ffprobe directly (async/await) to validate cropping parameters
       const metadata = await FFmpegWrapper.ffprobe(sourcePath)
       if (!metadata) {
-        throw new InputError('Failed to probe media file for cropping validation')
+        throw new InputError(
+          'Failed to probe media file for cropping validation',
+        )
       }
 
       // Find the video stream with dimensions
-      const stream = metadata.streams.find((s) => s.codec_type === 'video' && s.width && s.height)
+      const stream = metadata.streams.find(
+        (s) => s.codec_type === 'video' && s.width && s.height,
+      )
       if (!stream) {
-        throw new InputError('Could not determine media dimensions for cropping')
+        throw new InputError(
+          'Could not determine media dimensions for cropping',
+        )
       }
 
       const width = stream.width
       const height = stream.height
 
       if (typeof width !== 'number' || typeof height !== 'number') {
-        throw new InputError('Invalid media dimensions: width and height must be numbers')
+        throw new InputError(
+          'Invalid media dimensions: width and height must be numbers',
+        )
       }
 
       // Calculate resulting dimensions after cropping
@@ -207,7 +241,9 @@ export default class FileStorage {
 
       // Enforce minimum dimensions of 100x100
       if (resultWidth < 100 || resultHeight < 100) {
-        throw new InputError(`Resulting media dimensions after cropping (${resultWidth}x${resultHeight}) must be at least 100x100 pixels`)
+        throw new InputError(
+          `Resulting media dimensions after cropping (${resultWidth}x${resultHeight}) must be at least 100x100 pixels`,
+        )
       }
     }
 
@@ -274,6 +310,16 @@ export default class FileStorage {
         throw new Error(`File not found for ID ${fileId}`)
       }
 
+      // Extract source file ID for rollback
+      // Note: processingMeta.originalFile stores the SOURCE file (previous state),
+      // not necessarily the very first original upload
+      const sourceFileId =
+        file.processingMeta &&
+        typeof file.processingMeta === 'object' &&
+        'originalFile' in file.processingMeta
+          ? (file.processingMeta as { originalFile: string }).originalFile
+          : null
+
       // Create temporary directory for processing
       const tmpDir = tmp.dirSync({
         unsafeCleanup: true,
@@ -289,15 +335,16 @@ export default class FileStorage {
         )
         await this.moveProcessedFiles(result, file, fileId, updateCallback)
 
-        // Clean up original file if this was a reprocessing operation
-        if (file.processingMeta &&
-            typeof file.processingMeta === 'object' &&
-            'originalFile' in file.processingMeta) {
-          const originalFileId = (file.processingMeta as { originalFile: string }).originalFile
+        // SUCCESS: Clean up source file (previous version)
+        // This deletes the previous version since we now have the new processed version
+        if (sourceFileId) {
           try {
-            await FileActions._mDeleteFile(ctx, originalFileId)
+            await FileActions._mDeleteFile(ctx, sourceFileId)
           } catch (error) {
-            console.warn(`Failed to clean up original file ${originalFileId} after reprocessing:`, error)
+            console.warn(
+              `Failed to clean up source file ${sourceFileId} after reprocessing:`,
+              error,
+            )
             // Don't fail the processing if cleanup fails
           }
         }
@@ -311,6 +358,33 @@ export default class FileStorage {
           processingNotes:
             error instanceof Error ? error.message : String(error),
         })
+
+        // Rollback items to previous state (source file)
+        if (sourceFileId) {
+          try {
+            const items = await ctx.db
+              .select({ id: itemTable.id })
+              .from(itemTable)
+              .where(eq(itemTable.fileId, fileId))
+
+            if (items.length > 0) {
+              await ctx.db
+                .update(itemTable)
+                .set({ fileId: sourceFileId })
+                .where(eq(itemTable.fileId, fileId))
+
+              console.log(
+                `Rolled back ${items.length} items to source file ${sourceFileId}`,
+              )
+            }
+
+            // Delete the failed file
+            await FileActions._mDeleteFile(ctx, fileId)
+          } catch (rollbackError) {
+            console.error('Failed to rollback item references:', rollbackError)
+            // Don't re-throw - we've already logged the failure
+          }
+        }
       } finally {
         tmpDir.removeCallback()
       }
@@ -358,11 +432,24 @@ export default class FileStorage {
 
     let result
     if (targetFileType === FileType.GIF || targetFileType === FileType.VIDEO) {
-      result = await processor.processVideo(filePath, tmpDirName, targetFileType, modificationArray)
+      result = await processor.processVideo(
+        filePath,
+        tmpDirName,
+        targetFileType,
+        modificationArray,
+      )
     } else if (targetFileType === FileType.IMAGE) {
-      result = await processor.processImage(filePath, tmpDirName, modificationArray)
+      result = await processor.processImage(
+        filePath,
+        tmpDirName,
+        modificationArray,
+      )
     } else if (targetFileType === FileType.AUDIO) {
-      result = await processor.processAudio(filePath, tmpDirName, modificationArray)
+      result = await processor.processAudio(
+        filePath,
+        tmpDirName,
+        modificationArray,
+      )
     } else {
       throw new InputError(`Unsupported file type: ${targetFileType}`)
     }
@@ -634,7 +721,10 @@ export default class FileStorage {
    * @param {string} targetType The target file type
    * @returns {void}
    */
-  private validateFileTypeConversion(sourceType: FileType, targetType: string): void {
+  private validateFileTypeConversion(
+    sourceType: FileType,
+    targetType: string,
+  ): void {
     const allowedConversions: Record<FileType, string[]> = {
       [FileType.VIDEO]: ['VIDEO', 'GIF', 'AUDIO'],
       [FileType.GIF]: ['VIDEO', 'GIF'],
@@ -645,7 +735,7 @@ export default class FileStorage {
     const allowed = allowedConversions[sourceType]
     if (!allowed || !allowed.includes(targetType)) {
       throw new InputError(
-        `Invalid file type conversion: ${sourceType} cannot be converted to ${targetType}`
+        `Invalid file type conversion: ${sourceType} cannot be converted to ${targetType}`,
       )
     }
   }

@@ -6,6 +6,7 @@ import FileModel, {
   FileInternal,
   FileExternal,
 } from '../models/FileModel.js'
+import ItemModel from '@src/models/ItemModel.js'
 import UserModel from '@src/models/UserModel.js'
 import { FileUpload } from 'graphql-upload/processRequest.mjs'
 import {
@@ -17,7 +18,11 @@ import {
 import { z } from 'zod/v4'
 import topics from '@src/pubsub/topics.js'
 import ActionUtils from './ActionUtils.js'
-import { getPersistentModifications, ModificationActionData, ModificationActions } from '@src/files/processing-metadata.js'
+import {
+  getPersistentModifications,
+  ModificationActionData,
+  ModificationActions,
+} from '@src/files/processing-metadata.js'
 
 // Type for file processing subscription payloads
 interface FileProcessingUpdatePayload {
@@ -35,10 +40,12 @@ interface FileProcessingUpdatePayload {
     waveform?: number[]
     waveformThumbnail?: number[]
   }
+  affectedItems?: string[] // Item IDs that reference this file
 }
 
 const fileVariantTable = FileModel.variantTable
 const fileTable = FileModel.table
+const itemTable = ItemModel.table
 
 const FileActions = {
   /// Public API - takes and returns External types
@@ -112,17 +119,18 @@ const FileActions = {
     return file || null
   },
 
-  /** Get files that are queued for processing (internal)
-   * If includeProcessing is true, returns files that are either queued or processing.
+  /**
+   * Get files that are queued for processing (internal) If includeProcessing is
+   * true, returns files that are either queued or processing.
    */
   async _qQueuedFilesInternal(
     ctx: Context,
-    options?: { includeProcessing?: boolean; limit?: number }
+    options?: { includeProcessing?: boolean; limit?: number },
   ): Promise<FileInternal[]> {
     const { includeProcessing = false, limit = 10 } = options || {}
     const statuses = includeProcessing
-      ? ['QUEUED', 'PROCESSING'] as const
-      : ['QUEUED'] as const
+      ? (['QUEUED', 'PROCESSING'] as const)
+      : (['QUEUED'] as const)
 
     let query = ctx.db
       .select()
@@ -189,9 +197,7 @@ const FileActions = {
 
     return {
       originalPath: original ? buildFilePath(fileId, original) : null,
-      compressedPath: compressed
-        ? buildFilePath(fileId, compressed)
-        : null,
+      compressedPath: compressed ? buildFilePath(fileId, compressed) : null,
       thumbnailPath: thumbnail ? buildFilePath(fileId, thumbnail) : null,
       posterThumbnailPath: posterThumbnail
         ? buildFilePath(fileId, posterThumbnail)
@@ -290,7 +296,7 @@ const FileActions = {
           ctx,
           fields.file,
           newFile.id,
-          ['IMAGE',  'GIF']
+          ['IMAGE', 'GIF'],
         )
         Context.fileStorage.checkQueue()
       } catch (error) {
@@ -303,7 +309,10 @@ const FileActions = {
     })
   },
 
-  /** Reprocess a file by creating a new file record based on the source file, with processing reset and meta.originalFile set */
+  /**
+   * Reprocess a file by creating a new file record based on the source file,
+   * with processing reset and meta.originalFile set
+   */
   async _mReprocessFile(
     ctx: Context,
     fields: {
@@ -311,6 +320,7 @@ const FileActions = {
       addModifications?: ModificationActionData
       removeModifications?: ModificationActions[]
       clearAllModifications?: boolean
+      onFileCreated?: (newFileId: string, tx: any) => Promise<void>
     },
   ): Promise<string> {
     const userId = ctx.isAuthenticated()
@@ -326,7 +336,7 @@ const FileActions = {
     if (!fields.clearAllModifications) {
       // Start with a copy of the source file's modifications
       newModifications = {
-        ...sourceFile.modifications as ModificationActionData,
+        ...(sourceFile.modifications as ModificationActionData),
       }
 
       if (fields.removeModifications) {
@@ -359,12 +369,20 @@ const FileActions = {
           processingProgress: 0,
           processingNotes: null,
           expireBy: null,
-          processingMeta: { originalFile: fields.sourceFileId, newModifications },
+          processingMeta: {
+            originalFile: fields.sourceFileId,
+            newModifications,
+          },
           modifications: getPersistentModifications(newModifications),
         })
         .returning()
 
       ctx.dataLoaders.file.getById.prime(newFile.id, newFile)
+
+      // Call callback within transaction if provided
+      if (fields.onFileCreated) {
+        await fields.onFileCreated(newFile.id, tx)
+      }
 
       try {
         await Context.fileStorage.queueFileFromOtherFile(
@@ -422,9 +440,11 @@ const FileActions = {
     return expiredFiles.length
   },
 
-  /** Delete files (internal) - permanently removes files and their variants
+  /**
+   * Delete files (internal) - permanently removes files and their variants
    * Note: We explicitly delete file variants first because we use RESTRICT
-   * instead of CASCADE to maintain strict 1:1 relationship between DB entries and disk files
+   * instead of CASCADE to maintain strict 1:1 relationship between DB entries
+   * and disk files
    */
   async _mDeleteFiles(ctx: Context, fileIds: string[]): Promise<void> {
     if (fileIds.length === 0) return
@@ -801,10 +821,17 @@ const FileActions = {
       // Get the updated file with complete path data to publish
       const fileWithPaths = await this.qFileWithPaths(ctx, fileId)
       if (fileWithPaths) {
+        // Find items that reference this file
+        const items = await ctx.db
+          .select({ id: itemTable.id })
+          .from(itemTable)
+          .where(eq(itemTable.fileId, fileId))
+
         const payload: FileProcessingUpdatePayload = {
           id: fileId,
           kind: 'CHANGED',
           file: fileWithPaths,
+          affectedItems: items.map((item) => ItemModel.encodeId(item.id)),
         }
         await Context.pubSub.publish(topics.FILE_PROCESSING_UPDATES, payload)
       }
@@ -853,24 +880,18 @@ const FileActions = {
 
     // Build paths
     const originalPath = original ? buildFilePath(fileId, original) : null
-    const compressedPath = compressed
-      ? buildFilePath(fileId, compressed)
-      : null
+    const compressedPath = compressed ? buildFilePath(fileId, compressed) : null
     const compressedGifPath = compressedGif
       ? buildFilePath(fileId, compressedGif)
       : null
-    const thumbnailPath = thumbnail
-      ? buildFilePath(fileId, thumbnail)
-      : null
+    const thumbnailPath = thumbnail ? buildFilePath(fileId, thumbnail) : null
     const posterThumbnailPath = posterThumbnail
       ? buildFilePath(fileId, posterThumbnail)
       : null
     const profilePicture256 = profile256
       ? buildFilePath(fileId, profile256)
       : null
-    const profilePicture64 = profile64
-      ? buildFilePath(fileId, profile64)
-      : null
+    const profilePicture64 = profile64 ? buildFilePath(fileId, profile64) : null
 
     // Get all metadata in one call
     const metadata = await this.qFileMetadata(ctx, fileId, true)

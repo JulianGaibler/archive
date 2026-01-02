@@ -103,6 +103,11 @@ export enum FileProcessingStatus {
 /** Update data of a file's current processing status. */
 export type FileProcessingUpdate = {
   __typename?: 'FileProcessingUpdate';
+  /**
+   * List of item IDs that reference this file.
+   * Useful for knowing which items were affected by the file processing.
+   */
+  affectedItems?: Maybe<Array<Scalars['ID']['output']>>;
   /** The updated file. */
   file: File;
   /** The ID of the file */
@@ -343,6 +348,12 @@ export type Mutation = {
   revokeSession: Scalars['Boolean']['output'];
   /** Creates a new user and performs a login. */
   signup: Scalars['Boolean']['output'];
+  /**
+   * Trim an item's file.
+   * Creates new variants with trim applied while preserving the original.
+   * Returns the new file ID for subscription.
+   */
+  trimItem: Scalars['String']['output'];
   /** Removed Telegram ID from Archive profile. */
   unlinkTelegram: Scalars['Boolean']['output'];
   /**
@@ -467,6 +478,12 @@ export type MutationSignupArgs = {
   name: Scalars['String']['input'];
   password: Scalars['String']['input'];
   username: Scalars['String']['input'];
+};
+
+
+export type MutationTrimItemArgs = {
+  itemId: Scalars['ID']['input'];
+  trim: TrimInput;
 };
 
 
@@ -684,6 +701,17 @@ export type Subscription = {
 
 export type SubscriptionFileProcessingUpdatesArgs = {
   ids: Array<Scalars['String']['input']>;
+};
+
+/**
+ * Input type for trimming parameters.
+ * Defines a time range to trim from video/audio files.
+ */
+export type TrimInput = {
+  /** End time of the trim in seconds. */
+  endTime: Scalars['Float']['input'];
+  /** Start time of the trim in seconds. */
+  startTime: Scalars['Float']['input'];
 };
 
 /** Enum that specifies if an update contains a new object, an update or if an object has been deleted. */

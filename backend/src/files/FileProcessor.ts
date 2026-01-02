@@ -18,9 +18,7 @@ import {
   FileUpdateCallback,
   StreamFactory,
 } from './types.js'
-import {
-  ModificationActionData,
-} from './processing-metadata.js'
+import { ModificationActionData } from './processing-metadata.js'
 import {
   profilePictureOptions,
   itemTypes,
@@ -84,11 +82,14 @@ export default class FileProcessor {
         }
       }
 
-      transform = transform
-        .resize(processingConfig.image.maxSize, processingConfig.image.maxSize, {
+      transform = transform.resize(
+        processingConfig.image.maxSize,
+        processingConfig.image.maxSize,
+        {
           fit: sharp.fit.inside,
           withoutEnlargement: true,
-        })
+        },
+      )
 
       const [err1] = await to(
         pipeline(
@@ -283,7 +284,12 @@ export default class FileProcessor {
       // Process modifications to build filter chains
       const buildFilters = (
         modifications?: ModificationActionData[],
-      ): { videoFilters: string[]; needsTrim: boolean; trimStart?: number; trimDuration?: number } => {
+      ): {
+        videoFilters: string[]
+        needsTrim: boolean
+        trimStart?: number
+        trimDuration?: number
+      } => {
         const videoFilters: string[] = []
         let needsTrim = false
         let trimStart: number | undefined
@@ -298,7 +304,9 @@ export default class FileProcessor {
               // We need to calculate width/height from the boundaries
               const cropWidth = width! - crop.left - crop.right
               const cropHeight = height! - crop.top - crop.bottom
-              videoFilters.push(`crop=${cropWidth}:${cropHeight}:${crop.left}:${crop.top}`)
+              videoFilters.push(
+                `crop=${cropWidth}:${cropHeight}:${crop.left}:${crop.top}`,
+              )
             }
 
             // Handle trim modification
@@ -314,7 +322,8 @@ export default class FileProcessor {
         return { videoFilters, needsTrim, trimStart, trimDuration }
       }
 
-      const { videoFilters, needsTrim, trimStart, trimDuration } = buildFilters(modifications)
+      const { videoFilters, needsTrim, trimStart, trimDuration } =
+        buildFilters(modifications)
 
       const renderVideo = (
         renderIdx: number,
@@ -423,7 +432,9 @@ export default class FileProcessor {
       const outputHeight =
         height > processingConfig.video.maxHeight
           ? processingConfig.video.maxHeight
-          : height % 2 === 0 ? height : height - 1
+          : height % 2 === 0
+            ? height
+            : height - 1
 
       const promises: Promise<void>[] = []
 
@@ -443,7 +454,9 @@ export default class FileProcessor {
             '-maxrate',
             '4500k',
           ],
-          fileType === FileType.VIDEO ? [...mp4AudioOptions, '-b:a', '192k'] : [],
+          fileType === FileType.VIDEO
+            ? [...mp4AudioOptions, '-b:a', '192k']
+            : [],
           fileType === FileType.VIDEO, // hasAudio
         )
         promises.push(renderA)
@@ -488,7 +501,10 @@ export default class FileProcessor {
         if (fileType === FileType.GIF && promises.length > 1) {
           // Try to determine if MP4 or GIF failed
           const errorMessage = (err as Error).message?.toLowerCase() || ''
-          if (errorMessage.includes('gif') || errorMessage.includes('palette')) {
+          if (
+            errorMessage.includes('gif') ||
+            errorMessage.includes('palette')
+          ) {
             throw new FileProcessingError(
               (err as Error).message,
               'GIF compression',
@@ -535,7 +551,7 @@ export default class FileProcessor {
   async processAudio(
     filePath: string,
     directory: string,
-    _modifications?: ModificationActionData[],
+    modifications?: ModificationActionData[],
   ): Promise<FileProcessingResult> {
     try {
       const compressed = fileUtils.resolvePath(directory, 'audio')
@@ -561,7 +577,39 @@ export default class FileProcessor {
       }
 
       if (duration <= 0) {
-        throw new InputError('Invalid audio file or could not determine duration')
+        throw new InputError(
+          'Invalid audio file or could not determine duration',
+        )
+      }
+
+      // Extract trim parameters
+      let trimStart: number | undefined
+      let trimDuration: number | undefined
+      if (modifications && modifications.length > 0) {
+        const mod = modifications[0]
+        if (mod.trim) {
+          trimStart = mod.trim.startTime
+          const trimEnd = mod.trim.endTime
+          trimDuration = trimEnd - trimStart
+
+          // Validate trim parameters
+          if (trimStart < 0 || trimStart >= duration) {
+            throw new InputError(
+              `Trim start time ${trimStart}s is out of range [0, ${duration}s]`,
+            )
+          }
+          if (trimEnd > duration) {
+            throw new InputError(
+              `Trim end time ${trimEnd}s exceeds audio duration ${duration}s`,
+            )
+          }
+          if (trimDuration <= 0) {
+            throw new InputError('Trim duration must be positive')
+          }
+
+          // Update duration for waveform calculation
+          duration = trimDuration
+        }
       }
 
       // Generate waveform data (10% of processing time)
@@ -574,38 +622,86 @@ export default class FileProcessor {
         Math.ceil(duration * samplesPerSecond),
       )
 
+      // Generate waveforms with trim support
+      // Strategy: Create temporary trimmed file, then generate waveform from it
       let waveformData
-      try {
-        waveformData = await FFmpegWrapper.generateWaveform(filePath, {
-          samples: targetSamples,
-          channel: 'mono',
-        })
-      } catch (err) {
-        throw new FileProcessingError(
-          'Failed to generate waveform data',
-          'waveform generation',
-          err as Error,
-        )
-      }
-
-      this.updateCallback({ processingProgress: 15 })
-
-      // Generate thumbnail waveform (always 12 samples)
       let thumbnailWaveformData
-      try {
-        thumbnailWaveformData = await FFmpegWrapper.generateWaveform(
-          filePath,
-          {
-            samples: processingConfig.audio.waveformThumbnailSamples,
+
+      if (trimStart !== undefined) {
+        // Create temp trimmed file for waveform generation
+        const tempTrimmedPath = fileUtils.resolvePath(
+          directory,
+          'temp-trimmed.mp3',
+        )
+
+        try {
+          await FFmpegWrapper.convert(filePath, tempTrimmedPath, {
+            inputOptions: [
+              '-ss',
+              trimStart.toString(),
+              '-t',
+              trimDuration!.toString(),
+            ],
+            outputOptions: ['-c', 'copy'], // Fast copy, no re-encoding
+          })
+
+          // Generate waveforms from trimmed file
+          waveformData = await FFmpegWrapper.generateWaveform(tempTrimmedPath, {
+            samples: targetSamples,
             channel: 'mono',
-          },
-        )
-      } catch (err) {
-        throw new FileProcessingError(
-          'Failed to generate thumbnail waveform data',
-          'thumbnail waveform generation',
-          err as Error,
-        )
+          })
+
+          this.updateCallback({ processingProgress: 15 })
+
+          thumbnailWaveformData = await FFmpegWrapper.generateWaveform(
+            tempTrimmedPath,
+            {
+              samples: processingConfig.audio.waveformThumbnailSamples,
+              channel: 'mono',
+            },
+          )
+
+          // Clean up temp file
+          fileUtils.remove(tempTrimmedPath)
+        } catch (err) {
+          throw new FileProcessingError(
+            'Failed to generate trimmed waveforms',
+            'trimmed waveform generation',
+            err as Error,
+          )
+        }
+      } else {
+        // Normal waveform generation (existing code)
+        try {
+          waveformData = await FFmpegWrapper.generateWaveform(filePath, {
+            samples: targetSamples,
+            channel: 'mono',
+          })
+        } catch (err) {
+          throw new FileProcessingError(
+            'Failed to generate waveform data',
+            'waveform generation',
+            err as Error,
+          )
+        }
+
+        this.updateCallback({ processingProgress: 15 })
+
+        try {
+          thumbnailWaveformData = await FFmpegWrapper.generateWaveform(
+            filePath,
+            {
+              samples: processingConfig.audio.waveformThumbnailSamples,
+              channel: 'mono',
+            },
+          )
+        } catch (err) {
+          throw new FileProcessingError(
+            'Failed to generate thumbnail waveform data',
+            'thumbnail waveform generation',
+            err as Error,
+          )
+        }
       }
 
       this.updateCallback({ processingProgress: 25 })
@@ -615,6 +711,10 @@ export default class FileProcessor {
 
       try {
         await FFmpegWrapper.normalizeAudio(filePath, filePaths.mp3!, {
+          inputOptions:
+            trimStart !== undefined
+              ? ['-ss', trimStart.toString(), '-t', trimDuration!.toString()]
+              : [],
           audioOptions: mp3AudioOptions,
           normalizationOptions: audioNormalizationOptions.ebuR128,
           onProgress: (progress: { percent?: number }) => {
@@ -691,11 +791,7 @@ export default class FileProcessor {
         ),
       )
       if (err1) {
-        throw new FileProcessingError(
-          err1.message,
-          'thumbnail creation',
-          err1,
-        )
+        throw new FileProcessingError(err1.message, 'thumbnail creation', err1)
       }
 
       return filePaths

@@ -16,4 +16,10 @@ type FileProcessingUpdate {
   The updated file.
   """
   file: File!
+
+  """
+  List of item IDs that reference this file.
+  Useful for knowing which items were affected by the file processing.
+  """
+  affectedItems: [ID!]
 }

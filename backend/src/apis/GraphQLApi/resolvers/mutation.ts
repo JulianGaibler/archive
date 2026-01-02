@@ -76,10 +76,11 @@ export const mutationResolvers: MutationResolvers = {
     return rv
   },
 
-  convertItem: async (_, args, ctx) => ItemActions.mConvertItem(ctx, {
-    itemId: args.itemId,
-    convertTo: args.targetType,
-  }),
+  convertItem: async (_, args, ctx) =>
+    ItemActions.mConvertItem(ctx, {
+      itemId: args.itemId,
+      convertTo: args.targetType,
+    }),
 
   cropItem: async (_, args, ctx) => ItemActions.mCropItem(ctx, args),
 

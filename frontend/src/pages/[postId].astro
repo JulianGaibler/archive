@@ -31,7 +31,10 @@ try {
     error = handleError(404, Astro.response)
   } else if (!error) {
     post = result.data.node as PostNode
-    console.log('Post fetched successfully:', util.inspect(post, { depth: null, colors: true }))
+    console.log(
+      'Post fetched successfully:',
+      util.inspect(post, { depth: null, colors: true }),
+    )
   }
 } catch (graphqlError: unknown) {
   console.error('GraphQL error in [postId].astro:', graphqlError)

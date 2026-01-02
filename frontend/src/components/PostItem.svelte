@@ -21,7 +21,10 @@
     removeUploadItem?: (itemId: string) => void
     cancelUploadItem?: (itemId: string) => void
     onConvertItem?: (itemId: string, targetType: FileType) => Promise<boolean>
-    onCropItem?: (itemId: string, crop: { left: number, top: number, right: number, bottom: number }) => Promise<boolean>
+    onCropItem?: (
+      itemId: string,
+      crop: { left: number; top: number; right: number; bottom: number },
+    ) => Promise<boolean>
   }
 
   let {
@@ -81,7 +84,7 @@
         left: 0,
         top: 0,
         right: 100,
-        bottom: 100
+        bottom: 100,
       })
     }
   }
@@ -94,7 +97,7 @@
 
     // Determine current file type from the item's __typename
     let currentType: FileType | null = null
-    
+
     if (item.data.__typename === 'VideoItem') {
       currentType = FileType.Video
     } else if (item.data.__typename === 'GifItem') {
@@ -113,19 +116,22 @@
     if (currentType === FileType.Video) {
       conversions.push(
         { label: 'Convert to GIF', onClick: handleConvertToGif },
-        { label: 'Convert to Audio', onClick: handleConvertToAudio }
+        { label: 'Convert to Audio', onClick: handleConvertToAudio },
       )
     } else if (currentType === FileType.Gif) {
-      conversions.push(
-        { label: 'Convert to Video', onClick: handleConvertToVideo }
-      )
+      conversions.push({
+        label: 'Convert to Video',
+        onClick: handleConvertToVideo,
+      })
     }
 
     // Add crop option for video and image types
-    if (currentType === FileType.Video || currentType === FileType.Image || currentType === FileType.Gif) {
-      conversions.push(
-        { label: 'Crop', onClick: handleCropItem }
-      )
+    if (
+      currentType === FileType.Video ||
+      currentType === FileType.Image ||
+      currentType === FileType.Gif
+    ) {
+      conversions.push({ label: 'Crop', onClick: handleCropItem })
     }
 
     return conversions

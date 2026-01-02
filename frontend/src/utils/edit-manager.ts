@@ -1317,7 +1317,8 @@ export function createEditManager(
       // Show success message
       openDialog?.({
         heading: 'Conversion Started',
-        children: 'The conversion has been queued and will begin shortly. You will see progress updates here.',
+        children:
+          'The conversion has been queued and will begin shortly. You will see progress updates here.',
       })
 
       // Restart subscription to monitor the conversion process
@@ -1336,7 +1337,10 @@ export function createEditManager(
     }
   }
 
-  const cropItem = async (itemId: string, crop: { left: number, top: number, right: number, bottom: number }) => {
+  const cropItem = async (
+    itemId: string,
+    crop: { left: number; top: number; right: number; bottom: number },
+  ) => {
     try {
       loading.set(true)
       const result = await sdk.cropItem({
@@ -1357,7 +1361,8 @@ export function createEditManager(
       // Show success message
       openDialog?.({
         heading: 'Cropping Started',
-        children: 'The cropping has been queued and will begin shortly. You will see progress updates here.',
+        children:
+          'The cropping has been queued and will begin shortly. You will see progress updates here.',
       })
 
       // Restart subscription to monitor the cropping process

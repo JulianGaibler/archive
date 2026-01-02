@@ -492,19 +492,25 @@ export class FFmpegWrapper {
    */
   static async analyzeAudioLoudness(
     inputPath: string,
-    options: AudioNormalizationOptions = {},
+    options: AudioNormalizationOptions & { inputOptions?: string[] } = {},
   ): Promise<AudioNormalizationMeasurements> {
     const {
       integratedLoudness = -16,
       truePeak = -1.5,
       loudnessRange = 11,
       linear = true,
+      inputOptions,
     } = options
 
     return new Promise((resolve, reject) => {
-      const args = [
-        '-hide_banner',
-        '-nostats',
+      const args = ['-hide_banner', '-nostats']
+
+      // Add input options before -i flag
+      if (inputOptions) {
+        args.push(...inputOptions)
+      }
+
+      args.push(
         '-i',
         inputPath,
         '-af',
@@ -512,7 +518,7 @@ export class FFmpegWrapper {
         '-f',
         'null',
         '-',
-      ]
+      )
 
       const process = spawn('ffmpeg', args)
       let stderr = ''
@@ -561,6 +567,7 @@ export class FFmpegWrapper {
     inputPath: string,
     outputPath: string,
     options: {
+      inputOptions?: string[]
       audioOptions?: string[]
       videoOptions?: string[]
       normalizationOptions?: AudioNormalizationOptions
@@ -580,12 +587,14 @@ export class FFmpegWrapper {
       integratedLoudness,
       truePeak,
       loudnessRange,
+      inputOptions: options.inputOptions,
     })
 
     // Pass 2: Apply normalization with measurements
     const audioFilter = `loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}:linear=${linear ? 'true' : 'false'}:measured_I=${measurements.input_i}:measured_LRA=${measurements.input_lra}:measured_TP=${measurements.input_tp}:measured_thresh=${measurements.input_thresh}:offset=${measurements.target_offset}:dual_mono=${dualMono ? 'true' : 'false'}`
 
     return FFmpegWrapper.convert(inputPath, outputPath, {
+      inputOptions: options.inputOptions,
       outputOptions: [
         '-af',
         audioFilter,
@@ -646,6 +655,7 @@ export class FFmpegWrapper {
     outputPath: string,
     options: {
       size?: string
+      inputOptions?: string[]
       outputOptions?: string[]
       filterComplex?: string
       onProgress?: (progress: FFmpegProgress) => void
@@ -662,7 +672,14 @@ export class FFmpegWrapper {
     }
 
     return new Promise((resolve, reject) => {
-      const args = ['-i', inputPath]
+      const args: string[] = []
+
+      // Add input options before -i flag
+      if (options.inputOptions) {
+        args.push(...options.inputOptions)
+      }
+
+      args.push('-i', inputPath)
 
       // Add filter complex if provided
       if (options.filterComplex) {

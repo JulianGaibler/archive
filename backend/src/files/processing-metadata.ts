@@ -1,7 +1,7 @@
 /**
- * Processing metadata types for file variants
- * This metadata is stored in the `meta` JSON field of file variants
- * and is used for re-processing files with specific transformations
+ * Processing metadata types for file variants This metadata is stored in the
+ * `meta` JSON field of file variants and is used for re-processing files with
+ * specific transformations
  */
 
 export interface CropMetadata {

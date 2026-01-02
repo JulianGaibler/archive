@@ -13,10 +13,18 @@ import PaginationUtils, {
   PaginationArgs,
   Connection,
 } from './PaginationUtils.js'
-import { NotFoundError, InputError } from '@src/errors/index.js'
+import {
+  NotFoundError,
+  InputError,
+  AuthorizationError,
+} from '@src/errors/index.js'
 import PostModel from '@src/models/PostModel.js'
 import { UserExternal, UserInternal } from '@src/models/UserModel.js'
-import { CropMetadata, TrimMetadata, ModificationActions } from '@src/files/processing-metadata.js'
+import {
+  CropMetadata,
+  TrimMetadata,
+  ModificationActions,
+} from '@src/files/processing-metadata.js'
 import FileActions from './FileActions.js'
 const itemTable = ItemModel.table
 const itemSearchView = ItemModel.itemSearchView
@@ -238,23 +246,25 @@ const ItemActions = {
 
   /// Mutations
 
-
-  /**
-   * Modifies an existing item by reprocessing its associated file.
-   */
+  /** Modifies an existing item by reprocessing its associated file. */
   async _mModifyItem(
     ctx: Context,
     fields: {
       itemId: ItemExternal['id']
-    } & Omit<Parameters<typeof FileActions._mReprocessFile>[1], 'sourceFileId'>
+    } & Omit<Parameters<typeof FileActions._mReprocessFile>[1], 'sourceFileId'>,
   ): Promise<string> {
-    ctx.isAuthenticated()
+    const userId = ctx.isAuthenticated()
 
     // Get the item
     const itemId = ItemModel.decodeId(fields.itemId)
     const item = await ctx.dataLoaders.item.getById.load(itemId)
     if (!item) {
       throw new NotFoundError('Item not found')
+    }
+
+    // Validate ownership
+    if (item.creatorId !== userId) {
+      throw new AuthorizationError('You can only modify your own items')
     }
 
     // Check if item has a file
@@ -265,14 +275,22 @@ const ItemActions = {
     const newFileId = await FileActions._mReprocessFile(ctx, {
       ...fields,
       sourceFileId: item.fileId,
+      onFileCreated: async (newFileId: string, tx: any) => {
+        // Update item to point to new file within same transaction
+        await tx
+          .update(itemTable)
+          .set({ fileId: newFileId })
+          .where(eq(itemTable.id, itemId))
+
+        // Clear dataloader cache for this item
+        ctx.dataLoaders.item.getById.clear(itemId)
+      },
     })
 
     return newFileId
   },
 
-  /**
-   * Modifies an item by applying a crop modification.
-   */
+  /** Modifies an item by applying a crop modification. */
   async mCropItem(
     ctx: Context,
     fields: {
@@ -288,9 +306,7 @@ const ItemActions = {
     })
   },
 
-  /**
-   * Trims an item by applying a trim modification.
-   */
+  /** Trims an item by applying a trim modification. */
   async mTrimItem(
     ctx: Context,
     fields: {
@@ -306,9 +322,7 @@ const ItemActions = {
     })
   },
 
-  /**
-   * Converts the file type of an item to the specified format.
-   */
+  /** Converts the file type of an item to the specified format. */
   async mConvertItem(
     ctx: Context,
     fields: {
@@ -325,7 +339,8 @@ const ItemActions = {
   },
 
   /**
-   * Removes specified modifications from an item or clears all modifications if specified.
+   * Removes specified modifications from an item or clears all modifications if
+   * specified.
    */
   async mRemoveModifications(
     ctx: Context,
@@ -343,13 +358,13 @@ const ItemActions = {
   },
 
   /**
-   * Replace the file reference in an item with a new file
-   * This is used when processing completes successfully
+   * Replace the file reference in an item with a new file This is used when
+   * processing completes successfully
    */
   async _mReplaceItemFile(
     ctx: Context,
     itemId: number,
-    newFileId: string
+    newFileId: string,
   ): Promise<void> {
     await ctx.db
       .update(itemTable)
@@ -358,13 +373,13 @@ const ItemActions = {
   },
 
   /**
-   * Revert the file reference in an item back to original file
-   * This is used when processing fails
+   * Revert the file reference in an item back to original file This is used
+   * when processing fails
    */
   async _mRevertItemFile(
     ctx: Context,
     itemId: number,
-    originalFileId: string
+    originalFileId: string,
   ): Promise<void> {
     await ctx.db
       .update(itemTable)
