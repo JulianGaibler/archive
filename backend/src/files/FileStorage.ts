@@ -7,7 +7,7 @@ import stream from 'stream'
 import FileActions from '@src/actions/FileActions.js'
 import { FileInternal } from '@src/models/FileModel.js'
 import ItemModel from '@src/models/ItemModel.js'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import tmp from 'tmp'
 import util from 'util'
 import { FileUpload } from 'graphql-upload/processRequest.mjs'
@@ -21,6 +21,7 @@ import {
 import { FilePathManager } from './FilePathManager.js'
 import { FileProcessingQueue } from './QueueManager.js'
 import { FFmpegWrapper } from './ffmpeg-wrapper.js'
+import { fileVariant as fileVariantTable } from '@db/schema.js'
 
 const pipeline = util.promisify(stream.pipeline)
 const itemTable = ItemModel.table
@@ -339,6 +340,171 @@ export default class FileStorage {
         // This deletes the previous version since we now have the new processed version
         if (sourceFileId) {
           try {
+            // Before deleting source file, preserve unmodified variants if needed
+            const sourceFile = await FileActions._qFileInternal(
+              ctx,
+              sourceFileId,
+            )
+            const newFile = await FileActions._qFileInternal(ctx, fileId)
+
+            const sourceHasModifications =
+              sourceFile?.processingMeta &&
+              typeof sourceFile.processingMeta === 'object' &&
+              ('crop' in sourceFile.processingMeta ||
+                'trim' in sourceFile.processingMeta ||
+                'fileType' in sourceFile.processingMeta)
+
+            const newHasModifications =
+              newFile?.processingMeta &&
+              typeof newFile.processingMeta === 'object' &&
+              ('crop' in newFile.processingMeta ||
+                'trim' in newFile.processingMeta ||
+                'fileType' in newFile.processingMeta)
+
+            // If new file has modifications but source didn't, this is the first modification
+            const isFirstModification =
+              newHasModifications && !sourceHasModifications
+
+            if (isFirstModification) {
+              // Copy source file's compressed variant to UNMODIFIED_COMPRESSED
+              const sourceCompressed = await ctx.db
+                .select()
+                .from(fileVariantTable)
+                .where(
+                  and(
+                    eq(fileVariantTable.file, sourceFileId),
+                    eq(fileVariantTable.variant, 'COMPRESSED'),
+                  ),
+                )
+                .limit(1)
+
+              if (sourceCompressed.length > 0) {
+                const variant = sourceCompressed[0]
+                // Copy the physical file
+                const sourcePath = FileActions.buildVariantPath(
+                  sourceFileId,
+                  variant,
+                )
+                const targetPath = FileActions.buildVariantPath(fileId, {
+                  ...variant,
+                  variant: 'UNMODIFIED_COMPRESSED',
+                })
+
+                await fs.promises.copyFile(sourcePath, targetPath)
+
+                // Create the variant record
+                await ctx.db.insert(fileVariantTable).values({
+                  file: fileId,
+                  variant: 'UNMODIFIED_COMPRESSED',
+                  mimeType: variant.mimeType,
+                  extension: variant.extension,
+                  sizeBytes: variant.sizeBytes,
+                  meta: variant.meta,
+                })
+              }
+
+              // Copy source file's thumbnail poster variant (for videos)
+              const sourcePoster = await ctx.db
+                .select()
+                .from(fileVariantTable)
+                .where(
+                  and(
+                    eq(fileVariantTable.file, sourceFileId),
+                    eq(fileVariantTable.variant, 'THUMBNAIL_POSTER'),
+                  ),
+                )
+                .limit(1)
+
+              if (sourcePoster.length > 0) {
+                const variant = sourcePoster[0]
+                // Copy the physical file
+                const sourcePath = FileActions.buildVariantPath(
+                  sourceFileId,
+                  variant,
+                )
+                const targetPath = FileActions.buildVariantPath(fileId, {
+                  ...variant,
+                  variant: 'UNMODIFIED_THUMBNAIL_POSTER',
+                })
+
+                await fs.promises.copyFile(sourcePath, targetPath)
+
+                // Create the variant record
+                await ctx.db.insert(fileVariantTable).values({
+                  file: fileId,
+                  variant: 'UNMODIFIED_THUMBNAIL_POSTER',
+                  mimeType: variant.mimeType,
+                  extension: variant.extension,
+                  sizeBytes: variant.sizeBytes,
+                  meta: variant.meta,
+                })
+              }
+            } else if (newHasModifications && sourceHasModifications) {
+              // This is a subsequent modification - copy existing unmodified variants
+              const sourceUnmodifiedCompressed = await ctx.db
+                .select()
+                .from(fileVariantTable)
+                .where(
+                  and(
+                    eq(fileVariantTable.file, sourceFileId),
+                    eq(fileVariantTable.variant, 'UNMODIFIED_COMPRESSED'),
+                  ),
+                )
+                .limit(1)
+
+              if (sourceUnmodifiedCompressed.length > 0) {
+                const variant = sourceUnmodifiedCompressed[0]
+                const sourcePath = FileActions.buildVariantPath(
+                  sourceFileId,
+                  variant,
+                )
+                const targetPath = FileActions.buildVariantPath(fileId, variant)
+
+                await fs.promises.copyFile(sourcePath, targetPath)
+
+                await ctx.db.insert(fileVariantTable).values({
+                  file: fileId,
+                  variant: 'UNMODIFIED_COMPRESSED',
+                  mimeType: variant.mimeType,
+                  extension: variant.extension,
+                  sizeBytes: variant.sizeBytes,
+                  meta: variant.meta,
+                })
+              }
+
+              const sourceUnmodifiedPoster = await ctx.db
+                .select()
+                .from(fileVariantTable)
+                .where(
+                  and(
+                    eq(fileVariantTable.file, sourceFileId),
+                    eq(fileVariantTable.variant, 'UNMODIFIED_THUMBNAIL_POSTER'),
+                  ),
+                )
+                .limit(1)
+
+              if (sourceUnmodifiedPoster.length > 0) {
+                const variant = sourceUnmodifiedPoster[0]
+                const sourcePath = FileActions.buildVariantPath(
+                  sourceFileId,
+                  variant,
+                )
+                const targetPath = FileActions.buildVariantPath(fileId, variant)
+
+                await fs.promises.copyFile(sourcePath, targetPath)
+
+                await ctx.db.insert(fileVariantTable).values({
+                  file: fileId,
+                  variant: 'UNMODIFIED_THUMBNAIL_POSTER',
+                  mimeType: variant.mimeType,
+                  extension: variant.extension,
+                  sizeBytes: variant.sizeBytes,
+                  meta: variant.meta,
+                })
+              }
+            }
+
+            // Now delete the source file
             await FileActions._mDeleteFile(ctx, sourceFileId)
           } catch (error) {
             console.warn(

@@ -70,7 +70,9 @@ const FileActions = {
       | 'COMPRESSED'
       | 'COMPRESSED_GIF'
       | 'PROFILE_256'
-      | 'PROFILE_64',
+      | 'PROFILE_64'
+      | 'UNMODIFIED_COMPRESSED'
+      | 'UNMODIFIED_THUMBNAIL_POSTER',
   ): Promise<FileVariantExternal | null> {
     const variants = await this._qFileVariantsInternal(ctx, fileId)
     const variant = variants.find((v) => v.variant === variantType)
@@ -209,6 +211,52 @@ const FileActions = {
   },
 
   /**
+   * Get the unmodified compressed variant path for a file Returns null if no
+   * unmodified variant exists
+   */
+  async qUnmodifiedCompressedPath(
+    ctx: Context,
+    fileId: string,
+  ): Promise<string | null> {
+    const variant = await this.qFileVariant(
+      ctx,
+      fileId,
+      'UNMODIFIED_COMPRESSED',
+    )
+    return variant ? buildFilePath(fileId, variant) : null
+  },
+
+  /**
+   * Get the unmodified thumbnail poster variant path for a file Returns null if
+   * no unmodified variant exists
+   */
+  async qUnmodifiedThumbnailPosterPath(
+    ctx: Context,
+    fileId: string,
+  ): Promise<string | null> {
+    const variant = await this.qFileVariant(
+      ctx,
+      fileId,
+      'UNMODIFIED_THUMBNAIL_POSTER',
+    )
+    return variant ? buildFilePath(fileId, variant) : null
+  },
+
+  /**
+   * Build the filesystem path for a file variant Helper method for copying
+   * variant files
+   */
+  buildVariantPath(
+    fileId: string,
+    variant: { variant: string; extension: string },
+  ): string {
+    return fileUtils.resolvePath(
+      Context.config.storage.fileStorageLocation,
+      buildFilePath(fileId, variant),
+    )
+  },
+
+  /**
    * Upload a new file for an item. File starts processing immediately and
    * expires in 2 hours if not attached to a post.
    */
@@ -320,7 +368,7 @@ const FileActions = {
       addModifications?: ModificationActionData
       removeModifications?: ModificationActions[]
       clearAllModifications?: boolean
-      onFileCreated?: (newFileId: string, tx: any) => Promise<void>
+      onFileCreated?: (newFileId: string, tx: unknown) => Promise<void>
     },
   ): Promise<string> {
     const userId = ctx.isAuthenticated()

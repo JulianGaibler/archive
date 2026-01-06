@@ -85,4 +85,7 @@ export const mutationResolvers: MutationResolvers = {
   cropItem: async (_, args, ctx) => ItemActions.mCropItem(ctx, args),
 
   trimItem: async (_, args, ctx) => ItemActions.mTrimItem(ctx, args),
+
+  removeModifications: async (_, args, ctx) =>
+    ItemActions.mRemoveModifications(ctx, args),
 }

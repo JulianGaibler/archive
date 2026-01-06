@@ -364,4 +364,27 @@ type Mutation {
     """
     trim: TrimInput!
   ): String!
+
+  """
+  Remove specific modifications from an item or revert to original.
+  Creates a new file without the specified modifications.
+  Returns the new file ID for subscription.
+  """
+  removeModifications(
+    """
+    The ID of the item to modify.
+    """
+    itemId: ID!
+
+    """
+    Specific modifications to remove (e.g., ["crop", "trim", "fileType"]).
+    If empty array, removes all modifications.
+    """
+    removeModifications: [String!]!
+
+    """
+    If true, clears all modifications and reverts to original state.
+    """
+    clearAllModifications: Boolean
+  ): String!
 }

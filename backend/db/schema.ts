@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm"
 
 export const taskStatus = pgEnum("TaskStatus", ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'])
 export const fileType = pgEnum("file_type", ['VIDEO', 'IMAGE', 'GIF', 'AUDIO', 'PROFILE_PICTURE'])
-export const variantType = pgEnum("variant_type", ['ORIGINAL', 'THUMBNAIL', 'THUMBNAIL_POSTER', 'COMPRESSED', 'COMPRESSED_GIF', 'PROFILE_256', 'PROFILE_64'])
+export const variantType = pgEnum("variant_type", ['ORIGINAL', 'THUMBNAIL', 'THUMBNAIL_POSTER', 'COMPRESSED', 'COMPRESSED_GIF', 'PROFILE_256', 'PROFILE_64', 'UNMODIFIED_COMPRESSED', 'UNMODIFIED_THUMBNAIL_POSTER'])
 
 export const taskIdSeq = pgSequence("Task_id_seq", {  startWith: "1", increment: "1", minValue: "1", maxValue: "9223372036854775807", cache: "1", cycle: false })
 export const itemIdSeq = pgSequence("item_id_seq", {  startWith: "1", increment: "1", minValue: "1", maxValue: "9223372036854775807", cache: "1", cycle: false })

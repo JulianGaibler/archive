@@ -4,13 +4,18 @@
   import TextField from 'tint/components/TextField.svelte'
   import ItemMedia from '@src/components/ItemMedia.svelte'
   import ProcessingMediaStatus from '@src/components/ProcessingMediaStatus.svelte'
-  import Menu, { type ContextClickHandler } from 'tint/components/Menu.svelte'
+  import FileTransformModal from '@src/components/FileTransformModal.svelte'
+  import Menu, {
+    MENU_SEPARATOR,
+    type ContextClickHandler,
+  } from 'tint/components/Menu.svelte'
   import IconMore from 'tint/icons/20-more.svg?raw'
   import { formatDate } from '@src/utils'
   import { FileProcessingStatus, FileType } from '@src/generated/graphql'
   import type { PostUpdate, EditableItem } from '@src/utils/edit-manager'
   import { getResourceUrl } from '@src/utils/resource-urls'
   import type { MediaItemData } from '@src/components/ItemMedia.svelte'
+  import type { CropInput, TrimInput } from '@src/generated/graphql'
 
   type Props = {
     loading: boolean
@@ -25,6 +30,15 @@
       itemId: string,
       crop: { left: number; top: number; right: number; bottom: number },
     ) => Promise<boolean>
+    onTrimItem?: (
+      itemId: string,
+      trim: { startTime: number; endTime: number },
+    ) => Promise<boolean>
+    onRemoveModifications?: (
+      itemId: string,
+      modifications: string[],
+      clearAllModifications: boolean,
+    ) => Promise<boolean>
   }
 
   let {
@@ -37,6 +51,8 @@
     cancelUploadItem,
     onConvertItem,
     onCropItem,
+    onTrimItem,
+    onRemoveModifications,
   }: Props = $props()
 
   function forceUpdateEditData() {
@@ -55,6 +71,10 @@
   })
 
   let buttonClick: ContextClickHandler | undefined = $state(undefined)
+
+  // Transform modal state
+  let showTransformModal = $state(false)
+  let transformLoading = $state(false)
 
   // Conversion and cropping functions
   async function handleConvertToVideo() {
@@ -75,17 +95,61 @@
     }
   }
 
-  // Placeholder cropping function - could be enhanced with a crop UI later
-  async function handleCropItem() {
-    if (item.type === 'existing' && onCropItem) {
-      // For now, use some default crop values as a placeholder
-      // In a real implementation, this would open a crop UI
-      await onCropItem(item.id, {
-        left: 0,
-        top: 0,
-        right: 100,
-        bottom: 100,
-      })
+  // Open transform modal
+  function handleTransformItem() {
+    if (item.type === 'existing') {
+      showTransformModal = true
+    }
+  }
+
+  // Handle transform submission from modal
+  async function handleTransformSubmit(params: {
+    crop?: CropInput
+    trim?: TrimInput
+  }) {
+    if (item.type !== 'existing') return
+
+    transformLoading = true
+    try {
+      let success = true
+
+      // Apply crop if provided
+      if (params.crop && onCropItem) {
+        success = success && (await onCropItem(item.id, params.crop))
+      }
+
+      // Apply trim if provided
+      if (params.trim && onTrimItem) {
+        success = success && (await onTrimItem(item.id, params.trim))
+      }
+
+      if (success) {
+        showTransformModal = false
+      }
+    } catch (error) {
+      console.error('Transform failed:', error)
+    } finally {
+      transformLoading = false
+    }
+  }
+
+  // Cancel transform modal
+  function handleTransformCancel() {
+    showTransformModal = false
+    transformLoading = false
+  }
+
+  // Remove a specific modification
+  async function handleRemoveModification(modType: string) {
+    if (item.type === 'existing' && onRemoveModifications) {
+      await onRemoveModifications(item.id, [modType], false)
+    }
+  }
+
+  // Revert to original file (clear all modifications)
+  async function handleRevertToOriginal() {
+    if (item.type === 'existing' && onRemoveModifications) {
+      await onRemoveModifications(item.id, [], true)
     }
   }
 
@@ -131,7 +195,49 @@
       currentType === FileType.Image ||
       currentType === FileType.Gif
     ) {
-      conversions.push({ label: 'Crop', onClick: handleCropItem })
+      conversions.push({ label: 'Crop...', onClick: handleTransformItem })
+    }
+
+    // Add trim option for video and audio types
+    if (currentType === FileType.Video || currentType === FileType.Audio) {
+      conversions.push({ label: 'Trim...', onClick: handleTransformItem })
+    }
+
+    // Add modification reversal options if modifications exist
+    const modifications = item.data.file.modifications
+    if (modifications && onRemoveModifications) {
+      const hasModifications =
+        modifications.crop || modifications.trim || modifications.fileType
+
+      if (hasModifications) {
+        conversions.push(MENU_SEPARATOR)
+
+        // Individual reversal options
+        if (modifications.crop) {
+          conversions.push({
+            label: 'Remove crop',
+            onClick: () => handleRemoveModification('crop'),
+          })
+        }
+        if (modifications.trim) {
+          conversions.push({
+            label: 'Remove trim',
+            onClick: () => handleRemoveModification('trim'),
+          })
+        }
+        if (modifications.fileType) {
+          conversions.push({
+            label: 'Remove conversion',
+            onClick: () => handleRemoveModification('fileType'),
+          })
+        }
+
+        // Revert all option
+        conversions.push({
+          label: 'Revert to original',
+          onClick: handleRevertToOriginal,
+        })
+      }
     }
 
     return conversions
@@ -318,6 +424,23 @@
 
 {#if itemActions.length > 0}
   <Menu variant="button" bind:contextClick={buttonClick} items={itemActions} />
+{/if}
+
+{#if item.type === 'existing'}
+  <FileTransformModal
+    open={showTransformModal}
+    loading={transformLoading}
+    {item}
+    onCancel={handleTransformCancel}
+    onSubmit={handleTransformSubmit}
+    waveform={'file' in item.data && 'waveform' in item.data.file
+      ? item.data.file.waveform
+      : undefined}
+    waveformThumbnail={'file' in item.data &&
+    'waveformThumbnail' in item.data.file
+      ? item.data.file.waveformThumbnail
+      : undefined}
+  />
 {/if}
 
 <style lang="sass">

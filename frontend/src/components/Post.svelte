@@ -391,6 +391,8 @@
           removeUploadItem={editManager.removeUploadItem}
           onConvertItem={editManager.convertItem}
           onCropItem={editManager.cropItem}
+          onTrimItem={editManager.trimItem}
+          onRemoveModifications={editManager.removeModifications}
         />
       {/each}
       {#if $editData !== undefined}

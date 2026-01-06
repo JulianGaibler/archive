@@ -33,6 +33,28 @@ type FileExternalParent = {
   waveformThumbnail?: number[]
 }
 
+// Helper function to extract modifications from processingMeta
+async function getFileModifications(ctx: Context, fileId: string) {
+  const file = await FileActions._qFileInternal(ctx, fileId)
+  if (!file || !file.processingMeta) {
+    return null
+  }
+
+  const meta = file.processingMeta as Record<string, unknown>
+
+  // Check if any modifications exist
+  const hasModifications = meta.crop || meta.trim || meta.fileType
+  if (!hasModifications) {
+    return null
+  }
+
+  return {
+    crop: meta.crop || null,
+    trim: meta.trim || null,
+    fileType: meta.fileType || null,
+  }
+}
+
 export const fileResolvers: FileResolvers = {
   creator: async (parent: unknown, _args: unknown, ctx: Context) => {
     const actualParent = parent as FileExternalParent
@@ -46,6 +68,20 @@ export const photoFileResolvers: PhotoFileResolvers = {
   creator: async (parent, _args, ctx) => {
     const actualParent = parent as unknown as FileExternalParent
     return UserActions.qUser(ctx, { userId: actualParent.creatorId })
+  },
+
+  modifications: async (parent, _args, ctx) => {
+    const actualParent = parent as unknown as FileExternalParent
+    return getFileModifications(ctx, actualParent.id)
+  },
+
+  unmodifiedCompressedPath: async (parent, _args, ctx) => {
+    const actualParent = parent as unknown as FileExternalParent
+    const path = await FileActions.qUnmodifiedCompressedPath(
+      ctx,
+      actualParent.id,
+    )
+    return path || null
   },
 
   originalPath: async (parent, _args, ctx) => {
@@ -97,6 +133,29 @@ export const videoFileResolvers: VideoFileResolvers = {
   creator: async (parent, _args, ctx) => {
     const actualParent = parent as unknown as FileExternalParent
     return UserActions.qUser(ctx, { userId: actualParent.creatorId })
+  },
+
+  modifications: async (parent, _args, ctx) => {
+    const actualParent = parent as unknown as FileExternalParent
+    return getFileModifications(ctx, actualParent.id)
+  },
+
+  unmodifiedCompressedPath: async (parent, _args, ctx) => {
+    const actualParent = parent as unknown as FileExternalParent
+    const path = await FileActions.qUnmodifiedCompressedPath(
+      ctx,
+      actualParent.id,
+    )
+    return path || null
+  },
+
+  unmodifiedThumbnailPosterPath: async (parent, _args, ctx) => {
+    const actualParent = parent as unknown as FileExternalParent
+    const path = await FileActions.qUnmodifiedThumbnailPosterPath(
+      ctx,
+      actualParent.id,
+    )
+    return path || null
   },
 
   originalPath: async (parent, _args, ctx) => {
@@ -159,6 +218,20 @@ export const gifFileResolvers: GifFileResolvers = {
   creator: async (parent, _args, ctx) => {
     const actualParent = parent as unknown as FileExternalParent
     return UserActions.qUser(ctx, { userId: actualParent.creatorId })
+  },
+
+  modifications: async (parent, _args, ctx) => {
+    const actualParent = parent as unknown as FileExternalParent
+    return getFileModifications(ctx, actualParent.id)
+  },
+
+  unmodifiedCompressedPath: async (parent, _args, ctx) => {
+    const actualParent = parent as unknown as FileExternalParent
+    const path = await FileActions.qUnmodifiedCompressedPath(
+      ctx,
+      actualParent.id,
+    )
+    return path || null
   },
 
   originalPath: async (parent, _args, ctx) => {
@@ -227,6 +300,20 @@ export const audioFileResolvers: AudioFileResolvers = {
     return UserActions.qUser(ctx, { userId: actualParent.creatorId })
   },
 
+  modifications: async (parent, _args, ctx) => {
+    const actualParent = parent as unknown as FileExternalParent
+    return getFileModifications(ctx, actualParent.id)
+  },
+
+  unmodifiedCompressedPath: async (parent, _args, ctx) => {
+    const actualParent = parent as unknown as FileExternalParent
+    const path = await FileActions.qUnmodifiedCompressedPath(
+      ctx,
+      actualParent.id,
+    )
+    return path || null
+  },
+
   originalPath: async (parent, _args, ctx) => {
     const actualParent = parent as unknown as FileExternalParent
     // Use preloaded data if available (from subscription)
@@ -276,6 +363,20 @@ export const profilePictureFileResolvers: ProfilePictureFileResolvers = {
   creator: async (parent, _args, ctx) => {
     const actualParent = parent as unknown as FileExternalParent
     return UserActions.qUser(ctx, { userId: actualParent.creatorId })
+  },
+
+  modifications: async (parent, _args, ctx) => {
+    const actualParent = parent as unknown as FileExternalParent
+    return getFileModifications(ctx, actualParent.id)
+  },
+
+  unmodifiedCompressedPath: async (parent, _args, ctx) => {
+    const actualParent = parent as unknown as FileExternalParent
+    const path = await FileActions.qUnmodifiedCompressedPath(
+      ctx,
+      actualParent.id,
+    )
+    return path || null
   },
 
   profilePicture256: async (parent, _args, ctx) => {

@@ -30,10 +30,12 @@ export type AudioFile = File & {
   creator: User;
   /** The file UUID */
   id: Scalars['String']['output'];
+  modifications?: Maybe<FileModifications>;
   originalPath: Scalars['String']['output'];
   processingNotes?: Maybe<Scalars['String']['output']>;
   processingProgress?: Maybe<Scalars['Int']['output']>;
   processingStatus: FileProcessingStatus;
+  unmodifiedCompressedPath?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTime']['output'];
   waveform: Array<Scalars['Float']['output']>;
   waveformThumbnail: Array<Scalars['Float']['output']>;
@@ -69,6 +71,19 @@ export type CropInput = {
   top: Scalars['Int']['input'];
 };
 
+/** Metadata about a crop modification. */
+export type CropMetadata = {
+  __typename?: 'CropMetadata';
+  /** Bottom edge of the crop area in pixels. */
+  bottom: Scalars['Int']['output'];
+  /** Left edge of the crop area in pixels. */
+  left: Scalars['Int']['output'];
+  /** Right edge of the crop area in pixels. */
+  right: Scalars['Int']['output'];
+  /** Top edge of the crop area in pixels. */
+  top: Scalars['Int']['output'];
+};
+
 export type EditItemInput = {
   caption?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
@@ -82,10 +97,25 @@ export type File = {
   creator: User;
   /** The file UUID */
   id: Scalars['String']['output'];
+  /** Modifications applied to this file during reprocessing. */
+  modifications?: Maybe<FileModifications>;
   processingNotes?: Maybe<Scalars['String']['output']>;
   processingProgress?: Maybe<Scalars['Int']['output']>;
   processingStatus: FileProcessingStatus;
+  /** Path to the unmodified compressed variant (if modifications were applied). */
+  unmodifiedCompressedPath?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTime']['output'];
+};
+
+/** Modifications applied to a file during reprocessing. */
+export type FileModifications = {
+  __typename?: 'FileModifications';
+  /** Crop modification applied to the file. */
+  crop?: Maybe<CropMetadata>;
+  /** File type conversion applied. */
+  fileType?: Maybe<FileType>;
+  /** Trim modification applied to the file. */
+  trim?: Maybe<TrimMetadata>;
 };
 
 /** The possible states of file processing. */
@@ -151,12 +181,14 @@ export type GifFile = File & {
   creator: User;
   /** The file UUID */
   id: Scalars['String']['output'];
+  modifications?: Maybe<FileModifications>;
   originalPath: Scalars['String']['output'];
   processingNotes?: Maybe<Scalars['String']['output']>;
   processingProgress?: Maybe<Scalars['Int']['output']>;
   processingStatus: FileProcessingStatus;
   relativeHeight: Scalars['Float']['output'];
   thumbnailPath?: Maybe<Scalars['String']['output']>;
+  unmodifiedCompressedPath?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTime']['output'];
 };
 
@@ -335,6 +367,12 @@ export type Mutation = {
    */
   moveItem: Scalars['Boolean']['output'];
   /**
+   * Remove specific modifications from an item or revert to original.
+   * Creates a new file without the specified modifications.
+   * Returns the new file ID for subscription.
+   */
+  removeModifications: Scalars['String']['output'];
+  /**
    * Reorders an item within a post to a new position.
    * Returns the new position of the item.
    */
@@ -457,6 +495,13 @@ export type MutationMoveItemArgs = {
 };
 
 
+export type MutationRemoveModificationsArgs = {
+  clearAllModifications?: InputMaybe<Scalars['Boolean']['input']>;
+  itemId: Scalars['ID']['input'];
+  removeModifications: Array<Scalars['String']['input']>;
+};
+
+
 export type MutationReorderItemArgs = {
   itemId: Scalars['ID']['input'];
   newPosition: Scalars['Int']['input'];
@@ -518,12 +563,14 @@ export type PhotoFile = File & {
   creator: User;
   /** The file UUID */
   id: Scalars['String']['output'];
+  modifications?: Maybe<FileModifications>;
   originalPath: Scalars['String']['output'];
   processingNotes?: Maybe<Scalars['String']['output']>;
   processingProgress?: Maybe<Scalars['Int']['output']>;
   processingStatus: FileProcessingStatus;
   relativeHeight: Scalars['Float']['output'];
   thumbnailPath?: Maybe<Scalars['String']['output']>;
+  unmodifiedCompressedPath?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTime']['output'];
 };
 
@@ -591,11 +638,13 @@ export type ProfilePictureFile = File & {
   creator: User;
   /** The file UUID */
   id: Scalars['String']['output'];
+  modifications?: Maybe<FileModifications>;
   processingNotes?: Maybe<Scalars['String']['output']>;
   processingProgress?: Maybe<Scalars['Int']['output']>;
   processingStatus: FileProcessingStatus;
   profilePicture64: Scalars['String']['output'];
   profilePicture256: Scalars['String']['output'];
+  unmodifiedCompressedPath?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTime']['output'];
 };
 
@@ -714,6 +763,15 @@ export type TrimInput = {
   startTime: Scalars['Float']['input'];
 };
 
+/** Metadata about a trim modification. */
+export type TrimMetadata = {
+  __typename?: 'TrimMetadata';
+  /** End time of the trim in seconds. */
+  endTime: Scalars['Float']['output'];
+  /** Start time of the trim in seconds. */
+  startTime: Scalars['Float']['output'];
+};
+
 /** Enum that specifies if an update contains a new object, an update or if an object has been deleted. */
 export enum UpdateKind {
   /** Contains a changed object */
@@ -777,6 +835,7 @@ export type VideoFile = File & {
   creator: User;
   /** The file UUID */
   id: Scalars['String']['output'];
+  modifications?: Maybe<FileModifications>;
   originalPath: Scalars['String']['output'];
   posterThumbnailPath?: Maybe<Scalars['String']['output']>;
   processingNotes?: Maybe<Scalars['String']['output']>;
@@ -784,6 +843,9 @@ export type VideoFile = File & {
   processingStatus: FileProcessingStatus;
   relativeHeight: Scalars['Float']['output'];
   thumbnailPath?: Maybe<Scalars['String']['output']>;
+  unmodifiedCompressedPath?: Maybe<Scalars['String']['output']>;
+  /** Path to the unmodified thumbnail poster (if modifications were applied). */
+  unmodifiedThumbnailPosterPath?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTime']['output'];
 };
 
@@ -852,6 +914,23 @@ export type CropItemMutationVariables = Exact<{
 
 
 export type CropItemMutation = { __typename?: 'Mutation', cropItem: string };
+
+export type TrimItemMutationVariables = Exact<{
+  itemId: Scalars['ID']['input'];
+  trim: TrimInput;
+}>;
+
+
+export type TrimItemMutation = { __typename?: 'Mutation', trimItem: string };
+
+export type RemoveModificationsMutationVariables = Exact<{
+  itemId: Scalars['ID']['input'];
+  removeModifications: Array<Scalars['String']['input']> | Scalars['String']['input'];
+  clearAllModifications?: InputMaybe<Scalars['Boolean']['input']>;
+}>;
+
+
+export type RemoveModificationsMutation = { __typename?: 'Mutation', removeModifications: string };
 
 export type KeywordsQueryVariables = Exact<{
   after?: InputMaybe<Scalars['String']['input']>;
@@ -1271,6 +1350,20 @@ export const CropItemDocument = gql`
   cropItem(itemId: $itemId, crop: $crop)
 }
     `;
+export const TrimItemDocument = gql`
+    mutation trimItem($itemId: ID!, $trim: TrimInput!) {
+  trimItem(itemId: $itemId, trim: $trim)
+}
+    `;
+export const RemoveModificationsDocument = gql`
+    mutation removeModifications($itemId: ID!, $removeModifications: [String!]!, $clearAllModifications: Boolean) {
+  removeModifications(
+    itemId: $itemId
+    removeModifications: $removeModifications
+    clearAllModifications: $clearAllModifications
+  )
+}
+    `;
 export const KeywordsDocument = gql`
     query Keywords($after: String, $byName: String) {
   keywords(first: 48, after: $after, sortByPostCount: true, byName: $byName) {
@@ -1563,6 +1656,8 @@ const LoginDocumentString = print(LoginDocument);
 const LogoutDocumentString = print(LogoutDocument);
 const ConvertItemDocumentString = print(ConvertItemDocument);
 const CropItemDocumentString = print(CropItemDocument);
+const TrimItemDocumentString = print(TrimItemDocument);
+const RemoveModificationsDocumentString = print(RemoveModificationsDocument);
 const KeywordsDocumentString = print(KeywordsDocument);
 const KeywordSearchDocumentString = print(KeywordSearchDocument);
 const KeywordWithPostsDocumentString = print(KeywordWithPostsDocument);
@@ -1607,6 +1702,12 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     cropItem(variables: CropItemMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: CropItemMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<CropItemMutation>(CropItemDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'cropItem', 'mutation', variables);
+    },
+    trimItem(variables: TrimItemMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: TrimItemMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<TrimItemMutation>(TrimItemDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'trimItem', 'mutation', variables);
+    },
+    removeModifications(variables: RemoveModificationsMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: RemoveModificationsMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<RemoveModificationsMutation>(RemoveModificationsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'removeModifications', 'mutation', variables);
     },
     Keywords(variables?: KeywordsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: KeywordsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<KeywordsQuery>(KeywordsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Keywords', 'query', variables);

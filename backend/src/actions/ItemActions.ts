@@ -275,9 +275,10 @@ const ItemActions = {
     const newFileId = await FileActions._mReprocessFile(ctx, {
       ...fields,
       sourceFileId: item.fileId,
-      onFileCreated: async (newFileId: string, tx: any) => {
+      onFileCreated: async (newFileId: string, tx: unknown) => {
         // Update item to point to new file within same transaction
-        await tx
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (tx as any)
           .update(itemTable)
           .set({ fileId: newFileId })
           .where(eq(itemTable.id, itemId))

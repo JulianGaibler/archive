@@ -58,10 +58,12 @@ export type AudioFile = File & {
   creator: User
   /** The file UUID */
   id: Scalars['String']['output']
+  modifications?: Maybe<FileModifications>
   originalPath: Scalars['String']['output']
   processingNotes?: Maybe<Scalars['String']['output']>
   processingProgress?: Maybe<Scalars['Int']['output']>
   processingStatus: FileProcessingStatus
+  unmodifiedCompressedPath?: Maybe<Scalars['String']['output']>
   updatedAt: Scalars['DateTime']['output']
   waveform: Array<Scalars['Float']['output']>
   waveformThumbnail: Array<Scalars['Float']['output']>
@@ -98,6 +100,19 @@ export type CropInput = {
   top: Scalars['Int']['input']
 }
 
+/** Metadata about a crop modification. */
+export type CropMetadata = {
+  __typename?: 'CropMetadata'
+  /** Bottom edge of the crop area in pixels. */
+  bottom: Scalars['Int']['output']
+  /** Left edge of the crop area in pixels. */
+  left: Scalars['Int']['output']
+  /** Right edge of the crop area in pixels. */
+  right: Scalars['Int']['output']
+  /** Top edge of the crop area in pixels. */
+  top: Scalars['Int']['output']
+}
+
 export type EditItemInput = {
   caption?: InputMaybe<Scalars['String']['input']>
   description?: InputMaybe<Scalars['String']['input']>
@@ -111,10 +126,25 @@ export type File = {
   creator: User
   /** The file UUID */
   id: Scalars['String']['output']
+  /** Modifications applied to this file during reprocessing. */
+  modifications?: Maybe<FileModifications>
   processingNotes?: Maybe<Scalars['String']['output']>
   processingProgress?: Maybe<Scalars['Int']['output']>
   processingStatus: FileProcessingStatus
+  /** Path to the unmodified compressed variant (if modifications were applied). */
+  unmodifiedCompressedPath?: Maybe<Scalars['String']['output']>
   updatedAt: Scalars['DateTime']['output']
+}
+
+/** Modifications applied to a file during reprocessing. */
+export type FileModifications = {
+  __typename?: 'FileModifications'
+  /** Crop modification applied to the file. */
+  crop?: Maybe<CropMetadata>
+  /** File type conversion applied. */
+  fileType?: Maybe<FileType>
+  /** Trim modification applied to the file. */
+  trim?: Maybe<TrimMetadata>
 }
 
 /** The possible states of file processing. */
@@ -180,12 +210,14 @@ export type GifFile = File & {
   creator: User
   /** The file UUID */
   id: Scalars['String']['output']
+  modifications?: Maybe<FileModifications>
   originalPath: Scalars['String']['output']
   processingNotes?: Maybe<Scalars['String']['output']>
   processingProgress?: Maybe<Scalars['Int']['output']>
   processingStatus: FileProcessingStatus
   relativeHeight: Scalars['Float']['output']
   thumbnailPath?: Maybe<Scalars['String']['output']>
+  unmodifiedCompressedPath?: Maybe<Scalars['String']['output']>
   updatedAt: Scalars['DateTime']['output']
 }
 
@@ -363,6 +395,12 @@ export type Mutation = {
    */
   moveItem: Scalars['Boolean']['output']
   /**
+   * Remove specific modifications from an item or revert to original. Creates a
+   * new file without the specified modifications. Returns the new file ID for
+   * subscription.
+   */
+  removeModifications: Scalars['String']['output']
+  /**
    * Reorders an item within a post to a new position. Returns the new position
    * of the item.
    */
@@ -469,6 +507,12 @@ export type MutationMoveItemArgs = {
   targetPostId: Scalars['ID']['input']
 }
 
+export type MutationRemoveModificationsArgs = {
+  clearAllModifications?: InputMaybe<Scalars['Boolean']['input']>
+  itemId: Scalars['ID']['input']
+  removeModifications: Array<Scalars['String']['input']>
+}
+
 export type MutationReorderItemArgs = {
   itemId: Scalars['ID']['input']
   newPosition: Scalars['Int']['input']
@@ -524,12 +568,14 @@ export type PhotoFile = File & {
   creator: User
   /** The file UUID */
   id: Scalars['String']['output']
+  modifications?: Maybe<FileModifications>
   originalPath: Scalars['String']['output']
   processingNotes?: Maybe<Scalars['String']['output']>
   processingProgress?: Maybe<Scalars['Int']['output']>
   processingStatus: FileProcessingStatus
   relativeHeight: Scalars['Float']['output']
   thumbnailPath?: Maybe<Scalars['String']['output']>
+  unmodifiedCompressedPath?: Maybe<Scalars['String']['output']>
   updatedAt: Scalars['DateTime']['output']
 }
 
@@ -597,11 +643,13 @@ export type ProfilePictureFile = File & {
   creator: User
   /** The file UUID */
   id: Scalars['String']['output']
+  modifications?: Maybe<FileModifications>
   processingNotes?: Maybe<Scalars['String']['output']>
   processingProgress?: Maybe<Scalars['Int']['output']>
   processingStatus: FileProcessingStatus
   profilePicture64: Scalars['String']['output']
   profilePicture256: Scalars['String']['output']
+  unmodifiedCompressedPath?: Maybe<Scalars['String']['output']>
   updatedAt: Scalars['DateTime']['output']
 }
 
@@ -712,6 +760,15 @@ export type TrimInput = {
   startTime: Scalars['Float']['input']
 }
 
+/** Metadata about a trim modification. */
+export type TrimMetadata = {
+  __typename?: 'TrimMetadata'
+  /** End time of the trim in seconds. */
+  endTime: Scalars['Float']['output']
+  /** Start time of the trim in seconds. */
+  startTime: Scalars['Float']['output']
+}
+
 /**
  * Enum that specifies if an update contains a new object, an update or if an
  * object has been deleted.
@@ -777,6 +834,7 @@ export type VideoFile = File & {
   creator: User
   /** The file UUID */
   id: Scalars['String']['output']
+  modifications?: Maybe<FileModifications>
   originalPath: Scalars['String']['output']
   posterThumbnailPath?: Maybe<Scalars['String']['output']>
   processingNotes?: Maybe<Scalars['String']['output']>
@@ -784,6 +842,9 @@ export type VideoFile = File & {
   processingStatus: FileProcessingStatus
   relativeHeight: Scalars['Float']['output']
   thumbnailPath?: Maybe<Scalars['String']['output']>
+  unmodifiedCompressedPath?: Maybe<Scalars['String']['output']>
+  /** Path to the unmodified thumbnail poster (if modifications were applied). */
+  unmodifiedThumbnailPosterPath?: Maybe<Scalars['String']['output']>
   updatedAt: Scalars['DateTime']['output']
 }
 
@@ -990,9 +1051,11 @@ export type ResolversTypes = ResolversObject<{
   >
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>
   CropInput: CropInput
+  CropMetadata: ResolverTypeWrapper<CropMetadata>
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>
   EditItemInput: EditItemInput
   File: ResolverTypeWrapper<FileExternal>
+  FileModifications: ResolverTypeWrapper<FileModifications>
   FileProcessingStatus: FileProcessingStatus
   FileProcessingUpdate: ResolverTypeWrapper<
     Omit<FileProcessingUpdate, 'file'> & { file: ResolversTypes['File'] }
@@ -1054,6 +1117,7 @@ export type ResolversTypes = ResolversObject<{
   String: ResolverTypeWrapper<Scalars['String']['output']>
   Subscription: ResolverTypeWrapper<{}>
   TrimInput: TrimInput
+  TrimMetadata: ResolverTypeWrapper<TrimMetadata>
   UpdateKind: UpdateKind
   Upload: ResolverTypeWrapper<Scalars['Upload']['output']>
   User: ResolverTypeWrapper<UserExternal>
@@ -1084,9 +1148,11 @@ export type ResolversParentTypes = ResolversObject<{
   }
   Boolean: Scalars['Boolean']['output']
   CropInput: CropInput
+  CropMetadata: CropMetadata
   DateTime: Scalars['DateTime']['output']
   EditItemInput: EditItemInput
   File: FileExternal
+  FileModifications: FileModifications
   FileProcessingUpdate: Omit<FileProcessingUpdate, 'file'> & {
     file: ResolversParentTypes['File']
   }
@@ -1134,6 +1200,7 @@ export type ResolversParentTypes = ResolversObject<{
   String: Scalars['String']['output']
   Subscription: {}
   TrimInput: TrimInput
+  TrimMetadata: TrimMetadata
   Upload: Scalars['Upload']['output']
   User: UserExternal
   UserConnection: Omit<UserConnection, 'nodes'> & {
@@ -1158,6 +1225,11 @@ export type AudioFileResolvers<
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
   id?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  modifications?: Resolver<
+    Maybe<ResolversTypes['FileModifications']>,
+    ParentType,
+    ContextType
+  >
   originalPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   processingNotes?: Resolver<
     Maybe<ResolversTypes['String']>,
@@ -1171,6 +1243,11 @@ export type AudioFileResolvers<
   >
   processingStatus?: Resolver<
     ResolversTypes['FileProcessingStatus'],
+    ParentType,
+    ContextType
+  >
+  unmodifiedCompressedPath?: Resolver<
+    Maybe<ResolversTypes['String']>,
     ParentType,
     ContextType
   >
@@ -1201,6 +1278,18 @@ export type AudioItemResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
+export type CropMetadataResolvers<
+  ContextType = Context,
+  ParentType extends
+    ResolversParentTypes['CropMetadata'] = ResolversParentTypes['CropMetadata'],
+> = ResolversObject<{
+  bottom?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
+  left?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
+  right?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
+  top?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
+}>
+
 export interface DateTimeScalarConfig
   extends GraphQLScalarTypeConfig<ResolversTypes['DateTime'], any> {
   name: 'DateTime'
@@ -1219,6 +1308,11 @@ export type FileResolvers<
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
   id?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  modifications?: Resolver<
+    Maybe<ResolversTypes['FileModifications']>,
+    ParentType,
+    ContextType
+  >
   processingNotes?: Resolver<
     Maybe<ResolversTypes['String']>,
     ParentType,
@@ -1234,7 +1328,35 @@ export type FileResolvers<
     ParentType,
     ContextType
   >
+  unmodifiedCompressedPath?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >
   updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
+}>
+
+export type FileModificationsResolvers<
+  ContextType = Context,
+  ParentType extends
+    ResolversParentTypes['FileModifications'] = ResolversParentTypes['FileModifications'],
+> = ResolversObject<{
+  crop?: Resolver<
+    Maybe<ResolversTypes['CropMetadata']>,
+    ParentType,
+    ContextType
+  >
+  fileType?: Resolver<
+    Maybe<ResolversTypes['FileType']>,
+    ParentType,
+    ContextType
+  >
+  trim?: Resolver<
+    Maybe<ResolversTypes['TrimMetadata']>,
+    ParentType,
+    ContextType
+  >
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
 export type FileProcessingUpdateResolvers<
@@ -1267,6 +1389,11 @@ export type GifFileResolvers<
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
   id?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  modifications?: Resolver<
+    Maybe<ResolversTypes['FileModifications']>,
+    ParentType,
+    ContextType
+  >
   originalPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   processingNotes?: Resolver<
     Maybe<ResolversTypes['String']>,
@@ -1285,6 +1412,11 @@ export type GifFileResolvers<
   >
   relativeHeight?: Resolver<ResolversTypes['Float'], ParentType, ContextType>
   thumbnailPath?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >
+  unmodifiedCompressedPath?: Resolver<
     Maybe<ResolversTypes['String']>,
     ParentType,
     ContextType
@@ -1509,6 +1641,15 @@ export type MutationResolvers<
       'itemId' | 'keepEmptyPost' | 'targetPostId'
     >
   >
+  removeModifications?: Resolver<
+    ResolversTypes['String'],
+    ParentType,
+    ContextType,
+    RequireFields<
+      MutationRemoveModificationsArgs,
+      'itemId' | 'removeModifications'
+    >
+  >
   reorderItem?: Resolver<
     ResolversTypes['Int'],
     ParentType,
@@ -1584,6 +1725,11 @@ export type PhotoFileResolvers<
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
   id?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  modifications?: Resolver<
+    Maybe<ResolversTypes['FileModifications']>,
+    ParentType,
+    ContextType
+  >
   originalPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   processingNotes?: Resolver<
     Maybe<ResolversTypes['String']>,
@@ -1602,6 +1748,11 @@ export type PhotoFileResolvers<
   >
   relativeHeight?: Resolver<ResolversTypes['Float'], ParentType, ContextType>
   thumbnailPath?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >
+  unmodifiedCompressedPath?: Resolver<
     Maybe<ResolversTypes['String']>,
     ParentType,
     ContextType
@@ -1672,6 +1823,11 @@ export type ProfilePictureFileResolvers<
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
   id?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  modifications?: Resolver<
+    Maybe<ResolversTypes['FileModifications']>,
+    ParentType,
+    ContextType
+  >
   processingNotes?: Resolver<
     Maybe<ResolversTypes['String']>,
     ParentType,
@@ -1690,6 +1846,11 @@ export type ProfilePictureFileResolvers<
   profilePicture64?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   profilePicture256?: Resolver<
     ResolversTypes['String'],
+    ParentType,
+    ContextType
+  >
+  unmodifiedCompressedPath?: Resolver<
+    Maybe<ResolversTypes['String']>,
     ParentType,
     ContextType
   >
@@ -1782,6 +1943,16 @@ export type SubscriptionResolvers<
   >
 }>
 
+export type TrimMetadataResolvers<
+  ContextType = Context,
+  ParentType extends
+    ResolversParentTypes['TrimMetadata'] = ResolversParentTypes['TrimMetadata'],
+> = ResolversObject<{
+  endTime?: Resolver<ResolversTypes['Float'], ParentType, ContextType>
+  startTime?: Resolver<ResolversTypes['Float'], ParentType, ContextType>
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
+}>
+
 export interface UploadScalarConfig
   extends GraphQLScalarTypeConfig<ResolversTypes['Upload'], any> {
   name: 'Upload'
@@ -1842,6 +2013,11 @@ export type VideoFileResolvers<
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
   id?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  modifications?: Resolver<
+    Maybe<ResolversTypes['FileModifications']>,
+    ParentType,
+    ContextType
+  >
   originalPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   posterThumbnailPath?: Resolver<
     Maybe<ResolversTypes['String']>,
@@ -1865,6 +2041,16 @@ export type VideoFileResolvers<
   >
   relativeHeight?: Resolver<ResolversTypes['Float'], ParentType, ContextType>
   thumbnailPath?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >
+  unmodifiedCompressedPath?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >
+  unmodifiedThumbnailPosterPath?: Resolver<
     Maybe<ResolversTypes['String']>,
     ParentType,
     ContextType
@@ -1893,8 +2079,10 @@ export type VideoItemResolvers<
 export type Resolvers<ContextType = Context> = ResolversObject<{
   AudioFile?: AudioFileResolvers<ContextType>
   AudioItem?: AudioItemResolvers<ContextType>
+  CropMetadata?: CropMetadataResolvers<ContextType>
   DateTime?: GraphQLScalarType
   File?: FileResolvers<ContextType>
+  FileModifications?: FileModificationsResolvers<ContextType>
   FileProcessingUpdate?: FileProcessingUpdateResolvers<ContextType>
   GifFile?: GifFileResolvers<ContextType>
   GifItem?: GifItemResolvers<ContextType>
@@ -1913,6 +2101,7 @@ export type Resolvers<ContextType = Context> = ResolversObject<{
   Query?: QueryResolvers<ContextType>
   Session?: SessionResolvers<ContextType>
   Subscription?: SubscriptionResolvers<ContextType>
+  TrimMetadata?: TrimMetadataResolvers<ContextType>
   Upload?: GraphQLScalarType
   User?: UserResolvers<ContextType>
   UserConnection?: UserConnectionResolvers<ContextType>

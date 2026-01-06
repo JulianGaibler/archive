@@ -1381,6 +1381,99 @@ export function createEditManager(
     }
   }
 
+  const trimItem = async (
+    itemId: string,
+    trim: { startTime: number; endTime: number },
+  ) => {
+    try {
+      loading.set(true)
+      const result = await sdk.trimItem({
+        itemId,
+        trim,
+      })
+
+      const error = getOperationResultError(result)
+      if (error) {
+        console.error(result)
+        openDialog?.({
+          heading: 'Trim Error',
+          children: `Failed to start trimming: ${error}`,
+        })
+        return false
+      }
+
+      // Show success message
+      openDialog?.({
+        heading: 'Trimming Started',
+        children:
+          'The trimming has been queued and will begin shortly. You will see progress updates here.',
+      })
+
+      // Restart subscription to monitor the trimming process
+      startProcessingSubscription()
+
+      return true
+    } catch (err) {
+      console.error(err)
+      openDialog?.({
+        heading: 'Trim Error',
+        children: 'Failed to start trimming. Please try again.',
+      })
+      return false
+    } finally {
+      loading.set(false)
+    }
+  }
+
+  const removeModifications = async (
+    itemId: string,
+    modifications: string[],
+    clearAllModifications: boolean = false,
+  ) => {
+    try {
+      loading.set(true)
+      const result = await sdk.removeModifications({
+        itemId,
+        removeModifications: modifications,
+        clearAllModifications,
+      })
+
+      const error = getOperationResultError(result)
+      if (error) {
+        console.error(result)
+        openDialog?.({
+          heading: 'Revert Error',
+          children: `Failed to revert modifications: ${error}`,
+        })
+        return false
+      }
+
+      // Show success message
+      const message = clearAllModifications
+        ? 'Reverting to original file...'
+        : `Removing ${modifications.length} modification(s)...`
+
+      openDialog?.({
+        heading: 'Revert Started',
+        children: `${message} You will see progress updates here.`,
+      })
+
+      // Restart subscription to monitor the revert process
+      startProcessingSubscription()
+
+      return true
+    } catch (err) {
+      console.error(err)
+      openDialog?.({
+        heading: 'Revert Error',
+        children: 'Failed to revert modifications. Please try again.',
+      })
+      return false
+    } finally {
+      loading.set(false)
+    }
+  }
+
   const removeUploadItem = (itemId: string) => {
     data.update((current) => {
       if (!current) return current
@@ -1423,6 +1516,8 @@ export function createEditManager(
     moveItem,
     convertItem,
     cropItem,
+    trimItem,
+    removeModifications,
   }
 }
 
