@@ -41,6 +41,7 @@ export type AudioFile = File & {
   id: Scalars['String']['output'];
   modifications?: Maybe<FileModifications>;
   originalPath: Scalars['String']['output'];
+  originalType: FileType;
   processingNotes?: Maybe<Scalars['String']['output']>;
   processingProgress?: Maybe<Scalars['Int']['output']>;
   processingStatus: FileProcessingStatus;
@@ -108,6 +109,11 @@ export type File = {
   id: Scalars['String']['output'];
   /** Modifications applied to this file during reprocessing. */
   modifications?: Maybe<FileModifications>;
+  /**
+   * The original file type before any conversions.
+   * Used to determine what conversions are available.
+   */
+  originalType: FileType;
   processingNotes?: Maybe<Scalars['String']['output']>;
   processingProgress?: Maybe<Scalars['Int']['output']>;
   processingStatus: FileProcessingStatus;
@@ -192,6 +198,7 @@ export type GifFile = File & {
   id: Scalars['String']['output'];
   modifications?: Maybe<FileModifications>;
   originalPath: Scalars['String']['output'];
+  originalType: FileType;
   processingNotes?: Maybe<Scalars['String']['output']>;
   processingProgress?: Maybe<Scalars['Int']['output']>;
   processingStatus: FileProcessingStatus;
@@ -357,6 +364,13 @@ export type Mutation = {
   deletePost: Scalars['ID']['output'];
   /** Deletes a temporary file that has not been claimed by a resource. */
   deleteTemporaryFile: Scalars['Boolean']['output'];
+  /**
+   * Duplicates an item within the same post.
+   * Creates an independent copy of the item with its own file copy.
+   * The duplicate appears right after the original item (position + 1).
+   * Returns the ID of the new duplicated item.
+   */
+  duplicateItem: Scalars['ID']['output'];
   /** Edits a post. */
   editPost: Post;
   /** Associates the Telegram ID of a user with their Archive Profil. */
@@ -476,6 +490,11 @@ export type MutationDeleteTemporaryFileArgs = {
 };
 
 
+export type MutationDuplicateItemArgs = {
+  itemId: Scalars['ID']['input'];
+};
+
+
 export type MutationEditPostArgs = {
   items?: InputMaybe<Array<EditItemInput>>;
   keywords: Array<Scalars['ID']['input']>;
@@ -588,6 +607,7 @@ export type PhotoFile = File & {
   id: Scalars['String']['output'];
   modifications?: Maybe<FileModifications>;
   originalPath: Scalars['String']['output'];
+  originalType: FileType;
   processingNotes?: Maybe<Scalars['String']['output']>;
   processingProgress?: Maybe<Scalars['Int']['output']>;
   processingStatus: FileProcessingStatus;
@@ -662,6 +682,7 @@ export type ProfilePictureFile = File & {
   /** The file UUID */
   id: Scalars['String']['output'];
   modifications?: Maybe<FileModifications>;
+  originalType: FileType;
   processingNotes?: Maybe<Scalars['String']['output']>;
   processingProgress?: Maybe<Scalars['Int']['output']>;
   processingStatus: FileProcessingStatus;
@@ -860,6 +881,7 @@ export type VideoFile = File & {
   id: Scalars['String']['output'];
   modifications?: Maybe<FileModifications>;
   originalPath: Scalars['String']['output'];
+  originalType: FileType;
   posterThumbnailPath?: Maybe<Scalars['String']['output']>;
   processingNotes?: Maybe<Scalars['String']['output']>;
   processingProgress?: Maybe<Scalars['Int']['output']>;
@@ -1061,6 +1083,7 @@ export type AudioFileResolvers<ContextType = Context, ParentType extends Resolve
   id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   modifications?: Resolver<Maybe<ResolversTypes['FileModifications']>, ParentType, ContextType>;
   originalPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  originalType?: Resolver<ResolversTypes['FileType'], ParentType, ContextType>;
   processingNotes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   processingProgress?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   processingStatus?: Resolver<ResolversTypes['FileProcessingStatus'], ParentType, ContextType>;
@@ -1102,6 +1125,7 @@ export type FileResolvers<ContextType = Context, ParentType extends ResolversPar
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   modifications?: Resolver<Maybe<ResolversTypes['FileModifications']>, ParentType, ContextType>;
+  originalType?: Resolver<ResolversTypes['FileType'], ParentType, ContextType>;
   processingNotes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   processingProgress?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   processingStatus?: Resolver<ResolversTypes['FileProcessingStatus'], ParentType, ContextType>;
@@ -1132,6 +1156,7 @@ export type GifFileResolvers<ContextType = Context, ParentType extends Resolvers
   id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   modifications?: Resolver<Maybe<ResolversTypes['FileModifications']>, ParentType, ContextType>;
   originalPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  originalType?: Resolver<ResolversTypes['FileType'], ParentType, ContextType>;
   processingNotes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   processingProgress?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   processingStatus?: Resolver<ResolversTypes['FileProcessingStatus'], ParentType, ContextType>;
@@ -1219,6 +1244,7 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   deleteKeyword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteKeywordArgs, 'keywordId'>>;
   deletePost?: Resolver<ResolversTypes['ID'], ParentType, ContextType, RequireFields<MutationDeletePostArgs, 'postId'>>;
   deleteTemporaryFile?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteTemporaryFileArgs, 'fileId'>>;
+  duplicateItem?: Resolver<ResolversTypes['ID'], ParentType, ContextType, RequireFields<MutationDuplicateItemArgs, 'itemId'>>;
   editPost?: Resolver<ResolversTypes['Post'], ParentType, ContextType, RequireFields<MutationEditPostArgs, 'keywords' | 'language' | 'postId' | 'title'>>;
   linkTelegram?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationLinkTelegramArgs, 'apiResponse'>>;
   login?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationLoginArgs, 'password' | 'username'>>;
@@ -1249,6 +1275,7 @@ export type PhotoFileResolvers<ContextType = Context, ParentType extends Resolve
   id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   modifications?: Resolver<Maybe<ResolversTypes['FileModifications']>, ParentType, ContextType>;
   originalPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  originalType?: Resolver<ResolversTypes['FileType'], ParentType, ContextType>;
   processingNotes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   processingProgress?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   processingStatus?: Resolver<ResolversTypes['FileProcessingStatus'], ParentType, ContextType>;
@@ -1297,6 +1324,7 @@ export type ProfilePictureFileResolvers<ContextType = Context, ParentType extend
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   modifications?: Resolver<Maybe<ResolversTypes['FileModifications']>, ParentType, ContextType>;
+  originalType?: Resolver<ResolversTypes['FileType'], ParentType, ContextType>;
   processingNotes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   processingProgress?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   processingStatus?: Resolver<ResolversTypes['FileProcessingStatus'], ParentType, ContextType>;
@@ -1373,6 +1401,7 @@ export type VideoFileResolvers<ContextType = Context, ParentType extends Resolve
   id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   modifications?: Resolver<Maybe<ResolversTypes['FileModifications']>, ParentType, ContextType>;
   originalPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  originalType?: Resolver<ResolversTypes['FileType'], ParentType, ContextType>;
   posterThumbnailPath?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   processingNotes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   processingProgress?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;

@@ -25,3 +25,7 @@ mutation removeModifications(
     clearAllModifications: $clearAllModifications
   )
 }
+
+mutation duplicateItem($itemId: ID!) {
+  duplicateItem(itemId: $itemId)
+}

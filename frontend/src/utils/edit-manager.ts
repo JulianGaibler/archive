@@ -1296,6 +1296,58 @@ export function createEditManager(
     }
   }
 
+  const duplicateItem = async (itemId: string) => {
+    try {
+      loading.set(true)
+      const result = await sdk.duplicateItem({
+        itemId,
+      })
+
+      const error = getOperationResultError(result)
+      if (error) {
+        console.error(result)
+        openDialog?.({
+          heading: 'Duplication Error',
+          children: `Failed to duplicate item: ${error}`,
+        })
+        return false
+      }
+
+      // Refetch the post to get the updated item list
+      const postObject = get(post)
+      if (!postObject) return false
+
+      const postResult = await sdk.Post({ id: postObject.id })
+      const postError = getOperationResultError(postResult)
+      if (postError) {
+        console.error(postResult)
+        return false
+      }
+
+      const updatedPost = postResult.data.node as PostItemType
+      post.set(updatedPost)
+
+      // If we're in edit mode, update the edit data as well
+      data.update((currentData) => {
+        if (!currentData) return currentData
+
+        // Clear edit data to force refresh from the new post data
+        return undefined
+      })
+
+      return true
+    } catch (err) {
+      console.error(err)
+      openDialog?.({
+        heading: 'Duplication Error',
+        children: 'Failed to duplicate item. Please try again.',
+      })
+      return false
+    } finally {
+      loading.set(false)
+    }
+  }
+
   const convertItem = async (itemId: string, targetType: FileType) => {
     try {
       loading.set(true)
@@ -1567,6 +1619,7 @@ export function createEditManager(
     reorderItems,
     mergePost,
     moveItem,
+    duplicateItem,
     convertItem,
     cropItem,
     trimItem,

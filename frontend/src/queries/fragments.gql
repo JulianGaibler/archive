@@ -15,6 +15,7 @@ fragment ItemData on Item {
     file {
       __typename
       id
+      originalType
       processingStatus
       processingProgress
       processingNotes
@@ -35,6 +36,7 @@ fragment ItemData on Item {
           startTime
           endTime
         }
+        fileType
       }
       relativeHeight
     }
@@ -45,6 +47,7 @@ fragment ItemData on Item {
     file {
       __typename
       id
+      originalType
       processingStatus
       processingProgress
       processingNotes
@@ -59,6 +62,7 @@ fragment ItemData on Item {
           right
           bottom
         }
+        fileType
       }
       relativeHeight
     }
@@ -69,6 +73,7 @@ fragment ItemData on Item {
     file {
       __typename
       id
+      originalType
       processingStatus
       processingProgress
       processingNotes
@@ -88,6 +93,7 @@ fragment ItemData on Item {
           startTime
           endTime
         }
+        fileType
       }
       relativeHeight
     }
@@ -98,6 +104,7 @@ fragment ItemData on Item {
     file {
       __typename
       id
+      originalType
       processingStatus
       processingProgress
       processingNotes
@@ -115,6 +122,7 @@ fragment ItemData on Item {
           startTime
           endTime
         }
+        fileType
       }
       waveform
       waveformThumbnail

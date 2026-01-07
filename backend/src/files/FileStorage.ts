@@ -261,12 +261,22 @@ export default class FileStorage {
       const hasUnmodified = await this.hasUnmodifiedVariants(ctx, fileId)
       const isFirstModification = isReprocessing && !hasUnmodified
 
+      console.log(`[FileStorage] Processing file ${fileId}:`, {
+        isReprocessing,
+        hasUnmodified,
+        isFirstModification,
+        fileType: file.type,
+        modifications: file.modifications,
+        processingMeta: file.processingMeta,
+      })
+
       // Track whether we renamed variants (for rollback on failure)
       let didRenameVariants = false
 
       try {
         // If this is the first modification, rename existing variants to UNMODIFIED_*
         if (isFirstModification) {
+          console.log(`[FileStorage] First modification - renaming variants for file ${fileId}`)
           await this.renameVariant(
             ctx,
             fileId,
@@ -281,16 +291,28 @@ export default class FileStorage {
               'UNMODIFIED_THUMBNAIL_POSTER',
             )
           }
+
+          // CRITICAL FIX: Clear dataloader cache after renaming variants
+          // The cache contains the old variant list (before rename)
+          // Subsequent calls to deleteVariant() need the updated list
+          ctx.dataLoaders.file.getVariantsByFileId.clear(fileId)
+
           didRenameVariants = true
         }
 
         // If reprocessing, delete old variants (they'll be recreated by moveProcessedFiles)
         // NOTE: We do NOT delete ORIGINAL - it's the permanent unmodified source
-        if (isReprocessing) {
+        // CRITICAL FIX: Delete variants if hasUnmodified is true (meaning we've processed before)
+        // This handles retries and cases where modifications were cleared but UNMODIFIED variants exist
+        if (hasUnmodified) {
+          console.log(`[FileStorage] hasUnmodified=true, deleting old variants for file ${fileId}`)
           await this.deleteVariant(ctx, fileId, 'COMPRESSED')
           await this.deleteVariant(ctx, fileId, 'COMPRESSED_GIF')
           await this.deleteVariant(ctx, fileId, 'THUMBNAIL')
           await this.deleteVariant(ctx, fileId, 'THUMBNAIL_POSTER')
+          console.log(`[FileStorage] Deleted old variants for file ${fileId}`)
+        } else {
+          console.log(`[FileStorage] hasUnmodified=false, skipping variant deletion (initial processing) for file ${fileId}`)
         }
 
         // Create temporary directory for processing
@@ -306,7 +328,7 @@ export default class FileStorage {
             updateCallback,
             file,
           )
-          await this.moveProcessedFiles(result, file, fileId, updateCallback)
+          await this.moveProcessedFiles(result, file, fileId, updateCallback, ctx)
 
           // SUCCESS - processing complete
           // Clean up queue file
@@ -421,9 +443,13 @@ export default class FileStorage {
 
     // Check if we need to convert to a different file type
     if (file.type && file.type !== targetFileType) {
-      // Validate the conversion is allowed
-      this.validateFileTypeConversion(targetFileType, file.type)
-      // Map string type to FileType enum
+      // Get the ORIGINAL file type for conversion validation
+      const originalFileType = this.fileTypeFromString(file.originalType)
+
+      // Validate the conversion is allowed from ORIGINAL type (not current type)
+      this.validateFileTypeConversion(originalFileType, file.type)
+
+      // Map string type to FileType enum (target type)
       if (file.type === 'VIDEO') targetFileType = FileType.VIDEO
       else if (file.type === 'GIF') targetFileType = FileType.GIF
       else if (file.type === 'AUDIO') targetFileType = FileType.AUDIO
@@ -431,7 +457,17 @@ export default class FileStorage {
     }
 
     // Extract modifications from the file
-    const modificationsData = file.modifications || {}
+    let modificationsData = file.modifications || {}
+
+    // Remove incompatible modifications during conversion
+    if (file.type && file.originalType && file.type !== file.originalType) {
+      modificationsData = this.removeIncompatibleModifications(
+        modificationsData,
+        file.originalType,
+        file.type,
+      )
+    }
+
     const modifications = getPersistentModifications(modificationsData)
     const modificationArray = modifications ? [modifications] : []
 
@@ -520,8 +556,10 @@ export default class FileStorage {
     _file: FileInternal,
     fileId: string,
     updateCallback: FileUpdateCallback,
+    ctx: Context,  // CRITICAL FIX: Accept context as parameter
   ): Promise<void> {
-    const ctx = Context.createPrivilegedContext()
+    // Use the provided context instead of creating a new one
+    // This ensures dataloader cache is shared and can be properly managed
     const movePromises: Promise<void>[] = []
 
     // Ensure the file directory exists in the new structure
@@ -681,7 +719,10 @@ export default class FileStorage {
     }
 
     // Insert variants into database
+    console.log(`[FileStorage] Inserting ${variants.length} variants for file ${fileId}:`,
+      variants.map(v => `${v.variant}(${v.extension})`).join(', '))
     await FileActions._mCreateFileVariants(ctx, variants)
+    console.log(`[FileStorage] Successfully inserted variants for file ${fileId}`)
 
     // Update file sizes for each variant
     await this.updateVariantSizes(fileId, variants)
@@ -773,6 +814,48 @@ export default class FileStorage {
     } else {
       return FileType.IMAGE
     }
+  }
+
+  /**
+   * Converts a string file type to FileType enum
+   *
+   * @param type - The file type as a string (e.g., 'VIDEO', 'AUDIO')
+   * @returns The corresponding FileType enum value
+   */
+  private fileTypeFromString(type: string): FileType {
+    if (type === 'VIDEO') return FileType.VIDEO
+    if (type === 'GIF') return FileType.GIF
+    if (type === 'AUDIO') return FileType.AUDIO
+    if (type === 'IMAGE') return FileType.IMAGE
+    throw new Error(`Unknown file type: ${type}`)
+  }
+
+  /**
+   * Removes modifications that are incompatible with the target file type.
+   * For example, audio files cannot be cropped, so crop is removed when converting VIDEO→AUDIO.
+   *
+   * @param modifications - The current modifications object
+   * @param fromType - The original file type
+   * @param toType - The target file type after conversion
+   * @returns The modified modifications object with incompatible modifications removed
+   */
+  private removeIncompatibleModifications(
+    modifications: any,
+    fromType: string,
+    toType: string,
+  ): any {
+    const result = { ...modifications }
+
+    // VIDEO→AUDIO: Remove crop (audio can't be cropped)
+    if (fromType === 'VIDEO' && toType === 'AUDIO') {
+      delete result.crop
+    }
+
+    // VIDEO→GIF: Keep both crop and trim
+    // GIF→VIDEO: Keep both crop and trim
+    // (no changes needed for these conversions)
+
+    return result
   }
 
   /**
@@ -895,18 +978,28 @@ export default class FileStorage {
   }
 
   /**
-   * Checks if a file has persistent modifications (crop or trim)
+   * Checks if a file has any modifications (crop, trim, or file type conversion)
    *
    * @param {FileInternal} file The file to check
    * @returns {boolean} True if file has modifications
    */
   private fileHasModifications(file: FileInternal): boolean {
-    return !!(
+    // Check persistent modifications (crop, trim)
+    const hasPersistentMods = !!(
       file?.modifications &&
       typeof file.modifications === 'object' &&
       ((file.modifications as PersistentModifications).crop !== undefined ||
         (file.modifications as PersistentModifications).trim !== undefined)
     )
+
+    // Check for file type conversion in processingMeta
+    const hasFileTypeConversion = !!(
+      file?.processingMeta &&
+      typeof file.processingMeta === 'object' &&
+      (file.processingMeta as any).fileType !== undefined
+    )
+
+    return hasPersistentMods || hasFileTypeConversion
   }
 
   /**
@@ -974,14 +1067,24 @@ export default class FileStorage {
     fileId: string,
     variantName: string,
   ): Promise<void> {
-    // Get the variant record to find extension
-    const variants = await FileActions._qFileVariantsInternal(ctx, fileId)
+    // CRITICAL FIX: Query directly from database, bypassing dataloader
+    // This ensures we see the current state, even if cache is stale after renameVariant()
+    const variants = await ctx.db
+      .select()
+      .from(fileVariantTable)
+      .where(eq(fileVariantTable.file, fileId))
+
+    console.log(`[FileStorage] deleteVariant(${variantName}) for file ${fileId}: found ${variants.length} variants:`,
+      variants.map(v => v.variant).join(', '))
+
     const variant = variants.find((v) => v.variant === variantName)
 
     if (!variant) {
+      console.log(`[FileStorage] Variant ${variantName} not found for file ${fileId}, skipping deletion`)
       return
     }
 
+    console.log(`[FileStorage] Deleting variant ${variantName} for file ${fileId}`)
     // Delete from database
     await ctx.db
       .delete(fileVariantTable)
@@ -991,6 +1094,7 @@ export default class FileStorage {
           eq(fileVariantTable.variant, variantName as typeof variant.variant),
         ),
       )
+    console.log(`[FileStorage] Successfully deleted variant ${variantName} from database for file ${fileId}`)
 
     // Delete physical file
     const filePath = this.pathManager.getVariantPath(

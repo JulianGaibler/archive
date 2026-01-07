@@ -107,6 +107,7 @@ export const file = pgTable("file", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	creatorId: integer("creator_id").notNull(),
 	type: fileType().notNull(),
+	originalType: fileType("original_type").notNull(),
 	processingStatus: taskStatus("processing_status").default('DONE').notNull(),
 	processingProgress: smallint("processing_progress"),
 	processingNotes: text("processing_notes"),

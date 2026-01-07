@@ -25,7 +25,6 @@ import {
 } from '@src/files/processing-metadata.js'
 import * as fileUtils from '@src/files/file-utils.js'
 import { storageOptions } from '@src/files/config.js'
-import { fileVariant as fileVariantTable } from '@db/schema.js'
 import fs from 'fs'
 
 // Type for file processing subscription payloads
@@ -285,6 +284,7 @@ const FileActions = {
         .values({
           creatorId,
           type: 'IMAGE', // Temporary type, will be updated after analysis
+          originalType: 'IMAGE', // Will be updated after analysis
           processingStatus: 'QUEUED',
           processingProgress: 0,
           processingNotes: null,
@@ -303,7 +303,7 @@ const FileActions = {
         // Update the file record with the correct type
         await tx
           .update(fileTable)
-          .set({ type })
+          .set({ type, originalType: type })
           .where(eq(fileTable.id, newFile.id))
       } catch (error) {
         // If file operations fail, clean up the database record
@@ -336,6 +336,7 @@ const FileActions = {
         .values({
           creatorId,
           type: 'PROFILE_PICTURE',
+          originalType: 'PROFILE_PICTURE',
           processingStatus: 'QUEUED',
           processingProgress: 0,
           processingNotes: null,
@@ -406,24 +407,34 @@ const FileActions = {
     }
 
     if (fields.addModifications) {
-      // fileType modifications are not persistent, so handle separately if needed
-      if (fields.addModifications.fileType) {
-        // For now, we don't support changing file type in place
-        // This would require type conversion
-        throw new InputError('Cannot change file type of existing file')
-      }
-
       Object.assign(newModifications, fields.addModifications)
+    }
+
+    // Prepare database update fields
+    const dbUpdate: any = {
+      modifications: getPersistentModifications(newModifications),
+      // Store full modifications (including fileType) in processingMeta for GraphQL API
+      processingMeta: Object.keys(newModifications).length > 0 ? newModifications : null,
+      processingStatus: 'QUEUED',
+      processingProgress: 0,
+      processingNotes: null,
+    }
+
+    // Check if we need to update the file type
+    const hadFileTypeConversion = file.type !== file.originalType
+    const hasFileType = !!newModifications.fileType
+
+    if (hasFileType) {
+      // Converting to a new file type
+      dbUpdate.type = newModifications.fileType
+    } else if (hadFileTypeConversion && !hasFileType) {
+      // Removing file type conversion - revert to original type
+      dbUpdate.type = file.originalType
     }
 
     // Update file record
     await ctx.db.update(fileTable)
-      .set({
-        modifications: getPersistentModifications(newModifications),
-        processingStatus: 'QUEUED',
-        processingProgress: 0,
-        processingNotes: null,
-      })
+      .set(dbUpdate)
       .where(eq(fileTable.id, fields.fileId))
 
     // Clear dataloader cache
@@ -642,6 +653,94 @@ const FileActions = {
   /** Delete a single file (internal) - convenience method */
   async _mDeleteFile(ctx: Context, fileId: string): Promise<void> {
     await this._mDeleteFiles(ctx, [fileId])
+  },
+
+  /**
+   * Duplicates a file by creating a new file record with a new UUID
+   * and copying all file variants (both DB records and physical files).
+   *
+   * @param ctx - The request context
+   * @param sourceFileId - The ID of the file to duplicate
+   * @returns The new file ID
+   */
+  async _mDuplicateFile(ctx: Context, sourceFileId: string): Promise<string> {
+    const userId = ctx.isAuthenticated()
+
+    // Get the source file
+    const sourceFile = await this._qFileInternal(ctx, sourceFileId)
+    if (!sourceFile) {
+      throw new NotFoundError('Source file not found')
+    }
+
+    // Check authorization
+    if (sourceFile.creatorId !== userId) {
+      throw new AuthorizationError(
+        'You do not have permission to duplicate this file',
+      )
+    }
+
+    // Get all variants of the source file
+    const sourceVariants = await this._qFileVariantsInternal(ctx, sourceFileId)
+    if (sourceVariants.length === 0) {
+      throw new InputError('Source file has no variants to copy')
+    }
+
+    return await ctx.db.transaction(async (tx) => {
+      // Create new file record with new UUID
+      const [newFile] = await tx
+        .insert(fileTable)
+        .values({
+          creatorId: userId,
+          type: sourceFile.type,
+          originalType: sourceFile.originalType,
+          processingStatus: 'DONE',
+          processingProgress: 100,
+          processingNotes: null,
+          modifications: sourceFile.modifications,
+          expireBy: null, // Duplicates don't expire (they're attached to items)
+        })
+        .returning()
+
+      const newFileId = newFile.id
+
+      // Create directory for new file
+      const newFileDir = fileUtils.resolvePath(
+        storageOptions.dist,
+        'content',
+        newFileId,
+      )
+      await fs.promises.mkdir(newFileDir, { recursive: true })
+
+      // Copy each variant (DB record + physical file)
+      const variantCopyPromises = sourceVariants.map(async (sourceVariant) => {
+        // Build source and destination paths
+        const sourcePath = this.buildVariantPath(sourceFileId, sourceVariant)
+        const destPath = this.buildVariantPath(newFileId, sourceVariant)
+
+        // Copy physical file
+        if (fs.existsSync(sourcePath)) {
+          await fs.promises.copyFile(sourcePath, destPath)
+        } else {
+          console.warn(
+            `Source variant file not found: ${sourcePath} (variant: ${sourceVariant.variant})`,
+          )
+        }
+
+        // Create new variant record
+        return tx.insert(fileVariantTable).values({
+          file: newFileId,
+          variant: sourceVariant.variant,
+          mimeType: sourceVariant.mimeType,
+          extension: sourceVariant.extension,
+          sizeBytes: sourceVariant.sizeBytes,
+          meta: sourceVariant.meta,
+        })
+      })
+
+      await Promise.all(variantCopyPromises)
+
+      return newFileId
+    })
   },
 
   /** Delete a temporary file */

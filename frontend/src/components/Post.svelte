@@ -230,6 +230,11 @@
     await editManager.deleteItem(itemId)
   }
 
+  // Duplicate item functionality
+  async function handleDuplicateItem(itemId: string) {
+    await editManager.duplicateItem(itemId)
+  }
+
   // Share functionality
   async function handleShare() {
     try {
@@ -387,6 +392,7 @@
           loading={$loading}
           {item}
           onMoveItem={openMoveModal}
+          onDuplicateItem={handleDuplicateItem}
           onDeleteItem={handleDeleteItem}
           removeUploadItem={editManager.removeUploadItem}
           onConvertItem={editManager.convertItem}

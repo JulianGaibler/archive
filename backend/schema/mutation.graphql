@@ -205,6 +205,19 @@ type Mutation {
   ): Boolean!
 
   """
+  Duplicates an item within the same post.
+  Creates an independent copy of the item with its own file copy.
+  The duplicate appears right after the original item (position + 1).
+  Returns the ID of the new duplicated item.
+  """
+  duplicateItem(
+    """
+    The ID of the item to duplicate.
+    """
+    itemId: ID!
+  ): ID!
+
+  """
   Revokes the session of a user.
   """
   revokeSession(

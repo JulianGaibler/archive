@@ -7,6 +7,11 @@ interface File {
   """
   id: String!
   creator: User!
+  """
+  The original file type before any conversions.
+  Used to determine what conversions are available.
+  """
+  originalType: FileType!
   processingStatus: FileProcessingStatus!
   processingProgress: Int
   processingNotes: String
@@ -31,6 +36,7 @@ type PhotoFile implements File {
   """
   id: String!
   creator: User!
+  originalType: FileType!
   processingStatus: FileProcessingStatus!
   processingProgress: Int
   processingNotes: String
@@ -53,6 +59,7 @@ type VideoFile implements File {
   """
   id: String!
   creator: User!
+  originalType: FileType!
   processingStatus: FileProcessingStatus!
   processingProgress: Int
   processingNotes: String
@@ -80,6 +87,7 @@ type GifFile implements File {
   """
   id: String!
   creator: User!
+  originalType: FileType!
   processingStatus: FileProcessingStatus!
   processingProgress: Int
   processingNotes: String
@@ -103,6 +111,7 @@ type AudioFile implements File {
   """
   id: String!
   creator: User!
+  originalType: FileType!
   processingStatus: FileProcessingStatus!
   processingProgress: Int
   processingNotes: String
@@ -125,6 +134,7 @@ type ProfilePictureFile implements File {
   """
   id: String!
   creator: User!
+  originalType: FileType!
   processingStatus: FileProcessingStatus!
   processingProgress: Int
   processingNotes: String

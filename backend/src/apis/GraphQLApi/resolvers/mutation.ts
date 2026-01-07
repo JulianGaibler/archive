@@ -26,6 +26,8 @@ export const mutationResolvers: MutationResolvers = {
 
   deletePost: async (_, args, ctx) => await PostActions.mDeletePost(ctx, args),
 
+  duplicateItem: async (_, args, ctx) => PostActions.mDuplicateItem(ctx, args),
+
   editPost: async (_, args, ctx) => PostActions.mEdit(ctx, args),
 
   linkTelegram: async (_, args, ctx) => UserActions.mLinkTelegram(ctx, args),
@@ -93,10 +95,10 @@ export const mutationResolvers: MutationResolvers = {
 
     return ItemActions._mModifyItem(ctx, {
       itemId: args.itemId,
-      addModifications: modifications,
+      addModifications: modifications as any,
     })
   },
 
   removeModifications: async (_, args, ctx) =>
-    ItemActions.mRemoveModifications(ctx, args),
+    ItemActions.mRemoveModifications(ctx, args as any),
 }

@@ -49,9 +49,9 @@ async function getFileModifications(ctx: Context, fileId: string) {
   }
 
   return {
-    crop: meta.crop || null,
-    trim: meta.trim || null,
-    fileType: meta.fileType || null,
+    crop: meta.crop ? (meta.crop as any) : undefined,
+    trim: meta.trim ? (meta.trim as any) : undefined,
+    fileType: meta.fileType ? (meta.fileType as any) : undefined,
   }
 }
 
@@ -68,6 +68,11 @@ export const photoFileResolvers: PhotoFileResolvers = {
   creator: async (parent, _args, ctx) => {
     const actualParent = parent as unknown as FileExternalParent
     return UserActions.qUser(ctx, { userId: actualParent.creatorId })
+  },
+
+  originalType: (parent) => {
+    const actualParent = parent as unknown as FileExternalParent
+    return (actualParent as any).originalType
   },
 
   modifications: async (parent, _args, ctx) => {
@@ -133,6 +138,11 @@ export const videoFileResolvers: VideoFileResolvers = {
   creator: async (parent, _args, ctx) => {
     const actualParent = parent as unknown as FileExternalParent
     return UserActions.qUser(ctx, { userId: actualParent.creatorId })
+  },
+
+  originalType: (parent) => {
+    const actualParent = parent as unknown as FileExternalParent
+    return (actualParent as any).originalType
   },
 
   modifications: async (parent, _args, ctx) => {
@@ -220,6 +230,11 @@ export const gifFileResolvers: GifFileResolvers = {
     return UserActions.qUser(ctx, { userId: actualParent.creatorId })
   },
 
+  originalType: (parent) => {
+    const actualParent = parent as unknown as FileExternalParent
+    return (actualParent as any).originalType
+  },
+
   modifications: async (parent, _args, ctx) => {
     const actualParent = parent as unknown as FileExternalParent
     return getFileModifications(ctx, actualParent.id)
@@ -263,12 +278,8 @@ export const gifFileResolvers: GifFileResolvers = {
       return actualParent.compressedGifPath || ''
     }
     // Fallback to database query
-    const variant = await FileActions.qFileVariant(
-      ctx,
-      actualParent.id,
-      'COMPRESSED_GIF',
-    )
-    return variant ? FileActions.buildFilePath(actualParent.id, variant) : ''
+    const paths = await FileActions.qItemFilePaths(ctx, actualParent.id)
+    return paths.compressedGifPath || ''
   },
 
   thumbnailPath: async (parent, _args, ctx) => {
@@ -298,6 +309,11 @@ export const audioFileResolvers: AudioFileResolvers = {
   creator: async (parent, _args, ctx) => {
     const actualParent = parent as unknown as FileExternalParent
     return UserActions.qUser(ctx, { userId: actualParent.creatorId })
+  },
+
+  originalType: (parent) => {
+    const actualParent = parent as unknown as FileExternalParent
+    return (actualParent as any).originalType
   },
 
   modifications: async (parent, _args, ctx) => {
@@ -363,6 +379,11 @@ export const profilePictureFileResolvers: ProfilePictureFileResolvers = {
   creator: async (parent, _args, ctx) => {
     const actualParent = parent as unknown as FileExternalParent
     return UserActions.qUser(ctx, { userId: actualParent.creatorId })
+  },
+
+  originalType: (parent) => {
+    const actualParent = parent as unknown as FileExternalParent
+    return (actualParent as any).originalType
   },
 
   modifications: async (parent, _args, ctx) => {

@@ -22,6 +22,7 @@
     item: EditableItem
     editData?: PostUpdate
     onMoveItem?: (itemId: string) => void
+    onDuplicateItem?: (itemId: string) => void
     onDeleteItem?: (itemId: string) => void
     removeUploadItem?: (itemId: string) => void
     cancelUploadItem?: (itemId: string) => void
@@ -53,6 +54,7 @@
     item,
     editData = $bindable(),
     onMoveItem,
+    onDuplicateItem,
     onDeleteItem,
     removeUploadItem,
     cancelUploadItem,
@@ -175,30 +177,20 @@
       return []
     }
 
-    // Determine current file type from the item's __typename
-    let currentType: FileType | null = null
+    // Use ORIGINAL file type (not current type) for conversion options
+    const originalType = item.data.file.originalType
 
-    if (item.data.__typename === 'VideoItem') {
-      currentType = FileType.Video
-    } else if (item.data.__typename === 'GifItem') {
-      currentType = FileType.Gif
-    } else if (item.data.__typename === 'ImageItem') {
-      currentType = FileType.Image
-    } else if (item.data.__typename === 'AudioItem') {
-      currentType = FileType.Audio
-    }
-
-    if (!currentType) return []
+    if (!originalType) return []
 
     const conversions = []
 
-    // Add conversion options based on current file type
-    if (currentType === FileType.Video) {
+    // Add conversion options based on ORIGINAL file type
+    if (originalType === FileType.Video) {
       conversions.push(
         { label: 'Convert to GIF', onClick: handleConvertToGif },
         { label: 'Convert to Audio', onClick: handleConvertToAudio },
       )
-    } else if (currentType === FileType.Gif) {
+    } else if (originalType === FileType.Gif) {
       conversions.push({
         label: 'Convert to Video',
         onClick: handleConvertToVideo,
@@ -210,9 +202,22 @@
       item.data.file.processingStatus === FileProcessingStatus.Queued ||
       item.data.file.processingStatus === FileProcessingStatus.Processing
 
+    // Crop/trim options based on CURRENT type (after conversion)
+    const currentType =
+      item.data.__typename === 'VideoItem'
+        ? FileType.Video
+        : item.data.__typename === 'GifItem'
+          ? FileType.Gif
+          : item.data.__typename === 'ImageItem'
+            ? FileType.Image
+            : item.data.__typename === 'AudioItem'
+              ? FileType.Audio
+              : null
+
     // Add crop option for video and image types (only if not processing)
     if (
       !isProcessing &&
+      currentType &&
       (currentType === FileType.Video ||
         currentType === FileType.Image ||
         currentType === FileType.Gif)
@@ -223,6 +228,7 @@
     // Add trim option for video and audio types (only if not processing)
     if (
       !isProcessing &&
+      currentType &&
       (currentType === FileType.Video || currentType === FileType.Audio)
     ) {
       conversions.push({ label: 'Trim...', onClick: handleTransformItem })
@@ -278,6 +284,16 @@
         item.data.file.processingStatus === FileProcessingStatus.Processing)
     )
       ? [{ label: 'Move to another post', onClick: () => onMoveItem(item.id) }]
+      : []),
+    ...(onDuplicateItem &&
+    item.type === 'existing' &&
+    !(
+      'file' in item.data &&
+      item.data.file &&
+      (item.data.file.processingStatus === FileProcessingStatus.Queued ||
+        item.data.file.processingStatus === FileProcessingStatus.Processing)
+    )
+      ? [{ label: 'Duplicate item', onClick: () => onDuplicateItem(item.id) }]
       : []),
     ...(onDeleteItem &&
     item.type === 'existing' &&
