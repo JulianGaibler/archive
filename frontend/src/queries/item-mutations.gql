@@ -10,6 +10,10 @@ mutation trimItem($itemId: ID!, $trim: TrimInput!) {
   trimItem(itemId: $itemId, trim: $trim)
 }
 
+mutation modifyItem($itemId: ID!, $crop: CropInput, $trim: TrimInput) {
+  modifyItem(itemId: $itemId, crop: $crop, trim: $trim)
+}
+
 mutation removeModifications(
   $itemId: ID!
   $removeModifications: [String!]!

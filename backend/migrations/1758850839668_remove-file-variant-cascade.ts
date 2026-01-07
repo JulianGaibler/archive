@@ -15,42 +15,22 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     }
   });
 
-  // Add new variant types: UNMODIFIED_COMPRESSED and UNMODIFIED_THUMBNAIL_POSTER
-  // Drop the existing check constraint
-  pgm.dropConstraint('file_variant', 'file_variant_type_check', { ifExists: true });
+  // Add new variant types to the ENUM
+  pgm.addTypeValue('variant_type', 'UNMODIFIED_COMPRESSED', { ifNotExists: true });
+  pgm.addTypeValue('variant_type', 'UNMODIFIED_THUMBNAIL_POSTER', { ifNotExists: true });
 
-  // Add the check constraint with the new types
-  pgm.addConstraint('file_variant', 'file_variant_type_check', {
-    check: `variant IN (
-      'ORIGINAL',
-      'THUMBNAIL',
-      'THUMBNAIL_POSTER',
-      'COMPRESSED',
-      'COMPRESSED_GIF',
-      'PROFILE_256',
-      'PROFILE_64',
-      'UNMODIFIED_COMPRESSED',
-      'UNMODIFIED_THUMBNAIL_POSTER'
-    )`
+  // Drop the old check constraint that has hardcoded enum values
+  // The variant_type enum itself will handle validation with the updated values
+  pgm.dropConstraint('file_variant', 'file_variant_type_check', {
+    ifExists: true,
   });
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {
-  // Drop the check constraint with new types
-  pgm.dropConstraint('file_variant', 'file_variant_type_check', { ifExists: true });
-
-  // Restore the check constraint with original types only
-  pgm.addConstraint('file_variant', 'file_variant_type_check', {
-    check: `variant IN (
-      'ORIGINAL',
-      'THUMBNAIL',
-      'THUMBNAIL_POSTER',
-      'COMPRESSED',
-      'COMPRESSED_GIF',
-      'PROFILE_256',
-      'PROFILE_64'
-    )`
-  });
+  // NOTE: Cannot remove enum values in PostgreSQL without recreating the entire type
+  // This would require dropping all columns using the type, dropping the type,
+  // recreating it, and recreating the columns. Too risky for a down migration.
+  // Leave the enum values in place.
 
   // Drop the restrict foreign key constraint
   pgm.dropConstraint('file_variant', 'file_variant_file_fkey');

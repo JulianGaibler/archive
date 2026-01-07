@@ -1425,6 +1425,59 @@ export function createEditManager(
     }
   }
 
+  const modifyItem = async (
+    itemId: string,
+    params: {
+      crop?: { left: number; top: number; right: number; bottom: number }
+      trim?: { startTime: number; endTime: number }
+    },
+  ) => {
+    try {
+      loading.set(true)
+      const result = await sdk.modifyItem({
+        itemId,
+        crop: params.crop || null,
+        trim: params.trim || null,
+      })
+
+      const error = getOperationResultError(result)
+      if (error) {
+        console.error(result)
+        const operations = []
+        if (params.crop) operations.push('cropping')
+        if (params.trim) operations.push('trimming')
+        openDialog?.({
+          heading: 'Modification Error',
+          children: `Failed to start ${operations.join(' and ')}: ${error}`,
+        })
+        return false
+      }
+
+      // Show success message
+      const operations = []
+      if (params.crop) operations.push('Crop')
+      if (params.trim) operations.push('Trim')
+      openDialog?.({
+        heading: 'Processing Started',
+        children: `The ${operations.join(' and ')} ${operations.length > 1 ? 'have' : 'has'} been queued and will begin shortly. You will see progress updates here.`,
+      })
+
+      // Restart subscription to monitor the process
+      startProcessingSubscription()
+
+      return true
+    } catch (err) {
+      console.error(err)
+      openDialog?.({
+        heading: 'Modification Error',
+        children: 'Failed to apply modifications. Please try again.',
+      })
+      return false
+    } finally {
+      loading.set(false)
+    }
+  }
+
   const removeModifications = async (
     itemId: string,
     modifications: string[],
@@ -1517,6 +1570,7 @@ export function createEditManager(
     convertItem,
     cropItem,
     trimItem,
+    modifyItem,
     removeModifications,
   }
 }

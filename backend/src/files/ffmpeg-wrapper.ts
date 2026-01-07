@@ -570,6 +570,8 @@ export class FFmpegWrapper {
       inputOptions?: string[]
       audioOptions?: string[]
       videoOptions?: string[]
+      videoFilters?: string[]
+      videoSize?: string
       normalizationOptions?: AudioNormalizationOptions
       onProgress?: (progress: FFmpegProgress) => void
     } = {},
@@ -593,14 +595,48 @@ export class FFmpegWrapper {
     // Pass 2: Apply normalization with measurements
     const audioFilter = `loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}:linear=${linear ? 'true' : 'false'}:measured_I=${measurements.input_i}:measured_LRA=${measurements.input_lra}:measured_TP=${measurements.input_tp}:measured_thresh=${measurements.input_thresh}:offset=${measurements.target_offset}:dual_mono=${dualMono ? 'true' : 'false'}`
 
+    // Build filter complex if video filters are provided
+    let filterComplex: string | undefined
+    const outputOptions: string[] = []
+
+    if (options.videoFilters && options.videoFilters.length > 0) {
+      // Apply video filters (crop, etc.) and scale
+      const videoFilterChain = [...options.videoFilters]
+
+      // Add scale filter if videoSize is provided
+      if (options.videoSize) {
+        if (options.videoSize.startsWith('?x')) {
+          const height = options.videoSize.substring(2)
+          videoFilterChain.push(`scale=-2:${height}`)
+        } else {
+          videoFilterChain.push(`scale=${options.videoSize}`)
+        }
+      }
+
+      const videoFilterString = videoFilterChain.join(',')
+      filterComplex = `[0:v]${videoFilterString}[v];[0:a]${audioFilter}[a]`
+      outputOptions.push('-map', '[v]', '-map', '[a]')
+    } else {
+      // No video filters, just audio normalization
+      outputOptions.push('-af', audioFilter)
+
+      // Add scale separately when no filter_complex
+      if (options.videoSize) {
+        if (options.videoSize.startsWith('?x')) {
+          const height = options.videoSize.substring(2)
+          outputOptions.push('-vf', `scale=-2:${height}`)
+        } else {
+          outputOptions.push('-s', options.videoSize)
+        }
+      }
+    }
+
+    outputOptions.push(...(options.audioOptions || []), ...(options.videoOptions || []))
+
     return FFmpegWrapper.convert(inputPath, outputPath, {
       inputOptions: options.inputOptions,
-      outputOptions: [
-        '-af',
-        audioFilter,
-        ...(options.audioOptions || []),
-        ...(options.videoOptions || []),
-      ],
+      outputOptions,
+      filterComplex,
       onProgress: options.onProgress,
     })
   }

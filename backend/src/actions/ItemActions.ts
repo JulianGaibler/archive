@@ -246,12 +246,12 @@ const ItemActions = {
 
   /// Mutations
 
-  /** Modifies an existing item by reprocessing its associated file. */
+  /** Modifies an existing item by reprocessing its associated file in-place (same file ID). */
   async _mModifyItem(
     ctx: Context,
     fields: {
       itemId: ItemExternal['id']
-    } & Omit<Parameters<typeof FileActions._mReprocessFile>[1], 'sourceFileId'>,
+    } & Omit<Parameters<typeof FileActions._mModifyFile>[1], 'fileId'>,
   ): Promise<string> {
     const userId = ctx.isAuthenticated()
 
@@ -272,23 +272,14 @@ const ItemActions = {
       throw new InputError('Item does not have an associated file')
     }
 
-    const newFileId = await FileActions._mReprocessFile(ctx, {
+    // Modify the file in-place (same file ID)
+    await FileActions._mModifyFile(ctx, {
       ...fields,
-      sourceFileId: item.fileId,
-      onFileCreated: async (newFileId: string, tx: unknown) => {
-        // Update item to point to new file within same transaction
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (tx as any)
-          .update(itemTable)
-          .set({ fileId: newFileId })
-          .where(eq(itemTable.id, itemId))
-
-        // Clear dataloader cache for this item
-        ctx.dataLoaders.item.getById.clear(itemId)
-      },
+      fileId: item.fileId,
     })
 
-    return newFileId
+    // Return the same file ID (not a new one)
+    return item.fileId
   },
 
   /** Modifies an item by applying a crop modification. */
@@ -351,11 +342,38 @@ const ItemActions = {
       clearAllModifications?: boolean
     },
   ): Promise<string> {
-    return await ItemActions._mModifyItem(ctx, {
-      itemId: fields.itemId,
-      removeModifications: fields.removeModifications,
-      clearAllModifications: fields.clearAllModifications,
-    })
+    const userId = ctx.isAuthenticated()
+
+    // Get the item
+    const itemId = ItemModel.decodeId(fields.itemId)
+    const item = await ctx.dataLoaders.item.getById.load(itemId)
+    if (!item) {
+      throw new NotFoundError('Item not found')
+    }
+
+    // Validate ownership
+    if (item.creatorId !== userId) {
+      throw new AuthorizationError('You can only modify your own items')
+    }
+
+    // Check if item has a file
+    if (!item.fileId) {
+      throw new InputError('Item does not have an associated file')
+    }
+
+    // If clearing all modifications, revert to UNMODIFIED variants
+    if (fields.clearAllModifications) {
+      await FileActions._mRevertFileToUnmodified(ctx, item.fileId)
+    } else {
+      // For partial removals, use the normal modify flow
+      await FileActions._mModifyFile(ctx, {
+        fileId: item.fileId,
+        removeModifications: fields.removeModifications,
+        clearAllModifications: false,
+      })
+    }
+
+    return item.fileId
   },
 
   /**

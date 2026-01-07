@@ -23,6 +23,10 @@ import {
   ModificationActionData,
   ModificationActions,
 } from '@src/files/processing-metadata.js'
+import * as fileUtils from '@src/files/file-utils.js'
+import { storageOptions } from '@src/files/config.js'
+import { fileVariant as fileVariantTable } from '@db/schema.js'
+import fs from 'fs'
 
 // Type for file processing subscription payloads
 interface FileProcessingUpdatePayload {
@@ -251,8 +255,10 @@ const FileActions = {
     variant: { variant: string; extension: string },
   ): string {
     return fileUtils.resolvePath(
-      Context.config.storage.fileStorageLocation,
-      buildFilePath(fileId, variant),
+      storageOptions.dist,
+      'content',
+      fileId,
+      `${variant.variant}.${variant.extension}`,
     )
   },
 
@@ -358,33 +364,38 @@ const FileActions = {
   },
 
   /**
-   * Reprocess a file by creating a new file record based on the source file,
-   * with processing reset and meta.originalFile set
+   * Modify an existing file by updating its modifications and reprocessing it
+   * This keeps the same file ID instead of creating a new one
    */
-  async _mReprocessFile(
+  async _mModifyFile(
     ctx: Context,
     fields: {
-      sourceFileId: string
+      fileId: string
       addModifications?: ModificationActionData
       removeModifications?: ModificationActions[]
       clearAllModifications?: boolean
-      onFileCreated?: (newFileId: string, tx: unknown) => Promise<void>
     },
-  ): Promise<string> {
+  ): Promise<void> {
     const userId = ctx.isAuthenticated()
 
-    // Fetch the source file
-    const sourceFile = await this._qFileInternal(ctx, fields.sourceFileId)
-    if (!sourceFile) {
-      throw new NotFoundError('Source file not found')
+    // Get existing file
+    const file = await this._qFileInternal(ctx, fields.fileId)
+    if (!file) {
+      throw new NotFoundError('File not found')
     }
 
+    // Check authorization
+    if (file.creatorId !== userId) {
+      throw new AuthorizationError('You do not have permission to modify this file')
+    }
+
+    // Calculate new modifications
     let newModifications: ModificationActionData = {}
 
     if (!fields.clearAllModifications) {
-      // Start with a copy of the source file's modifications
+      // Start with existing modifications
       newModifications = {
-        ...(sourceFile.modifications as ModificationActionData),
+        ...(file.modifications as ModificationActionData),
       }
 
       if (fields.removeModifications) {
@@ -394,62 +405,179 @@ const FileActions = {
       }
     }
 
-    let fileType = sourceFile.type
-
     if (fields.addModifications) {
+      // fileType modifications are not persistent, so handle separately if needed
       if (fields.addModifications.fileType) {
-        fileType = fields.addModifications.fileType
-        delete fields.addModifications.fileType
+        // For now, we don't support changing file type in place
+        // This would require type conversion
+        throw new InputError('Cannot change file type of existing file')
       }
 
       Object.assign(newModifications, fields.addModifications)
     }
 
-    // Use a transaction for file creation and queueing
-    const newFileId = await ctx.db.transaction(async (tx) => {
-      // Create new file record with processing reset and meta.originalFile
-      const [newFile] = await tx
-        .insert(fileTable)
-        .values({
-          creatorId: userId,
-          type: fileType,
-          processingStatus: 'QUEUED',
-          processingProgress: 0,
-          processingNotes: null,
-          expireBy: null,
-          processingMeta: {
-            originalFile: fields.sourceFileId,
-            newModifications,
-          },
-          modifications: getPersistentModifications(newModifications),
-        })
-        .returning()
+    // Update file record
+    await ctx.db.update(fileTable)
+      .set({
+        modifications: getPersistentModifications(newModifications),
+        processingStatus: 'QUEUED',
+        processingProgress: 0,
+        processingNotes: null,
+      })
+      .where(eq(fileTable.id, fields.fileId))
 
-      ctx.dataLoaders.file.getById.prime(newFile.id, newFile)
+    // Clear dataloader cache
+    ctx.dataLoaders.file.getById.clear(fields.fileId)
 
-      // Call callback within transaction if provided
-      if (fields.onFileCreated) {
-        await fields.onFileCreated(newFile.id, tx)
-      }
+    // Queue for reprocessing using its own ORIGINAL variant
+    await Context.fileStorage.queueFileForReprocessing(ctx, fields.fileId)
+    Context.fileStorage.checkQueue()
+  },
 
-      try {
-        await Context.fileStorage.queueFileFromOtherFile(
-          ctx,
-          sourceFile.id,
-          newFile.id,
-        )
-      } catch (error) {
-        // If queueing fails, delete the new file record
-        await tx.delete(fileTable).where(eq(fileTable.id, newFile.id))
-        throw error
-      }
+  /**
+   * Reverts a file to its unmodified state by copying UNMODIFIED variants back
+   * to main variants and clearing modifications.
+   */
+  async _mRevertFileToUnmodified(ctx: Context, fileId: string): Promise<void> {
+    const userId = ctx.isAuthenticated()
 
-      return newFile.id
+    // Get existing file
+    const file = await this._qFileInternal(ctx, fileId)
+    if (!file) {
+      throw new NotFoundError('File not found')
+    }
+
+    // Check authorization
+    if (file.creatorId !== userId) {
+      throw new AuthorizationError(
+        'You do not have permission to modify this file',
+      )
+    }
+
+    // Get all file variants
+    const variants = await this._qFileVariantsInternal(ctx, fileId)
+    const unmodifiedCompressed = variants.find(
+      (v) => v.variant === 'UNMODIFIED_COMPRESSED',
+    )
+    const unmodifiedPoster = variants.find(
+      (v) => v.variant === 'UNMODIFIED_THUMBNAIL_POSTER',
+    )
+
+    if (!unmodifiedCompressed) {
+      throw new InputError('No unmodified variants found to revert to')
+    }
+
+    // Copy UNMODIFIED_COMPRESSED back to COMPRESSED
+    const unmodifiedCompressedPath = this.buildVariantPath(
+      fileId,
+      unmodifiedCompressed,
+    )
+    const compressedPath = fileUtils.resolvePath(
+      storageOptions.dist,
+      'content',
+      fileId,
+      `COMPRESSED.${unmodifiedCompressed.extension}`,
+    )
+
+    await fs.promises.copyFile(unmodifiedCompressedPath, compressedPath)
+
+    // Delete old COMPRESSED variant record and create new one
+    await ctx.db
+      .delete(fileVariantTable)
+      .where(
+        and(
+          eq(fileVariantTable.file, fileId),
+          eq(fileVariantTable.variant, 'COMPRESSED'),
+        ),
+      )
+
+    await ctx.db.insert(fileVariantTable).values({
+      file: fileId,
+      variant: 'COMPRESSED',
+      mimeType: unmodifiedCompressed.mimeType,
+      extension: unmodifiedCompressed.extension,
+      sizeBytes: unmodifiedCompressed.sizeBytes,
+      meta: unmodifiedCompressed.meta,
     })
 
-    Context.fileStorage.checkQueue()
+    // If video/gif, copy UNMODIFIED_THUMBNAIL_POSTER back to THUMBNAIL_POSTER
+    if (unmodifiedPoster) {
+      const unmodifiedPosterPath = this.buildVariantPath(
+        fileId,
+        unmodifiedPoster,
+      )
+      const posterPath = fileUtils.resolvePath(
+        storageOptions.dist,
+        'content',
+        fileId,
+        `THUMBNAIL_POSTER.${unmodifiedPoster.extension}`,
+      )
 
-    return newFileId
+      await fs.promises.copyFile(unmodifiedPosterPath, posterPath)
+
+      // Delete old THUMBNAIL_POSTER variant record and create new one
+      await ctx.db
+        .delete(fileVariantTable)
+        .where(
+          and(
+            eq(fileVariantTable.file, fileId),
+            eq(fileVariantTable.variant, 'THUMBNAIL_POSTER'),
+          ),
+        )
+
+      await ctx.db.insert(fileVariantTable).values({
+        file: fileId,
+        variant: 'THUMBNAIL_POSTER',
+        mimeType: unmodifiedPoster.mimeType,
+        extension: unmodifiedPoster.extension,
+        sizeBytes: unmodifiedPoster.sizeBytes,
+        meta: unmodifiedPoster.meta,
+      })
+    }
+
+    // Delete UNMODIFIED variants from database
+    await ctx.db
+      .delete(fileVariantTable)
+      .where(
+        and(
+          eq(fileVariantTable.file, fileId),
+          inArray(fileVariantTable.variant, [
+            'UNMODIFIED_COMPRESSED',
+            'UNMODIFIED_THUMBNAIL_POSTER',
+          ]),
+        ),
+      )
+
+    // Delete UNMODIFIED variant files
+    try {
+      await fs.promises.unlink(unmodifiedCompressedPath)
+    } catch (error) {
+      console.warn('Failed to delete unmodified compressed file:', error)
+    }
+
+    if (unmodifiedPoster) {
+      const unmodifiedPosterPath = this.buildVariantPath(
+        fileId,
+        unmodifiedPoster,
+      )
+      try {
+        await fs.promises.unlink(unmodifiedPosterPath)
+      } catch (error) {
+        console.warn('Failed to delete unmodified poster file:', error)
+      }
+    }
+
+    // Clear modifications in file record
+    await ctx.db
+      .update(fileTable)
+      .set({
+        modifications: {},
+        processingStatus: 'DONE',
+      })
+      .where(eq(fileTable.id, fileId))
+
+    // Clear dataloader cache
+    ctx.dataLoaders.file.getById.clear(fileId)
   },
 
   /** Remove expiry from files when they are attached to posts */

@@ -366,6 +366,29 @@ type Mutation {
   ): String!
 
   """
+  Apply modifications (crop and/or trim) to an item's file.
+  Creates new variants with modifications applied while preserving the original.
+  This is more efficient than calling cropItem and trimItem separately.
+  Returns the new file ID for subscription.
+  """
+  modifyItem(
+    """
+    The ID of the item to modify.
+    """
+    itemId: ID!
+
+    """
+    Optional crop parameters to apply.
+    """
+    crop: CropInput
+
+    """
+    Optional trim parameters to apply.
+    """
+    trim: TrimInput
+  ): String!
+
+  """
   Remove specific modifications from an item or revert to original.
   Creates a new file without the specified modifications.
   Returns the new file ID for subscription.

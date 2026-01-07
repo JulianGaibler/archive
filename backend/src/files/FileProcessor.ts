@@ -105,9 +105,10 @@ export default class FileProcessor {
         throw new FileProcessingError(err1.message, 'image compression', err1)
       }
 
+      // Get metadata from the COMPRESSED file (after modifications are applied)
       let metadata
       try {
-        metadata = await sharp(filePath).metadata()
+        metadata = await sharp(filePaths.jpeg).metadata()
       } catch (err) {
         throw new FileProcessingError(
           'Failed to read image metadata',
@@ -122,10 +123,11 @@ export default class FileProcessor {
         throw new InputError('Invalid image file - missing dimensions')
       }
 
+      // Generate thumbnail from the COMPRESSED file (with modifications applied)
       let thumbnailPaths
       try {
         thumbnailPaths = await this.createThumbnail(
-          () => fs.createReadStream(filePath),
+          () => fs.createReadStream(filePaths.jpeg),
           directory,
         )
       } catch (err) {
@@ -189,12 +191,12 @@ export default class FileProcessor {
         )
       }
 
+      // Get initial screenshot for dimensions (from original video)
       let screenshotTime = 1
       if (duration > 0 && duration < 1) {
         screenshotTime = duration / 2
       }
 
-      // Generate screenshot for thumbnail
       try {
         await new Promise<void>((resolve, reject) => {
           ffmpeg(filePath)
@@ -208,7 +210,7 @@ export default class FileProcessor {
         })
       } catch (err) {
         throw new FileProcessingError(
-          'Failed to generate video screenshot',
+          'Failed to generate video screenshot for dimensions',
           'screenshot generation',
           err as Error,
         )
@@ -232,41 +234,7 @@ export default class FileProcessor {
         throw new InputError('Invalid video file - missing dimensions')
       }
 
-      let thumbnailPaths
-      try {
-        thumbnailPaths = await this.createThumbnail(
-          () => fs.createReadStream(tmpPath),
-          directory,
-        )
-      } catch (err) {
-        throw new FileProcessingError(
-          'Failed to create video thumbnail',
-          'thumbnail generation',
-          err as Error,
-        )
-      }
-
-      // Create poster thumbnail for videos (larger thumbnail at compressed video dimensions)
-      const videoOutputHeight =
-        height > processingConfig.video.maxHeight
-          ? processingConfig.video.maxHeight
-          : height
-      let posterThumbnailPaths
-      try {
-        posterThumbnailPaths = await this.createPosterThumbnail(
-          () => fs.createReadStream(tmpPath),
-          directory,
-          videoOutputHeight,
-          width,
-        )
-      } catch (err) {
-        throw new FileProcessingError(
-          'Failed to create video poster thumbnail',
-          'poster thumbnail generation',
-          err as Error,
-        )
-      }
-
+      // Clean up initial screenshot
       fileUtils.remove(tmpPath)
       tmpDir.removeCallback()
 
@@ -304,9 +272,8 @@ export default class FileProcessor {
               // We need to calculate width/height from the boundaries
               const cropWidth = width! - crop.left - crop.right
               const cropHeight = height! - crop.top - crop.bottom
-              videoFilters.push(
-                `crop=${cropWidth}:${cropHeight}:${crop.left}:${crop.top}`,
-              )
+              const cropFilter = `crop=${cropWidth}:${cropHeight}:${crop.left}:${crop.top}`
+              videoFilters.push(cropFilter)
             }
 
             // Handle trim modification
@@ -381,6 +348,8 @@ export default class FileProcessor {
         videoOptions: string[] = [],
         audioOptions: string[] = [],
         hasAudio = true,
+        videoFilters?: string[],
+        trimOptions?: { start: number; duration: number },
       ): Promise<void> => {
         if (!hasAudio) {
           // No audio, use standard video rendering
@@ -400,14 +369,13 @@ export default class FileProcessor {
         try {
           // Use audio normalization with progress tracking
           await FFmpegWrapper.normalizeAudio(inputPath, tempOutputPath, {
-            videoOptions: [
-              ...videoOptions,
-              ...(size
-                ? size.startsWith('?x')
-                  ? ['-vf', `scale=-2:${size.substring(2)}`]
-                  : ['-s', size]
-                : []),
-            ],
+            inputOptions:
+              trimOptions
+                ? ['-ss', trimOptions.start.toString(), '-t', trimOptions.duration.toString()]
+                : undefined,
+            videoFilters,
+            videoSize: size,
+            videoOptions,
             audioOptions,
             normalizationOptions: audioNormalizationOptions.ebuR128,
             onProgress: (progress: { percent?: number }) => {
@@ -458,6 +426,10 @@ export default class FileProcessor {
             ? [...mp4AudioOptions, '-b:a', '192k']
             : [],
           fileType === FileType.VIDEO, // hasAudio
+          videoFilters,
+          needsTrim && trimStart !== undefined && trimDuration !== undefined
+            ? { start: trimStart, duration: trimDuration }
+            : undefined,
         )
         promises.push(renderA)
       } catch (err) {
@@ -525,6 +497,86 @@ export default class FileProcessor {
           )
         }
       }
+
+      // Now generate thumbnails from the COMPRESSED video (with modifications applied)
+      const tmpDir2 = tmp.dirSync()
+      const tmpFilename2 = 'thumb-compressed.png'
+
+      // Adjust screenshot time if video was trimmed
+      let finalScreenshotTime = screenshotTime
+      if (modifications && modifications.length > 0) {
+        const mod = modifications[0]
+        if (mod.trim) {
+          const trimStart = mod.trim.startTime
+          const trimEnd = mod.trim.endTime
+          const trimmedDuration = trimEnd - trimStart
+
+          // Take screenshot at 1s or half of trimmed duration if shorter
+          finalScreenshotTime = trimmedDuration < 1 ? trimmedDuration / 2 : 1
+        }
+      }
+
+      // Extract screenshot from the COMPRESSED MP4 (with modifications)
+      try {
+        await new Promise<void>((resolve, reject) => {
+          ffmpeg(filePaths.mp4!)
+            .screenshots({
+              timestamps: [finalScreenshotTime],
+              filename: tmpFilename2,
+              folder: tmpDir2.name,
+            })
+            .on('error', reject)
+            .on('end', () => resolve())
+        })
+      } catch (err) {
+        throw new FileProcessingError(
+          'Failed to generate screenshot from compressed video',
+          'compressed video screenshot',
+          err as Error,
+        )
+      }
+
+      const compressedScreenshotPath = fileUtils.resolvePath(tmpDir2.name, tmpFilename2)
+
+      // Generate thumbnails from the compressed video screenshot
+      const videoOutputHeight =
+        height > processingConfig.video.maxHeight
+          ? processingConfig.video.maxHeight
+          : height
+
+      let thumbnailPaths
+      try {
+        thumbnailPaths = await this.createThumbnail(
+          () => fs.createReadStream(compressedScreenshotPath),
+          directory,
+        )
+      } catch (err) {
+        throw new FileProcessingError(
+          'Failed to create video thumbnail from compressed video',
+          'thumbnail generation',
+          err as Error,
+        )
+      }
+
+      let posterThumbnailPaths
+      try {
+        posterThumbnailPaths = await this.createPosterThumbnail(
+          () => fs.createReadStream(compressedScreenshotPath),
+          directory,
+          videoOutputHeight,
+          width,
+        )
+      } catch (err) {
+        throw new FileProcessingError(
+          'Failed to create poster thumbnail from compressed video',
+          'poster thumbnail generation',
+          err as Error,
+        )
+      }
+
+      // Clean up
+      fileUtils.remove(compressedScreenshotPath)
+      tmpDir2.removeCallback()
 
       await this.updateCallback({ processingProgress: 100 })
 

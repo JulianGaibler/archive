@@ -34,6 +34,13 @@
       itemId: string,
       trim: { startTime: number; endTime: number },
     ) => Promise<boolean>
+    onModifyItem?: (
+      itemId: string,
+      params: {
+        crop?: { left: number; top: number; right: number; bottom: number }
+        trim?: { startTime: number; endTime: number }
+      },
+    ) => Promise<boolean>
     onRemoveModifications?: (
       itemId: string,
       modifications: string[],
@@ -52,6 +59,7 @@
     onConvertItem,
     onCropItem,
     onTrimItem,
+    onModifyItem,
     onRemoveModifications,
   }: Props = $props()
 
@@ -111,16 +119,24 @@
 
     transformLoading = true
     try {
-      let success = true
+      let success = false
 
-      // Apply crop if provided
-      if (params.crop && onCropItem) {
-        success = success && (await onCropItem(item.id, params.crop))
-      }
+      // Prefer combined modifyItem mutation if both crop and trim are provided
+      if (params.crop && params.trim && onModifyItem) {
+        success = await onModifyItem(item.id, params)
+      } else {
+        // Fall back to individual mutations
+        success = true
 
-      // Apply trim if provided
-      if (params.trim && onTrimItem) {
-        success = success && (await onTrimItem(item.id, params.trim))
+        // Apply crop if provided
+        if (params.crop && onCropItem) {
+          success = success && (await onCropItem(item.id, params.crop))
+        }
+
+        // Apply trim if provided
+        if (params.trim && onTrimItem) {
+          success = success && (await onTrimItem(item.id, params.trim))
+        }
       }
 
       if (success) {
@@ -440,8 +456,10 @@
     open={showTransformModal}
     loading={transformLoading}
     {item}
+    itemId={item.id}
     onCancel={handleTransformCancel}
     onSubmit={handleTransformSubmit}
+    {onRemoveModifications}
     waveform={'file' in item.data && 'waveform' in item.data.file
       ? item.data.file.waveform
       : undefined}

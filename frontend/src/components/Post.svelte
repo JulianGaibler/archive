@@ -392,6 +392,7 @@
           onConvertItem={editManager.convertItem}
           onCropItem={editManager.cropItem}
           onTrimItem={editManager.trimItem}
+          onModifyItem={editManager.modifyItem}
           onRemoveModifications={editManager.removeModifications}
         />
       {/each}

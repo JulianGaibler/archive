@@ -6,7 +6,6 @@ import path from 'path'
 import stream from 'stream'
 import FileActions from '@src/actions/FileActions.js'
 import { FileInternal } from '@src/models/FileModel.js'
-import ItemModel from '@src/models/ItemModel.js'
 import { eq, and } from 'drizzle-orm'
 import tmp from 'tmp'
 import util from 'util'
@@ -17,6 +16,7 @@ import { FileType, FileProcessingResult, FileUpdateCallback } from './types.js'
 import {
   ModificationActionData,
   getPersistentModifications,
+  PersistentModifications,
 } from './processing-metadata.js'
 import { FilePathManager } from './FilePathManager.js'
 import { FileProcessingQueue } from './QueueManager.js'
@@ -24,7 +24,6 @@ import { FFmpegWrapper } from './ffmpeg-wrapper.js'
 import { fileVariant as fileVariantTable } from '@db/schema.js'
 
 const pipeline = util.promisify(stream.pipeline)
-const itemTable = ItemModel.table
 
 export { FileType }
 
@@ -103,94 +102,47 @@ export default class FileStorage {
   }
 
   /**
-   * Queues a file for processing by copying the original variant of a source
-   * file to the queue path of a target file.
+   * Queues an existing file for reprocessing by copying its ORIGINAL variant
+   * to the queue. This is used when modifying a file in-place (same file ID).
    *
-   * @param ctx - The request context containing user and environment
-   *   information.
-   * @param srcFileId - The ID of the source file to copy from.
-   * @param targetFileId - The ID of the target file to queue for processing.
-   * @returns The ID of the target file.
-   * @throws {InputError} If the source file is not found.
-   * @throws {RequestError} If the original variant is not found or the source
-   *   file does not exist on disk.
+   * @param ctx - The request context
+   * @param fileId - The ID of the file to reprocess
+   * @returns The file ID
+   * @throws {InputError} If the file is not found
+   * @throws {RequestError} If the ORIGINAL variant is not found or doesn't exist on disk
    */
-  async queueFileFromOtherFile(
+  async queueFileForReprocessing(
     ctx: Context,
-    srcFileId: string,
-    targetFileId: string,
-  ) {
-    const sourceFile = await FileActions._qFileInternal(ctx, srcFileId)
-    if (!sourceFile) {
-      throw new InputError('Source file not found')
-    }
-    const targetFile = await FileActions._qFileInternal(ctx, targetFileId)
-    if (!targetFile) {
-      throw new InputError('Target file not found')
+    fileId: string,
+  ): Promise<string> {
+    const file = await FileActions._qFileInternal(ctx, fileId)
+    if (!file) {
+      throw new InputError('File not found')
     }
 
-    // Get the original variant path
-    const fileVariants = await FileActions._qFileVariantsInternal(
-      ctx,
-      srcFileId,
-    )
-
-    const originalVariant = fileVariants.find((v) => v.variant === 'ORIGINAL')
+    // Get the file's ORIGINAL variant
+    const variants = await FileActions._qFileVariantsInternal(ctx, fileId)
+    const originalVariant = variants.find((v) => v.variant === 'ORIGINAL')
     if (!originalVariant) {
-      throw new RequestError('Original variant not found for source file')
+      throw new RequestError('Original variant not found for file')
     }
 
     const sourcePath = this.pathManager.getVariantPath(
-      srcFileId,
+      fileId,
       'ORIGINAL',
       originalVariant.extension,
     )
 
     // Ensure the source file exists
     if (!fs.existsSync(sourcePath)) {
-      throw new RequestError('Source file does not exist on disk')
+      throw new RequestError('Original file does not exist on disk')
     }
 
-    let modifications: ModificationActionData
-    if (
-      'processingMeta' in targetFile &&
-      targetFile.processingMeta &&
-      typeof targetFile.processingMeta === 'object' &&
-      'newModifications' in
-        (targetFile.processingMeta as Record<string, unknown>)
-    ) {
-      modifications = (
-        targetFile.processingMeta as {
-          newModifications: ModificationActionData
-        }
-      ).newModifications
-    } else {
-      throw new RequestError(
-        'Missing processingMeta or newModifications in target file',
-      )
-    }
+    // Get modifications from file.modifications (not processingMeta)
+    const modifications = file.modifications as ModificationActionData || {}
 
-    if (modifications.fileType) {
-      const srcKind = this.getFileKind(originalVariant.mimeType)
-      const targetType = modifications.fileType
-      const validConversions = new Set([
-        'video->gif',
-        'gif->video',
-        'video->audio',
-      ])
-      const conversionKey = `${srcKind}->${targetType.toLowerCase()}`
-      if (
-        srcKind !== targetType.toLowerCase() &&
-        !validConversions.has(conversionKey)
-      ) {
-        throw new InputError(
-          `Invalid conversion: ${conversionKey}. Valid conversions are: video->gif, gif->video, video->audio.`,
-        )
-      }
-    }
-
+    // Validate crop parameters if present
     if (modifications.crop) {
-      // only works for videos and gifs
       const srcKind = this.determineFileType(originalVariant.mimeType)
       if (
         srcKind !== FileType.VIDEO &&
@@ -198,11 +150,11 @@ export default class FileStorage {
         srcKind !== FileType.IMAGE
       ) {
         throw new InputError(
-          `Invalid file type for cropping: ${srcKind}. Only videos and images can be cropped.`,
+          `Invalid file type for cropping: ${srcKind}. Only videos, GIFs, and images can be cropped.`,
         )
       }
 
-      // Validate cropping parameters using ffprobe to ensure result is at least 100x100 pixels
+      // Validate cropping dimensions using ffprobe
       const crop = modifications.crop as {
         left: number
         right: number
@@ -210,31 +162,23 @@ export default class FileStorage {
         bottom: number
       }
 
-      // Use ffprobe directly (async/await) to validate cropping parameters
       const metadata = await FFmpegWrapper.ffprobe(sourcePath)
       if (!metadata) {
-        throw new InputError(
-          'Failed to probe media file for cropping validation',
-        )
+        throw new InputError('Failed to probe media file for cropping validation')
       }
 
-      // Find the video stream with dimensions
       const stream = metadata.streams.find(
         (s) => s.codec_type === 'video' && s.width && s.height,
       )
       if (!stream) {
-        throw new InputError(
-          'Could not determine media dimensions for cropping',
-        )
+        throw new InputError('Could not determine media dimensions for cropping')
       }
 
       const width = stream.width
       const height = stream.height
 
       if (typeof width !== 'number' || typeof height !== 'number') {
-        throw new InputError(
-          'Invalid media dimensions: width and height must be numbers',
-        )
+        throw new InputError('Invalid media dimensions: width and height must be numbers')
       }
 
       // Calculate resulting dimensions after cropping
@@ -249,11 +193,11 @@ export default class FileStorage {
       }
     }
 
-    // Copy the source file to the queue path
-    const queuePath = this.pathManager.getQueuePath(targetFileId)
+    // Copy ORIGINAL to queue
+    const queuePath = this.pathManager.getQueuePath(fileId)
     await fs.promises.copyFile(sourcePath, queuePath)
 
-    return targetFileId
+    return fileId
   }
 
   /**
@@ -312,248 +256,142 @@ export default class FileStorage {
         throw new Error(`File not found for ID ${fileId}`)
       }
 
-      // Extract source file ID for rollback
-      // Note: processingMeta.originalFile stores the SOURCE file (previous state),
-      // not necessarily the very first original upload
-      const sourceFileId =
-        file.processingMeta &&
-        typeof file.processingMeta === 'object' &&
-        'originalFile' in file.processingMeta
-          ? (file.processingMeta as { originalFile: string }).originalFile
-          : null
+      // Check if this is a reprocessing (file has modifications)
+      const isReprocessing = this.fileHasModifications(file)
+      const hasUnmodified = await this.hasUnmodifiedVariants(ctx, fileId)
+      const isFirstModification = isReprocessing && !hasUnmodified
 
-      // Create temporary directory for processing
-      const tmpDir = tmp.dirSync({
-        unsafeCleanup: true,
-        postfix: '-archive',
-      })
+      // Track whether we renamed variants (for rollback on failure)
+      let didRenameVariants = false
 
       try {
-        const result = await this.processFileInTempDir(
-          filePath,
-          tmpDir.name,
-          updateCallback,
-          file,
-        )
-        await this.moveProcessedFiles(result, file, fileId, updateCallback)
-
-        // SUCCESS: Clean up source file (previous version)
-        // This deletes the previous version since we now have the new processed version
-        if (sourceFileId) {
-          try {
-            // Before deleting source file, preserve unmodified variants if needed
-            const sourceFile = await FileActions._qFileInternal(
+        // If this is the first modification, rename existing variants to UNMODIFIED_*
+        if (isFirstModification) {
+          await this.renameVariant(
+            ctx,
+            fileId,
+            'COMPRESSED',
+            'UNMODIFIED_COMPRESSED',
+          )
+          if (file.type === 'VIDEO' || file.type === 'GIF') {
+            await this.renameVariant(
               ctx,
-              sourceFileId,
+              fileId,
+              'THUMBNAIL_POSTER',
+              'UNMODIFIED_THUMBNAIL_POSTER',
             )
-            const newFile = await FileActions._qFileInternal(ctx, fileId)
+          }
+          didRenameVariants = true
+        }
 
-            const sourceHasModifications =
-              sourceFile?.processingMeta &&
-              typeof sourceFile.processingMeta === 'object' &&
-              ('crop' in sourceFile.processingMeta ||
-                'trim' in sourceFile.processingMeta ||
-                'fileType' in sourceFile.processingMeta)
+        // If reprocessing, delete old variants (they'll be recreated by moveProcessedFiles)
+        // NOTE: We do NOT delete ORIGINAL - it's the permanent unmodified source
+        if (isReprocessing) {
+          await this.deleteVariant(ctx, fileId, 'COMPRESSED')
+          await this.deleteVariant(ctx, fileId, 'COMPRESSED_GIF')
+          await this.deleteVariant(ctx, fileId, 'THUMBNAIL')
+          await this.deleteVariant(ctx, fileId, 'THUMBNAIL_POSTER')
+        }
 
-            const newHasModifications =
-              newFile?.processingMeta &&
-              typeof newFile.processingMeta === 'object' &&
-              ('crop' in newFile.processingMeta ||
-                'trim' in newFile.processingMeta ||
-                'fileType' in newFile.processingMeta)
+        // Create temporary directory for processing
+        const tmpDir = tmp.dirSync({
+          unsafeCleanup: true,
+          postfix: '-archive',
+        })
 
-            // If new file has modifications but source didn't, this is the first modification
-            const isFirstModification =
-              newHasModifications && !sourceHasModifications
+        try {
+          const result = await this.processFileInTempDir(
+            filePath,
+            tmpDir.name,
+            updateCallback,
+            file,
+          )
+          await this.moveProcessedFiles(result, file, fileId, updateCallback)
 
-            if (isFirstModification) {
-              // Copy source file's compressed variant to UNMODIFIED_COMPRESSED
-              const sourceCompressed = await ctx.db
-                .select()
-                .from(fileVariantTable)
-                .where(
-                  and(
-                    eq(fileVariantTable.file, sourceFileId),
-                    eq(fileVariantTable.variant, 'COMPRESSED'),
-                  ),
+          // SUCCESS - processing complete
+          // Clean up queue file
+          fileUtils.remove(filePath)
+        } catch (processingError) {
+          console.error(`Error processing file ${fileId}:`, processingError)
+
+          // Rollback: If we renamed variants, rename them back
+          if (didRenameVariants) {
+            try {
+              console.log(
+                `Rolling back variant renames for file ${fileId} due to processing failure`,
+              )
+              await this.renameVariant(
+                ctx,
+                fileId,
+                'UNMODIFIED_COMPRESSED',
+                'COMPRESSED',
+              )
+              if (file.type === 'VIDEO' || file.type === 'GIF') {
+                await this.renameVariant(
+                  ctx,
+                  fileId,
+                  'UNMODIFIED_THUMBNAIL_POSTER',
+                  'THUMBNAIL_POSTER',
                 )
-                .limit(1)
-
-              if (sourceCompressed.length > 0) {
-                const variant = sourceCompressed[0]
-                // Copy the physical file
-                const sourcePath = FileActions.buildVariantPath(
-                  sourceFileId,
-                  variant,
-                )
-                const targetPath = FileActions.buildVariantPath(fileId, {
-                  ...variant,
-                  variant: 'UNMODIFIED_COMPRESSED',
-                })
-
-                await fs.promises.copyFile(sourcePath, targetPath)
-
-                // Create the variant record
-                await ctx.db.insert(fileVariantTable).values({
-                  file: fileId,
-                  variant: 'UNMODIFIED_COMPRESSED',
-                  mimeType: variant.mimeType,
-                  extension: variant.extension,
-                  sizeBytes: variant.sizeBytes,
-                  meta: variant.meta,
-                })
               }
-
-              // Copy source file's thumbnail poster variant (for videos)
-              const sourcePoster = await ctx.db
-                .select()
-                .from(fileVariantTable)
-                .where(
-                  and(
-                    eq(fileVariantTable.file, sourceFileId),
-                    eq(fileVariantTable.variant, 'THUMBNAIL_POSTER'),
-                  ),
-                )
-                .limit(1)
-
-              if (sourcePoster.length > 0) {
-                const variant = sourcePoster[0]
-                // Copy the physical file
-                const sourcePath = FileActions.buildVariantPath(
-                  sourceFileId,
-                  variant,
-                )
-                const targetPath = FileActions.buildVariantPath(fileId, {
-                  ...variant,
-                  variant: 'UNMODIFIED_THUMBNAIL_POSTER',
-                })
-
-                await fs.promises.copyFile(sourcePath, targetPath)
-
-                // Create the variant record
-                await ctx.db.insert(fileVariantTable).values({
-                  file: fileId,
-                  variant: 'UNMODIFIED_THUMBNAIL_POSTER',
-                  mimeType: variant.mimeType,
-                  extension: variant.extension,
-                  sizeBytes: variant.sizeBytes,
-                  meta: variant.meta,
-                })
-              }
-            } else if (newHasModifications && sourceHasModifications) {
-              // This is a subsequent modification - copy existing unmodified variants
-              const sourceUnmodifiedCompressed = await ctx.db
-                .select()
-                .from(fileVariantTable)
-                .where(
-                  and(
-                    eq(fileVariantTable.file, sourceFileId),
-                    eq(fileVariantTable.variant, 'UNMODIFIED_COMPRESSED'),
-                  ),
-                )
-                .limit(1)
-
-              if (sourceUnmodifiedCompressed.length > 0) {
-                const variant = sourceUnmodifiedCompressed[0]
-                const sourcePath = FileActions.buildVariantPath(
-                  sourceFileId,
-                  variant,
-                )
-                const targetPath = FileActions.buildVariantPath(fileId, variant)
-
-                await fs.promises.copyFile(sourcePath, targetPath)
-
-                await ctx.db.insert(fileVariantTable).values({
-                  file: fileId,
-                  variant: 'UNMODIFIED_COMPRESSED',
-                  mimeType: variant.mimeType,
-                  extension: variant.extension,
-                  sizeBytes: variant.sizeBytes,
-                  meta: variant.meta,
-                })
-              }
-
-              const sourceUnmodifiedPoster = await ctx.db
-                .select()
-                .from(fileVariantTable)
-                .where(
-                  and(
-                    eq(fileVariantTable.file, sourceFileId),
-                    eq(fileVariantTable.variant, 'UNMODIFIED_THUMBNAIL_POSTER'),
-                  ),
-                )
-                .limit(1)
-
-              if (sourceUnmodifiedPoster.length > 0) {
-                const variant = sourceUnmodifiedPoster[0]
-                const sourcePath = FileActions.buildVariantPath(
-                  sourceFileId,
-                  variant,
-                )
-                const targetPath = FileActions.buildVariantPath(fileId, variant)
-
-                await fs.promises.copyFile(sourcePath, targetPath)
-
-                await ctx.db.insert(fileVariantTable).values({
-                  file: fileId,
-                  variant: 'UNMODIFIED_THUMBNAIL_POSTER',
-                  mimeType: variant.mimeType,
-                  extension: variant.extension,
-                  sizeBytes: variant.sizeBytes,
-                  meta: variant.meta,
-                })
-              }
+              console.log(`Successfully rolled back variant renames for file ${fileId}`)
+            } catch (rollbackError) {
+              console.error(
+                `Failed to rollback variant renames for file ${fileId}:`,
+                rollbackError,
+              )
             }
+          }
 
-            // Now delete the source file
-            await FileActions._mDeleteFile(ctx, sourceFileId)
-          } catch (error) {
-            console.warn(
-              `Failed to clean up source file ${sourceFileId} after reprocessing:`,
-              error,
+          await updateCallback({
+            processingStatus: 'FAILED',
+            processingNotes:
+              processingError instanceof Error
+                ? processingError.message
+                : String(processingError),
+          })
+
+          throw processingError
+        } finally {
+          tmpDir.removeCallback()
+        }
+      } catch (setupError) {
+        // Rollback: If we renamed variants before the error, rename them back
+        if (didRenameVariants) {
+          try {
+            console.log(
+              `Rolling back variant renames for file ${fileId} due to setup failure`,
             )
-            // Don't fail the processing if cleanup fails
+            await this.renameVariant(
+              ctx,
+              fileId,
+              'UNMODIFIED_COMPRESSED',
+              'COMPRESSED',
+            )
+            if (file.type === 'VIDEO' || file.type === 'GIF') {
+              await this.renameVariant(
+                ctx,
+                fileId,
+                'UNMODIFIED_THUMBNAIL_POSTER',
+                'THUMBNAIL_POSTER',
+              )
+            }
+            console.log(`Successfully rolled back variant renames for file ${fileId}`)
+          } catch (rollbackError) {
+            console.error(
+              `Failed to rollback variant renames for file ${fileId}:`,
+              rollbackError,
+            )
           }
         }
 
-        // Clean up queue file
-        fileUtils.remove(filePath)
-      } catch (error) {
-        console.error(`Error processing file ${fileId}:`, error)
         await updateCallback({
           processingStatus: 'FAILED',
           processingNotes:
-            error instanceof Error ? error.message : String(error),
+            setupError instanceof Error ? setupError.message : String(setupError),
         })
 
-        // Rollback items to previous state (source file)
-        if (sourceFileId) {
-          try {
-            const items = await ctx.db
-              .select({ id: itemTable.id })
-              .from(itemTable)
-              .where(eq(itemTable.fileId, fileId))
-
-            if (items.length > 0) {
-              await ctx.db
-                .update(itemTable)
-                .set({ fileId: sourceFileId })
-                .where(eq(itemTable.fileId, fileId))
-
-              console.log(
-                `Rolled back ${items.length} items to source file ${sourceFileId}`,
-              )
-            }
-
-            // Delete the failed file
-            await FileActions._mDeleteFile(ctx, fileId)
-          } catch (rollbackError) {
-            console.error('Failed to rollback item references:', rollbackError)
-            // Don't re-throw - we've already logged the failure
-          }
-        }
-      } finally {
-        tmpDir.removeCallback()
+        throw setupError
       }
     } catch (error) {
       console.error(`Error setting up processing for file ${fileId}:`, error)
@@ -683,6 +521,7 @@ export default class FileStorage {
     fileId: string,
     updateCallback: FileUpdateCallback,
   ): Promise<void> {
+    const ctx = Context.createPrivilegedContext()
     const movePromises: Promise<void>[] = []
 
     // Ensure the file directory exists in the new structure
@@ -693,11 +532,19 @@ export default class FileStorage {
     const ext = this.getExtensionFromFileType(fileType)
 
     // Move processed files to their final destinations using new structure
-    if (result.createdFiles.original) {
+    // Only create ORIGINAL if this is initial processing (not reprocessing)
+    // During reprocessing, we keep the existing ORIGINAL variant
+    const existingVariants = await FileActions._qFileVariantsInternal(ctx, fileId)
+    const hasOriginal = existingVariants.some(v => v.variant === 'ORIGINAL')
+
+    if (result.createdFiles.original && !hasOriginal) {
       const destPath = this.pathManager.getVariantPath(fileId, 'ORIGINAL', ext)
       movePromises.push(
         fileUtils.moveAsync(result.createdFiles.original, destPath),
       )
+    } else if (result.createdFiles.original && hasOriginal) {
+      // Clean up the temp original file since we're not using it
+      await fileUtils.remove(result.createdFiles.original)
     }
 
     if (result.createdFiles.compressed) {
@@ -741,30 +588,31 @@ export default class FileStorage {
     await Promise.all(movePromises)
 
     // Create file variants in database with metadata
-    const ctx = Context.createPrivilegedContext()
     const variants = []
 
-    // Original variant
-    const originalMeta: Record<string, unknown> = {}
+    // Original variant - only create if it doesn't already exist (not reprocessing)
+    if (!hasOriginal) {
+      const originalMeta: Record<string, unknown> = {}
 
-    if (fileType === FileType.AUDIO) {
-      if (result.waveform) {
-        originalMeta.waveform = result.waveform
+      if (fileType === FileType.AUDIO) {
+        if (result.waveform) {
+          originalMeta.waveform = result.waveform
+        }
+        if (result.waveformThumbnail) {
+          originalMeta.waveform_thumbnail = result.waveformThumbnail
+        }
+      } else {
+        originalMeta.relative_height = result.relHeight
       }
-      if (result.waveformThumbnail) {
-        originalMeta.waveform_thumbnail = result.waveformThumbnail
-      }
-    } else {
-      originalMeta.relative_height = result.relHeight
+
+      variants.push({
+        file: fileId,
+        variant: 'ORIGINAL' as const,
+        extension: ext,
+        mimeType: this.getMimeTypeForVariant(originalMimeType, 'ORIGINAL', ext),
+        meta: originalMeta,
+      })
     }
-
-    variants.push({
-      file: fileId,
-      variant: 'ORIGINAL' as const,
-      extension: ext,
-      mimeType: this.getMimeTypeForVariant(originalMimeType, 'ORIGINAL', ext),
-      meta: originalMeta,
-    })
 
     // Compressed variants
     for (const fileExt of Object.keys(result.createdFiles.compressed || {})) {
@@ -1027,6 +875,135 @@ export default class FileStorage {
           variant.variant,
           fileSize,
         )
+      }
+    }
+  }
+
+  /**
+   * Checks if a file already has UNMODIFIED variants
+   *
+   * @param {Context} ctx The context
+   * @param {string} fileId The file ID
+   * @returns {Promise<boolean>} True if UNMODIFIED variants exist
+   */
+  private async hasUnmodifiedVariants(
+    ctx: Context,
+    fileId: string,
+  ): Promise<boolean> {
+    const variants = await FileActions._qFileVariantsInternal(ctx, fileId)
+    return variants.some((v) => v.variant === 'UNMODIFIED_COMPRESSED')
+  }
+
+  /**
+   * Checks if a file has persistent modifications (crop or trim)
+   *
+   * @param {FileInternal} file The file to check
+   * @returns {boolean} True if file has modifications
+   */
+  private fileHasModifications(file: FileInternal): boolean {
+    return !!(
+      file?.modifications &&
+      typeof file.modifications === 'object' &&
+      ((file.modifications as PersistentModifications).crop !== undefined ||
+        (file.modifications as PersistentModifications).trim !== undefined)
+    )
+  }
+
+  /**
+   * Renames a variant in both database and filesystem
+   *
+   * @param {Context} ctx The context
+   * @param {string} fileId The file ID
+   * @param {string} fromVariant The current variant name
+   * @param {string} toVariant The new variant name
+   * @returns {Promise<void>}
+   */
+  private async renameVariant(
+    ctx: Context,
+    fileId: string,
+    fromVariant: string,
+    toVariant: string,
+  ): Promise<void> {
+    // Get the variant record
+    const variants = await FileActions._qFileVariantsInternal(ctx, fileId)
+    const variant = variants.find((v) => v.variant === fromVariant)
+
+    if (!variant) {
+      console.warn(`Variant ${fromVariant} not found for file ${fileId}`)
+      return
+    }
+
+    // Update database record - use sql`` to bypass type checking for dynamic variant values
+    await ctx.db
+      .update(fileVariantTable)
+      .set({ variant: toVariant as typeof variant.variant })
+      .where(
+        and(
+          eq(fileVariantTable.file, fileId),
+          eq(fileVariantTable.variant, fromVariant as typeof variant.variant),
+        ),
+      )
+
+    // Rename physical file
+    const oldPath = this.pathManager.getVariantPath(
+      fileId,
+      fromVariant,
+      variant.extension,
+    )
+    const newPath = this.pathManager.getVariantPath(
+      fileId,
+      toVariant,
+      variant.extension,
+    )
+
+    if (fs.existsSync(oldPath)) {
+      await fs.promises.rename(oldPath, newPath)
+    }
+  }
+
+  /**
+   * Deletes a variant from both database and filesystem
+   *
+   * @param {Context} ctx The context
+   * @param {string} fileId The file ID
+   * @param {string} variantName The variant to delete
+   * @returns {Promise<void>}
+   */
+  private async deleteVariant(
+    ctx: Context,
+    fileId: string,
+    variantName: string,
+  ): Promise<void> {
+    // Get the variant record to find extension
+    const variants = await FileActions._qFileVariantsInternal(ctx, fileId)
+    const variant = variants.find((v) => v.variant === variantName)
+
+    if (!variant) {
+      return
+    }
+
+    // Delete from database
+    await ctx.db
+      .delete(fileVariantTable)
+      .where(
+        and(
+          eq(fileVariantTable.file, fileId),
+          eq(fileVariantTable.variant, variantName as typeof variant.variant),
+        ),
+      )
+
+    // Delete physical file
+    const filePath = this.pathManager.getVariantPath(
+      fileId,
+      variantName,
+      variant.extension,
+    )
+
+    if (fs.existsSync(filePath)) {
+      try {
+        await fs.promises.unlink(filePath)
+      } catch (error) {
+        console.warn(`Failed to delete variant file ${filePath}:`, error)
       }
     }
   }

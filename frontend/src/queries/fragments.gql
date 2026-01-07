@@ -22,6 +22,20 @@ fragment ItemData on Item {
       compressedPath
       thumbnailPath
       posterThumbnailPath
+      unmodifiedCompressedPath
+      unmodifiedThumbnailPosterPath
+      modifications {
+        crop {
+          left
+          top
+          right
+          bottom
+        }
+        trim {
+          startTime
+          endTime
+        }
+      }
       relativeHeight
     }
     caption
@@ -37,6 +51,15 @@ fragment ItemData on Item {
       originalPath
       compressedPath
       thumbnailPath
+      unmodifiedCompressedPath
+      modifications {
+        crop {
+          left
+          top
+          right
+          bottom
+        }
+      }
       relativeHeight
     }
     caption
@@ -53,6 +76,19 @@ fragment ItemData on Item {
       compressedPath
       compressedGifPath
       thumbnailPath
+      unmodifiedCompressedPath
+      modifications {
+        crop {
+          left
+          top
+          right
+          bottom
+        }
+        trim {
+          startTime
+          endTime
+        }
+      }
       relativeHeight
     }
     caption
@@ -67,7 +103,21 @@ fragment ItemData on Item {
       processingNotes
       originalPath
       compressedPath
+      unmodifiedCompressedPath
+      modifications {
+        crop {
+          left
+          top
+          right
+          bottom
+        }
+        trim {
+          startTime
+          endTime
+        }
+      }
       waveform
+      waveformThumbnail
     }
     caption
     position

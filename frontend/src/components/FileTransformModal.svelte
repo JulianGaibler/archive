@@ -19,6 +19,12 @@
     item: EditableItem
     onCancel: () => void
     onSubmit: (params: { crop?: CropInput; trim?: TrimInput }) => Promise<void>
+    onRemoveModifications?: (
+      itemId: string,
+      modifications: string[],
+      clearAllModifications: boolean,
+    ) => Promise<boolean>
+    itemId?: string
     waveform?: number[]
     waveformThumbnail?: number[]
   }
@@ -29,6 +35,8 @@
     item,
     onCancel,
     onSubmit,
+    onRemoveModifications,
+    itemId,
     waveform,
     waveformThumbnail,
   }: Props = $props()
@@ -138,6 +146,48 @@
     return (originalFile as any).modifications?.trim
   })
 
+  // Check if INITIAL crop (from DB) is significant (outside margin threshold)
+  const hasSignificantCrop = $derived.by(() => {
+    if (!initialCrop) {
+      return false
+    }
+
+    // Get source dimensions
+    const sourceWidth = mediaType === 'image' ? (img?.naturalWidth || 0) : (videoElement?.videoWidth || 0)
+    const sourceHeight = mediaType === 'image' ? (img?.naturalHeight || 0) : (videoElement?.videoHeight || 0)
+
+    // If dimensions not loaded, assume significant
+    if (sourceWidth === 0 || sourceHeight === 0) {
+      return true
+    }
+
+    // Check the INITIAL crop values from DB (not current selection)
+    const CROP_MARGIN = 5
+    const isWithinMargin =
+      initialCrop.left <= CROP_MARGIN &&
+      initialCrop.top <= CROP_MARGIN &&
+      initialCrop.right <= CROP_MARGIN &&
+      initialCrop.bottom <= CROP_MARGIN
+
+    return !isWithinMargin // Significant if NOT within margin
+  })
+
+  // Check if INITIAL trim (from DB) is significant (outside margin threshold)
+  const hasSignificantTrim = $derived.by(() => {
+    if (!initialTrim) return false
+
+    // If duration not loaded, assume significant
+    if (duration === 0) return true
+
+    // Check the INITIAL trim values from DB (not current selection)
+    const TRIM_MARGIN = 0.75
+    const isWithinMargin =
+      initialTrim.startTime <= TRIM_MARGIN &&
+      duration - initialTrim.endTime <= TRIM_MARGIN
+
+    return !isWithinMargin // Significant if NOT within margin
+  })
+
   // Get media URL
   const mediaUrl = $derived.by(() => {
     if (item.type !== 'existing' || !('file' in item.data) || !item.data.file) {
@@ -158,18 +208,41 @@
     return null
   })
 
-  // Crop percentages for API
-  const cropPercentages = $derived.by(() => {
+  // Crop pixel offsets for API
+  const cropPixelOffsets = $derived.by(() => {
     if (!cropArea || displayWidth === 0 || displayHeight === 0) {
       return null
     }
+
+    // Get source (natural) dimensions
+    const sourceWidth =
+      mediaType === 'image'
+        ? img?.naturalWidth || 0
+        : videoElement?.videoWidth || 0
+    const sourceHeight =
+      mediaType === 'image'
+        ? img?.naturalHeight || 0
+        : videoElement?.videoHeight || 0
+
+    if (sourceWidth === 0 || sourceHeight === 0) {
+      return null
+    }
+
+    // Scale crop area from display coordinates to source coordinates
+    const scaleX = sourceWidth / displayWidth
+    const scaleY = sourceHeight / displayHeight
+
+    const scaledX = Math.round(cropArea.x * scaleX)
+    const scaledY = Math.round(cropArea.y * scaleY)
+    const scaledWidth = Math.round(cropArea.width * scaleX)
+    const scaledHeight = Math.round(cropArea.height * scaleY)
+
+    // Calculate pixel offsets from edges
     return {
-      left: Math.round((cropArea.x / displayWidth) * 100),
-      top: Math.round((cropArea.y / displayHeight) * 100),
-      right: Math.round(((cropArea.x + cropArea.width) / displayWidth) * 100),
-      bottom: Math.round(
-        ((cropArea.y + cropArea.height) / displayHeight) * 100,
-      ),
+      left: scaledX,
+      top: scaledY,
+      right: sourceWidth - (scaledX + scaledWidth),
+      bottom: sourceHeight - (scaledY + scaledHeight),
     }
   })
 
@@ -182,7 +255,7 @@
   // Validation
   const isValid = $derived.by(() => {
     // Need at least one transformation
-    const hasCrop = cropArea && cropPercentages
+    const hasCrop = cropArea && cropPixelOffsets
     const hasTrim =
       trimStart !== null && trimEnd !== null && trimDuration >= 0.1
 
@@ -191,9 +264,9 @@
     // Validate crop if present
     if (hasCrop && cropArea) {
       if (cropArea.width < 50 || cropArea.height < 50) return false
-      if (!cropPercentages) return false
-      if (cropPercentages.left < 0 || cropPercentages.top < 0) return false
-      if (cropPercentages.right > 100 || cropPercentages.bottom > 100)
+      if (!cropPixelOffsets) return false
+      if (cropPixelOffsets.left < 0 || cropPixelOffsets.top < 0) return false
+      if (cropPixelOffsets.right < 0 || cropPixelOffsets.bottom < 0)
         return false
     }
 
@@ -340,19 +413,22 @@
     mediaLoaded = false
   }
 
-  // Phase 5: Undo functions
-  function handleUndoCrop() {
-    if (originalCropArea) {
-      cropArea = { ...originalCropArea }
-    } else {
-      cropArea = undefined
+  // Remove DB modifications
+  async function handleRemoveCropModification() {
+    if (onRemoveModifications && itemId) {
+      const success = await onRemoveModifications(itemId, ['crop'], false)
+      if (success) {
+        handleCancel()
+      }
     }
   }
 
-  function handleUndoTrim() {
-    if (canTrim && originalTrimStart !== null && originalTrimEnd !== null) {
-      trimStart = originalTrimStart
-      trimEnd = originalTrimEnd
+  async function handleRemoveTrimModification() {
+    if (onRemoveModifications && itemId) {
+      const success = await onRemoveModifications(itemId, ['trim'], false)
+      if (success) {
+        handleCancel()
+      }
     }
   }
 
@@ -502,26 +578,99 @@
     if (!isValid) return
 
     const params: { crop?: CropInput; trim?: TrimInput } = {}
+    const modificationsToRemove: string[] = []
 
-    // Add crop if active and valid
-    if (canCrop && cropArea && cropPercentages) {
-      params.crop = {
-        left: cropPercentages.left,
-        top: cropPercentages.top,
-        right: cropPercentages.right,
-        bottom: cropPercentages.bottom,
+    // === CROP VALIDATION WITH MARGIN ===
+    if (canCrop && cropArea && cropPixelOffsets) {
+      // Get source dimensions
+      const sourceWidth = mediaType === 'image'
+        ? (img?.naturalWidth || 0)
+        : (videoElement?.videoWidth || 0)
+      const sourceHeight = mediaType === 'image'
+        ? (img?.naturalHeight || 0)
+        : (videoElement?.videoHeight || 0)
+
+      // Skip margin validation if dimensions not loaded
+      if (sourceWidth === 0 || sourceHeight === 0) {
+        // Dimensions not loaded - apply crop normally
+        params.crop = {
+          left: cropPixelOffsets.left,
+          top: cropPixelOffsets.top,
+          right: cropPixelOffsets.right,
+          bottom: cropPixelOffsets.bottom,
+        }
+      } else {
+        // Check if crop is within 5px margin on ALL edges
+        const CROP_MARGIN = 5
+        const isWithinMargin =
+          cropPixelOffsets.left <= CROP_MARGIN &&
+          cropPixelOffsets.top <= CROP_MARGIN &&
+          cropPixelOffsets.right <= CROP_MARGIN &&
+          cropPixelOffsets.bottom <= CROP_MARGIN
+
+        if (isWithinMargin) {
+          // Within margin - check if we need to remove existing crop
+          if (initialCrop !== undefined && initialCrop !== null) {
+            // Existing crop exists → queue it for removal
+            modificationsToRemove.push('crop')
+          }
+          // else: No existing crop + within margin → don't send crop at all
+        } else {
+          // Outside margin → send the crop normally
+          params.crop = {
+            left: cropPixelOffsets.left,
+            top: cropPixelOffsets.top,
+            right: cropPixelOffsets.right,
+            bottom: cropPixelOffsets.bottom,
+          }
+        }
       }
     }
 
-    // Add trim if active and valid
+    // === TRIM VALIDATION WITH MARGIN ===
     if (canTrim && trimStart !== null && trimEnd !== null) {
-      params.trim = {
-        startTime: trimStart,
-        endTime: trimEnd,
+      // Skip margin validation if duration not loaded
+      if (duration === 0) {
+        // Duration not loaded - apply trim normally
+        params.trim = {
+          startTime: trimStart,
+          endTime: trimEnd,
+        }
+      } else {
+        const TRIM_MARGIN = 0.75 // seconds
+
+        // Check if trim is within margin on BOTH start and end
+        const isWithinMargin =
+          trimStart <= TRIM_MARGIN &&
+          duration - trimEnd <= TRIM_MARGIN
+
+        if (isWithinMargin) {
+          // Within margin - check if we need to remove existing trim
+          if (initialTrim !== undefined && initialTrim !== null) {
+            // Existing trim exists → queue it for removal
+            modificationsToRemove.push('trim')
+          }
+          // else: No existing trim + within margin → don't send trim at all
+        } else {
+          // Outside margin → send the trim normally
+          params.trim = {
+            startTime: trimStart,
+            endTime: trimEnd,
+          }
+        }
       }
     }
 
-    await onSubmit(params)
+    // If we need to remove modifications, call onRemoveModifications
+    if (modificationsToRemove.length > 0 && onRemoveModifications && itemId) {
+      await onRemoveModifications(itemId, modificationsToRemove, false)
+    } else if (Object.keys(params).length > 0) {
+      // Otherwise, if we have modifications to apply, call onSubmit
+      await onSubmit(params)
+    } else {
+      // Nothing to do (crop/trim within margin and no existing modifications) - just close modal
+      handleCancel()
+    }
   }
 
   function handleCancel() {
@@ -695,7 +844,7 @@
     {/if}
 
     <!-- Crop Info -->
-    {#if canCrop && mediaLoaded && cropPercentages}
+    {#if canCrop && mediaLoaded && cropPixelOffsets}
       <div class="crop-info">
         {#if cropArea}
           <span>Size: {cropArea.width} × {cropArea.height}px</span>
@@ -735,14 +884,14 @@
             Auto Crop
           </Button>
         {/if}
-        {#if canCrop && cropArea && originalCropArea}
-          <Button small onclick={handleUndoCrop} disabled={loading}>
-            Undo Crop
+        {#if hasSignificantCrop}
+          <Button small onclick={handleRemoveCropModification} disabled={loading}>
+            Remove Crop
           </Button>
         {/if}
-        {#if canTrim && trimStart !== null && trimEnd !== null && originalTrimStart !== null && originalTrimEnd !== null && (trimStart !== originalTrimStart || trimEnd !== originalTrimEnd)}
-          <Button small onclick={handleUndoTrim} disabled={loading}>
-            Undo Trim
+        {#if hasSignificantTrim}
+          <Button small onclick={handleRemoveTrimModification} disabled={loading}>
+            Remove Trim
           </Button>
         {/if}
       </div>
