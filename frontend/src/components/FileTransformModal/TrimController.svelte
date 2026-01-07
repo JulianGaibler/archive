@@ -171,6 +171,7 @@
     trimEnd: number
     currentTime: number
     isPlaying: boolean
+    trimDragging?: 'trim-start' | 'trim-end' | null
   }
 
   let {
@@ -185,6 +186,7 @@
     trimEnd = $bindable(),
     currentTime = $bindable(),
     isPlaying = $bindable(),
+    trimDragging = $bindable(null),
   }: Props = $props()
 
   // Timeline state
@@ -192,7 +194,6 @@
   let canvasWidth = $state(800)
   let canvasHeight = $state(48)
   let scrubbing = $state(false)
-  let trimDragging = $state<'trim-start' | 'trim-end' | null>(null)
 
   // Playback state
   let volume = $state(1)
@@ -519,8 +520,8 @@
       drawThumbnails(ctx, thumbnails, thumbnailCount, thumbnailArea, height, THUMBNAIL_MARGIN, thumbnailAnimator)
     }
 
-    // Draw waveform (if audio)
-    if (mediaType === 'audio' && (waveform || waveformThumbnail)) {
+    // Draw waveform (always render when available)
+    if (waveform || waveformThumbnail) {
       const waveformData = waveform || waveformThumbnail || []
       if (waveformData.length > 0) {
         drawWaveform(ctx, waveformData, width, height, currentTime / duration, {

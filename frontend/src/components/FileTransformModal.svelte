@@ -56,6 +56,7 @@
   // Trim state (bound from TrimController)
   let trimStart = $state<number>(0)
   let trimEnd = $state<number>(0)
+  let trimDragging = $state<'trim-start' | 'trim-end' | null>(null)
 
   // Display dimensions
   let displayWidth = $state(0)
@@ -65,6 +66,21 @@
 
   // Auto crop state
   let autoCropping = $state(false)
+
+  // Helper to get the current media element based on type
+  function getMediaElement(): HTMLMediaElement | undefined {
+    return mediaType === 'video' ? videoElement : audioElement
+  }
+
+  // Helper to get display name for media type
+  function getMediaTypeDisplayName(type: string): string {
+    const names: Record<string, string> = {
+      audio: 'Audio',
+      video: 'Video',
+      image: 'Image',
+    }
+    return names[type] || 'Media'
+  }
 
   // Original crop/trim state for undo (Phase 5)
   let originalCropArea: {
@@ -190,37 +206,19 @@
     return true
   })
 
-  // Format time as MM:SS.mmm
-  function _formatTime(seconds: number): string {
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    const ms = Math.floor((seconds % 1) * 1000)
-    return `${mins}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`
-  }
-
-  // Load media when modal opens
+  // Load media when modal opens and handle race condition
   $effect(() => {
-    if (open && mediaUrl) {
-      loadMedia()
-    }
-  })
+    if (!open || !mediaUrl) return
 
-  // Check if video/audio metadata is already loaded (race condition fix)
-  $effect(() => {
-    if (open && mediaType === 'video' && videoElement && !mediaLoaded) {
-      // readyState >= 1 means HAVE_METADATA or more
-      if (videoElement.readyState >= 1) {
-        console.log(
-          'Video metadata already loaded, triggering handleMediaLoaded',
-        )
+    // If not loaded yet, check if element is already ready (race condition)
+    if (!mediaLoaded) {
+      const element = getMediaElement()
+      // Check if element is already ready (readyState >= 1 means HAVE_METADATA or more)
+      if (element && element.readyState >= 1) {
+        console.log('Media metadata already loaded, triggering handleMediaLoaded')
         handleMediaLoaded()
-      }
-    } else if (open && mediaType === 'audio' && audioElement && !mediaLoaded) {
-      if (audioElement.readyState >= 1) {
-        console.log(
-          'Audio metadata already loaded, triggering handleMediaLoaded',
-        )
-        handleMediaLoaded()
+      } else {
+        loadMedia()
       }
     }
   })
@@ -312,7 +310,7 @@
       videoElement,
       audioElement,
     })
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement()
     if (!element) {
       console.log('No element found, returning')
       return
@@ -360,7 +358,7 @@
 
   // Playback controls
   function _togglePlayback() {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement()
     if (!element) return
 
     if (isPlaying) {
@@ -378,27 +376,27 @@
   }
 
   function _handleSkipBackward() {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement()
     if (!element) return
     const minTime = trimStart !== null ? trimStart : 0
     element.currentTime = Math.max(minTime, currentTime - 5)
   }
 
   function _handleSkipForward() {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement()
     if (!element) return
     const maxTime = trimEnd !== null ? trimEnd : duration
     element.currentTime = Math.min(maxTime, currentTime + 10)
   }
 
   function _handleSeek(value: number) {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement()
     if (!element) return
     element.currentTime = (value / 100) * duration
   }
 
   function _handleVolumeChange(value: number) {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement()
     if (!element) return
     element.volume = value
     _volume = value
@@ -408,27 +406,27 @@
   }
 
   function _handleToggleMute() {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement()
     if (!element) return
     isMuted = !isMuted
     element.muted = isMuted
   }
 
   function _handlePlaybackRateChange(rate: number) {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement()
     if (!element) return
     element.playbackRate = rate
     _playbackRate = rate
   }
 
   function handleTimeUpdate() {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement()
     if (!element) return
 
     currentTime = element.currentTime
 
-    // Keep playback within trim range
-    if (trimStart !== null && trimEnd !== null) {
+    // Keep playback within trim range (but not while dragging trim handles)
+    if (trimStart !== null && trimEnd !== null && !trimDragging) {
       // If beyond trim end, loop back to start
       if (currentTime >= trimEnd) {
         element.currentTime = trimStart
@@ -527,7 +525,7 @@
   }
 
   function handleCancel() {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement()
     if (element) {
       element.pause()
       element.currentTime = 0
@@ -537,7 +535,7 @@
 
   // Update playing state
   $effect(() => {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement()
     if (!element) return
 
     const handlePlay = () => (isPlaying = true)
@@ -577,7 +575,7 @@
       originalTrimStart = null
       originalTrimEnd = null
 
-      const element = mediaType === 'video' ? videoElement : audioElement
+      const element = getMediaElement()
       if (element) {
         element.pause()
         element.currentTime = 0
@@ -589,11 +587,7 @@
 <Modal {open} onclose={handleCancel} notClosable={loading}>
   <div class="transform-modal">
     <h2 class="tint--type-title-serif-3">
-      Transform {mediaType === 'audio'
-        ? 'Audio'
-        : mediaType === 'video'
-          ? 'Video'
-          : 'Image'}
+      Transform {getMediaTypeDisplayName(mediaType)}
     </h2>
     <p class="tint--type-body">
       {#if canCrop && canTrim}
@@ -606,7 +600,8 @@
       {/if}
     </p>
 
-    <!-- Preview Area -->
+    <!-- Preview Area (hidden for audio with waveform) -->
+    {#if !(mediaType === 'audio' && waveform)}
     <div class="preview-area" bind:this={containerElement}>
       {#if mediaError}
         <div class="error-state">
@@ -664,7 +659,7 @@
           ontimeupdate={handleTimeUpdate}
           preload="none"
           style="display: none;"
-        />
+        ></audio>
       {:else}
         <div
           class="image-wrapper"
@@ -686,14 +681,22 @@
       {/if}
       {/if}
     </div>
+    {:else}
+    <!-- Audio element for audio with waveform -->
+    <audio
+      bind:this={audioElement}
+      src={mediaUrl}
+      onloadedmetadata={handleMediaLoaded}
+      onerror={handleMediaError}
+      ontimeupdate={handleTimeUpdate}
+      preload="none"
+      style="display: none;"
+    ></audio>
+    {/if}
 
     <!-- Crop Info -->
     {#if canCrop && mediaLoaded && cropPercentages}
       <div class="crop-info">
-        <span
-          >Crop: {cropPercentages.left}% × {cropPercentages.top}% to {cropPercentages.right}%
-          × {cropPercentages.bottom}%</span
-        >
         {#if cropArea}
           <span>Size: {cropArea.width} × {cropArea.height}px</span>
         {/if}
@@ -715,6 +718,7 @@
         bind:trimEnd
         bind:currentTime
         bind:isPlaying
+        bind:trimDragging
       />
     {/if}
 

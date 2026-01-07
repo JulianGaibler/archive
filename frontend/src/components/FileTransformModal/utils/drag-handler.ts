@@ -114,7 +114,7 @@ export function createDragHandler<T>(
       ontouchcancel: onTouchCancel,
     },
     cleanup: () => {
-      // Future: remove event listeners if needed
+      // No cleanup needed currently
     },
   }
 }

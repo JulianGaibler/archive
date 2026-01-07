@@ -16,39 +16,6 @@ export function drawOverlay(
 }
 
 /**
- * Draw rule-of-thirds grid
- */
-export function drawGrid(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  color: string = 'rgba(255, 255, 255, 0.5)',
-): void {
-  ctx.strokeStyle = color
-  ctx.lineWidth = 1
-
-  const gridX1 = x + width / 3
-  const gridX2 = x + (2 * width) / 3
-  const gridY1 = y + height / 3
-  const gridY2 = y + (2 * height) / 3
-
-  ctx.beginPath()
-  // Vertical lines
-  ctx.moveTo(gridX1, y)
-  ctx.lineTo(gridX1, y + height)
-  ctx.moveTo(gridX2, y)
-  ctx.lineTo(gridX2, y + height)
-  // Horizontal lines
-  ctx.moveTo(x, gridY1)
-  ctx.lineTo(x + width, gridY1)
-  ctx.moveTo(x, gridY2)
-  ctx.lineTo(x + width, gridY2)
-  ctx.stroke()
-}
-
-/**
  * Draw corner handle (square)
  */
 export function drawHandle(
@@ -77,7 +44,7 @@ export function drawMarker(
 }
 
 /**
- * Draw waveform bars
+ * Draw waveform bars with rounded corners and spacing
  */
 export function drawWaveform(
   ctx: CanvasRenderingContext2D,
@@ -87,58 +54,38 @@ export function drawWaveform(
   currentPosition: number,
   colors: { active: string; inactive: string },
 ): void {
-  const barWidth = width / waveformData.length
+  const spacing = 2
+  const totalSpacing = spacing * (waveformData.length - 1)
+  const totalBarWidth = width - totalSpacing
+  const barWidth = totalBarWidth / waveformData.length
   const currentWaveformPosition = Math.floor(
     currentPosition * waveformData.length,
   )
+  const borderRadius = 99
 
   waveformData.forEach((amplitude, i) => {
     const barHeight = Math.max(amplitude * height, 4)
-    const x = i * barWidth
+    const x = i * (barWidth + spacing)
     const y = (height - barHeight) / 2
 
     const isActive = i <= currentWaveformPosition
     ctx.fillStyle = isActive ? colors.active : colors.inactive
-    ctx.fillRect(x, y, Math.max(barWidth - 1, 1), barHeight)
+
+    // Draw rounded rectangle
+    const radius = Math.min(borderRadius, barWidth / 2, barHeight / 2)
+    ctx.beginPath()
+    ctx.moveTo(x + radius, y)
+    ctx.lineTo(x + barWidth - radius, y)
+    ctx.arcTo(x + barWidth, y, x + barWidth, y + radius, radius)
+    ctx.lineTo(x + barWidth, y + barHeight - radius)
+    ctx.arcTo(x + barWidth, y + barHeight, x + barWidth - radius, y + barHeight, radius)
+    ctx.lineTo(x + radius, y + barHeight)
+    ctx.arcTo(x, y + barHeight, x, y + barHeight - radius, radius)
+    ctx.lineTo(x, y + radius)
+    ctx.arcTo(x, y, x + radius, y, radius)
+    ctx.closePath()
+    ctx.fill()
   })
-}
-
-/**
- * Draw text with pixel dimensions (for inline pixel preview)
- */
-export function drawDimensionText(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  backgroundColor: string = 'rgba(0, 0, 0, 0.8)',
-  textColor: string = '#ffffff',
-): void {
-  const text = `${Math.round(width)} × ${Math.round(height)}px`
-  const padding = 8
-  const fontSize = 14
-
-  ctx.font = `${fontSize}px sans-serif`
-  const metrics = ctx.measureText(text)
-  const textWidth = metrics.width
-  const textHeight = fontSize
-
-  const boxWidth = textWidth + padding * 2
-  const boxHeight = textHeight + padding * 2
-
-  // Position box near cursor (offset slightly to avoid cursor overlap)
-  const boxX = x + 15
-  const boxY = y + 15
-
-  // Draw background
-  ctx.fillStyle = backgroundColor
-  ctx.fillRect(boxX, boxY, boxWidth, boxHeight)
-
-  // Draw text
-  ctx.fillStyle = textColor
-  ctx.textBaseline = 'top'
-  ctx.fillText(text, boxX + padding, boxY + padding)
 }
 
 /**

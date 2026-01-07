@@ -189,17 +189,26 @@
       })
     }
 
-    // Add crop option for video and image types
+    // Check if file is currently processing
+    const isProcessing =
+      item.data.file.processingStatus === FileProcessingStatus.Queued ||
+      item.data.file.processingStatus === FileProcessingStatus.Processing
+
+    // Add crop option for video and image types (only if not processing)
     if (
-      currentType === FileType.Video ||
-      currentType === FileType.Image ||
-      currentType === FileType.Gif
+      !isProcessing &&
+      (currentType === FileType.Video ||
+        currentType === FileType.Image ||
+        currentType === FileType.Gif)
     ) {
       conversions.push({ label: 'Crop...', onClick: handleTransformItem })
     }
 
-    // Add trim option for video and audio types
-    if (currentType === FileType.Video || currentType === FileType.Audio) {
+    // Add trim option for video and audio types (only if not processing)
+    if (
+      !isProcessing &&
+      (currentType === FileType.Video || currentType === FileType.Audio)
+    ) {
       conversions.push({ label: 'Trim...', onClick: handleTransformItem })
     }
 

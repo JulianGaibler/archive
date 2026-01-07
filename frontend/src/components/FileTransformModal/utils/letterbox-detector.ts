@@ -64,6 +64,13 @@ function getColumnPixels(
 }
 
 /**
+ * Calculate luminance using Rec. 709 luma coefficients
+ */
+function calculateLuminance(r: number, g: number, b: number): number {
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+/**
  * Calculate variance of pixel luminance values
  * Letterbox bars have low variance (uniform color)
  * Content has high variance (details, edges, textures)
@@ -75,9 +82,7 @@ function calculateVariance(pixels: number[]): number {
     const r = pixels[i]
     const g = pixels[i + 1]
     const b = pixels[i + 2]
-    // Rec. 709 luma coefficients
-    const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b
-    luminances.push(luma)
+    luminances.push(calculateLuminance(r, g, b))
   }
 
   if (luminances.length === 0) return 0
@@ -107,14 +112,16 @@ function calculateEdgeStrength(
   let count = 0
 
   for (let i = 0; i < currentLine.length; i += 4) {
-    const currLuma =
-      0.2126 * currentLine[i] +
-      0.7152 * currentLine[i + 1] +
-      0.0722 * currentLine[i + 2]
-    const prevLuma =
-      0.2126 * previousLine[i] +
-      0.7152 * previousLine[i + 1] +
-      0.0722 * previousLine[i + 2]
+    const currLuma = calculateLuminance(
+      currentLine[i],
+      currentLine[i + 1],
+      currentLine[i + 2]
+    )
+    const prevLuma = calculateLuminance(
+      previousLine[i],
+      previousLine[i + 1],
+      previousLine[i + 2]
+    )
     totalDiff += Math.abs(currLuma - prevLuma)
     count++
   }

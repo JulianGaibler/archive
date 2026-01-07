@@ -134,6 +134,7 @@ export default class FileStorage {
       ctx,
       srcFileId,
     )
+
     const originalVariant = fileVariants.find((v) => v.variant === 'ORIGINAL')
     if (!originalVariant) {
       throw new RequestError('Original variant not found for source file')
