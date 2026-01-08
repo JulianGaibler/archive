@@ -412,6 +412,11 @@ export type Mutation = {
    * Return all item ids on the post in the new order.
    */
   reorderItems: Array<Scalars['ID']['output']>;
+  /**
+   * Reset and reprocess a file: removes all modifications, deletes all processed variants,
+   * and reprocesses from the original file. Useful for recovering from processing errors.
+   */
+  resetAndReprocessFile: Scalars['String']['output'];
   /** Revokes the session of a user. */
   revokeSession: Scalars['Boolean']['output'];
   /** Creates a new user and performs a login. */
@@ -556,6 +561,11 @@ export type MutationReorderItemsArgs = {
 };
 
 
+export type MutationResetAndReprocessFileArgs = {
+  itemId: Scalars['ID']['input'];
+};
+
+
 export type MutationRevokeSessionArgs = {
   sessionId: Scalars['ID']['input'];
 };
@@ -667,10 +677,14 @@ export type ProcessingItem = Item & Node & {
   createdAt: Scalars['DateTime']['output'];
   creator: User;
   description: Scalars['String']['output'];
+  fileId: Scalars['ID']['output'];
   /** The ID of an object */
   id: Scalars['ID']['output'];
   position: Scalars['Int']['output'];
   post: Post;
+  processingNotes?: Maybe<Scalars['String']['output']>;
+  processingProgress?: Maybe<Scalars['Int']['output']>;
+  processingStatus: FileProcessingStatus;
   updatedAt: Scalars['DateTime']['output'];
 };
 
@@ -1255,6 +1269,7 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   removeModifications?: Resolver<ResolversTypes['String'], ParentType, ContextType, RequireFields<MutationRemoveModificationsArgs, 'itemId' | 'removeModifications'>>;
   reorderItem?: Resolver<ResolversTypes['Int'], ParentType, ContextType, RequireFields<MutationReorderItemArgs, 'itemId' | 'newPosition'>>;
   reorderItems?: Resolver<Array<ResolversTypes['ID']>, ParentType, ContextType, RequireFields<MutationReorderItemsArgs, 'itemIds' | 'postId'>>;
+  resetAndReprocessFile?: Resolver<ResolversTypes['String'], ParentType, ContextType, RequireFields<MutationResetAndReprocessFileArgs, 'itemId'>>;
   revokeSession?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRevokeSessionArgs, 'sessionId'>>;
   signup?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationSignupArgs, 'name' | 'password' | 'username'>>;
   trimItem?: Resolver<ResolversTypes['String'], ParentType, ContextType, RequireFields<MutationTrimItemArgs, 'itemId' | 'trim'>>;
@@ -1312,9 +1327,13 @@ export type ProcessingItemResolvers<ContextType = Context, ParentType extends Re
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>;
   description?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  fileId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   position?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   post?: Resolver<ResolversTypes['Post'], ParentType, ContextType>;
+  processingNotes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  processingProgress?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  processingStatus?: Resolver<ResolversTypes['FileProcessingStatus'], ParentType, ContextType>;
   updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;

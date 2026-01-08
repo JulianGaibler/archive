@@ -132,6 +132,10 @@ fragment ItemData on Item {
   }
   ... on ProcessingItem {
     position
+    fileId
+    processingStatus
+    processingProgress
+    processingNotes
   }
 }
 

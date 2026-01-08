@@ -376,6 +376,37 @@ const ItemActions = {
     return item.fileId
   },
 
+  async mResetAndReprocessFile(
+    ctx: Context,
+    fields: {
+      itemId: ItemExternal['id']
+    },
+  ): Promise<string> {
+    const userId = ctx.isAuthenticated()
+
+    // Get the item
+    const itemId = ItemModel.decodeId(fields.itemId)
+    const item = await ctx.dataLoaders.item.getById.load(itemId)
+    if (!item) {
+      throw new NotFoundError('Item not found')
+    }
+
+    // Validate ownership
+    if (item.creatorId !== userId) {
+      throw new AuthorizationError('You can only modify your own items')
+    }
+
+    // Check if item has a file
+    if (!item.fileId) {
+      throw new InputError('Item does not have an associated file')
+    }
+
+    // Perform reset and reprocess
+    await FileActions._mResetAndReprocessFile(ctx, item.fileId)
+
+    return fields.itemId
+  },
+
   /**
    * Replace the file reference in an item with a new file This is used when
    * processing completes successfully

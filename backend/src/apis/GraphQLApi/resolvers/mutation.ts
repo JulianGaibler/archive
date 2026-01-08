@@ -101,4 +101,7 @@ export const mutationResolvers: MutationResolvers = {
 
   removeModifications: async (_, args, ctx) =>
     ItemActions.mRemoveModifications(ctx, args as any),
+
+  resetAndReprocessFile: async (_, args, ctx) =>
+    ItemActions.mResetAndReprocessFile(ctx, args as any),
 }

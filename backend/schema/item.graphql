@@ -28,6 +28,10 @@ type ProcessingItem implements Item & Node {
   description: String!
   updatedAt: DateTime!
   createdAt: DateTime!
+  fileId: ID!
+  processingStatus: FileProcessingStatus!
+  processingProgress: Int
+  processingNotes: String
 }
 
 """

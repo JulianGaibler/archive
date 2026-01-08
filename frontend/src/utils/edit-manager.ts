@@ -124,13 +124,32 @@ export function createEditManager(
     // Add file IDs from existing items that are still processing
     if (currentPost) {
       currentPost.items.nodes?.forEach((item) => {
-        if (item && 'file' in item && item.file) {
-          // Monitor files that are not FAILED or DONE
+        if (item) {
+          console.log('[Subscription] Checking item:', {
+            typename: item.__typename,
+            hasFileId: 'fileId' in item,
+            fileId: 'fileId' in item ? (item as any).fileId : undefined,
+            hasFile: 'file' in item,
+          })
+
+          // Check for ProcessingItem (actively being processed)
           if (
-            item.file.processingStatus !== FileProcessingStatus.Failed &&
-            item.file.processingStatus !== FileProcessingStatus.Done
+            item.__typename === 'ProcessingItem' &&
+            'fileId' in item &&
+            item.fileId
           ) {
-            processingIds.push(item.file.id)
+            console.log('[Subscription] Found ProcessingItem:', item.fileId)
+            processingIds.push(item.fileId)
+          }
+          // Also check for items with file field that are processing (fallback/redundant check)
+          else if ('file' in item && item.file) {
+            if (
+              item.file.processingStatus !== FileProcessingStatus.Failed &&
+              item.file.processingStatus !== FileProcessingStatus.Done
+            ) {
+              console.log('[Subscription] Found processing file:', item.file.id)
+              processingIds.push(item.file.id)
+            }
           }
         }
       })
@@ -148,9 +167,17 @@ export function createEditManager(
       })
     }
 
+    console.log('[Subscription] Total processing IDs collected:', processingIds)
+
     if (processingIds.length === 0 || !webSubscriptionsClient) {
+      console.log('[Subscription] Not starting subscription:', {
+        hasIds: processingIds.length > 0,
+        hasClient: !!webSubscriptionsClient,
+      })
       return
     }
+
+    console.log('[Subscription] Starting subscription for files:', processingIds)
 
     // Clean up existing subscription
     if (subscriptionUnsubscribe) {
@@ -169,13 +196,27 @@ export function createEditManager(
       try {
         for await (const result of subscription) {
           if (result.errors) {
-            console.error('Subscription errors:', result.errors)
+            console.error('[Subscription] Errors:', result.errors)
           }
           const subscriptionData = result.data as
             | FileProcessingUpdatesSubscription
             | undefined
+
+          console.log('[Subscription] Received update:', {
+            hasData: !!subscriptionData,
+            hasFile: !!subscriptionData?.fileProcessingUpdates?.file,
+            file: subscriptionData?.fileProcessingUpdates?.file,
+          })
+
           if (subscriptionData?.fileProcessingUpdates?.file) {
             const updatedFile = subscriptionData.fileProcessingUpdates.file
+
+            console.log('[Subscription] Processing file update:', {
+              id: updatedFile.id,
+              status: updatedFile.processingStatus,
+              progress: updatedFile.processingProgress,
+              notes: updatedFile.processingNotes,
+            })
 
             // Update the post data with the new file information
             post.update((currentPost) => {
@@ -186,6 +227,35 @@ export function createEditManager(
 
               if (newPost.items.nodes) {
                 newPost.items.nodes = newPost.items.nodes.map((node) => {
+                  // Update ProcessingItem fields
+                  if (
+                    node &&
+                    node.__typename === 'ProcessingItem' &&
+                    'fileId' in node &&
+                    node.fileId === updatedFile.id
+                  ) {
+                    console.log('[Subscription] Updating ProcessingItem:', {
+                      fileId: node.fileId,
+                      oldStatus:
+                        'processingStatus' in node
+                          ? node.processingStatus
+                          : undefined,
+                      newStatus: updatedFile.processingStatus,
+                      oldProgress:
+                        'processingProgress' in node
+                          ? node.processingProgress
+                          : undefined,
+                      newProgress: updatedFile.processingProgress,
+                    })
+                    return {
+                      ...node,
+                      processingStatus: updatedFile.processingStatus,
+                      processingProgress: updatedFile.processingProgress,
+                      processingNotes: updatedFile.processingNotes,
+                    }
+                  }
+
+                  // Update file fields (existing logic)
                   if (
                     node &&
                     'file' in node &&
@@ -347,6 +417,19 @@ export function createEditManager(
               return currentData
             })
 
+            // When file processing completes, refetch post to get updated item types
+            // (item.__typename needs to reflect the new file.type after conversions)
+            if (updatedFile.processingStatus === FileProcessingStatus.Done) {
+              const postObject = get(post)
+              if (postObject) {
+                const postResult = await sdk.Post({ id: postObject.id })
+                if (postResult.data?.node) {
+                  const freshPost = postResult.data.node as PostItemType
+                  post.set(freshPost)
+                }
+              }
+            }
+
             // Check if we should stop the subscription
             const updatedPost = get(post)
             const updatedData = get(data)
@@ -354,17 +437,29 @@ export function createEditManager(
             // Calculate remaining processing IDs using the same logic as startProcessingSubscription
             const remainingProcessingIds: string[] = []
 
+            console.log('[Subscription] Checking if should continue...')
+
             // Add file IDs from existing items that are still processing
             if (updatedPost) {
               updatedPost.items.nodes?.forEach((item) => {
-                if (item && 'file' in item && item.file) {
-                  // Monitor files that are not FAILED or DONE
+                if (item) {
+                  // Check for ProcessingItem
                   if (
-                    item.file.processingStatus !==
-                      FileProcessingStatus.Failed &&
-                    item.file.processingStatus !== FileProcessingStatus.Done
+                    item.__typename === 'ProcessingItem' &&
+                    'fileId' in item &&
+                    item.fileId
                   ) {
-                    remainingProcessingIds.push(item.file.id)
+                    remainingProcessingIds.push(item.fileId)
+                  }
+                  // Check for items with file field
+                  else if ('file' in item && item.file) {
+                    if (
+                      item.file.processingStatus !==
+                        FileProcessingStatus.Failed &&
+                      item.file.processingStatus !== FileProcessingStatus.Done
+                    ) {
+                      remainingProcessingIds.push(item.file.id)
+                    }
                   }
                 }
               })
@@ -386,23 +481,30 @@ export function createEditManager(
               })
             }
 
+            console.log('[Subscription] Remaining processing IDs:', remainingProcessingIds)
+
             if (remainingProcessingIds.length === 0) {
+              console.log('[Subscription] No more processing files, stopping subscription')
               // No more processing files, stop subscription
               if (subscriptionUnsubscribe) {
                 subscriptionUnsubscribe()
                 subscriptionUnsubscribe = undefined
               }
               break
+            } else {
+              console.log('[Subscription] Continuing to monitor:', remainingProcessingIds)
             }
           }
         }
       } catch (error) {
-        console.error('Subscription error:', error)
+        console.error('[Subscription] Error:', error)
         // Clean up on error
         if (subscriptionUnsubscribe) {
           subscriptionUnsubscribe()
           subscriptionUnsubscribe = undefined
         }
+      } finally {
+        console.log('[Subscription] processSubscription ended')
       }
     }
     // Start processing subscription in the background
@@ -1366,14 +1468,18 @@ export function createEditManager(
         return false
       }
 
-      // Show success message
-      openDialog?.({
-        heading: 'Conversion Started',
-        children:
-          'The conversion has been queued and will begin shortly. You will see progress updates here.',
-      })
+      // Refetch post data to get updated processing status
+      const postObject = get(post)
+      if (postObject) {
+        const postResult = await sdk.Post({ id: postObject.id })
+        const postError = getOperationResultError(postResult)
+        if (!postError && postResult.data?.node) {
+          const updatedPost = postResult.data.node as PostItemType
+          post.set(updatedPost)
+        }
+      }
 
-      // Restart subscription to monitor the conversion process
+      // Start monitoring processing progress immediately (no dialog)
       startProcessingSubscription()
 
       return true
@@ -1410,14 +1516,7 @@ export function createEditManager(
         return false
       }
 
-      // Show success message
-      openDialog?.({
-        heading: 'Cropping Started',
-        children:
-          'The cropping has been queued and will begin shortly. You will see progress updates here.',
-      })
-
-      // Restart subscription to monitor the cropping process
+      // Start monitoring processing progress immediately (no dialog)
       startProcessingSubscription()
 
       return true
@@ -1454,14 +1553,7 @@ export function createEditManager(
         return false
       }
 
-      // Show success message
-      openDialog?.({
-        heading: 'Trimming Started',
-        children:
-          'The trimming has been queued and will begin shortly. You will see progress updates here.',
-      })
-
-      // Restart subscription to monitor the trimming process
+      // Start monitoring processing progress immediately (no dialog)
       startProcessingSubscription()
 
       return true
@@ -1505,16 +1597,7 @@ export function createEditManager(
         return false
       }
 
-      // Show success message
-      const operations = []
-      if (params.crop) operations.push('Crop')
-      if (params.trim) operations.push('Trim')
-      openDialog?.({
-        heading: 'Processing Started',
-        children: `The ${operations.join(' and ')} ${operations.length > 1 ? 'have' : 'has'} been queued and will begin shortly. You will see progress updates here.`,
-      })
-
-      // Restart subscription to monitor the process
+      // Start monitoring processing progress immediately (no dialog)
       startProcessingSubscription()
 
       return true
@@ -1553,17 +1636,18 @@ export function createEditManager(
         return false
       }
 
-      // Show success message
-      const message = clearAllModifications
-        ? 'Reverting to original file...'
-        : `Removing ${modifications.length} modification(s)...`
+      // Refetch post data to get updated processing status
+      const postObject = get(post)
+      if (postObject) {
+        const postResult = await sdk.Post({ id: postObject.id })
+        const postError = getOperationResultError(postResult)
+        if (!postError && postResult.data?.node) {
+          const updatedPost = postResult.data.node as PostItemType
+          post.set(updatedPost)
+        }
+      }
 
-      openDialog?.({
-        heading: 'Revert Started',
-        children: `${message} You will see progress updates here.`,
-      })
-
-      // Restart subscription to monitor the revert process
+      // Start monitoring processing progress immediately (no dialog)
       startProcessingSubscription()
 
       return true
@@ -1572,6 +1656,53 @@ export function createEditManager(
       openDialog?.({
         heading: 'Revert Error',
         children: 'Failed to revert modifications. Please try again.',
+      })
+      return false
+    } finally {
+      loading.set(false)
+    }
+  }
+
+  const resetAndReprocessFile = async (itemId: string) => {
+    try {
+      loading.set(true)
+      const result = await sdk.resetAndReprocessFile({
+        itemId,
+      })
+
+      const error = getOperationResultError(result)
+      if (error) {
+        console.error(result)
+        openDialog?.({
+          heading: 'Reprocess Error',
+          children: `Failed to reset and reprocess file: ${error}`,
+        })
+        return false
+      }
+
+      // Refetch post data to get updated processing status
+      const postObject = get(post)
+      if (postObject) {
+        const postResult = await sdk.Post({ id: postObject.id })
+        const postError = getOperationResultError(postResult)
+        if (!postError && postResult.data?.node) {
+          const updatedPost = postResult.data.node as PostItemType
+          console.log('[EditManager] Refetched post after reset:', updatedPost.id)
+          post.set(updatedPost)
+        } else {
+          console.error('[EditManager] Failed to refetch post:', postError)
+        }
+      }
+
+      // Start monitoring processing progress immediately (no dialog)
+      startProcessingSubscription()
+
+      return true
+    } catch (err) {
+      console.error(err)
+      openDialog?.({
+        heading: 'Reprocess Error',
+        children: 'Failed to reset and reprocess file. Please try again.',
       })
       return false
     } finally {
@@ -1625,6 +1756,7 @@ export function createEditManager(
     trimItem,
     modifyItem,
     removeModifications,
+    resetAndReprocessFile,
   }
 }
 

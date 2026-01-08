@@ -423,4 +423,15 @@ type Mutation {
     """
     clearAllModifications: Boolean
   ): String!
+
+  """
+  Reset and reprocess a file: removes all modifications, deletes all processed variants,
+  and reprocesses from the original file. Useful for recovering from processing errors.
+  """
+  resetAndReprocessFile(
+    """
+    The item ID containing the file to reset
+    """
+    itemId: ID!
+  ): String!
 }

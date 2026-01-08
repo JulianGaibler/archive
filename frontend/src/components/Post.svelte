@@ -400,6 +400,7 @@
           onTrimItem={editManager.trimItem}
           onModifyItem={editManager.modifyItem}
           onRemoveModifications={editManager.removeModifications}
+          onResetAndReprocessFile={editManager.resetAndReprocessFile}
         />
       {/each}
       {#if $editData !== undefined}

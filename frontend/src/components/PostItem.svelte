@@ -47,6 +47,7 @@
       modifications: string[],
       clearAllModifications: boolean,
     ) => Promise<boolean>
+    onResetAndReprocessFile?: (itemId: string) => Promise<boolean>
   }
 
   let {
@@ -63,6 +64,7 @@
     onTrimItem,
     onModifyItem,
     onRemoveModifications,
+    onResetAndReprocessFile,
   }: Props = $props()
 
   function forceUpdateEditData() {
@@ -171,143 +173,193 @@
     }
   }
 
+  async function handleResetAndReprocess() {
+    if (item.type === 'existing' && onResetAndReprocessFile) {
+      await onResetAndReprocessFile(item.id)
+    }
+  }
+
+  // Helper function to get current file type from __typename
+  function getCurrentType(typename: string | undefined): FileType | null {
+    switch (typename) {
+      case 'VideoItem':
+        return FileType.Video
+      case 'GifItem':
+        return FileType.Gif
+      case 'ImageItem':
+        return FileType.Image
+      case 'AudioItem':
+        return FileType.Audio
+      default:
+        return null
+    }
+  }
+
   // Helper function to determine what conversions are available
   function getAvailableConversions() {
+    const conversions = []
+
+    // Check for any item with failed processing - show reprocess option
+    if (item.type === 'existing' && onResetAndReprocessFile) {
+      // Check ProcessingItem with failed status
+      if (
+        item.data.__typename === 'ProcessingItem' &&
+        item.data.processingStatus === FileProcessingStatus.Failed
+      ) {
+        conversions.push({
+          label: 'Reprocess from original',
+          onClick: handleResetAndReprocess,
+        })
+        return conversions
+      }
+
+      // Check media items (Video, Audio, Image, Gif) with failed file processing
+      if (
+        'file' in item.data &&
+        item.data.file &&
+        item.data.file.processingStatus === FileProcessingStatus.Failed
+      ) {
+        conversions.push({
+          label: 'Reprocess from original',
+          onClick: handleResetAndReprocess,
+        })
+        return conversions
+      }
+    }
+
     if (item.type !== 'existing' || !('file' in item.data) || !item.data.file) {
       return []
     }
 
-    // Use ORIGINAL file type (not current type) for conversion options
+    // Use ORIGINAL file type for conversion options
     const originalType = item.data.file.originalType
-
     if (!originalType) return []
-
-    const conversions = []
-
-    // Add conversion options based on ORIGINAL file type
-    if (originalType === FileType.Video) {
-      conversions.push(
-        { label: 'Convert to GIF', onClick: handleConvertToGif },
-        { label: 'Convert to Audio', onClick: handleConvertToAudio },
-      )
-    } else if (originalType === FileType.Gif) {
-      conversions.push({
-        label: 'Convert to Video',
-        onClick: handleConvertToVideo,
-      })
-    }
 
     // Check if file is currently processing
     const isProcessing =
       item.data.file.processingStatus === FileProcessingStatus.Queued ||
       item.data.file.processingStatus === FileProcessingStatus.Processing
 
-    // Crop/trim options based on CURRENT type (after conversion)
-    const currentType =
-      item.data.__typename === 'VideoItem'
-        ? FileType.Video
-        : item.data.__typename === 'GifItem'
-          ? FileType.Gif
-          : item.data.__typename === 'ImageItem'
-            ? FileType.Image
-            : item.data.__typename === 'AudioItem'
-              ? FileType.Audio
-              : null
+    // Get current type (after any conversions)
+    const currentType = getCurrentType(item.data.__typename)
 
-    // Add crop option for video and image types (only if not processing)
+    // Add conversion options based on ORIGINAL file type
+    // Only show if target type is different from current type
+    if (originalType === FileType.Video) {
+      if (currentType !== FileType.Audio) {
+        conversions.push({
+          label: 'Convert to Audio',
+          onClick: handleConvertToAudio,
+        })
+      }
+      if (currentType !== FileType.Gif) {
+        conversions.push({ label: 'Convert to GIF', onClick: handleConvertToGif })
+      }
+    } else if (originalType === FileType.Gif) {
+      if (currentType !== FileType.Video) {
+        conversions.push({
+          label: 'Convert to Video',
+          onClick: handleConvertToVideo,
+        })
+      }
+    }
+
+    // Add single "Edit..." option for crop/trim (only if not processing)
     if (
       !isProcessing &&
       currentType &&
       (currentType === FileType.Video ||
+        currentType === FileType.Audio ||
         currentType === FileType.Image ||
         currentType === FileType.Gif)
     ) {
-      conversions.push({ label: 'Crop...', onClick: handleTransformItem })
-    }
-
-    // Add trim option for video and audio types (only if not processing)
-    if (
-      !isProcessing &&
-      currentType &&
-      (currentType === FileType.Video || currentType === FileType.Audio)
-    ) {
-      conversions.push({ label: 'Trim...', onClick: handleTransformItem })
+      conversions.push({ label: 'Edit...', onClick: handleTransformItem })
     }
 
     // Add modification reversal options if modifications exist
     const modifications = item.data.file.modifications
     if (modifications && onRemoveModifications) {
-      const hasModifications =
-        modifications.crop || modifications.trim || modifications.fileType
+      const hasCrop = !!(modifications as any).crop
+      const hasTrim = !!(modifications as any).trim
+      const hasFileType = !!modifications.fileType
+      const modCount = (hasCrop ? 1 : 0) + (hasTrim ? 1 : 0) + (hasFileType ? 1 : 0)
 
-      if (hasModifications) {
+      if (modCount > 0) {
         conversions.push(MENU_SEPARATOR)
 
         // Individual reversal options
-        if (modifications.crop) {
+        if (hasCrop) {
           conversions.push({
-            label: 'Remove crop',
+            label: 'Undo crop',
             onClick: () => handleRemoveModification('crop'),
           })
         }
-        if (modifications.trim) {
+        if (hasTrim) {
           conversions.push({
-            label: 'Remove trim',
+            label: 'Undo trim',
             onClick: () => handleRemoveModification('trim'),
           })
         }
-        if (modifications.fileType) {
+        if (hasFileType) {
           conversions.push({
-            label: 'Remove conversion',
+            label: 'Restore original format',
             onClick: () => handleRemoveModification('fileType'),
           })
         }
 
-        // Revert all option
-        conversions.push({
-          label: 'Revert to original',
-          onClick: handleRevertToOriginal,
-        })
+        // Only show "Undo all changes" if multiple modifications exist
+        if (modCount > 1) {
+          conversions.push({
+            label: 'Undo all changes',
+            onClick: handleRevertToOriginal,
+          })
+        }
       }
     }
 
     return conversions
   }
 
-  const itemActions = $derived([
-    ...(onMoveItem &&
-    item.type === 'existing' &&
-    !(
-      'file' in item.data &&
-      item.data.file &&
-      (item.data.file.processingStatus === FileProcessingStatus.Queued ||
-        item.data.file.processingStatus === FileProcessingStatus.Processing)
+  // Helper to check if operations should be shown (not during processing)
+  function canShowOperations() {
+    return (
+      item.type === 'existing' &&
+      !(
+        'file' in item.data &&
+        item.data.file &&
+        (item.data.file.processingStatus === FileProcessingStatus.Queued ||
+          item.data.file.processingStatus === FileProcessingStatus.Processing)
+      )
     )
-      ? [{ label: 'Move to another post', onClick: () => onMoveItem(item.id) }]
-      : []),
-    ...(onDuplicateItem &&
-    item.type === 'existing' &&
-    !(
-      'file' in item.data &&
-      item.data.file &&
-      (item.data.file.processingStatus === FileProcessingStatus.Queued ||
-        item.data.file.processingStatus === FileProcessingStatus.Processing)
-    )
-      ? [{ label: 'Duplicate item', onClick: () => onDuplicateItem(item.id) }]
-      : []),
-    ...(onDeleteItem &&
-    item.type === 'existing' &&
-    !(
-      'file' in item.data &&
-      item.data.file &&
-      (item.data.file.processingStatus === FileProcessingStatus.Queued ||
-        item.data.file.processingStatus === FileProcessingStatus.Processing)
-    )
-      ? [{ label: 'Delete item', onClick: () => onDeleteItem(item.id) }]
-      : []),
-    // Add conversion options
-    ...getAvailableConversions(),
-  ])
+  }
+
+  const itemActions = $derived.by(() => {
+    const actions = []
+    const hasOperations = canShowOperations()
+
+    // Add operations (move, duplicate, delete)
+    if (onMoveItem && hasOperations) {
+      actions.push({ label: 'Move to another post', onClick: () => onMoveItem(item.id) })
+    }
+    if (onDuplicateItem && hasOperations) {
+      actions.push({ label: 'Duplicate item', onClick: () => onDuplicateItem(item.id) })
+    }
+    if (onDeleteItem && hasOperations) {
+      actions.push({ label: 'Delete item', onClick: () => onDeleteItem(item.id) })
+    }
+
+    const conversions = getAvailableConversions()
+
+    // Add separator between operations and transformations if both exist
+    if (actions.length > 0 && conversions.length > 0) {
+      actions.push(MENU_SEPARATOR)
+    }
+
+    // Add transformation options
+    actions.push(...conversions)
+
+    return actions
+  })
 
   function handleRemoveUploadItem() {
     if (item.type === 'upload') {
@@ -324,7 +376,18 @@
 
 <article>
   {#if item.type === 'existing'}
-    {#if 'file' in item.data && item.data.file && (item.data.file.processingStatus === FileProcessingStatus.Queued || item.data.file.processingStatus === FileProcessingStatus.Processing || item.data.file.processingStatus === FileProcessingStatus.Failed)}
+    {#if item.data.__typename === 'ProcessingItem'}
+      <!-- Item is being processed, show processing status -->
+      <ProcessingMediaStatus
+        file={{
+          id: item.data.fileId,
+          processingStatus: item.data.processingStatus,
+          processingProgress: item.data.processingProgress,
+          processingNotes: item.data.processingNotes,
+        }}
+      />
+    {:else if 'file' in item.data && item.data.file && (item.data.file.processingStatus === FileProcessingStatus.Queued || item.data.file.processingStatus === FileProcessingStatus.Processing || item.data.file.processingStatus === FileProcessingStatus.Failed)}
+      <!-- File exists and is processing (shouldn't happen with ProcessingItem, but keep as fallback) -->
       <ProcessingMediaStatus file={item.data.file} />
     {:else}
       <ItemMedia item={item.data} />

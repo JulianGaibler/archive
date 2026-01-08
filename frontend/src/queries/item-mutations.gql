@@ -26,6 +26,10 @@ mutation removeModifications(
   )
 }
 
+mutation resetAndReprocessFile($itemId: ID!) {
+  resetAndReprocessFile(itemId: $itemId)
+}
+
 mutation duplicateItem($itemId: ID!) {
   duplicateItem(itemId: $itemId)
 }

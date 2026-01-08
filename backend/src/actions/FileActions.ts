@@ -1,4 +1,4 @@
-import { eq, and, lt, inArray, isNotNull, count, asc, desc } from 'drizzle-orm'
+import { eq, and, lt, inArray, isNotNull, count, asc, desc, sql } from 'drizzle-orm'
 import Context from '@src/Context.js'
 import FileModel, {
   FileVariantInternal,
@@ -591,6 +591,75 @@ const FileActions = {
     ctx.dataLoaders.file.getById.clear(fileId)
   },
 
+  /**
+   * Reset and reprocess a file: removes all modifications, deletes all processed variants
+   * except ORIGINAL, and queues for reprocessing from the original file.
+   * Used to recover from processing errors.
+   */
+  async _mResetAndReprocessFile(
+    ctx: Context,
+    fileId: string,
+  ): Promise<void> {
+    const file = await this._qFileInternal(ctx, fileId)
+    if (!file) {
+      throw new NotFoundError('File not found')
+    }
+
+    // Step 1: Clear all modifications in database
+    await ctx.db
+      .update(fileTable)
+      .set({
+        modifications: {},
+        processingMeta: null,
+        type: file.originalType, // Revert to original type
+        processingStatus: 'QUEUED',
+        processingProgress: null,
+        processingNotes: null,
+      })
+      .where(eq(fileTable.id, fileId))
+
+    // Step 2: Delete all processed variants (keep ORIGINAL)
+    const variantsToDelete = [
+      'COMPRESSED',
+      'COMPRESSED_GIF',
+      'THUMBNAIL',
+      'THUMBNAIL_POSTER',
+      'UNMODIFIED_COMPRESSED',
+      'UNMODIFIED_THUMBNAIL_POSTER',
+    ]
+
+    for (const variant of variantsToDelete) {
+      try {
+        await Context.fileStorage.deleteVariant(ctx, fileId, variant)
+      } catch (err) {
+        // Ignore errors if variant doesn't exist
+        console.log(`[FileActions] Variant ${variant} not found for file ${fileId}, skipping`)
+      }
+    }
+
+    // Step 3: Clear dataloader cache
+    ctx.dataLoaders.file.getById.clear(fileId)
+    ctx.dataLoaders.file.getVariantsByFileId.clear(fileId)
+
+    // Step 4: Queue for reprocessing from ORIGINAL
+    await Context.fileStorage.queueFileForReprocessing(ctx, fileId)
+
+    // Step 5: Trigger processing
+    Context.fileStorage.checkQueue()
+
+    // Step 6: Publish file update
+    if (Context.pubSub) {
+      const updatedFile = await this._qFileInternal(ctx, fileId)
+      if (updatedFile) {
+        Context.pubSub.publish(topics.FILE_PROCESSING_UPDATES, {
+          id: updatedFile.id,
+          kind: 'CHANGED',
+          file: FileModel.makeExternal(updatedFile),
+        })
+      }
+    }
+  },
+
   /** Remove expiry from files when they are attached to posts */
   async mRemoveFileExpiry(ctx: Context, fileIds: string[]): Promise<void> {
     if (fileIds.length === 0) return
@@ -798,7 +867,19 @@ const FileActions = {
       sizeBytes: 0, // Will be updated when files are actually created
     }))
 
-    await ctx.db.insert(fileVariantTable).values(insertData)
+    // Use UPSERT to handle existing variants gracefully (fixes race condition for crop/trim)
+    await ctx.db
+      .insert(fileVariantTable)
+      .values(insertData)
+      .onConflictDoUpdate({
+        target: [fileVariantTable.file, fileVariantTable.variant],
+        set: {
+          mimeType: sql`excluded.mime_type`,
+          extension: sql`excluded.extension`,
+          sizeBytes: sql`excluded.size_bytes`,
+          meta: sql`excluded.meta`,
+        },
+      })
   },
 
   /** Update file variant size (internal) */

@@ -1062,7 +1062,7 @@ export default class FileStorage {
    * @param {string} variantName The variant to delete
    * @returns {Promise<void>}
    */
-  private async deleteVariant(
+  async deleteVariant(
     ctx: Context,
     fileId: string,
     variantName: string,

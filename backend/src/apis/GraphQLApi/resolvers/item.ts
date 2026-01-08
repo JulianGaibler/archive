@@ -6,10 +6,12 @@ import {
   ItemResolvers,
   ProcessingItemResolvers,
   VideoItemResolvers,
+  FileProcessingStatus,
 } from '../generated-types.js'
 import PostActions from '@src/actions/PostActions.js'
 import Context from '@src/Context.js'
 import FileActions from '@src/actions/FileActions.js'
+import HashId, { HashIdTypes } from '@src/models/HashId.js'
 
 export const itemResolvers: ItemResolvers = {
   creator: async (parent, _args, ctx) =>
@@ -47,6 +49,40 @@ function createConcreteItemResolvers<
 
 export const processingItemResolvers: ProcessingItemResolvers = {
   ...createConcreteItemResolvers(),
+
+  fileId: (parent: unknown) => {
+    const actualParent = parent as ActualParent
+    if (!actualParent.fileId) {
+      throw new Error('Processing item missing file ID')
+    }
+    // fileId is a UUID string, return it directly (no hash encoding needed)
+    return actualParent.fileId
+  },
+
+  processingStatus: async (parent: unknown, _args: unknown, ctx: Context) => {
+    const actualParent = parent as ActualParent
+    if (!actualParent.fileId) return FileProcessingStatus.Failed
+    const file = await FileActions._qFileInternal(ctx, actualParent.fileId)
+    return file?.processingStatus || FileProcessingStatus.Failed
+  },
+
+  processingProgress: async (
+    parent: unknown,
+    _args: unknown,
+    ctx: Context,
+  ) => {
+    const actualParent = parent as ActualParent
+    if (!actualParent.fileId) return null
+    const file = await FileActions._qFileInternal(ctx, actualParent.fileId)
+    return file?.processingProgress ?? null
+  },
+
+  processingNotes: async (parent: unknown, _args: unknown, ctx: Context) => {
+    const actualParent = parent as ActualParent
+    if (!actualParent.fileId) return null
+    const file = await FileActions._qFileInternal(ctx, actualParent.fileId)
+    return file?.processingNotes ?? null
+  },
 }
 
 export const videoItemResolvers: VideoItemResolvers = {
