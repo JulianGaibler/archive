@@ -11,6 +11,7 @@
     "migrate": "./scripts/set-db-url.sh ts-node node_modules/.bin/node-pg-migrate --tsconfig tsconfig.json",
     "migrate-files": "dotenv -e ../.env.dev -- tsx scripts/migrate-files.ts",
     "migrate-files:validate": "dotenv -e ../.env.dev -- tsx scripts/migrate-files.ts --validate-only",
+    "reconcile-files": "dotenv -e ../.env.dev -- tsx scripts/reconcile-files.ts",
     "drizzle": "dotenv -e ../.env.dev -- tsx ./node_modules/.bin/drizzle-kit",
     "generate": "graphql-codegen --config codegen.ts"
   },

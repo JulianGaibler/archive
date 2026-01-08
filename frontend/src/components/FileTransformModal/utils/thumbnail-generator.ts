@@ -3,8 +3,8 @@
 import type { ThumbnailOptions } from './types'
 
 /**
- * Generate thumbnails from video element
- * Extracts frames at regular intervals and converts to ImageBitmaps
+ * Generate thumbnails from video element Extracts frames at regular intervals
+ * and converts to ImageBitmaps
  */
 export async function generateThumbnails(
   videoElement: HTMLVideoElement,
@@ -80,9 +80,7 @@ export async function generateThumbnails(
   return thumbnails
 }
 
-/**
- * Cleanup thumbnails to release memory
- */
+/** Cleanup thumbnails to release memory */
 export function cleanupThumbnails(bitmaps: ImageBitmap[]): void {
   bitmaps.forEach((bitmap) => {
     bitmap.close()
@@ -90,8 +88,8 @@ export function cleanupThumbnails(bitmaps: ImageBitmap[]): void {
 }
 
 /**
- * Create fade-in animator for thumbnail opacity
- * Manages fade-in transitions for multiple thumbnails
+ * Create fade-in animator for thumbnail opacity Manages fade-in transitions for
+ * multiple thumbnails
  */
 export function createThumbnailAnimator(duration: number = 200): {
   getOpacity: (index: number) => number

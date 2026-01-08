@@ -1,9 +1,17 @@
 <script lang="ts">
   import type { CropInput } from '@src/generated/graphql'
-  import { setupCanvas, createRenderer, clearCanvas } from './utils/canvas-renderer'
+  import {
+    setupCanvas,
+    createRenderer,
+    clearCanvas,
+  } from './utils/canvas-renderer'
   import { clamp } from './utils/canvas-coordinates'
   import { drawOverlay, drawHandle, getCSSColor } from './utils/canvas-drawing'
-  import { createDragHandler, getCornerHit, isPointInRect } from './utils/drag-handler'
+  import {
+    createDragHandler,
+    getCornerHit,
+    isPointInRect,
+  } from './utils/drag-handler'
   import { drawPixelPreview } from './utils/pixel-preview'
   import type { Rect, Point, DragMode } from './utils/types'
 
@@ -34,10 +42,10 @@
   const MIN_CROP_SIZE = 50
 
   // Pixel preview constants
-  const PREVIEW_SIZE = 128           // Display size of preview box
-  const PREVIEW_SOURCE_SIZE = 10     // Source pixels to sample (10×10)
-  const PREVIEW_PADDING = 16         // Padding from video edges (inside VIDEO_MARGIN)
-  const PREVIEW_CURSOR_THRESHOLD = 150  // Distance to trigger position swap
+  const PREVIEW_SIZE = 128 // Display size of preview box
+  const PREVIEW_SOURCE_SIZE = 10 // Source pixels to sample (10×10)
+  const PREVIEW_PADDING = 16 // Padding from video edges (inside VIDEO_MARGIN)
+  const PREVIEW_CURSOR_THRESHOLD = 150 // Distance to trigger position swap
 
   // Internal state
   let canvas: HTMLCanvasElement | undefined = $state(undefined)
@@ -47,7 +55,7 @@
   let dragStartArea: Rect | null = null
   let dragStartPos: Point = { x: 0, y: 0 }
   let showPixelPreview = $state(false)
-  let previewSourcePos = $state<Point>({ x: 0, y: 0 })  // Position in video coordinates
+  let previewSourcePos = $state<Point>({ x: 0, y: 0 }) // Position in video coordinates
   let previewDisplayPos = $state<'bottom-left' | 'bottom-right'>('bottom-left')
 
   // Initialize crop area from initial crop or defaults
@@ -171,17 +179,45 @@
     // Draw semi-transparent overlay outside crop area (4 rectangles)
     const overlays = [
       // Top
-      { x: offsetX, y: offsetY, width: displayWidth, height: adjustedCrop.y - offsetY },
+      {
+        x: offsetX,
+        y: offsetY,
+        width: displayWidth,
+        height: adjustedCrop.y - offsetY,
+      },
       // Bottom
-      { x: offsetX, y: adjustedCrop.y + adjustedCrop.height, width: displayWidth, height: displayHeight - (adjustedCrop.y - offsetY + adjustedCrop.height) },
+      {
+        x: offsetX,
+        y: adjustedCrop.y + adjustedCrop.height,
+        width: displayWidth,
+        height:
+          displayHeight - (adjustedCrop.y - offsetY + adjustedCrop.height),
+      },
       // Left
-      { x: offsetX, y: adjustedCrop.y, width: adjustedCrop.x - offsetX, height: adjustedCrop.height },
+      {
+        x: offsetX,
+        y: adjustedCrop.y,
+        width: adjustedCrop.x - offsetX,
+        height: adjustedCrop.height,
+      },
       // Right
-      { x: adjustedCrop.x + adjustedCrop.width, y: adjustedCrop.y, width: displayWidth - (adjustedCrop.x - offsetX + adjustedCrop.width), height: adjustedCrop.height },
+      {
+        x: adjustedCrop.x + adjustedCrop.width,
+        y: adjustedCrop.y,
+        width: displayWidth - (adjustedCrop.x - offsetX + adjustedCrop.width),
+        height: adjustedCrop.height,
+      },
     ]
 
-    overlays.forEach(overlay => {
-      drawOverlay(ctx!, overlay.x, overlay.y, overlay.width, overlay.height, 0.5)
+    overlays.forEach((overlay) => {
+      drawOverlay(
+        ctx!,
+        overlay.x,
+        overlay.y,
+        overlay.width,
+        overlay.height,
+        0.5,
+      )
     })
 
     // Draw crop border
@@ -200,20 +236,25 @@
       { x: adjustedCrop.x, y: adjustedCrop.y }, // Top-left
       { x: adjustedCrop.x + adjustedCrop.width, y: adjustedCrop.y }, // Top-right
       { x: adjustedCrop.x, y: adjustedCrop.y + adjustedCrop.height }, // Bottom-left
-      { x: adjustedCrop.x + adjustedCrop.width, y: adjustedCrop.y + adjustedCrop.height }, // Bottom-right
+      {
+        x: adjustedCrop.x + adjustedCrop.width,
+        y: adjustedCrop.y + adjustedCrop.height,
+      }, // Bottom-right
     ]
 
-    corners.forEach(corner => {
+    corners.forEach((corner) => {
       drawHandle(ctx!, corner.x, corner.y, HANDLE_SIZE, handleColor)
     })
 
     // Draw pixel preview if dragging
     if (showPixelPreview) {
-      const source = (mediaType === 'video' ? videoElement : img)
+      const source = mediaType === 'video' ? videoElement : img
       if (!source) return
 
-      const sourceWidth = mediaType === 'video' ? videoElement!.videoWidth : img!.naturalWidth
-      const sourceHeight = mediaType === 'video' ? videoElement!.videoHeight : img!.naturalHeight
+      const sourceWidth =
+        mediaType === 'video' ? videoElement!.videoWidth : img!.naturalWidth
+      const sourceHeight =
+        mediaType === 'video' ? videoElement!.videoHeight : img!.naturalHeight
 
       drawPixelPreview(
         ctx!,
@@ -233,7 +274,7 @@
           displayHeight,
           sourceWidth,
           sourceHeight,
-        }
+        },
       )
     }
   }
@@ -290,16 +331,12 @@
         if (dragMode === 'move') {
           cropArea = {
             ...cropArea,
-            x: Math.floor(clamp(
-              dragStartArea.x + dx,
-              0,
-              displayWidth - cropArea.width,
-            )),
-            y: Math.floor(clamp(
-              dragStartArea.y + dy,
-              0,
-              displayHeight - cropArea.height,
-            )),
+            x: Math.floor(
+              clamp(dragStartArea.x + dx, 0, displayWidth - cropArea.width),
+            ),
+            y: Math.floor(
+              clamp(dragStartArea.y + dy, 0, displayHeight - cropArea.height),
+            ),
           }
         } else if (dragMode?.startsWith('resize-')) {
           // Calculate the fixed (opposite) corner coordinates
@@ -353,7 +390,7 @@
             x: Math.floor(newX),
             y: Math.floor(newY),
             width: Math.floor(newWidth),
-            height: Math.floor(newHeight)
+            height: Math.floor(newHeight),
           }
         }
 
@@ -366,12 +403,18 @@
             case 'resize-nw':
             case 'resize-sw':
               edgeX = cropArea.x
-              edgeY = dragMode === 'resize-nw' ? cropArea.y : cropArea.y + cropArea.height
+              edgeY =
+                dragMode === 'resize-nw'
+                  ? cropArea.y
+                  : cropArea.y + cropArea.height
               break
             case 'resize-ne':
             case 'resize-se':
               edgeX = cropArea.x + cropArea.width
-              edgeY = dragMode === 'resize-ne' ? cropArea.y : cropArea.y + cropArea.height
+              edgeY =
+                dragMode === 'resize-ne'
+                  ? cropArea.y
+                  : cropArea.y + cropArea.height
               break
             case 'move':
               // For move, use the center of the crop area
@@ -385,18 +428,20 @@
           // Determine preview position based on cursor proximity
           // Check if cursor is near bottom-left corner
           const canvasHeight = displayHeight + VIDEO_MARGIN * 2
-          const cursorX = x  // Raw canvas coordinates
+          const cursorX = x // Raw canvas coordinates
           const cursorY = y
           const bottomLeftX = VIDEO_MARGIN + PREVIEW_PADDING + PREVIEW_SIZE / 2
-          const bottomLeftY = canvasHeight - VIDEO_MARGIN - PREVIEW_PADDING - PREVIEW_SIZE / 2
+          const bottomLeftY =
+            canvasHeight - VIDEO_MARGIN - PREVIEW_PADDING - PREVIEW_SIZE / 2
           const distanceToBottomLeft = Math.hypot(
             cursorX - bottomLeftX,
-            cursorY - bottomLeftY
+            cursorY - bottomLeftY,
           )
 
-          previewDisplayPos = distanceToBottomLeft < PREVIEW_CURSOR_THRESHOLD
-            ? 'bottom-right'
-            : 'bottom-left'
+          previewDisplayPos =
+            distanceToBottomLeft < PREVIEW_CURSOR_THRESHOLD
+              ? 'bottom-right'
+              : 'bottom-left'
         }
 
         renderer?.render()
@@ -430,10 +475,9 @@
   <canvas
     bind:this={canvas}
     class="crop-overlay"
-    {...(dragHandler?.mouseHandlers || {})}
-    {...(dragHandler?.touchHandlers || {})}
-    style="width: {displayWidth +
-      VIDEO_MARGIN * 2}px; height: {displayHeight +
+    {...dragHandler?.mouseHandlers || {}}
+    {...dragHandler?.touchHandlers || {}}
+    style="width: {displayWidth + VIDEO_MARGIN * 2}px; height: {displayHeight +
       VIDEO_MARGIN * 2}px; cursor: {cursor}"
   ></canvas>
 </div>

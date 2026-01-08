@@ -369,10 +369,14 @@ export default class FileProcessor {
         try {
           // Use audio normalization with progress tracking
           await FFmpegWrapper.normalizeAudio(inputPath, tempOutputPath, {
-            inputOptions:
-              trimOptions
-                ? ['-ss', trimOptions.start.toString(), '-t', trimOptions.duration.toString()]
-                : undefined,
+            inputOptions: trimOptions
+              ? [
+                  '-ss',
+                  trimOptions.start.toString(),
+                  '-t',
+                  trimOptions.duration.toString(),
+                ]
+              : undefined,
             videoFilters,
             videoSize: size,
             videoOptions,
@@ -536,7 +540,10 @@ export default class FileProcessor {
         )
       }
 
-      const compressedScreenshotPath = fileUtils.resolvePath(tmpDir2.name, tmpFilename2)
+      const compressedScreenshotPath = fileUtils.resolvePath(
+        tmpDir2.name,
+        tmpFilename2,
+      )
 
       // Generate thumbnails from the compressed video screenshot
       const videoOutputHeight =

@@ -102,14 +102,15 @@ export default class FileStorage {
   }
 
   /**
-   * Queues an existing file for reprocessing by copying its ORIGINAL variant
-   * to the queue. This is used when modifying a file in-place (same file ID).
+   * Queues an existing file for reprocessing by copying its ORIGINAL variant to
+   * the queue. This is used when modifying a file in-place (same file ID).
    *
    * @param ctx - The request context
    * @param fileId - The ID of the file to reprocess
    * @returns The file ID
    * @throws {InputError} If the file is not found
-   * @throws {RequestError} If the ORIGINAL variant is not found or doesn't exist on disk
+   * @throws {RequestError} If the ORIGINAL variant is not found or doesn't
+   *   exist on disk
    */
   async queueFileForReprocessing(
     ctx: Context,
@@ -139,7 +140,7 @@ export default class FileStorage {
     }
 
     // Get modifications from file.modifications (not processingMeta)
-    const modifications = file.modifications as ModificationActionData || {}
+    const modifications = (file.modifications as ModificationActionData) || {}
 
     // Validate crop parameters if present
     if (modifications.crop) {
@@ -164,21 +165,27 @@ export default class FileStorage {
 
       const metadata = await FFmpegWrapper.ffprobe(sourcePath)
       if (!metadata) {
-        throw new InputError('Failed to probe media file for cropping validation')
+        throw new InputError(
+          'Failed to probe media file for cropping validation',
+        )
       }
 
       const stream = metadata.streams.find(
         (s) => s.codec_type === 'video' && s.width && s.height,
       )
       if (!stream) {
-        throw new InputError('Could not determine media dimensions for cropping')
+        throw new InputError(
+          'Could not determine media dimensions for cropping',
+        )
       }
 
       const width = stream.width
       const height = stream.height
 
       if (typeof width !== 'number' || typeof height !== 'number') {
-        throw new InputError('Invalid media dimensions: width and height must be numbers')
+        throw new InputError(
+          'Invalid media dimensions: width and height must be numbers',
+        )
       }
 
       // Calculate resulting dimensions after cropping
@@ -276,7 +283,9 @@ export default class FileStorage {
       try {
         // If this is the first modification, rename existing variants to UNMODIFIED_*
         if (isFirstModification) {
-          console.log(`[FileStorage] First modification - renaming variants for file ${fileId}`)
+          console.log(
+            `[FileStorage] First modification - renaming variants for file ${fileId}`,
+          )
           await this.renameVariant(
             ctx,
             fileId,
@@ -305,14 +314,18 @@ export default class FileStorage {
         // CRITICAL FIX: Delete variants if hasUnmodified is true (meaning we've processed before)
         // This handles retries and cases where modifications were cleared but UNMODIFIED variants exist
         if (hasUnmodified) {
-          console.log(`[FileStorage] hasUnmodified=true, deleting old variants for file ${fileId}`)
+          console.log(
+            `[FileStorage] hasUnmodified=true, deleting old variants for file ${fileId}`,
+          )
           await this.deleteVariant(ctx, fileId, 'COMPRESSED')
           await this.deleteVariant(ctx, fileId, 'COMPRESSED_GIF')
           await this.deleteVariant(ctx, fileId, 'THUMBNAIL')
           await this.deleteVariant(ctx, fileId, 'THUMBNAIL_POSTER')
           console.log(`[FileStorage] Deleted old variants for file ${fileId}`)
         } else {
-          console.log(`[FileStorage] hasUnmodified=false, skipping variant deletion (initial processing) for file ${fileId}`)
+          console.log(
+            `[FileStorage] hasUnmodified=false, skipping variant deletion (initial processing) for file ${fileId}`,
+          )
         }
 
         // Create temporary directory for processing
@@ -328,7 +341,13 @@ export default class FileStorage {
             updateCallback,
             file,
           )
-          await this.moveProcessedFiles(result, file, fileId, updateCallback, ctx)
+          await this.moveProcessedFiles(
+            result,
+            file,
+            fileId,
+            updateCallback,
+            ctx,
+          )
 
           // SUCCESS - processing complete
           // Clean up queue file
@@ -356,7 +375,9 @@ export default class FileStorage {
                   'THUMBNAIL_POSTER',
                 )
               }
-              console.log(`Successfully rolled back variant renames for file ${fileId}`)
+              console.log(
+                `Successfully rolled back variant renames for file ${fileId}`,
+              )
             } catch (rollbackError) {
               console.error(
                 `Failed to rollback variant renames for file ${fileId}:`,
@@ -398,7 +419,9 @@ export default class FileStorage {
                 'THUMBNAIL_POSTER',
               )
             }
-            console.log(`Successfully rolled back variant renames for file ${fileId}`)
+            console.log(
+              `Successfully rolled back variant renames for file ${fileId}`,
+            )
           } catch (rollbackError) {
             console.error(
               `Failed to rollback variant renames for file ${fileId}:`,
@@ -410,7 +433,9 @@ export default class FileStorage {
         await updateCallback({
           processingStatus: 'FAILED',
           processingNotes:
-            setupError instanceof Error ? setupError.message : String(setupError),
+            setupError instanceof Error
+              ? setupError.message
+              : String(setupError),
         })
 
         throw setupError
@@ -543,6 +568,30 @@ export default class FileStorage {
     }
   }
 
+  /**
+   * Moves processed file variants from temp directory to permanent storage and
+   * registers them in the database atomically.
+   *
+   * PRECONDITIONS:
+   *
+   * - All variant files must exist in temp directory (result.createdFiles)
+   * - File record must exist in DB
+   * - File directory in permanent storage must be created
+   *
+   * SIDE EFFECTS:
+   *
+   * - Moves files from temp to permanent storage
+   * - Creates/updates file_variant DB records (UPSERT)
+   * - Updates variant file sizes in DB
+   * - Clears dataloader cache for this file
+   * - Updates file processing status to DONE
+   *
+   * ERROR HANDLING:
+   *
+   * - On file move failure: Throws before DB insert (no cleanup needed)
+   * - On DB failure: Rolls back all file moves to maintain atomicity
+   * - Leaves DB and disk in consistent state on any error
+   */
   private async moveProcessedFiles(
     {
       result,
@@ -556,10 +605,8 @@ export default class FileStorage {
     _file: FileInternal,
     fileId: string,
     updateCallback: FileUpdateCallback,
-    ctx: Context,  // CRITICAL FIX: Accept context as parameter
+    ctx: Context, // Accept context as parameter for dataloader cache management
   ): Promise<void> {
-    // Use the provided context instead of creating a new one
-    // This ensures dataloader cache is shared and can be properly managed
     const movePromises: Promise<void>[] = []
 
     // Ensure the file directory exists in the new structure
@@ -572,8 +619,11 @@ export default class FileStorage {
     // Move processed files to their final destinations using new structure
     // Only create ORIGINAL if this is initial processing (not reprocessing)
     // During reprocessing, we keep the existing ORIGINAL variant
-    const existingVariants = await FileActions._qFileVariantsInternal(ctx, fileId)
-    const hasOriginal = existingVariants.some(v => v.variant === 'ORIGINAL')
+    const existingVariants = await FileActions._qFileVariantsInternal(
+      ctx,
+      fileId,
+    )
+    const hasOriginal = existingVariants.some((v) => v.variant === 'ORIGINAL')
 
     if (result.createdFiles.original && !hasOriginal) {
       const destPath = this.pathManager.getVariantPath(fileId, 'ORIGINAL', ext)
@@ -623,6 +673,7 @@ export default class FileStorage {
       })
     }
 
+    // Step 1: Move all files to permanent storage
     await Promise.all(movePromises)
 
     // Create file variants in database with metadata
@@ -718,11 +769,47 @@ export default class FileStorage {
       })
     }
 
-    // Insert variants into database
-    console.log(`[FileStorage] Inserting ${variants.length} variants for file ${fileId}:`,
-      variants.map(v => `${v.variant}(${v.extension})`).join(', '))
-    await FileActions._mCreateFileVariants(ctx, variants)
-    console.log(`[FileStorage] Successfully inserted variants for file ${fileId}`)
+    // Step 2: VERIFY all files exist before DB insert (atomicity check)
+    // This catches any edge cases where file move silently failed
+    console.log(
+      `[FileStorage] Verifying ${variants.length} moved files for ${fileId}`,
+    )
+    for (const variant of variants) {
+      const path = this.pathManager.getVariantPath(
+        fileId,
+        variant.variant,
+        variant.extension,
+      )
+      if (!fs.existsSync(path)) {
+        // Cleanup: Delete any successfully-moved files
+        console.error(
+          `[FileStorage] File move verification failed for ${variant.variant} at ${path}`,
+        )
+        await this.cleanupPartiallyMovedFiles(fileId, variants)
+        throw new Error(`File move verification failed for ${variant.variant}`)
+      }
+    }
+
+    // Step 3: Insert into DB (with cleanup on failure for atomicity)
+    console.log(
+      `[FileStorage] Inserting ${variants.length} variants for file ${fileId}:`,
+      variants.map((v) => `${v.variant}(${v.extension})`).join(', '),
+    )
+    try {
+      // UPSERT to handle race conditions (fixed in earlier commit)
+      await FileActions._mCreateFileVariants(ctx, variants)
+      console.log(
+        `[FileStorage] Successfully inserted variants for file ${fileId}`,
+      )
+    } catch (dbError) {
+      // DB insert failed - cleanup moved files to maintain atomicity
+      console.error(
+        `[FileStorage] DB insert failed for ${fileId}, cleaning up moved files`,
+        dbError,
+      )
+      await this.cleanupPartiallyMovedFiles(fileId, variants)
+      throw dbError
+    }
 
     // Update file sizes for each variant
     await this.updateVariantSizes(fileId, variants)
@@ -733,6 +820,40 @@ export default class FileStorage {
       processingProgress: 100,
       processingNotes: null,
     })
+  }
+
+  /**
+   * Cleans up partially-moved files in case of DB insert failure. This ensures
+   * atomicity: if DB fails, we don't leave orphaned files on disk.
+   *
+   * SIDE EFFECTS:
+   *
+   * - Deletes files from permanent storage
+   *
+   * ERROR HANDLING:
+   *
+   * - Logs but doesn't throw on file deletion failures
+   */
+  private async cleanupPartiallyMovedFiles(
+    fileId: string,
+    variants: Array<{ variant: string; extension: string }>,
+  ): Promise<void> {
+    console.log(`[FileStorage] Cleaning up partially-moved files for ${fileId}`)
+    for (const variant of variants) {
+      const path = this.pathManager.getVariantPath(
+        fileId,
+        variant.variant,
+        variant.extension,
+      )
+      try {
+        if (fs.existsSync(path)) {
+          await fs.promises.unlink(path)
+          console.log(`[FileStorage] Deleted ${path}`)
+        }
+      } catch (err) {
+        console.error(`[FileStorage] Failed to cleanup ${path}:`, err)
+      }
+    }
   }
 
   /**
@@ -831,13 +952,15 @@ export default class FileStorage {
   }
 
   /**
-   * Removes modifications that are incompatible with the target file type.
-   * For example, audio files cannot be cropped, so crop is removed when converting VIDEO→AUDIO.
+   * Removes modifications that are incompatible with the target file type. For
+   * example, audio files cannot be cropped, so crop is removed when converting
+   * VIDEO→AUDIO.
    *
    * @param modifications - The current modifications object
    * @param fromType - The original file type
    * @param toType - The target file type after conversion
-   * @returns The modified modifications object with incompatible modifications removed
+   * @returns The modified modifications object with incompatible modifications
+   *   removed
    */
   private removeIncompatibleModifications(
     modifications: any,
@@ -978,7 +1101,8 @@ export default class FileStorage {
   }
 
   /**
-   * Checks if a file has any modifications (crop, trim, or file type conversion)
+   * Checks if a file has any modifications (crop, trim, or file type
+   * conversion)
    *
    * @param {FileInternal} file The file to check
    * @returns {boolean} True if file has modifications
@@ -1074,17 +1198,23 @@ export default class FileStorage {
       .from(fileVariantTable)
       .where(eq(fileVariantTable.file, fileId))
 
-    console.log(`[FileStorage] deleteVariant(${variantName}) for file ${fileId}: found ${variants.length} variants:`,
-      variants.map(v => v.variant).join(', '))
+    console.log(
+      `[FileStorage] deleteVariant(${variantName}) for file ${fileId}: found ${variants.length} variants:`,
+      variants.map((v) => v.variant).join(', '),
+    )
 
     const variant = variants.find((v) => v.variant === variantName)
 
     if (!variant) {
-      console.log(`[FileStorage] Variant ${variantName} not found for file ${fileId}, skipping deletion`)
+      console.log(
+        `[FileStorage] Variant ${variantName} not found for file ${fileId}, skipping deletion`,
+      )
       return
     }
 
-    console.log(`[FileStorage] Deleting variant ${variantName} for file ${fileId}`)
+    console.log(
+      `[FileStorage] Deleting variant ${variantName} for file ${fileId}`,
+    )
     // Delete from database
     await ctx.db
       .delete(fileVariantTable)
@@ -1094,7 +1224,9 @@ export default class FileStorage {
           eq(fileVariantTable.variant, variantName as typeof variant.variant),
         ),
       )
-    console.log(`[FileStorage] Successfully deleted variant ${variantName} from database for file ${fileId}`)
+    console.log(
+      `[FileStorage] Successfully deleted variant ${variantName} from database for file ${fileId}`,
+    )
 
     // Delete physical file
     const filePath = this.pathManager.getVariantPath(

@@ -22,6 +22,20 @@ export type Scalars = {
   Upload: { input: any; output: any; }
 };
 
+/** Item affected by file processing, with type info to avoid frontend refetch. */
+export type AffectedItem = {
+  __typename?: 'AffectedItem';
+  /** The item ID */
+  id: Scalars['ID']['output'];
+  /** The item position in its post (for sorting) */
+  position?: Maybe<Scalars['Int']['output']>;
+  /**
+   * The item typename (VideoItem, ProcessingItem, AudioItem, etc.)
+   * Allows frontend to update __typename without refetching entire post.
+   */
+  typename: Scalars['String']['output'];
+};
+
 /** An audio file. */
 export type AudioFile = File & {
   __typename?: 'AudioFile';
@@ -140,10 +154,11 @@ export enum FileProcessingStatus {
 export type FileProcessingUpdate = {
   __typename?: 'FileProcessingUpdate';
   /**
-   * List of item IDs that reference this file.
-   * Useful for knowing which items were affected by the file processing.
+   * List of items that reference this file, with type information.
+   * Useful for knowing which items were affected by the file processing
+   * and updating their types in the frontend without refetching.
    */
-  affectedItems?: Maybe<Array<Scalars['ID']['output']>>;
+  affectedItems?: Maybe<Array<AffectedItem>>;
   /** The updated file. */
   file: File;
   /** The ID of the file */
@@ -1142,7 +1157,7 @@ export type FileProcessingUpdatesSubscriptionVariables = Exact<{
 }>;
 
 
-export type FileProcessingUpdatesSubscription = { __typename?: 'Subscription', fileProcessingUpdates: { __typename?: 'FileProcessingUpdate', kind: UpdateKind, file: { __typename?: 'AudioFile', originalPath: string, compressedPath: string, waveform: Array<number>, waveformThumbnail: Array<number>, id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null } | { __typename?: 'GifFile', originalPath: string, compressedPath: string, compressedGifPath: string, thumbnailPath?: string | null, relativeHeight: number, id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null } | { __typename?: 'PhotoFile', originalPath: string, compressedPath: string, thumbnailPath?: string | null, relativeHeight: number, id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null } | { __typename?: 'ProfilePictureFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null } | { __typename?: 'VideoFile', originalPath: string, compressedPath: string, thumbnailPath?: string | null, posterThumbnailPath?: string | null, relativeHeight: number, id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null } } };
+export type FileProcessingUpdatesSubscription = { __typename?: 'Subscription', fileProcessingUpdates: { __typename?: 'FileProcessingUpdate', kind: UpdateKind, file: { __typename?: 'AudioFile', originalPath: string, compressedPath: string, waveform: Array<number>, waveformThumbnail: Array<number>, id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null } | { __typename?: 'GifFile', originalPath: string, compressedPath: string, compressedGifPath: string, thumbnailPath?: string | null, relativeHeight: number, id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null } | { __typename?: 'PhotoFile', originalPath: string, compressedPath: string, thumbnailPath?: string | null, relativeHeight: number, id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null } | { __typename?: 'ProfilePictureFile', id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null } | { __typename?: 'VideoFile', originalPath: string, compressedPath: string, thumbnailPath?: string | null, posterThumbnailPath?: string | null, relativeHeight: number, id: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null }, affectedItems?: Array<{ __typename?: 'AffectedItem', id: string, typename: string, position?: number | null }> | null } };
 
 export type ChangeNameMutationVariables = Exact<{
   newName: Scalars['String']['input'];
@@ -1693,6 +1708,11 @@ export const FileProcessingUpdatesDocument = gql`
         waveform
         waveformThumbnail
       }
+    }
+    affectedItems {
+      id
+      typename
+      position
     }
   }
 }

@@ -246,7 +246,10 @@ const ItemActions = {
 
   /// Mutations
 
-  /** Modifies an existing item by reprocessing its associated file in-place (same file ID). */
+  /**
+   * Modifies an existing item by reprocessing its associated file in-place
+   * (same file ID).
+   */
   async _mModifyItem(
     ctx: Context,
     fields: {
@@ -270,6 +273,59 @@ const ItemActions = {
     // Check if item has a file
     if (!item.fileId) {
       throw new InputError('Item does not have an associated file')
+    }
+
+    // Validate modifications BEFORE queueing (fail fast)
+    if (fields.addModifications) {
+      const file = await FileActions._qFileInternal(ctx, item.fileId)
+
+      // Validate crop operation
+      if (fields.addModifications.crop) {
+        // Check file type supports cropping
+        if (!['VIDEO', 'IMAGE', 'GIF'].includes(file.type)) {
+          throw new InputError(`Cannot crop ${file.type} files`)
+        }
+
+        // Validate crop dimensions are positive
+        const crop = fields.addModifications.crop
+        if (crop.x < 0 || crop.y < 0 || crop.width <= 0 || crop.height <= 0) {
+          throw new InputError('Crop dimensions must be positive')
+        }
+      }
+
+      // Validate trim operation
+      if (fields.addModifications.trim) {
+        // Check file type supports trimming (only video and audio)
+        if (!['VIDEO', 'AUDIO'].includes(file.type)) {
+          throw new InputError(`Cannot trim ${file.type} files`)
+        }
+
+        // Validate trim times are positive and start < end
+        const trim = fields.addModifications.trim
+        if (trim.start < 0 || trim.end <= trim.start) {
+          throw new InputError(
+            'Invalid trim times: start must be before end and both must be positive',
+          )
+        }
+      }
+
+      // Validate file type conversion
+      if (fields.addModifications.fileType) {
+        const targetType = fields.addModifications.fileType
+
+        // Check valid conversion paths
+        if (file.originalType === 'IMAGE' && targetType !== 'IMAGE') {
+          throw new InputError('Images can only be converted to IMAGE format')
+        }
+        if (
+          file.originalType === 'AUDIO' &&
+          !['AUDIO', 'VIDEO'].includes(targetType)
+        ) {
+          throw new InputError(
+            'Audio can only be converted to AUDIO or VIDEO format',
+          )
+        }
+      }
     }
 
     // Modify the file in-place (same file ID)

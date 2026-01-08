@@ -44,7 +44,7 @@ function getQuadrantRect(
   quadrant: Quadrant,
   displayX: number,
   displayY: number,
-  previewSize: number
+  previewSize: number,
 ): { x: number; y: number; width: number; height: number } {
   const half = previewSize / 2
   const centerX = displayX + half
@@ -70,7 +70,7 @@ function drawLine(
   centerY: number,
   displayX: number,
   displayY: number,
-  previewSize: number
+  previewSize: number,
 ): void {
   ctx.beginPath()
 
@@ -97,8 +97,8 @@ function drawLine(
 }
 
 /**
- * Draw pixel preview magnifier when dragging crop corners
- * Shows magnified view of the pixel under the cursor with visual indicators of cropped areas
+ * Draw pixel preview magnifier when dragging crop corners Shows magnified view
+ * of the pixel under the cursor with visual indicators of cropped areas
  */
 export function drawPixelPreview(
   ctx: CanvasRenderingContext2D,
@@ -118,7 +118,7 @@ export function drawPixelPreview(
     displayHeight: number
     sourceWidth: number
     sourceHeight: number
-  }
+  },
 ): void {
   const { previewSize, sourceSize, padding, margin } = config
   const { displayWidth, displayHeight, sourceWidth, sourceHeight } = dimensions
@@ -139,11 +139,11 @@ export function drawPixelPreview(
   const halfSource = sourceSize / 2
   const clampedX = Math.max(
     halfSource,
-    Math.min(displayWidth - halfSource, sourceX)
+    Math.min(displayWidth - halfSource, sourceX),
   )
   const clampedY = Math.max(
     halfSource,
-    Math.min(displayHeight - halfSource, sourceY)
+    Math.min(displayHeight - halfSource, sourceY),
   )
 
   // Calculate source rectangle in ORIGINAL source dimensions
@@ -182,7 +182,7 @@ export function drawPixelPreview(
     displayX,
     displayY,
     previewSize,
-    previewSize
+    previewSize,
   )
 
   // Restore context
@@ -215,7 +215,7 @@ export function drawPixelPreview(
       centerY,
       displayX,
       displayY,
-      previewSize
+      previewSize,
     )
     drawLine(
       ctx,
@@ -224,7 +224,7 @@ export function drawPixelPreview(
       centerY,
       displayX,
       displayY,
-      previewSize
+      previewSize,
     )
   }
 }

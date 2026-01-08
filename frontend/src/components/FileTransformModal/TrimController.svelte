@@ -2,17 +2,31 @@
   import PlaybackControls from '@src/components/PlaybackControls.svelte'
   import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
   import type { TrimInput } from '@src/generated/graphql'
-  import { setupCanvas, createRenderer, clearCanvas, observeResize } from './utils/canvas-renderer'
+  import {
+    setupCanvas,
+    createRenderer,
+    clearCanvas,
+    observeResize,
+  } from './utils/canvas-renderer'
   import { clamp } from './utils/canvas-coordinates'
-  import { drawOverlay, drawMarker, drawWaveform, getCSSColor } from './utils/canvas-drawing'
+  import {
+    drawOverlay,
+    drawMarker,
+    drawWaveform,
+    getCSSColor,
+  } from './utils/canvas-drawing'
   import { createDragHandler } from './utils/drag-handler'
-  import { generateThumbnails, createThumbnailAnimator, cleanupThumbnails } from './utils/thumbnail-generator'
+  import {
+    generateThumbnails,
+    createThumbnailAnimator,
+    cleanupThumbnails,
+  } from './utils/thumbnail-generator'
 
   // Module-level helper functions for canvas drawing
 
   /**
-   * Create rounded rectangle path with selective corner rounding
-   * Does not fill, stroke, or clip - just creates the path
+   * Create rounded rectangle path with selective corner rounding Does not fill,
+   * stroke, or clip - just creates the path
    */
   function createRoundedRectPath(
     ctx: CanvasRenderingContext2D,
@@ -23,7 +37,7 @@
     radiusTopLeft: number,
     radiusTopRight: number,
     radiusBottomRight: number,
-    radiusBottomLeft: number
+    radiusBottomLeft: number,
   ): void {
     ctx.beginPath()
     ctx.moveTo(x + radiusTopLeft, y)
@@ -33,7 +47,13 @@
     }
     ctx.lineTo(x + w, y + h - radiusBottomRight)
     if (radiusBottomRight > 0) {
-      ctx.arcTo(x + w, y + h, x + w - radiusBottomRight, y + h, radiusBottomRight)
+      ctx.arcTo(
+        x + w,
+        y + h,
+        x + w - radiusBottomRight,
+        y + h,
+        radiusBottomRight,
+      )
     }
     ctx.lineTo(x + radiusBottomLeft, y + h)
     if (radiusBottomLeft > 0) {
@@ -47,13 +67,14 @@
   }
 
   /**
-   * Draw playback position marker with white contrast lines and accent center line
+   * Draw playback position marker with white contrast lines and accent center
+   * line
    */
   function drawPlaybackMarker(
     ctx: CanvasRenderingContext2D,
     x: number,
     height: number,
-    accentColor: string
+    accentColor: string,
   ): void {
     // White contrast lines on sides (batched into single stroke)
     ctx.strokeStyle = '#ffffff'
@@ -69,9 +90,7 @@
     drawMarker(ctx, x - 1, height, 2, accentColor)
   }
 
-  /**
-   * Draw trim handle with rounded corners on outer edges
-   */
+  /** Draw trim handle with rounded corners on outer edges */
   function drawTrimHandle(
     ctx: CanvasRenderingContext2D,
     x: number,
@@ -79,16 +98,36 @@
     height: number,
     side: 'left' | 'right',
     borderRadius: number,
-    accentColor: string
+    accentColor: string,
   ): void {
     ctx.fillStyle = accentColor
 
     if (side === 'left') {
       // Left handle: rounded on left corners (outer)
-      createRoundedRectPath(ctx, x, 0, width, height, borderRadius, 0, 0, borderRadius)
+      createRoundedRectPath(
+        ctx,
+        x,
+        0,
+        width,
+        height,
+        borderRadius,
+        0,
+        0,
+        borderRadius,
+      )
     } else {
       // Right handle: rounded on right corners (outer)
-      createRoundedRectPath(ctx, x, 0, width, height, 0, borderRadius, borderRadius, 0)
+      createRoundedRectPath(
+        ctx,
+        x,
+        0,
+        width,
+        height,
+        0,
+        borderRadius,
+        borderRadius,
+        0,
+      )
     }
 
     ctx.fill()
@@ -97,22 +136,20 @@
     const innerMarginX = 6
     const innerMarginY = 8
     const innerRadius = 64
-    
+
     ctx.fillStyle = '#ffffff'
     ctx.beginPath()
     ctx.roundRect(
       x + innerMarginX,
       0 + innerMarginY,
-      width - (innerMarginX * 2),
-      height - (innerMarginY * 2),
-      innerRadius
+      width - innerMarginX * 2,
+      height - innerMarginY * 2,
+      innerRadius,
     )
     ctx.fill()
   }
 
-  /**
-   * Draw video thumbnails with fade-in animation
-   */
+  /** Draw video thumbnails with fade-in animation */
   function drawThumbnails(
     ctx: CanvasRenderingContext2D,
     thumbnails: ImageBitmap[],
@@ -120,7 +157,7 @@
     thumbnailArea: number,
     height: number,
     thumbnailMargin: number,
-    thumbnailAnimator: ReturnType<typeof createThumbnailAnimator>
+    thumbnailAnimator: ReturnType<typeof createThumbnailAnimator>,
   ): void {
     const thumbWidth = thumbnailArea / thumbnailCount
 
@@ -129,7 +166,7 @@
       if (!bitmap) continue
 
       const opacity = thumbnailAnimator.getOpacity(i)
-      const thumbX = thumbnailMargin + (i * thumbWidth)
+      const thumbX = thumbnailMargin + i * thumbWidth
 
       // Only change globalAlpha if opacity is not 1.0
       if (opacity < 1.0) {
@@ -139,7 +176,10 @@
       // Draw with object-fit: cover behavior
       const bitmapAspect = bitmap.width / bitmap.height
       const thumbAspect = thumbWidth / height
-      let sx = 0, sy = 0, sWidth = bitmap.width, sHeight = bitmap.height
+      let sx = 0,
+        sy = 0,
+        sWidth = bitmap.width,
+        sHeight = bitmap.height
 
       if (bitmapAspect > thumbAspect) {
         // Bitmap is wider - crop horizontally
@@ -150,7 +190,17 @@
         sy = (bitmap.height - sHeight) / 2
       }
 
-      ctx.drawImage(bitmap, sx, sy, sWidth, sHeight, thumbX, 0, thumbWidth, height)
+      ctx.drawImage(
+        bitmap,
+        sx,
+        sy,
+        sWidth,
+        sHeight,
+        thumbX,
+        0,
+        thumbWidth,
+        height,
+      )
 
       // Reset globalAlpha only if it was changed
       if (opacity < 1.0) {
@@ -223,7 +273,7 @@
 
   // Cached trim positions (single source of truth, recalculated when dependencies change)
   let trimPositions = $derived.by(() => {
-    const thumbnailArea = canvasWidth - (THUMBNAIL_MARGIN * 2)
+    const thumbnailArea = canvasWidth - THUMBNAIL_MARGIN * 2
     return {
       thumbnailArea,
       trimStartX: THUMBNAIL_MARGIN + (trimStart / duration) * thumbnailArea,
@@ -233,7 +283,7 @@
 
   // Cached accent color (avoid DOM reads on every frame)
   let accentColor = $derived(
-    canvas ? getCSSColor(canvas, '--tint-text-accent', '#d4213a') : '#d4213a'
+    canvas ? getCSSColor(canvas, '--tint-text-accent', '#d4213a') : '#d4213a',
   )
 
   // Track if trim has been initialized
@@ -498,8 +548,10 @@
 
     // Determine if clipping region should show rounded corners
     // Only show rounded corners when handle has moved 75% of its width from starting position
-    const showLeftClipRounded = (trimStartX - THUMBNAIL_MARGIN) >= (0.75 * TRIM_HANDLE_WIDTH)
-    const showRightClipRounded = ((width - THUMBNAIL_MARGIN) - trimEndX) >= (0.75 * TRIM_HANDLE_WIDTH)
+    const showLeftClipRounded =
+      trimStartX - THUMBNAIL_MARGIN >= 0.75 * TRIM_HANDLE_WIDTH
+    const showRightClipRounded =
+      width - THUMBNAIL_MARGIN - trimEndX >= 0.75 * TRIM_HANDLE_WIDTH
 
     // Create clipping path with selective rounded corners
     createRoundedRectPath(
@@ -511,13 +563,21 @@
       showLeftClipRounded ? BORDER_RADIUS : 0,
       showRightClipRounded ? BORDER_RADIUS : 0,
       showRightClipRounded ? BORDER_RADIUS : 0,
-      showLeftClipRounded ? BORDER_RADIUS : 0
+      showLeftClipRounded ? BORDER_RADIUS : 0,
     )
     ctx.clip()
 
     // Draw thumbnails (if video)
     if (mediaType === 'video' && thumbnails.length > 0) {
-      drawThumbnails(ctx, thumbnails, thumbnailCount, thumbnailArea, height, THUMBNAIL_MARGIN, thumbnailAnimator)
+      drawThumbnails(
+        ctx,
+        thumbnails,
+        thumbnailCount,
+        thumbnailArea,
+        height,
+        THUMBNAIL_MARGIN,
+        thumbnailAnimator,
+      )
     }
 
     // Draw waveform (always render when available)
@@ -534,16 +594,31 @@
     // Draw overlays outside trim area
     const leftHandleStart = trimStartX - TRIM_HANDLE_WIDTH
     if (leftHandleStart > THUMBNAIL_MARGIN) {
-      drawOverlay(ctx, THUMBNAIL_MARGIN, 0, leftHandleStart - THUMBNAIL_MARGIN + (0.5 * TRIM_HANDLE_WIDTH), height, 0.5)
+      drawOverlay(
+        ctx,
+        THUMBNAIL_MARGIN,
+        0,
+        leftHandleStart - THUMBNAIL_MARGIN + 0.5 * TRIM_HANDLE_WIDTH,
+        height,
+        0.5,
+      )
     }
     const rightHandleEnd = trimEndX + TRIM_HANDLE_WIDTH
     const rightEdge = width - THUMBNAIL_MARGIN
     if (rightHandleEnd < rightEdge) {
-      drawOverlay(ctx, rightHandleEnd - (0.5 * TRIM_HANDLE_WIDTH), 0, rightEdge - rightHandleEnd + (0.5 * TRIM_HANDLE_WIDTH), height, 0.5)
+      drawOverlay(
+        ctx,
+        rightHandleEnd - 0.5 * TRIM_HANDLE_WIDTH,
+        0,
+        rightEdge - rightHandleEnd + 0.5 * TRIM_HANDLE_WIDTH,
+        height,
+        0.5,
+      )
     }
 
     // Draw playback position
-    const playbackX = THUMBNAIL_MARGIN + (currentTime / duration) * thumbnailArea
+    const playbackX =
+      THUMBNAIL_MARGIN + (currentTime / duration) * thumbnailArea
     drawPlaybackMarker(ctx, playbackX, height, accentColor)
 
     ctx.restore()
@@ -551,8 +626,24 @@
     // === UNCLIPPED SECTION ===
 
     // Draw trim handles
-    drawTrimHandle(ctx, trimStartX - TRIM_HANDLE_WIDTH, TRIM_HANDLE_WIDTH, height, 'left', BORDER_RADIUS, accentColor)
-    drawTrimHandle(ctx, trimEndX, TRIM_HANDLE_WIDTH, height, 'right', BORDER_RADIUS, accentColor)
+    drawTrimHandle(
+      ctx,
+      trimStartX - TRIM_HANDLE_WIDTH,
+      TRIM_HANDLE_WIDTH,
+      height,
+      'left',
+      BORDER_RADIUS,
+      accentColor,
+    )
+    drawTrimHandle(
+      ctx,
+      trimEndX,
+      TRIM_HANDLE_WIDTH,
+      height,
+      'right',
+      BORDER_RADIUS,
+      accentColor,
+    )
 
     // Draw top and bottom borders (batched into single stroke)
     ctx.strokeStyle = accentColor
@@ -754,8 +845,8 @@
       class="trim-interactive-overlay"
       width={canvasWidth}
       height={canvasHeight}
-      {...(dragHandler?.mouseHandlers || {})}
-      {...(dragHandler?.touchHandlers || {})}
+      {...dragHandler?.mouseHandlers || {}}
+      {...dragHandler?.touchHandlers || {}}
       style="width: {canvasWidth}px; height: {canvasHeight}px; cursor: {cursor}"
     ></canvas>
 

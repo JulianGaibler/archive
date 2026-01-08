@@ -66,11 +66,7 @@ export const processingItemResolvers: ProcessingItemResolvers = {
     return file?.processingStatus || FileProcessingStatus.Failed
   },
 
-  processingProgress: async (
-    parent: unknown,
-    _args: unknown,
-    ctx: Context,
-  ) => {
+  processingProgress: async (parent: unknown, _args: unknown, ctx: Context) => {
     const actualParent = parent as ActualParent
     if (!actualParent.fileId) return null
     const file = await FileActions._qFileInternal(ctx, actualParent.fileId)

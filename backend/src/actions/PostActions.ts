@@ -1212,9 +1212,9 @@ const PostActions = {
   },
 
   /**
-   * Duplicates an item within the same post.
-   * Creates an independent copy of the item with its own file copy.
-   * The duplicate appears right after the original item (position + 1).
+   * Duplicates an item within the same post. Creates an independent copy of the
+   * item with its own file copy. The duplicate appears right after the original
+   * item (position + 1).
    *
    * @param ctx - The request context
    * @param fields - Object containing itemId

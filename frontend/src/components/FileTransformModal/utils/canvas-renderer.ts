@@ -1,8 +1,8 @@
 // Canvas lifecycle and rendering utilities
 
 /**
- * Initialize canvas with high DPI support
- * Sets up canvas dimensions and context scaling for crisp rendering on high-DPI displays
+ * Initialize canvas with high DPI support Sets up canvas dimensions and context
+ * scaling for crisp rendering on high-DPI displays
  */
 export function setupCanvas(
   canvas: HTMLCanvasElement,
@@ -28,8 +28,8 @@ export function setupCanvas(
 }
 
 /**
- * RAF-based renderer for a canvas
- * Ensures only one RAF per canvas and prevents redundant renders
+ * RAF-based renderer for a canvas Ensures only one RAF per canvas and prevents
+ * redundant renders
  */
 export function createRenderer(
   canvas: HTMLCanvasElement,
@@ -71,8 +71,8 @@ export function createRenderer(
 }
 
 /**
- * Clear canvas with proper DPI handling
- * Resets transform before clearing to handle high DPI correctly
+ * Clear canvas with proper DPI handling Resets transform before clearing to
+ * handle high DPI correctly
  */
 export function clearCanvas(
   ctx: CanvasRenderingContext2D,
@@ -85,8 +85,8 @@ export function clearCanvas(
 }
 
 /**
- * Setup ResizeObserver for canvas container
- * Returns cleanup function to disconnect observer
+ * Setup ResizeObserver for canvas container Returns cleanup function to
+ * disconnect observer
  */
 export function observeResize(
   element: HTMLElement,

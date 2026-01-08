@@ -631,7 +631,10 @@ export class FFmpegWrapper {
       }
     }
 
-    outputOptions.push(...(options.audioOptions || []), ...(options.videoOptions || []))
+    outputOptions.push(
+      ...(options.audioOptions || []),
+      ...(options.videoOptions || []),
+    )
 
     return FFmpegWrapper.convert(inputPath, outputPath, {
       inputOptions: options.inputOptions,

@@ -1,8 +1,6 @@
 // Canvas drawing primitives
 
-/**
- * Draw semi-transparent overlay
- */
+/** Draw semi-transparent overlay */
 export function drawOverlay(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -15,9 +13,7 @@ export function drawOverlay(
   ctx.fillRect(x, y, width, height)
 }
 
-/**
- * Draw corner handle (square)
- */
+/** Draw corner handle (square) */
 export function drawHandle(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -29,9 +25,7 @@ export function drawHandle(
   ctx.fillRect(x - size / 2, y - size / 2, size, size)
 }
 
-/**
- * Draw vertical marker line
- */
+/** Draw vertical marker line */
 export function drawMarker(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -43,9 +37,7 @@ export function drawMarker(
   ctx.fillRect(x, 0, width, height)
 }
 
-/**
- * Draw waveform bars with rounded corners and spacing
- */
+/** Draw waveform bars with rounded corners and spacing */
 export function drawWaveform(
   ctx: CanvasRenderingContext2D,
   waveformData: number[],
@@ -78,7 +70,13 @@ export function drawWaveform(
     ctx.lineTo(x + barWidth - radius, y)
     ctx.arcTo(x + barWidth, y, x + barWidth, y + radius, radius)
     ctx.lineTo(x + barWidth, y + barHeight - radius)
-    ctx.arcTo(x + barWidth, y + barHeight, x + barWidth - radius, y + barHeight, radius)
+    ctx.arcTo(
+      x + barWidth,
+      y + barHeight,
+      x + barWidth - radius,
+      y + barHeight,
+      radius,
+    )
     ctx.lineTo(x + radius, y + barHeight)
     ctx.arcTo(x, y + barHeight, x, y + barHeight - radius, radius)
     ctx.lineTo(x, y + radius)
@@ -88,16 +86,12 @@ export function drawWaveform(
   })
 }
 
-/**
- * Get CSS custom property value from canvas element
- */
+/** Get CSS custom property value from canvas element */
 export function getCSSColor(
   element: HTMLElement,
   propertyName: string,
   fallback: string,
 ): string {
-  const value = getComputedStyle(element)
-    .getPropertyValue(propertyName)
-    .trim()
+  const value = getComputedStyle(element).getPropertyValue(propertyName).trim()
   return value || fallback
 }

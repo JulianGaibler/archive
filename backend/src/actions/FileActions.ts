@@ -1,4 +1,14 @@
-import { eq, and, lt, inArray, isNotNull, count, asc, desc, sql } from 'drizzle-orm'
+import {
+  eq,
+  and,
+  lt,
+  inArray,
+  isNotNull,
+  count,
+  asc,
+  desc,
+  sql,
+} from 'drizzle-orm'
 import Context from '@src/Context.js'
 import FileModel, {
   FileVariantInternal,
@@ -26,6 +36,7 @@ import {
 import * as fileUtils from '@src/files/file-utils.js'
 import { storageOptions } from '@src/files/config.js'
 import fs from 'fs'
+import { subscriptionBatcher } from '@src/files/SubscriptionBatcher.js'
 
 // Type for file processing subscription payloads
 interface FileProcessingUpdatePayload {
@@ -43,7 +54,12 @@ interface FileProcessingUpdatePayload {
     waveform?: number[]
     waveformThumbnail?: number[]
   }
-  affectedItems?: string[] // Item IDs that reference this file
+  // Items affected by this file change, with type info to avoid frontend refetch
+  affectedItems?: Array<{
+    id: string // Item external ID
+    typename: string // 'VideoItem', 'ProcessingItem', 'AudioItem', etc.
+    position?: number // Item position in post for sorting
+  }>
 }
 
 const fileVariantTable = FileModel.variantTable
@@ -387,16 +403,22 @@ const FileActions = {
 
     // Check authorization
     if (file.creatorId !== userId) {
-      throw new AuthorizationError('You do not have permission to modify this file')
+      throw new AuthorizationError(
+        'You do not have permission to modify this file',
+      )
     }
 
     // Calculate new modifications
+    // NOTE: processingMeta is the source of truth for all modifications (crop, trim, fileType)
+    // modifications is derived from processingMeta for reprocessing efficiency (persistent only)
     let newModifications: ModificationActionData = {}
 
     if (!fields.clearAllModifications) {
-      // Start with existing modifications
+      // Start with existing modifications from processingMeta (source of truth)
+      // Fallback to modifications field for backwards compatibility
       newModifications = {
-        ...(file.modifications as ModificationActionData),
+        ...((file.processingMeta as ModificationActionData) ||
+          (file.modifications as ModificationActionData)),
       }
 
       if (fields.removeModifications) {
@@ -411,10 +433,13 @@ const FileActions = {
     }
 
     // Prepare database update fields
+    // IMPORTANT: Always keep modifications and processingMeta in sync
+    // - processingMeta: SOURCE OF TRUTH for GraphQL API (includes all modifications)
+    // - modifications: DERIVED for reprocessing efficiency (persistent only: crop, trim)
     const dbUpdate: any = {
       modifications: getPersistentModifications(newModifications),
-      // Store full modifications (including fileType) in processingMeta for GraphQL API
-      processingMeta: Object.keys(newModifications).length > 0 ? newModifications : null,
+      processingMeta:
+        Object.keys(newModifications).length > 0 ? newModifications : null,
       processingStatus: 'QUEUED',
       processingProgress: 0,
       processingNotes: null,
@@ -433,9 +458,101 @@ const FileActions = {
     }
 
     // Update file record
-    await ctx.db.update(fileTable)
+    await ctx.db
+      .update(fileTable)
       .set(dbUpdate)
       .where(eq(fileTable.id, fields.fileId))
+
+    // Validate consistency: modifications should match getPersistentModifications(processingMeta)
+    // This ensures our two sources of truth stay in sync
+    if (dbUpdate.processingMeta) {
+      const expectedModifications = getPersistentModifications(
+        dbUpdate.processingMeta,
+      )
+      const actualModifications = dbUpdate.modifications
+
+      if (
+        JSON.stringify(expectedModifications) !==
+        JSON.stringify(actualModifications)
+      ) {
+        console.error(
+          `[FileActions] Modification mismatch detected for ${fields.fileId}`,
+        )
+        console.error(
+          '  Expected (from processingMeta):',
+          expectedModifications,
+        )
+        console.error('  Actual (in modifications):', actualModifications)
+        // Auto-fix: This should never happen, but if it does, fix it
+        await ctx.db
+          .update(fileTable)
+          .set({ modifications: expectedModifications })
+          .where(eq(fileTable.id, fields.fileId))
+      }
+    } else if (
+      dbUpdate.modifications &&
+      Object.keys(dbUpdate.modifications).length > 0
+    ) {
+      // processingMeta is null but modifications is not empty - inconsistency
+      console.error(
+        `[FileActions] Inconsistency for ${fields.fileId}: processingMeta is null but modifications is not empty`,
+      )
+      console.error('  modifications:', dbUpdate.modifications)
+      // Auto-fix: Clear modifications to match processingMeta
+      await ctx.db
+        .update(fileTable)
+        .set({ modifications: {} })
+        .where(eq(fileTable.id, fields.fileId))
+    }
+
+    // Cleanup UNMODIFIED variants when all modifications are removed
+    // Check if we transitioned from having modifications to having none
+    const hadModifications =
+      file.modifications && Object.keys(file.modifications).length > 0
+    const hasModifications = Object.keys(newModifications).length > 0
+
+    if (hadModifications && !hasModifications) {
+      console.log(
+        `[FileActions] All modifications removed, cleaning up UNMODIFIED variants for ${fields.fileId}`,
+      )
+
+      // Delete UNMODIFIED_COMPRESSED variant
+      try {
+        await Context.fileStorage.deleteVariant(
+          ctx,
+          fields.fileId,
+          'UNMODIFIED_COMPRESSED',
+        )
+        console.log(
+          `[FileActions] Deleted UNMODIFIED_COMPRESSED for ${fields.fileId}`,
+        )
+      } catch (err) {
+        // Variant may not exist, that's okay
+        console.log(
+          `[FileActions] UNMODIFIED_COMPRESSED not found for ${fields.fileId}, skipping`,
+        )
+      }
+
+      // Delete UNMODIFIED_THUMBNAIL_POSTER variant
+      try {
+        await Context.fileStorage.deleteVariant(
+          ctx,
+          fields.fileId,
+          'UNMODIFIED_THUMBNAIL_POSTER',
+        )
+        console.log(
+          `[FileActions] Deleted UNMODIFIED_THUMBNAIL_POSTER for ${fields.fileId}`,
+        )
+      } catch (err) {
+        // Variant may not exist, that's okay
+        console.log(
+          `[FileActions] UNMODIFIED_THUMBNAIL_POSTER not found for ${fields.fileId}, skipping`,
+        )
+      }
+
+      // Clear variants cache since we deleted variants
+      ctx.dataLoaders.file.getVariantsByFileId.clear(fields.fileId)
+    }
 
     // Clear dataloader cache
     ctx.dataLoaders.file.getById.clear(fields.fileId)
@@ -592,20 +709,19 @@ const FileActions = {
   },
 
   /**
-   * Reset and reprocess a file: removes all modifications, deletes all processed variants
-   * except ORIGINAL, and queues for reprocessing from the original file.
-   * Used to recover from processing errors.
+   * Reset and reprocess a file: removes all modifications, deletes all
+   * processed variants except ORIGINAL, and queues for reprocessing from the
+   * original file. Used to recover from processing errors.
    */
-  async _mResetAndReprocessFile(
-    ctx: Context,
-    fileId: string,
-  ): Promise<void> {
+  async _mResetAndReprocessFile(ctx: Context, fileId: string): Promise<void> {
     const file = await this._qFileInternal(ctx, fileId)
     if (!file) {
       throw new NotFoundError('File not found')
     }
 
     // Step 1: Clear all modifications in database
+    // NOTE: Clear both modifications and processingMeta to maintain consistency
+    // processingMeta is source of truth, modifications is derived
     await ctx.db
       .update(fileTable)
       .set({
@@ -633,7 +749,9 @@ const FileActions = {
         await Context.fileStorage.deleteVariant(ctx, fileId, variant)
       } catch (err) {
         // Ignore errors if variant doesn't exist
-        console.log(`[FileActions] Variant ${variant} not found for file ${fileId}, skipping`)
+        console.log(
+          `[FileActions] Variant ${variant} not found for file ${fileId}, skipping`,
+        )
       }
     }
 
@@ -725,8 +843,8 @@ const FileActions = {
   },
 
   /**
-   * Duplicates a file by creating a new file record with a new UUID
-   * and copying all file variants (both DB records and physical files).
+   * Duplicates a file by creating a new file record with a new UUID and copying
+   * all file variants (both DB records and physical files).
    *
    * @param ctx - The request context
    * @param sourceFileId - The ID of the file to duplicate
@@ -919,16 +1037,31 @@ const FileActions = {
   ): Promise<void> {
     await ctx.db.update(fileTable).set(changes).where(eq(fileTable.id, fileId))
 
+    // CRITICAL: Clear dataloader cache so subscription update fetches fresh data
+    // Without this, _publishFileProcessingUpdate reads stale cached status
+    ctx.dataLoaders.file.getById.clear(fileId)
+
     // Publish file processing update if status or progress changed
     if (changes.processingStatus || changes.processingProgress !== undefined) {
-      // for done and wait, let's wait 1 second to ensure all processing is complete and slow clients have subscription updates
-      if (
+      // Verify processing completion before publishing DONE status
+      // This ensures subscription updates contain accurate data
+      if (changes.processingStatus === 'DONE') {
+        // Verify that variants were actually created
+        const variants = await this._qFileVariantsInternal(ctx, fileId, true)
+        if (variants.length === 0) {
+          console.warn(
+            `[FileActions] File ${fileId} marked DONE but no variants found`,
+          )
+        }
+      }
+
+      // Critical status changes (DONE/FAILED) publish immediately for fast feedback
+      // Progress updates can be batched to reduce subscription spam
+      const immediate =
         changes.processingStatus === 'DONE' ||
         changes.processingStatus === 'FAILED'
-      ) {
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-      }
-      await this._publishFileProcessingUpdate(ctx, fileId)
+
+      await this._publishFileProcessingUpdate(ctx, fileId, immediate)
     }
   },
 
@@ -1168,28 +1301,116 @@ const FileActions = {
     }
   },
 
-  /** Publish file processing update (internal) */
+  /**
+   * Publishes file processing update to subscriptions with affected item data.
+   * Includes item __typename to avoid frontend refetch for type transitions.
+   *
+   * SIDE EFFECTS:
+   *
+   * - Publishes to FILE_PROCESSING_UPDATES topic via PubSub
+   * - Can batch updates to reduce subscription spam (100ms debounce)
+   *
+   * @param ctx - The context
+   * @param fileId - The file ID to publish updates for
+   * @param immediate - If true, bypasses batching for immediate publish
+   */
   async _publishFileProcessingUpdate(
     ctx: Context,
     fileId: string,
+    immediate = false,
   ): Promise<void> {
     if (Context.pubSub) {
       // Get the updated file with complete path data to publish
       const fileWithPaths = await this.qFileWithPaths(ctx, fileId)
       if (fileWithPaths) {
-        // Find items that reference this file
+        // Get items with their position for sorting
         const items = await ctx.db
-          .select({ id: itemTable.id })
+          .select({
+            id: itemTable.id,
+            position: itemTable.position,
+          })
           .from(itemTable)
           .where(eq(itemTable.fileId, fileId))
+
+        // Get file internal data to determine item types
+        const file = await this._qFileInternal(ctx, fileId)
+
+        console.log('[FileActions] File data for typename determination:', {
+          fileId,
+          processingStatus: file.processingStatus,
+          type: file.type,
+        })
+
+        /**
+         * Determine item typename based on file processing status and type.
+         *
+         * CRITICAL: Must check processingStatus FIRST before type.
+         * - If file is QUEUED, PROCESSING, or FAILED → always ProcessingItem
+         * - Only when DONE → return actual media type (VideoItem, AudioItem, etc.)
+         *
+         * This matches the GraphQL __resolveType logic and prevents premature
+         * typename changes that break subscription tracking.
+         */
+        const getItemTypename = (file: FileInternal): string => {
+          console.log('[FileActions] Determining typename for:', {
+            processingStatus: file.processingStatus,
+            type: file.type,
+          })
+
+          // If file is still processing or failed, always return ProcessingItem
+          if (
+            file.processingStatus === 'QUEUED' ||
+            file.processingStatus === 'PROCESSING' ||
+            file.processingStatus === 'FAILED'
+          ) {
+            console.log('[FileActions] File is QUEUED/PROCESSING/FAILED, returning ProcessingItem')
+            return 'ProcessingItem'
+          }
+
+          // Only when DONE, return the actual media type based on file.type
+          console.log('[FileActions] File is DONE, determining type from file.type:', file.type)
+          let typename: string
+          switch (file.type) {
+            case 'VIDEO':
+              typename = 'VideoItem'
+              break
+            case 'IMAGE':
+              typename = 'ImageItem'
+              break
+            case 'GIF':
+              typename = 'GifItem'
+              break
+            case 'AUDIO':
+              typename = 'AudioItem'
+              break
+            default:
+              typename = 'ProcessingItem' // Fallback for unknown types
+          }
+          console.log('[FileActions] Determined typename:', typename)
+          return typename
+        }
 
         const payload: FileProcessingUpdatePayload = {
           id: fileId,
           kind: 'CHANGED',
           file: fileWithPaths,
-          affectedItems: items.map((item) => ItemModel.encodeId(item.id)),
+          affectedItems: items.map((item) => ({
+            id: ItemModel.encodeId(item.id),
+            typename: getItemTypename(file), // Pass full file object, not just type
+            position: item.position,
+          })),
         }
-        await Context.pubSub.publish(topics.FILE_PROCESSING_UPDATES, payload)
+
+        // Use batcher for progress updates to reduce spam
+        // Publish immediately for critical status changes (DONE/FAILED)
+        if (immediate) {
+          // Clear any pending batched update to prevent stale PROCESSING update
+          // from being published after the DONE/FAILED update
+          subscriptionBatcher.clearUpdate(fileId)
+          await Context.pubSub.publish(topics.FILE_PROCESSING_UPDATES, payload)
+        } else {
+          subscriptionBatcher.addUpdate(fileId, payload)
+        }
       }
     }
   },

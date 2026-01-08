@@ -253,7 +253,10 @@
         })
       }
       if (currentType !== FileType.Gif) {
-        conversions.push({ label: 'Convert to GIF', onClick: handleConvertToGif })
+        conversions.push({
+          label: 'Convert to GIF',
+          onClick: handleConvertToGif,
+        })
       }
     } else if (originalType === FileType.Gif) {
       if (currentType !== FileType.Video) {
@@ -282,7 +285,8 @@
       const hasCrop = !!(modifications as any).crop
       const hasTrim = !!(modifications as any).trim
       const hasFileType = !!modifications.fileType
-      const modCount = (hasCrop ? 1 : 0) + (hasTrim ? 1 : 0) + (hasFileType ? 1 : 0)
+      const modCount =
+        (hasCrop ? 1 : 0) + (hasTrim ? 1 : 0) + (hasFileType ? 1 : 0)
 
       if (modCount > 0) {
         conversions.push(MENU_SEPARATOR)
@@ -339,13 +343,22 @@
 
     // Add operations (move, duplicate, delete)
     if (onMoveItem && hasOperations) {
-      actions.push({ label: 'Move to another post', onClick: () => onMoveItem(item.id) })
+      actions.push({
+        label: 'Move to another post',
+        onClick: () => onMoveItem(item.id),
+      })
     }
     if (onDuplicateItem && hasOperations) {
-      actions.push({ label: 'Duplicate item', onClick: () => onDuplicateItem(item.id) })
+      actions.push({
+        label: 'Duplicate item',
+        onClick: () => onDuplicateItem(item.id),
+      })
     }
     if (onDeleteItem && hasOperations) {
-      actions.push({ label: 'Delete item', onClick: () => onDeleteItem(item.id) })
+      actions.push({
+        label: 'Delete item',
+        onClick: () => onDeleteItem(item.id),
+      })
     }
 
     const conversions = getAvailableConversions()

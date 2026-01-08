@@ -3,8 +3,8 @@
 import type { Point, Rect } from './types'
 
 /**
- * Convert DOM event (mouse or touch) to canvas logical coordinates
- * Works in logical pixels (CSS pixels), DPI handled internally by canvas
+ * Convert DOM event (mouse or touch) to canvas logical coordinates Works in
+ * logical pixels (CSS pixels), DPI handled internally by canvas
  */
 export function eventToCanvasCoords(
   event: MouseEvent | Touch,
@@ -20,16 +20,12 @@ export function eventToCanvasCoords(
   return { x, y }
 }
 
-/**
- * Clamp value to min/max range
- */
+/** Clamp value to min/max range */
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
 
-/**
- * Clamp point to rectangle bounds
- */
+/** Clamp point to rectangle bounds */
 export function clampToRect(x: number, y: number, rect: Rect): Point {
   return {
     x: clamp(x, rect.x, rect.x + rect.width),
@@ -37,9 +33,7 @@ export function clampToRect(x: number, y: number, rect: Rect): Point {
   }
 }
 
-/**
- * Calculate percentage position within dimensions
- */
+/** Calculate percentage position within dimensions */
 export function coordsToPercentage(
   x: number,
   y: number,

@@ -22,19 +22,17 @@ const DEFAULT_VARIANCE_THRESHOLD = 25 // Lower = more sensitive to content (redu
 const DEFAULT_EDGE_THRESHOLD = 10 // Gradient threshold for edge detection (reduced from 15)
 const DEFAULT_SAMPLE_POSITIONS = [0.05, 0.25, 0.5, 0.75, 0.95] // Video sample points
 const DEFAULT_MIN_BAR_THICKNESS_PERCENT = 0.03 // 3% of dimension (increased from 2%)
-const DEFAULT_MAX_SCAN_PERCENT = 0.40 // Don't scan more than 40% from edge (reduced from 45%)
+const DEFAULT_MAX_SCAN_PERCENT = 0.4 // Don't scan more than 40% from edge (reduced from 45%)
 const DEFAULT_CONSECUTIVE_CONTENT_LINES = 5 // Require 5 consecutive content lines (increased from 3)
 const MIN_CROP_SIZE = 50 // Minimum crop size in pixels
 
-/**
- * Extract pixel data for a row (horizontal scan)
- */
+/** Extract pixel data for a row (horizontal scan) */
 function getRowPixels(
   data: Uint8ClampedArray,
   width: number,
   height: number,
   row: number,
-  fromBottom: boolean
+  fromBottom: boolean,
 ): number[] {
   const actualRow = fromBottom ? height - 1 - row : row
   const start = actualRow * width * 4
@@ -42,15 +40,13 @@ function getRowPixels(
   return Array.from(data.slice(start, end))
 }
 
-/**
- * Extract pixel data for a column (vertical scan)
- */
+/** Extract pixel data for a column (vertical scan) */
 function getColumnPixels(
   data: Uint8ClampedArray,
   width: number,
   height: number,
   col: number,
-  fromRight: boolean
+  fromRight: boolean,
 ): number[] {
   const actualCol = fromRight ? width - 1 - col : col
   const pixels: number[] = []
@@ -63,17 +59,14 @@ function getColumnPixels(
   return pixels
 }
 
-/**
- * Calculate luminance using Rec. 709 luma coefficients
- */
+/** Calculate luminance using Rec. 709 luma coefficients */
 function calculateLuminance(r: number, g: number, b: number): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
 /**
- * Calculate variance of pixel luminance values
- * Letterbox bars have low variance (uniform color)
- * Content has high variance (details, edges, textures)
+ * Calculate variance of pixel luminance values Letterbox bars have low variance
+ * (uniform color) Content has high variance (details, edges, textures)
  */
 function calculateVariance(pixels: number[]): number {
   // Calculate luminance for each pixel using Rec. 709 coefficients
@@ -99,12 +92,12 @@ function calculateVariance(pixels: number[]): number {
 }
 
 /**
- * Calculate edge strength between two adjacent lines
- * Detects transitions from uniform bars to content
+ * Calculate edge strength between two adjacent lines Detects transitions from
+ * uniform bars to content
  */
 function calculateEdgeStrength(
   currentLine: number[],
-  previousLine: number[]
+  previousLine: number[],
 ): number {
   if (currentLine.length !== previousLine.length) return 0
 
@@ -115,12 +108,12 @@ function calculateEdgeStrength(
     const currLuma = calculateLuminance(
       currentLine[i],
       currentLine[i + 1],
-      currentLine[i + 2]
+      currentLine[i + 2],
     )
     const prevLuma = calculateLuminance(
       previousLine[i],
       previousLine[i + 1],
-      previousLine[i + 2]
+      previousLine[i + 2],
     )
     totalDiff += Math.abs(currLuma - prevLuma)
     count++
@@ -130,13 +123,13 @@ function calculateEdgeStrength(
 }
 
 /**
- * Scan from an edge inward to detect letterbox bar
- * Returns the position where content begins (bar thickness)
+ * Scan from an edge inward to detect letterbox bar Returns the position where
+ * content begins (bar thickness)
  */
 function scanEdge(
   imageData: ImageData,
   edge: 'top' | 'bottom' | 'left' | 'right',
-  options: Required<DetectionOptions>
+  options: Required<DetectionOptions>,
 ): number {
   const { width, height, data } = imageData
   const isHorizontal = edge === 'top' || edge === 'bottom'
@@ -152,8 +145,9 @@ function scanEdge(
       : getColumnPixels(data, width, height, i, edge === 'right')
 
     const variance = calculateVariance(linePixels)
-    const edgeStrength =
-      prevLinePixels ? calculateEdgeStrength(linePixels, prevLinePixels) : 0
+    const edgeStrength = prevLinePixels
+      ? calculateEdgeStrength(linePixels, prevLinePixels)
+      : 0
 
     // Content has high variance or high edge strength
     if (
@@ -175,12 +169,10 @@ function scanEdge(
   return 0 // No letterbox detected
 }
 
-/**
- * Detect letterbox bars in a single frame
- */
+/** Detect letterbox bars in a single frame */
 function detectLetterbox(
   imageData: ImageData,
-  options: Required<DetectionOptions>
+  options: Required<DetectionOptions>,
 ): CropBounds {
   const { width, height } = imageData
 
@@ -193,14 +185,12 @@ function detectLetterbox(
   return { top, bottom, left, right }
 }
 
-/**
- * Validate detected bounds and filter out false positives
- */
+/** Validate detected bounds and filter out false positives */
 function validateAndAdjust(
   bounds: CropBounds,
   width: number,
   height: number,
-  options: Required<DetectionOptions>
+  options: Required<DetectionOptions>,
 ): CropBounds | null {
   // Calculate bar thicknesses
   const topBar = bounds.top
@@ -211,7 +201,7 @@ function validateAndAdjust(
   // Remove bars that are too small (likely false positives)
   const minThickness = Math.max(
     height * options.minBarThicknessPercent,
-    width * options.minBarThicknessPercent
+    width * options.minBarThicknessPercent,
   )
 
   if (topBar < minThickness) bounds.top = 0
@@ -245,12 +235,10 @@ function validateAndAdjust(
   return bounds
 }
 
-/**
- * Sample multiple frames from a video at different time positions
- */
+/** Sample multiple frames from a video at different time positions */
 async function sampleVideoFrames(
   video: HTMLVideoElement,
-  positions: number[]
+  positions: number[],
 ): Promise<ImageData[]> {
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
@@ -297,12 +285,12 @@ async function sampleVideoFrames(
 }
 
 /**
- * Detect letterbox in video by sampling multiple frames
- * Returns the intersection (most conservative crop) across all frames
+ * Detect letterbox in video by sampling multiple frames Returns the
+ * intersection (most conservative crop) across all frames
  */
 function detectVideoLetterbox(
   frames: ImageData[],
-  options: Required<DetectionOptions>
+  options: Required<DetectionOptions>,
 ): CropBounds | null {
   if (frames.length === 0) return null
 
@@ -319,20 +307,11 @@ function detectVideoLetterbox(
 
   // Validate the intersection
   const firstFrame = frames[0]
-  return validateAndAdjust(
-    bounds,
-    firstFrame.width,
-    firstFrame.height,
-    options
-  )
+  return validateAndAdjust(bounds, firstFrame.width, firstFrame.height, options)
 }
 
-/**
- * Merge user options with defaults
- */
-function mergeOptions(
-  options?: DetectionOptions
-): Required<DetectionOptions> {
+/** Merge user options with defaults */
+function mergeOptions(options?: DetectionOptions): Required<DetectionOptions> {
   return {
     varianceThreshold: options?.varianceThreshold ?? DEFAULT_VARIANCE_THRESHOLD,
     edgeThreshold: options?.edgeThreshold ?? DEFAULT_EDGE_THRESHOLD,
@@ -346,12 +325,12 @@ function mergeOptions(
 }
 
 /**
- * Detect and remove letterboxing from an image
- * Returns crop bounds in source coordinates (naturalWidth/naturalHeight)
+ * Detect and remove letterboxing from an image Returns crop bounds in source
+ * coordinates (naturalWidth/naturalHeight)
  */
 export async function detectLetterboxInImage(
   img: HTMLImageElement,
-  options?: DetectionOptions
+  options?: DetectionOptions,
 ): Promise<CropBounds | null> {
   const opts = mergeOptions(options)
 
@@ -376,13 +355,13 @@ export async function detectLetterboxInImage(
 }
 
 /**
- * Detect and remove letterboxing from a video
- * Samples multiple frames and returns conservative crop bounds
- * Returns crop bounds in source coordinates (videoWidth/videoHeight)
+ * Detect and remove letterboxing from a video Samples multiple frames and
+ * returns conservative crop bounds Returns crop bounds in source coordinates
+ * (videoWidth/videoHeight)
  */
 export async function detectLetterboxInVideo(
   video: HTMLVideoElement,
-  options?: DetectionOptions
+  options?: DetectionOptions,
 ): Promise<CropBounds | null> {
   const opts = mergeOptions(options)
 

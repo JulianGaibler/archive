@@ -4,8 +4,8 @@ import { eventToCanvasCoords } from './canvas-coordinates'
 import type { DragHandler, DragState, Rect } from './types'
 
 /**
- * Create unified mouse/touch drag handler
- * Eliminates code duplication between mouse and touch event handling
+ * Create unified mouse/touch drag handler Eliminates code duplication between
+ * mouse and touch event handling
  */
 export function createDragHandler<T>(
   canvas: HTMLCanvasElement,
@@ -119,9 +119,7 @@ export function createDragHandler<T>(
   }
 }
 
-/**
- * Hit detection helper - check if point is inside rectangle
- */
+/** Hit detection helper - check if point is inside rectangle */
 export function isPointInRect(
   x: number,
   y: number,
@@ -136,9 +134,7 @@ export function isPointInRect(
   )
 }
 
-/**
- * Corner hit detection - returns which corner was hit, if any
- */
+/** Corner hit detection - returns which corner was hit, if any */
 export function getCornerHit(
   x: number,
   y: number,
@@ -146,10 +142,7 @@ export function getCornerHit(
   handleSize: number,
   tolerance: number,
 ): 'nw' | 'ne' | 'sw' | 'se' | null {
-  const checkCorner = (
-    cornerX: number,
-    cornerY: number,
-  ): boolean => {
+  const checkCorner = (cornerX: number, cornerY: number): boolean => {
     return (
       Math.abs(x - cornerX) < handleSize + tolerance &&
       Math.abs(y - cornerY) < handleSize + tolerance

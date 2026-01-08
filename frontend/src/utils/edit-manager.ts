@@ -177,7 +177,10 @@ export function createEditManager(
       return
     }
 
-    console.log('[Subscription] Starting subscription for files:', processingIds)
+    console.log(
+      '[Subscription] Starting subscription for files:',
+      processingIds,
+    )
 
     // Clean up existing subscription
     if (subscriptionUnsubscribe) {
@@ -205,6 +208,10 @@ export function createEditManager(
           console.log('[Subscription] Received update:', {
             hasData: !!subscriptionData,
             hasFile: !!subscriptionData?.fileProcessingUpdates?.file,
+            hasAffectedItems:
+              !!subscriptionData?.fileProcessingUpdates?.affectedItems,
+            affectedItems:
+              subscriptionData?.fileProcessingUpdates?.affectedItems,
             file: subscriptionData?.fileProcessingUpdates?.file,
           })
 
@@ -216,6 +223,9 @@ export function createEditManager(
               status: updatedFile.processingStatus,
               progress: updatedFile.processingProgress,
               notes: updatedFile.processingNotes,
+              affectedItemsCount:
+                subscriptionData.fileProcessingUpdates.affectedItems?.length ||
+                0,
             })
 
             // Update the post data with the new file information
@@ -417,15 +427,78 @@ export function createEditManager(
               return currentData
             })
 
-            // When file processing completes, refetch post to get updated item types
-            // (item.__typename needs to reflect the new file.type after conversions)
-            if (updatedFile.processingStatus === FileProcessingStatus.Done) {
-              const postObject = get(post)
-              if (postObject) {
-                const postResult = await sdk.Post({ id: postObject.id })
-                if (postResult.data?.node) {
-                  const freshPost = postResult.data.node as PostItemType
-                  post.set(freshPost)
+            // Update item __typename from subscription (avoids refetch)
+            // When files complete processing, their type changes (e.g., PROCESSING → VIDEO)
+            // and items need their __typename updated (ProcessingItem → VideoItem)
+            if (subscriptionData.fileProcessingUpdates.affectedItems) {
+              const affectedItems =
+                subscriptionData.fileProcessingUpdates.affectedItems
+
+              console.log('[Subscription] Checking typename updates:', {
+                affectedItems,
+                fileStatus: updatedFile.processingStatus,
+              })
+
+              let typenameChanged = false
+
+              post.update((currentPost) => {
+                if (!currentPost?.items?.nodes) return currentPost
+
+                const newPost = { ...currentPost }
+                newPost.items = { ...newPost.items }
+                newPost.items.nodes = newPost.items.nodes.map((node) => {
+                  const affectedItem = affectedItems.find(
+                    (ai) => ai.id === node.id,
+                  )
+                  console.log('[Subscription] Checking node for typename update:', {
+                    nodeId: node.id,
+                    currentTypename: node.__typename,
+                    affectedItemFound: !!affectedItem,
+                    affectedItemTypename: affectedItem?.typename,
+                    typesMatch: node.__typename === affectedItem?.typename,
+                  })
+                  if (
+                    affectedItem &&
+                    node.__typename !== affectedItem.typename
+                  ) {
+                    // Type changed! Need to refetch post to get proper data structure
+                    console.log('[Subscription] Typename changed:', {
+                      itemId: node.id,
+                      oldTypename: node.__typename,
+                      newTypename: affectedItem.typename,
+                    })
+                    typenameChanged = true
+                  }
+                  return node
+                })
+
+                return newPost
+              })
+
+              // If typename changed, refetch post to get full item data with file object
+              // ProcessingItem has { fileId, processingStatus } but VideoItem needs { file: { compressedPath, ... } }
+              if (typenameChanged) {
+                const postObject = get(post)
+                if (postObject) {
+                  console.log('[Subscription] Refetching post due to typename change')
+                  sdk
+                    .Post({ id: postObject.id })
+                    .then((postResult) => {
+                      const postError = getOperationResultError(postResult)
+                      if (!postError && postResult.data?.node) {
+                        const updatedPost = postResult.data.node as PostItemType
+                        console.log('[Subscription] Refetched post successfully')
+                        post.set(updatedPost)
+                      } else {
+                        console.error(
+                          '[Subscription] Failed to refetch post:',
+                          postError,
+                        )
+                      }
+                    })
+                    .catch((err) => {
+                      console.error('[Subscription] Refetch error:', err)
+                    })
                 }
               }
             }
@@ -438,28 +511,95 @@ export function createEditManager(
             const remainingProcessingIds: string[] = []
 
             console.log('[Subscription] Checking if should continue...')
+            console.log(
+              '[Subscription] Total items in post:',
+              updatedPost?.items?.nodes?.length || 0,
+            )
 
             // Add file IDs from existing items that are still processing
             if (updatedPost) {
-              updatedPost.items.nodes?.forEach((item) => {
+              updatedPost.items.nodes?.forEach((item, index) => {
                 if (item) {
-                  // Check for ProcessingItem
+                  console.log(`[Subscription] Item ${index}:`, {
+                    typename: item.__typename,
+                    id: item.id,
+                    hasFileId: 'fileId' in item,
+                    fileId:
+                      'fileId' in item
+                        ? (item as any).fileId
+                        : undefined,
+                    hasFile: 'file' in item,
+                    fileProcessingStatus:
+                      'file' in item && item.file
+                        ? item.file.processingStatus
+                        : undefined,
+                    fileIdFromFile:
+                      'file' in item && item.file
+                        ? item.file.id
+                        : undefined,
+                  })
+
+                  // Check for ProcessingItem that's still actively processing
                   if (
                     item.__typename === 'ProcessingItem' &&
                     'fileId' in item &&
                     item.fileId
                   ) {
-                    remainingProcessingIds.push(item.fileId)
+                    // Also check processingStatus to exclude DONE/FAILED items
+                    const processingStatus =
+                      'processingStatus' in item
+                        ? (item as any).processingStatus
+                        : undefined
+
+                    console.log(
+                      `[Subscription] Item ${index} is ProcessingItem:`,
+                      {
+                        fileId: item.fileId,
+                        processingStatus,
+                      },
+                    )
+
+                    // Only track if not DONE or FAILED
+                    if (
+                      processingStatus !== FileProcessingStatus.Done &&
+                      processingStatus !== FileProcessingStatus.Failed
+                    ) {
+                      console.log(
+                        `[Subscription] Item ${index} is still processing, adding fileId:`,
+                        item.fileId,
+                      )
+                      remainingProcessingIds.push(item.fileId)
+                    } else {
+                      console.log(
+                        `[Subscription] Item ${index} is done/failed, not adding`,
+                      )
+                    }
                   }
                   // Check for items with file field
                   else if ('file' in item && item.file) {
+                    console.log(
+                      `[Subscription] Item ${index} has file field, checking status:`,
+                      item.file.processingStatus,
+                    )
                     if (
                       item.file.processingStatus !==
                         FileProcessingStatus.Failed &&
                       item.file.processingStatus !== FileProcessingStatus.Done
                     ) {
+                      console.log(
+                        `[Subscription] Item ${index} is still processing, adding fileId:`,
+                        item.file.id,
+                      )
                       remainingProcessingIds.push(item.file.id)
+                    } else {
+                      console.log(
+                        `[Subscription] Item ${index} is done/failed, not adding`,
+                      )
                     }
+                  } else {
+                    console.log(
+                      `[Subscription] Item ${index} doesn't match any processing criteria`,
+                    )
                   }
                 }
               })
@@ -467,24 +607,48 @@ export function createEditManager(
 
             // Add file IDs from uploaded items in edit data
             if (updatedData) {
-              Object.values(updatedData.items).forEach((item) => {
-                if (
-                  item.type === 'upload' &&
-                  item.fileId &&
-                  !item.uploadError
-                ) {
-                  // Only add if we don't already have it from the post data
-                  if (!remainingProcessingIds.includes(item.fileId)) {
-                    remainingProcessingIds.push(item.fileId)
+              console.log(
+                '[Subscription] Checking uploaded items, count:',
+                Object.keys(updatedData.items).length,
+              )
+              Object.values(updatedData.items).forEach((item, index) => {
+                if (item.type === 'upload') {
+                  const uploadItem = item as UploadItem
+                  console.log(`[Subscription] Upload item ${index}:`, {
+                    type: item.type,
+                    fileId: uploadItem.fileId,
+                    uploadError: uploadItem.uploadError,
+                  })
+                  if (uploadItem.fileId && !uploadItem.uploadError) {
+                    // Only add if we don't already have it from the post data
+                    if (!remainingProcessingIds.includes(uploadItem.fileId)) {
+                      console.log(
+                        `[Subscription] Adding upload item fileId:`,
+                        uploadItem.fileId,
+                      )
+                      remainingProcessingIds.push(uploadItem.fileId)
+                    } else {
+                      console.log(
+                        `[Subscription] Upload item fileId already tracked:`,
+                        uploadItem.fileId,
+                      )
+                    }
                   }
                 }
               })
+            } else {
+              console.log('[Subscription] No upload data to check')
             }
 
-            console.log('[Subscription] Remaining processing IDs:', remainingProcessingIds)
+            console.log(
+              '[Subscription] Remaining processing IDs:',
+              remainingProcessingIds,
+            )
 
             if (remainingProcessingIds.length === 0) {
-              console.log('[Subscription] No more processing files, stopping subscription')
+              console.log(
+                '[Subscription] No more processing files, stopping subscription',
+              )
               // No more processing files, stop subscription
               if (subscriptionUnsubscribe) {
                 subscriptionUnsubscribe()
@@ -492,7 +656,10 @@ export function createEditManager(
               }
               break
             } else {
-              console.log('[Subscription] Continuing to monitor:', remainingProcessingIds)
+              console.log(
+                '[Subscription] Continuing to monitor:',
+                remainingProcessingIds,
+              )
             }
           }
         }
@@ -1687,7 +1854,10 @@ export function createEditManager(
         const postError = getOperationResultError(postResult)
         if (!postError && postResult.data?.node) {
           const updatedPost = postResult.data.node as PostItemType
-          console.log('[EditManager] Refetched post after reset:', updatedPost.id)
+          console.log(
+            '[EditManager] Refetched post after reset:',
+            updatedPost.id,
+          )
           post.set(updatedPost)
         } else {
           console.error('[EditManager] Failed to refetch post:', postError)

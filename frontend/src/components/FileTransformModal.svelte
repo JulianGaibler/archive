@@ -153,8 +153,14 @@
     }
 
     // Get source dimensions
-    const sourceWidth = mediaType === 'image' ? (img?.naturalWidth || 0) : (videoElement?.videoWidth || 0)
-    const sourceHeight = mediaType === 'image' ? (img?.naturalHeight || 0) : (videoElement?.videoHeight || 0)
+    const sourceWidth =
+      mediaType === 'image'
+        ? img?.naturalWidth || 0
+        : videoElement?.videoWidth || 0
+    const sourceHeight =
+      mediaType === 'image'
+        ? img?.naturalHeight || 0
+        : videoElement?.videoHeight || 0
 
     // If dimensions not loaded, assume significant
     if (sourceWidth === 0 || sourceHeight === 0) {
@@ -196,7 +202,10 @@
     const file = item.data.file
 
     // Try unmodified first
-    if ('unmodifiedCompressedPath' in file && typeof file.unmodifiedCompressedPath === 'string') {
+    if (
+      'unmodifiedCompressedPath' in file &&
+      typeof file.unmodifiedCompressedPath === 'string'
+    ) {
       return getResourceUrl(file.unmodifiedCompressedPath)
     }
 
@@ -288,7 +297,9 @@
       const element = getMediaElement()
       // Check if element is already ready (readyState >= 1 means HAVE_METADATA or more)
       if (element && element.readyState >= 1) {
-        console.log('Media metadata already loaded, triggering handleMediaLoaded')
+        console.log(
+          'Media metadata already loaded, triggering handleMediaLoaded',
+        )
         handleMediaLoaded()
       } else {
         loadMedia()
@@ -313,7 +324,9 @@
     if (mediaType === 'video' && !mediaLoaded) return
 
     const sourceWidth = img ? img.naturalWidth : videoElement?.videoWidth || 0
-    const sourceHeight = img ? img.naturalHeight : videoElement?.videoHeight || 0
+    const sourceHeight = img
+      ? img.naturalHeight
+      : videoElement?.videoHeight || 0
 
     if (sourceWidth === 0 || sourceHeight === 0) return
 
@@ -555,10 +568,10 @@
         x: Math.floor(detectedBounds.left * scaleX),
         y: Math.floor(detectedBounds.top * scaleY),
         width: Math.floor(
-          (detectedBounds.right - detectedBounds.left) * scaleX
+          (detectedBounds.right - detectedBounds.left) * scaleX,
         ),
         height: Math.floor(
-          (detectedBounds.bottom - detectedBounds.top) * scaleY
+          (detectedBounds.bottom - detectedBounds.top) * scaleY,
         ),
       }
 
@@ -583,12 +596,14 @@
     // === CROP VALIDATION WITH MARGIN ===
     if (canCrop && cropArea && cropPixelOffsets) {
       // Get source dimensions
-      const sourceWidth = mediaType === 'image'
-        ? (img?.naturalWidth || 0)
-        : (videoElement?.videoWidth || 0)
-      const sourceHeight = mediaType === 'image'
-        ? (img?.naturalHeight || 0)
-        : (videoElement?.videoHeight || 0)
+      const sourceWidth =
+        mediaType === 'image'
+          ? img?.naturalWidth || 0
+          : videoElement?.videoWidth || 0
+      const sourceHeight =
+        mediaType === 'image'
+          ? img?.naturalHeight || 0
+          : videoElement?.videoHeight || 0
 
       // Skip margin validation if dimensions not loaded
       if (sourceWidth === 0 || sourceHeight === 0) {
@@ -641,8 +656,7 @@
 
         // Check if trim is within margin on BOTH start and end
         const isWithinMargin =
-          trimStart <= TRIM_MARGIN &&
-          duration - trimEnd <= TRIM_MARGIN
+          trimStart <= TRIM_MARGIN && duration - trimEnd <= TRIM_MARGIN
 
         if (isWithinMargin) {
           // Within margin - check if we need to remove existing trim
@@ -702,10 +716,20 @@
   // Phase 5: Store original crop/trim values for undo
   $effect(() => {
     if (mediaLoaded && originalCropArea === null && cropArea) {
-      originalCropArea = { x: cropArea.x, y: cropArea.y, width: cropArea.width, height: cropArea.height }
+      originalCropArea = {
+        x: cropArea.x,
+        y: cropArea.y,
+        width: cropArea.width,
+        height: cropArea.height,
+      }
     }
     // Store original trim values once media loads and trim values are initialized
-    if (mediaLoaded && originalTrimStart === null && trimEnd > 0 && duration > 0) {
+    if (
+      mediaLoaded &&
+      originalTrimStart === null &&
+      trimEnd > 0 &&
+      duration > 0
+    ) {
       originalTrimStart = trimStart
       originalTrimEnd = trimEnd
     }
@@ -751,96 +775,98 @@
 
     <!-- Preview Area (hidden for audio with waveform) -->
     {#if !(mediaType === 'audio' && waveform)}
-    <div class="preview-area" bind:this={containerElement}>
-      {#if mediaError}
-        <div class="error-state">
-          <p>{mediaError}</p>
-        </div>
-      {:else if !mediaUrl}
-        <div class="error-state">
-          <p>No media available</p>
-        </div>
-      {:else if !mediaLoaded}
-        <div class="loading-state">
-          <LoadingIndicator />
-          <p>Loading media...</p>
-        </div>
-      {/if}
+      <div class="preview-area" bind:this={containerElement}>
+        {#if mediaError}
+          <div class="error-state">
+            <p>{mediaError}</p>
+          </div>
+        {:else if !mediaUrl}
+          <div class="error-state">
+            <p>No media available</p>
+          </div>
+        {:else if !mediaLoaded}
+          <div class="loading-state">
+            <LoadingIndicator />
+            <p>Loading media...</p>
+          </div>
+        {/if}
 
-      {#if mediaUrl}
-      {#if mediaType === 'video'}
-        <div
-          class="video-wrapper"
-          style="width: {displayWidth ? displayWidth + 32 : 832}px; height: {displayHeight ? displayHeight + 32 : 632}px;"
-        >
-          <video
-            bind:this={videoElement}
-            src={mediaUrl}
-            crossorigin="anonymous"
-            onloadedmetadata={handleMediaLoaded}
-            onerror={handleMediaError}
-            ontimeupdate={handleTimeUpdate}
-            controls={false}
-            preload="none"
-            style="width: {displayWidth}px; height: {displayHeight}px; margin: 16px; {!mediaLoaded
-              ? 'opacity: 0;'
-              : ''}"
-          />
-          {#if canCrop && mediaLoaded}
-            <CropController
-              mediaType="video"
-              {img}
-              {videoElement}
-              {displayWidth}
-              {displayHeight}
-              {initialCrop}
-              bind:cropArea
-            />
+        {#if mediaUrl}
+          {#if mediaType === 'video'}
+            <div
+              class="video-wrapper"
+              style="width: {displayWidth
+                ? displayWidth + 32
+                : 832}px; height: {displayHeight ? displayHeight + 32 : 632}px;"
+            >
+              <video
+                bind:this={videoElement}
+                src={mediaUrl}
+                crossorigin="anonymous"
+                onloadedmetadata={handleMediaLoaded}
+                onerror={handleMediaError}
+                ontimeupdate={handleTimeUpdate}
+                controls={false}
+                preload="none"
+                style="width: {displayWidth}px; height: {displayHeight}px; margin: 16px; {!mediaLoaded
+                  ? 'opacity: 0;'
+                  : ''}"
+              />
+              {#if canCrop && mediaLoaded}
+                <CropController
+                  mediaType="video"
+                  {img}
+                  {videoElement}
+                  {displayWidth}
+                  {displayHeight}
+                  {initialCrop}
+                  bind:cropArea
+                />
+              {/if}
+            </div>
+          {:else if mediaType === 'audio'}
+            <!-- Audio element (hidden, no preview needed) -->
+            <audio
+              bind:this={audioElement}
+              src={mediaUrl}
+              onloadedmetadata={handleMediaLoaded}
+              onerror={handleMediaError}
+              ontimeupdate={handleTimeUpdate}
+              preload="none"
+              style="display: none;"
+            ></audio>
+          {:else}
+            <div
+              class="image-wrapper"
+              style="width: {displayWidth || 800}px; height: {displayHeight ||
+                600}px;"
+            >
+              {#if canCrop && mediaLoaded}
+                <CropController
+                  mediaType="image"
+                  {img}
+                  {videoElement}
+                  {displayWidth}
+                  {displayHeight}
+                  {initialCrop}
+                  bind:cropArea
+                />
+              {/if}
+            </div>
           {/if}
-        </div>
-      {:else if mediaType === 'audio'}
-        <!-- Audio element (hidden, no preview needed) -->
-        <audio
-          bind:this={audioElement}
-          src={mediaUrl}
-          onloadedmetadata={handleMediaLoaded}
-          onerror={handleMediaError}
-          ontimeupdate={handleTimeUpdate}
-          preload="none"
-          style="display: none;"
-        ></audio>
-      {:else}
-        <div
-          class="image-wrapper"
-          style="width: {displayWidth || 800}px; height: {displayHeight ||
-            600}px;"
-        >
-          {#if canCrop && mediaLoaded}
-            <CropController
-              mediaType="image"
-              {img}
-              {videoElement}
-              {displayWidth}
-              {displayHeight}
-              {initialCrop}
-              bind:cropArea
-            />
-          {/if}
-        </div>
-      {/if}
-      {/if}
-    </div>
+        {/if}
+      </div>
     {:else}
-    <!-- Audio element for audio with waveform -->
-    <audio
-      bind:this={audioElement}
-      src={mediaUrl}
-      onloadedmetadata={handleMediaLoaded}
-      onerror={handleMediaError}
-      ontimeupdate={handleTimeUpdate}
-      preload="none"
-      style="display: none;"
-    ></audio>
+      <!-- Audio element for audio with waveform -->
+      <audio
+        bind:this={audioElement}
+        src={mediaUrl}
+        onloadedmetadata={handleMediaLoaded}
+        onerror={handleMediaError}
+        ontimeupdate={handleTimeUpdate}
+        preload="none"
+        style="display: none;"
+      ></audio>
     {/if}
 
     <!-- Crop Info -->
@@ -856,7 +882,7 @@
     {#if canTrim && mediaLoaded && (mediaType === 'video' || mediaType === 'audio')}
       <!-- eslint-disable-next-line @typescript-eslint/no-explicit-any -->
       <TrimController
-        mediaType={mediaType}
+        {mediaType}
         {videoElement}
         {audioElement}
         {duration}
@@ -885,12 +911,20 @@
           </Button>
         {/if}
         {#if hasSignificantCrop}
-          <Button small onclick={handleRemoveCropModification} disabled={loading}>
+          <Button
+            small
+            onclick={handleRemoveCropModification}
+            disabled={loading}
+          >
             Remove Crop
           </Button>
         {/if}
         {#if hasSignificantTrim}
-          <Button small onclick={handleRemoveTrimModification} disabled={loading}>
+          <Button
+            small
+            onclick={handleRemoveTrimModification}
+            disabled={loading}
+          >
             Remove Trim
           </Button>
         {/if}
