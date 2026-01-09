@@ -88,8 +88,8 @@ class SubscriptionBatcher {
   }
 
   /**
-   * Removes a pending update for a specific fileId without publishing it.
-   * Used when an immediate update is published to prevent stale batched updates.
+   * Removes a pending update for a specific fileId without publishing it. Used
+   * when an immediate update is published to prevent stale batched updates.
    *
    * @param fileId - The file ID to remove from pending updates
    */

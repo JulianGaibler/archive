@@ -118,7 +118,6 @@ export const file = pgTable("file", {
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
 	createdAt: bigint("created_at", { mode: "number" }).default(sql`get_current_timestamp_ms()`).notNull(),
 	processingMeta: json("processing_meta"),
-	modifications: json().default({}).notNull(),
 }, (table): any => [
 	foreignKey({
 			columns: [table.creatorId],

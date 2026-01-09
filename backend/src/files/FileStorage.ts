@@ -16,7 +16,6 @@ import { FileType, FileProcessingResult, FileUpdateCallback } from './types.js'
 import {
   ModificationActionData,
   getPersistentModifications,
-  PersistentModifications,
 } from './processing-metadata.js'
 import { FilePathManager } from './FilePathManager.js'
 import { FileProcessingQueue } from './QueueManager.js'
@@ -139,8 +138,12 @@ export default class FileStorage {
       throw new RequestError('Original file does not exist on disk')
     }
 
-    // Get modifications from file.modifications (not processingMeta)
-    const modifications = (file.modifications as ModificationActionData) || {}
+    // Get modifications from file.processingMeta (persistent-only: crop, trim)
+    const modifications: PersistentModifications = file.processingMeta
+      ? getPersistentModifications(
+          file.processingMeta as ModificationActionData,
+        )
+      : {}
 
     // Validate crop parameters if present
     if (modifications.crop) {
@@ -273,7 +276,6 @@ export default class FileStorage {
         hasUnmodified,
         isFirstModification,
         fileType: file.type,
-        modifications: file.modifications,
         processingMeta: file.processingMeta,
       })
 
@@ -481,8 +483,12 @@ export default class FileStorage {
       else if (file.type === 'IMAGE') targetFileType = FileType.IMAGE
     }
 
-    // Extract modifications from the file
-    let modificationsData = file.modifications || {}
+    // Extract modifications from the file (persistent-only: crop, trim)
+    let modificationsData: PersistentModifications = file.processingMeta
+      ? getPersistentModifications(
+          file.processingMeta as ModificationActionData,
+        )
+      : {}
 
     // Remove incompatible modifications during conversion
     if (file.type && file.originalType && file.type !== file.originalType) {
@@ -963,10 +969,10 @@ export default class FileStorage {
    *   removed
    */
   private removeIncompatibleModifications(
-    modifications: any,
+    modifications: PersistentModifications,
     fromType: string,
     toType: string,
-  ): any {
+  ): PersistentModifications {
     const result = { ...modifications }
 
     // VIDEO→AUDIO: Remove crop (audio can't be cropped)
@@ -1108,20 +1114,18 @@ export default class FileStorage {
    * @returns {boolean} True if file has modifications
    */
   private fileHasModifications(file: FileInternal): boolean {
-    // Check persistent modifications (crop, trim)
-    const hasPersistentMods = !!(
-      file?.modifications &&
-      typeof file.modifications === 'object' &&
-      ((file.modifications as PersistentModifications).crop !== undefined ||
-        (file.modifications as PersistentModifications).trim !== undefined)
+    if (!file?.processingMeta) return false
+
+    // Extract persistent modifications (crop, trim) from processingMeta
+    const persistent = getPersistentModifications(
+      file.processingMeta as ModificationActionData,
     )
+    const hasPersistentMods = Object.keys(persistent).length > 0
 
     // Check for file type conversion in processingMeta
     const hasFileTypeConversion = !!(
-      file?.processingMeta &&
-      typeof file.processingMeta === 'object' &&
-      (file.processingMeta as any).fileType !== undefined
-    )
+      file.processingMeta as ModificationActionData
+    ).fileType
 
     return hasPersistentMods || hasFileTypeConversion
   }

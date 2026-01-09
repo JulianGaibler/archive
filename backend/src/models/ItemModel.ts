@@ -34,8 +34,8 @@ export type ItemExternal = Omit<ItemInternal, 'id' | 'creatorId' | 'postId'> & {
 
 const schema = createInsertSchema(item, {
   id: z.string(),
-  caption: z.string().max(5000),
-  description: z.string().max(5000),
+  caption: z.string().max(10240),
+  description: z.string().max(10240),
   position: z.number(),
   postId: z.number().optional(),
   creatorId: z.number().optional(),

@@ -584,10 +584,14 @@
     if (waveform || waveformThumbnail) {
       const waveformData = waveform || waveformThumbnail || []
       if (waveformData.length > 0) {
-        drawWaveform(ctx, waveformData, width, height, currentTime / duration, {
-          active: accentColor,
-          inactive: 'rgba(255, 255, 255, 0.2)',
-        })
+        drawWaveform(
+          ctx,
+          waveformData,
+          width,
+          height,
+          currentTime / duration,
+          accentColor,
+        )
       }
     }
 

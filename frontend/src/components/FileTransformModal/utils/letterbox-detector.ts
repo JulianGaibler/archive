@@ -17,42 +17,69 @@ export interface DetectionOptions {
   maxScanPercent?: number
 }
 
-// Default detection constants
-const DEFAULT_VARIANCE_THRESHOLD = 25 // Lower = more sensitive to content (reduced from 50)
-const DEFAULT_EDGE_THRESHOLD = 10 // Gradient threshold for edge detection (reduced from 15)
+// Default detection constants (Balanced settings: detect letterbox while avoiding false positives)
+// Philosophy: Better to miss letterbox detection than to crop into actual content
+const DEFAULT_VARIANCE_THRESHOLD = 18 // More sensitive to texture - dark scenes with detail register as content
+const DEFAULT_EDGE_THRESHOLD = 5 // Detect subtle transitions from bars to content
 const DEFAULT_SAMPLE_POSITIONS = [0.05, 0.25, 0.5, 0.75, 0.95] // Video sample points
-const DEFAULT_MIN_BAR_THICKNESS_PERCENT = 0.03 // 3% of dimension (increased from 2%)
-const DEFAULT_MAX_SCAN_PERCENT = 0.4 // Don't scan more than 40% from edge (reduced from 45%)
-const DEFAULT_CONSECUTIVE_CONTENT_LINES = 5 // Require 5 consecutive content lines (increased from 3)
+const DEFAULT_MIN_BAR_THICKNESS_PERCENT = 0.05 // 5% minimum - reasonable letterbox size (1080p = 54px)
+const DEFAULT_MAX_SCAN_PERCENT = 0.3 // Scan up to 30% from edge - balanced depth
+const DEFAULT_CONSECUTIVE_CONTENT_LINES = 8 // Require strong evidence of content before stopping scan
 const MIN_CROP_SIZE = 50 // Minimum crop size in pixels
 
-/** Extract pixel data for a row (horizontal scan) */
-function getRowPixels(
+/**
+ * Extract pixel data for a segment of a row (horizontal scan) Used for
+ * multi-segment sampling to avoid false positives from dark content areas
+ *
+ * @param segmentStart - Start position as fraction (0.0 to 1.0)
+ * @param segmentEnd - End position as fraction (0.0 to 1.0)
+ */
+function getRowSegmentPixels(
   data: Uint8ClampedArray,
   width: number,
   height: number,
   row: number,
   fromBottom: boolean,
+  segmentStart: number,
+  segmentEnd: number,
 ): number[] {
   const actualRow = fromBottom ? height - 1 - row : row
-  const start = actualRow * width * 4
-  const end = start + width * 4
-  return Array.from(data.slice(start, end))
+  const startCol = Math.floor(width * segmentStart)
+  const endCol = Math.floor(width * segmentEnd)
+  const rowStart = actualRow * width * 4
+
+  const pixels: number[] = []
+  for (let col = startCol; col < endCol; col++) {
+    const idx = rowStart + col * 4
+    pixels.push(data[idx], data[idx + 1], data[idx + 2], data[idx + 3])
+  }
+
+  return pixels
 }
 
-/** Extract pixel data for a column (vertical scan) */
-function getColumnPixels(
+/**
+ * Extract pixel data for a segment of a column (vertical scan) Used for
+ * multi-segment sampling to avoid false positives from dark content areas
+ *
+ * @param segmentStart - Start position as fraction (0.0 to 1.0)
+ * @param segmentEnd - End position as fraction (0.0 to 1.0)
+ */
+function getColumnSegmentPixels(
   data: Uint8ClampedArray,
   width: number,
   height: number,
   col: number,
   fromRight: boolean,
+  segmentStart: number,
+  segmentEnd: number,
 ): number[] {
   const actualCol = fromRight ? width - 1 - col : col
-  const pixels: number[] = []
+  const startRow = Math.floor(height * segmentStart)
+  const endRow = Math.floor(height * segmentEnd)
 
-  for (let y = 0; y < height; y++) {
-    const idx = (y * width + actualCol) * 4
+  const pixels: number[] = []
+  for (let row = startRow; row < endRow; row++) {
+    const idx = (row * width + actualCol) * 4
     pixels.push(data[idx], data[idx + 1], data[idx + 2], data[idx + 3])
   }
 
@@ -123,8 +150,19 @@ function calculateEdgeStrength(
 }
 
 /**
- * Scan from an edge inward to detect letterbox bar Returns the position where
- * content begins (bar thickness)
+ * Scan from an edge inward to detect letterbox bar. Uses multi-segment sampling
+ * to avoid false positives from dark content areas.
+ *
+ * For each scanline, samples 3 segments (left/center/right or
+ * top/middle/bottom) and requires ALL segments to have low variance before
+ * considering it a letterbox bar. If ANY segment shows texture/detail, it's
+ * treated as content.
+ *
+ * Based on research: "Automatic Letter/Pillarbox Detection for Optimized
+ * Display of Digital TV" (Carreira & Queluz, 2014) with enhanced multi-segment
+ * approach.
+ *
+ * Returns the position where content begins (bar thickness).
  */
 function scanEdge(
   imageData: ImageData,
@@ -136,34 +174,72 @@ function scanEdge(
   const maxDimension = isHorizontal ? height : width
   const maxScan = Math.floor(maxDimension * options.maxScanPercent)
 
+  // Define sampling segments (left/top 20%, center 20%, right/bottom 20%)
+  // Avoids edges where logos might be, focuses on content areas
+  const SAMPLE_SEGMENTS = [
+    { start: 0.1, end: 0.3 }, // Left/Top 20%
+    { start: 0.4, end: 0.6 }, // Center 20%
+    { start: 0.7, end: 0.9 }, // Right/Bottom 20%
+  ]
+
   let consecutiveContent = 0
-  let prevLinePixels: number[] | null = null
+  let prevSegments: number[][] | null = null
 
   for (let i = 0; i < maxScan; i++) {
-    const linePixels = isHorizontal
-      ? getRowPixels(data, width, height, i, edge === 'bottom')
-      : getColumnPixels(data, width, height, i, edge === 'right')
+    // Sample multiple segments across the scanline
+    const currentSegments = SAMPLE_SEGMENTS.map((seg) =>
+      isHorizontal
+        ? getRowSegmentPixels(
+            data,
+            width,
+            height,
+            i,
+            edge === 'bottom',
+            seg.start,
+            seg.end,
+          )
+        : getColumnSegmentPixels(
+            data,
+            width,
+            height,
+            i,
+            edge === 'right',
+            seg.start,
+            seg.end,
+          ),
+    )
 
-    const variance = calculateVariance(linePixels)
-    const edgeStrength = prevLinePixels
-      ? calculateEdgeStrength(linePixels, prevLinePixels)
-      : 0
+    // Calculate variance for each segment
+    const variances = currentSegments.map((segment) =>
+      calculateVariance(segment),
+    )
 
-    // Content has high variance or high edge strength
-    if (
-      variance > options.varianceThreshold ||
-      edgeStrength > options.edgeThreshold
-    ) {
+    // Calculate edge strength for each segment (if we have previous segments)
+    const edgeStrengths = prevSegments
+      ? currentSegments.map((segment, idx) =>
+          calculateEdgeStrength(segment, prevSegments![idx]),
+        )
+      : currentSegments.map(() => 0)
+
+    // Check if ANY segment shows content characteristics
+    const hasContentVariance = variances.some(
+      (v) => v > options.varianceThreshold,
+    )
+    const hasContentEdge = edgeStrengths.some((e) => e > options.edgeThreshold)
+
+    // Content detected if ANY segment shows high variance or edge strength
+    if (hasContentVariance || hasContentEdge) {
       consecutiveContent++
       if (consecutiveContent >= options.consecutiveContentLines) {
         // Found content boundary - return position minus the consecutive content lines
-        return Math.max(0, i - options.consecutiveContentLines + 1)
+        const boundary = Math.max(0, i - options.consecutiveContentLines + 1)
+        return boundary
       }
     } else {
       consecutiveContent = 0
     }
 
-    prevLinePixels = linePixels
+    prevSegments = currentSegments
   }
 
   return 0 // No letterbox detected
@@ -217,6 +293,18 @@ function validateAndAdjust(
     bounds.right < width
 
   if (!hasLetterbox) return null
+
+  // Validate crop ratio - reject if cropping too much content (safety check)
+  const cropRatioHorizontal = (bounds.left + (width - bounds.right)) / width
+  const cropRatioVertical = (bounds.top + (height - bounds.bottom)) / height
+  const MAX_CROP_RATIO = 0.4 // Max 40% crop on any axis
+
+  if (
+    cropRatioHorizontal > MAX_CROP_RATIO ||
+    cropRatioVertical > MAX_CROP_RATIO
+  ) {
+    return null
+  }
 
   // Ensure resulting crop meets minimum size
   const cropWidth = bounds.right - bounds.left
@@ -285,8 +373,21 @@ async function sampleVideoFrames(
 }
 
 /**
- * Detect letterbox in video by sampling multiple frames Returns the
- * intersection (most conservative crop) across all frames
+ * Calculate median value from array, filtering out outliers. More robust than
+ * min/max for multi-frame detection.
+ */
+function median(values: number[]): number {
+  if (values.length === 0) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 === 0
+    ? Math.round((sorted[mid - 1] + sorted[mid]) / 2)
+    : sorted[mid]
+}
+
+/**
+ * Detect letterbox in video by sampling multiple frames. Uses median to filter
+ * out outlier frames (credits, fades, etc.)
  */
 function detectVideoLetterbox(
   frames: ImageData[],
@@ -297,15 +398,15 @@ function detectVideoLetterbox(
   // Detect in each frame
   const detections = frames.map((frame) => detectLetterbox(frame, options))
 
-  // Take intersection (most conservative crop) to ensure content is never cropped
+  // Use median to filter out outliers (credits, fades, etc.)
   const bounds: CropBounds = {
-    top: Math.max(...detections.map((d) => d.top)),
-    bottom: Math.min(...detections.map((d) => d.bottom)),
-    left: Math.max(...detections.map((d) => d.left)),
-    right: Math.min(...detections.map((d) => d.right)),
+    top: median(detections.map((d) => d.top)),
+    bottom: median(detections.map((d) => d.bottom)),
+    left: median(detections.map((d) => d.left)),
+    right: median(detections.map((d) => d.right)),
   }
 
-  // Validate the intersection
+  // Validate the median result
   const firstFrame = frames[0]
   return validateAndAdjust(bounds, firstFrame.width, firstFrame.height, options)
 }

@@ -549,7 +549,6 @@
 
       if (!detectedBounds) {
         // No letterboxing detected
-        console.log('No letterboxing detected')
         autoCropping = false
         return
       }
@@ -564,13 +563,14 @@
       const scaleY = displayHeight / sourceHeight
 
       // Set crop area in display coordinates
+      // Use Math.round() to match the reverse conversion in cropPixelOffsets
       cropArea = {
-        x: Math.floor(detectedBounds.left * scaleX),
-        y: Math.floor(detectedBounds.top * scaleY),
-        width: Math.floor(
+        x: Math.round(detectedBounds.left * scaleX),
+        y: Math.round(detectedBounds.top * scaleY),
+        width: Math.round(
           (detectedBounds.right - detectedBounds.left) * scaleX,
         ),
-        height: Math.floor(
+        height: Math.round(
           (detectedBounds.bottom - detectedBounds.top) * scaleY,
         ),
       }
@@ -874,6 +874,10 @@
       <div class="crop-info">
         {#if cropArea}
           <span>Size: {cropArea.width} × {cropArea.height}px</span>
+          <span>
+            Offsets: Left {cropPixelOffsets.left}px, Top {cropPixelOffsets.top}px,
+            Right {cropPixelOffsets.right}px, Bottom {cropPixelOffsets.bottom}px
+          </span>
         {/if}
       </div>
     {/if}

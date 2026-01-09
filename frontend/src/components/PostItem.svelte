@@ -1,20 +1,18 @@
 <script lang="ts">
-  import UserPicture from '@src/components/UserPicture.svelte'
-  import Button from 'tint/components/Button.svelte'
   import TextField from 'tint/components/TextField.svelte'
-  import ItemMedia from '@src/components/ItemMedia.svelte'
-  import ProcessingMediaStatus from '@src/components/ProcessingMediaStatus.svelte'
+  import ItemMediaDisplay from '@src/components/ItemMediaDisplay.svelte'
+  import UploadItemDisplay from '@src/components/UploadItemDisplay.svelte'
   import FileTransformModal from '@src/components/FileTransformModal.svelte'
   import Menu, {
     MENU_SEPARATOR,
     type ContextClickHandler,
   } from 'tint/components/Menu.svelte'
-  import IconMore from 'tint/icons/20-more.svg?raw'
-  import { formatDate } from '@src/utils'
-  import { FileProcessingStatus, FileType } from '@src/generated/graphql'
+  import { FileType } from '@src/generated/graphql'
   import type { PostUpdate, EditableItem } from '@src/utils/edit-manager'
-  import { getResourceUrl } from '@src/utils/resource-urls'
-  import type { MediaItemData } from '@src/components/ItemMedia.svelte'
+  import {
+    getAvailableItemOperations,
+    canShowOperations,
+  } from '@src/utils/item-state-machine'
   import type { CropInput, TrimInput } from '@src/generated/graphql'
 
   type Props = {
@@ -180,166 +178,10 @@
   }
 
   // Helper function to get current file type from __typename
-  function getCurrentType(typename: string | undefined): FileType | null {
-    switch (typename) {
-      case 'VideoItem':
-        return FileType.Video
-      case 'GifItem':
-        return FileType.Gif
-      case 'ImageItem':
-        return FileType.Image
-      case 'AudioItem':
-        return FileType.Audio
-      default:
-        return null
-    }
-  }
-
-  // Helper function to determine what conversions are available
-  function getAvailableConversions() {
-    const conversions = []
-
-    // Check for any item with failed processing - show reprocess option
-    if (item.type === 'existing' && onResetAndReprocessFile) {
-      // Check ProcessingItem with failed status
-      if (
-        item.data.__typename === 'ProcessingItem' &&
-        item.data.processingStatus === FileProcessingStatus.Failed
-      ) {
-        conversions.push({
-          label: 'Reprocess from original',
-          onClick: handleResetAndReprocess,
-        })
-        return conversions
-      }
-
-      // Check media items (Video, Audio, Image, Gif) with failed file processing
-      if (
-        'file' in item.data &&
-        item.data.file &&
-        item.data.file.processingStatus === FileProcessingStatus.Failed
-      ) {
-        conversions.push({
-          label: 'Reprocess from original',
-          onClick: handleResetAndReprocess,
-        })
-        return conversions
-      }
-    }
-
-    if (item.type !== 'existing' || !('file' in item.data) || !item.data.file) {
-      return []
-    }
-
-    // Use ORIGINAL file type for conversion options
-    const originalType = item.data.file.originalType
-    if (!originalType) return []
-
-    // Check if file is currently processing
-    const isProcessing =
-      item.data.file.processingStatus === FileProcessingStatus.Queued ||
-      item.data.file.processingStatus === FileProcessingStatus.Processing
-
-    // Get current type (after any conversions)
-    const currentType = getCurrentType(item.data.__typename)
-
-    // Add conversion options based on ORIGINAL file type
-    // Only show if target type is different from current type
-    if (originalType === FileType.Video) {
-      if (currentType !== FileType.Audio) {
-        conversions.push({
-          label: 'Convert to Audio',
-          onClick: handleConvertToAudio,
-        })
-      }
-      if (currentType !== FileType.Gif) {
-        conversions.push({
-          label: 'Convert to GIF',
-          onClick: handleConvertToGif,
-        })
-      }
-    } else if (originalType === FileType.Gif) {
-      if (currentType !== FileType.Video) {
-        conversions.push({
-          label: 'Convert to Video',
-          onClick: handleConvertToVideo,
-        })
-      }
-    }
-
-    // Add single "Edit..." option for crop/trim (only if not processing)
-    if (
-      !isProcessing &&
-      currentType &&
-      (currentType === FileType.Video ||
-        currentType === FileType.Audio ||
-        currentType === FileType.Image ||
-        currentType === FileType.Gif)
-    ) {
-      conversions.push({ label: 'Edit...', onClick: handleTransformItem })
-    }
-
-    // Add modification reversal options if modifications exist
-    const modifications = item.data.file.modifications
-    if (modifications && onRemoveModifications) {
-      const hasCrop = !!(modifications as any).crop
-      const hasTrim = !!(modifications as any).trim
-      const hasFileType = !!modifications.fileType
-      const modCount =
-        (hasCrop ? 1 : 0) + (hasTrim ? 1 : 0) + (hasFileType ? 1 : 0)
-
-      if (modCount > 0) {
-        conversions.push(MENU_SEPARATOR)
-
-        // Individual reversal options
-        if (hasCrop) {
-          conversions.push({
-            label: 'Undo crop',
-            onClick: () => handleRemoveModification('crop'),
-          })
-        }
-        if (hasTrim) {
-          conversions.push({
-            label: 'Undo trim',
-            onClick: () => handleRemoveModification('trim'),
-          })
-        }
-        if (hasFileType) {
-          conversions.push({
-            label: 'Restore original format',
-            onClick: () => handleRemoveModification('fileType'),
-          })
-        }
-
-        // Only show "Undo all changes" if multiple modifications exist
-        if (modCount > 1) {
-          conversions.push({
-            label: 'Undo all changes',
-            onClick: handleRevertToOriginal,
-          })
-        }
-      }
-    }
-
-    return conversions
-  }
-
-  // Helper to check if operations should be shown (not during processing)
-  function canShowOperations() {
-    return (
-      item.type === 'existing' &&
-      !(
-        'file' in item.data &&
-        item.data.file &&
-        (item.data.file.processingStatus === FileProcessingStatus.Queued ||
-          item.data.file.processingStatus === FileProcessingStatus.Processing)
-      )
-    )
-  }
 
   const itemActions = $derived.by(() => {
     const actions = []
-    const hasOperations = canShowOperations()
+    const hasOperations = canShowOperations(item)
 
     // Add operations (move, duplicate, delete)
     if (onMoveItem && hasOperations) {
@@ -361,7 +203,19 @@
       })
     }
 
-    const conversions = getAvailableConversions()
+    // Get file conversion and transformation operations using utility
+    const conversions = getAvailableItemOperations(item, {
+      onConvert: (type) => {
+        if (type === FileType.Audio) handleConvertToAudio()
+        else if (type === FileType.Video) handleConvertToVideo()
+        else if (type === FileType.Gif) handleConvertToGif()
+      },
+      onEdit: handleTransformItem,
+      onReprocess: handleResetAndReprocess,
+      onRemoveModifications: (modifications) =>
+        handleRemoveModification(modifications[0]),
+      onRevertToOriginal: handleRevertToOriginal,
+    })
 
     // Add separator between operations and transformations if both exist
     if (actions.length > 0 && conversions.length > 0) {
@@ -389,118 +243,9 @@
 
 <article>
   {#if item.type === 'existing'}
-    {#if item.data.__typename === 'ProcessingItem'}
-      <!-- Item is being processed, show processing status -->
-      <ProcessingMediaStatus
-        file={{
-          id: item.data.fileId,
-          processingStatus: item.data.processingStatus,
-          processingProgress: item.data.processingProgress,
-          processingNotes: item.data.processingNotes,
-        }}
-      />
-    {:else if 'file' in item.data && item.data.file && (item.data.file.processingStatus === FileProcessingStatus.Queued || item.data.file.processingStatus === FileProcessingStatus.Processing || item.data.file.processingStatus === FileProcessingStatus.Failed)}
-      <!-- File exists and is processing (shouldn't happen with ProcessingItem, but keep as fallback) -->
-      <ProcessingMediaStatus file={item.data.file} />
-    {:else}
-      <ItemMedia item={item.data} />
-    {/if}
-    <div class="info">
-      <ul class="origin pipelist">
-        <li>
-          <UserPicture user={item.data.creator} size="16" showUsername={true} />
-        </li>
-        <li>{formatDate(new Date(item.data.createdAt))}</li>
-      </ul>
-      <div class="actions">
-        {#if 'file' in item.data && item.data.file && 'originalPath' in item.data.file}
-          <Button
-            small={true}
-            download={`archive-${item.id}`}
-            href={getResourceUrl(item.data.file.originalPath)}>Original</Button
-          >
-        {/if}
-        {#if 'file' in item.data && item.data.file && 'compressedPath' in item.data.file}
-          <Button
-            small={true}
-            download={`archive-${item.id}-original`}
-            href={getResourceUrl(
-              'compressedGifPath' in item.data.file
-                ? item.data.file.compressedGifPath
-                : item.data.file.compressedPath,
-            )}>Compressed</Button
-          >
-        {/if}
-        {#if itemActions.length > 0}
-          <Button
-            small={true}
-            icon={true}
-            title="Edit item"
-            onclick={buttonClick}
-            onmousedown={buttonClick}>{@html IconMore}</Button
-          >
-        {/if}
-      </div>
-    </div>
+    <ItemMediaDisplay {item} {loading} {itemActions} {buttonClick} />
   {:else if item.type === 'upload'}
-    {#if item.isQueued}
-      <ProcessingMediaStatus
-        uploadItem={{
-          isUploading: false,
-          uploadError: undefined,
-          isQueued: true,
-        }}
-        onCancel={handleRemoveUploadItem}
-      />
-    {:else if item.isUploading}
-      <ProcessingMediaStatus
-        uploadItem={{
-          isUploading: true,
-          uploadError: undefined,
-          uploadController: item.uploadController,
-        }}
-        onCancel={handleRemoveUploadItem}
-      />
-    {:else if item.uploadError}
-      <ProcessingMediaStatus
-        uploadItem={{ isUploading: false, uploadError: item.uploadError }}
-        onCancel={handleRemoveUploadItem}
-      />
-    {:else if item.processingStatus === FileProcessingStatus.Done && item.processedFile}
-      <!-- File is done processing, show the actual media -->
-      <ItemMedia
-        item={{
-          __typename:
-            item.fileType === FileType.Image
-              ? 'ImageItem'
-              : item.fileType === FileType.Video
-                ? 'VideoItem'
-                : item.fileType === FileType.Gif
-                  ? 'GifItem'
-                  : 'AudioItem',
-          file: item.processedFile,
-        } as MediaItemData}
-      />
-    {:else if item.processingStatus && (item.processingStatus === FileProcessingStatus.Queued || item.processingStatus === FileProcessingStatus.Processing || item.processingStatus === FileProcessingStatus.Failed)}
-      <ProcessingMediaStatus
-        file={{
-          id: item.fileId || '',
-          processingStatus: item.processingStatus,
-          processingProgress: item.processingProgress,
-          processingNotes: item.processingNotes,
-        }}
-      />
-    {:else}
-      <!-- File is uploaded and not currently processing, show processing complete status -->
-      <ProcessingMediaStatus
-        uploadItem={{ isUploading: false, uploadError: undefined }}
-      />
-    {/if}
-    <div class="info">
-      <div class="actions standalone">
-        <Button small={true} onclick={handleRemoveUploadItem}>Remove</Button>
-      </div>
-    </div>
+    <UploadItemDisplay {item} onRemove={handleRemoveUploadItem} />
   {/if}
   <div class="content">
     {#if editItem}
@@ -569,19 +314,6 @@
     gap: tint.$size-12
     &:not(:last-child)
       margin-block-end: tint.$size-32
-  .info
-    display: flex
-    align-items: center
-    gap: tint.$size-8
-    flex-wrap: wrap
-    ul
-      flex: 1
-    .actions
-      display: flex
-      justify-content: flex-end
-      gap: tint.$size-8
-      &.standalone
-        flex: 1
 
   .content
     display: grid

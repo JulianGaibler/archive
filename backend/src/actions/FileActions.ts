@@ -415,10 +415,9 @@ const FileActions = {
 
     if (!fields.clearAllModifications) {
       // Start with existing modifications from processingMeta (source of truth)
-      // Fallback to modifications field for backwards compatibility
+      // Start with existing modifications from processingMeta
       newModifications = {
-        ...((file.processingMeta as ModificationActionData) ||
-          (file.modifications as ModificationActionData)),
+        ...((file.processingMeta as ModificationActionData) || {}),
       }
 
       if (fields.removeModifications) {
@@ -433,16 +432,14 @@ const FileActions = {
     }
 
     // Prepare database update fields
-    // IMPORTANT: Always keep modifications and processingMeta in sync
-    // - processingMeta: SOURCE OF TRUTH for GraphQL API (includes all modifications)
-    // - modifications: DERIVED for reprocessing efficiency (persistent only: crop, trim)
+    // processingMeta: SOURCE OF TRUTH for all modifications (crop, trim, fileType)
     const dbUpdate: any = {
-      modifications: getPersistentModifications(newModifications),
       processingMeta:
         Object.keys(newModifications).length > 0 ? newModifications : null,
       processingStatus: 'QUEUED',
       processingProgress: 0,
       processingNotes: null,
+      updatedAt: Date.now(),
     }
 
     // Check if we need to update the file type
@@ -463,52 +460,10 @@ const FileActions = {
       .set(dbUpdate)
       .where(eq(fileTable.id, fields.fileId))
 
-    // Validate consistency: modifications should match getPersistentModifications(processingMeta)
-    // This ensures our two sources of truth stay in sync
-    if (dbUpdate.processingMeta) {
-      const expectedModifications = getPersistentModifications(
-        dbUpdate.processingMeta,
-      )
-      const actualModifications = dbUpdate.modifications
-
-      if (
-        JSON.stringify(expectedModifications) !==
-        JSON.stringify(actualModifications)
-      ) {
-        console.error(
-          `[FileActions] Modification mismatch detected for ${fields.fileId}`,
-        )
-        console.error(
-          '  Expected (from processingMeta):',
-          expectedModifications,
-        )
-        console.error('  Actual (in modifications):', actualModifications)
-        // Auto-fix: This should never happen, but if it does, fix it
-        await ctx.db
-          .update(fileTable)
-          .set({ modifications: expectedModifications })
-          .where(eq(fileTable.id, fields.fileId))
-      }
-    } else if (
-      dbUpdate.modifications &&
-      Object.keys(dbUpdate.modifications).length > 0
-    ) {
-      // processingMeta is null but modifications is not empty - inconsistency
-      console.error(
-        `[FileActions] Inconsistency for ${fields.fileId}: processingMeta is null but modifications is not empty`,
-      )
-      console.error('  modifications:', dbUpdate.modifications)
-      // Auto-fix: Clear modifications to match processingMeta
-      await ctx.db
-        .update(fileTable)
-        .set({ modifications: {} })
-        .where(eq(fileTable.id, fields.fileId))
-    }
-
     // Cleanup UNMODIFIED variants when all modifications are removed
     // Check if we transitioned from having modifications to having none
     const hadModifications =
-      file.modifications && Object.keys(file.modifications).length > 0
+      file.processingMeta && Object.keys(file.processingMeta).length > 0
     const hasModifications = Object.keys(newModifications).length > 0
 
     if (hadModifications && !hasModifications) {
@@ -699,8 +654,9 @@ const FileActions = {
     await ctx.db
       .update(fileTable)
       .set({
-        modifications: {},
+        processingMeta: null,
         processingStatus: 'DONE',
+        updatedAt: Date.now(),
       })
       .where(eq(fileTable.id, fileId))
 
@@ -720,17 +676,15 @@ const FileActions = {
     }
 
     // Step 1: Clear all modifications in database
-    // NOTE: Clear both modifications and processingMeta to maintain consistency
-    // processingMeta is source of truth, modifications is derived
     await ctx.db
       .update(fileTable)
       .set({
-        modifications: {},
         processingMeta: null,
         type: file.originalType, // Revert to original type
         processingStatus: 'QUEUED',
         processingProgress: null,
         processingNotes: null,
+        updatedAt: Date.now(),
       })
       .where(eq(fileTable.id, fileId))
 
@@ -883,7 +837,7 @@ const FileActions = {
           processingStatus: 'DONE',
           processingProgress: 100,
           processingNotes: null,
-          modifications: sourceFile.modifications,
+          processingMeta: sourceFile.processingMeta,
           expireBy: null, // Duplicates don't expire (they're attached to items)
         })
         .returning()
@@ -1035,7 +989,13 @@ const FileActions = {
       processingNotes?: string | null
     },
   ): Promise<void> {
-    await ctx.db.update(fileTable).set(changes).where(eq(fileTable.id, fileId))
+    await ctx.db
+      .update(fileTable)
+      .set({
+        ...changes,
+        updatedAt: Date.now(),
+      })
+      .where(eq(fileTable.id, fileId))
 
     // CRITICAL: Clear dataloader cache so subscription update fetches fresh data
     // Without this, _publishFileProcessingUpdate reads stale cached status
@@ -1100,7 +1060,10 @@ const FileActions = {
       // Update the file to PROCESSING status
       await tx
         .update(fileTable)
-        .set({ processingStatus: 'PROCESSING' })
+        .set({
+          processingStatus: 'PROCESSING',
+          updatedAt: Date.now(),
+        })
         .where(eq(fileTable.id, file.id))
 
       // Publish file processing update
@@ -1152,6 +1115,7 @@ const FileActions = {
           processingNotes: olderThan
             ? 'Marked as failed due to being stuck for more than 30 minutes'
             : 'Marked as failed and cleaned up after server restart',
+          updatedAt: Date.now(),
         })
         .where(inArray(fileTable.id, ids))
 
@@ -1335,6 +1299,11 @@ const FileActions = {
         // Get file internal data to determine item types
         const file = await this._qFileInternal(ctx, fileId)
 
+        if (!file) {
+          console.error('[FileActions] File not found:', fileId)
+          return
+        }
+
         console.log('[FileActions] File data for typename determination:', {
           fileId,
           processingStatus: file.processingStatus,
@@ -1345,8 +1314,10 @@ const FileActions = {
          * Determine item typename based on file processing status and type.
          *
          * CRITICAL: Must check processingStatus FIRST before type.
+         *
          * - If file is QUEUED, PROCESSING, or FAILED → always ProcessingItem
-         * - Only when DONE → return actual media type (VideoItem, AudioItem, etc.)
+         * - Only when DONE → return actual media type (VideoItem, AudioItem,
+         *   etc.)
          *
          * This matches the GraphQL __resolveType logic and prevents premature
          * typename changes that break subscription tracking.
@@ -1363,12 +1334,17 @@ const FileActions = {
             file.processingStatus === 'PROCESSING' ||
             file.processingStatus === 'FAILED'
           ) {
-            console.log('[FileActions] File is QUEUED/PROCESSING/FAILED, returning ProcessingItem')
+            console.log(
+              '[FileActions] File is QUEUED/PROCESSING/FAILED, returning ProcessingItem',
+            )
             return 'ProcessingItem'
           }
 
           // Only when DONE, return the actual media type based on file.type
-          console.log('[FileActions] File is DONE, determining type from file.type:', file.type)
+          console.log(
+            '[FileActions] File is DONE, determining type from file.type:',
+            file.type,
+          )
           let typename: string
           switch (file.type) {
             case 'VIDEO':

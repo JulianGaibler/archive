@@ -44,7 +44,7 @@ export function drawWaveform(
   width: number,
   height: number,
   currentPosition: number,
-  colors: { active: string; inactive: string },
+  activeColor: string,
 ): void {
   const spacing = 2
   const totalSpacing = spacing * (waveformData.length - 1)
@@ -61,7 +61,8 @@ export function drawWaveform(
     const y = (height - barHeight) / 2
 
     const isActive = i <= currentWaveformPosition
-    ctx.fillStyle = isActive ? colors.active : colors.inactive
+    ctx.fillStyle = activeColor
+    ctx.globalAlpha = isActive ? 0.8 : 0.3
 
     // Draw rounded rectangle
     const radius = Math.min(borderRadius, barWidth / 2, barHeight / 2)
@@ -84,6 +85,8 @@ export function drawWaveform(
     ctx.closePath()
     ctx.fill()
   })
+
+  ctx.globalAlpha = 1
 }
 
 /** Get CSS custom property value from canvas element */

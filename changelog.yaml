@@ -1,6 +1,20 @@
 # Changelog
 # Labels: [Added], [Fixed], [Improved], [Removed], [Deprecated], [Security]
 
+2.3.0:
+  date: '2026-01-08'
+  notes: |
+    This release adds editing functionality for items. Items can be duplicated, converted between formats (e.g., video to GIF or audio), and edited with cropping and trimming tools. The editor includes an auto-crop feature that attempts to remove letterboxing.
+  changes:
+    - '[Added] Items can now be duplicated'
+    - '[Added] Items can now be converted to different types (e.g., video to GIF or audio)'
+    - '[Added] Items can now be edited with cropping and trimming tools'
+    - '[Added] Auto-crop feature in the editor that automatically removes letterboxing (black bars)'
+    - '[Improved] File processing is now more error resilient'
+2.2.1:
+  date: '2025-09-12'
+  changes:
+    - '[Fixed] Captions and descriptions don''t have a maximum length of 255 anymore'
 2.2.0:
   date: '2025-07-14'
   notes: |

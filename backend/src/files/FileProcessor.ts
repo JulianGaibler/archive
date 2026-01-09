@@ -545,6 +545,25 @@ export default class FileProcessor {
         tmpFilename2,
       )
 
+      // Extract metadata from compressed screenshot to get actual cropped dimensions
+      let croppedMetadata
+      try {
+        croppedMetadata = await sharp(compressedScreenshotPath).metadata()
+      } catch (err) {
+        throw new FileProcessingError(
+          'Failed to read compressed screenshot metadata',
+          'cropped dimensions extraction',
+          err as Error,
+        )
+      }
+
+      const croppedHeight = croppedMetadata.height
+      const croppedWidth = croppedMetadata.width
+
+      if (!croppedHeight || !croppedWidth) {
+        throw new InputError('Invalid compressed video - missing dimensions')
+      }
+
       // Generate thumbnails from the compressed video screenshot
       const videoOutputHeight =
         height > processingConfig.video.maxHeight
@@ -588,7 +607,7 @@ export default class FileProcessor {
       await this.updateCallback({ processingProgress: 100 })
 
       return {
-        relHeight: round((height / width) * 100, 4),
+        relHeight: round((croppedHeight / croppedWidth) * 100, 4),
         createdFiles: {
           compressed: filePaths,
           thumbnail: thumbnailPaths,
@@ -701,7 +720,7 @@ export default class FileProcessor {
               '-t',
               trimDuration!.toString(),
             ],
-            outputOptions: ['-c', 'copy'], // Fast copy, no re-encoding
+            outputOptions: ['-acodec', 'libmp3lame', '-ar', '44100'], // Transcode to MP3
           })
 
           // Generate waveforms from trimmed file
