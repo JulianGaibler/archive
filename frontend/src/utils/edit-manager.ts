@@ -25,11 +25,8 @@ import {
 } from './custom-fetch'
 import { webSubscriptionsClient } from '@src/gql-client'
 import { updateFileProcessingFields } from './file-update-helpers'
-import {
-  collectProcessingFileIds,
-  isItemProcessing,
-} from './processing-id-collector'
-import { isProcessingItem, hasFileField } from './item-type-guards'
+import { collectProcessingFileIds } from './processing-id-collector'
+import { isProcessingItem } from './item-type-guards'
 
 type PostItemType = NonNullable<PostQuery['node']> & { __typename: 'Post' }
 

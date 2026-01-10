@@ -15,6 +15,7 @@ type FileExternalParent = {
   id: string
   creatorId: string // External type uses encoded string
   type: string
+  originalType: string
   processingStatus: string
   processingProgress: number | null
   processingNotes: string | null
@@ -49,9 +50,9 @@ async function getFileModifications(ctx: Context, fileId: string) {
   }
 
   return {
-    crop: meta.crop ? (meta.crop as any) : undefined,
-    trim: meta.trim ? (meta.trim as any) : undefined,
-    fileType: meta.fileType ? (meta.fileType as any) : undefined,
+    crop: meta.crop ? (meta.crop as Record<string, unknown>) : undefined,
+    trim: meta.trim ? (meta.trim as Record<string, unknown>) : undefined,
+    fileType: meta.fileType ? (meta.fileType as string) : undefined,
   }
 }
 
@@ -72,7 +73,7 @@ export const photoFileResolvers: PhotoFileResolvers = {
 
   originalType: (parent) => {
     const actualParent = parent as unknown as FileExternalParent
-    return (actualParent as any).originalType
+    return actualParent.originalType
   },
 
   modifications: async (parent, _args, ctx) => {
@@ -142,7 +143,7 @@ export const videoFileResolvers: VideoFileResolvers = {
 
   originalType: (parent) => {
     const actualParent = parent as unknown as FileExternalParent
-    return (actualParent as any).originalType
+    return actualParent.originalType
   },
 
   modifications: async (parent, _args, ctx) => {
@@ -232,7 +233,7 @@ export const gifFileResolvers: GifFileResolvers = {
 
   originalType: (parent) => {
     const actualParent = parent as unknown as FileExternalParent
-    return (actualParent as any).originalType
+    return actualParent.originalType
   },
 
   modifications: async (parent, _args, ctx) => {
@@ -313,7 +314,7 @@ export const audioFileResolvers: AudioFileResolvers = {
 
   originalType: (parent) => {
     const actualParent = parent as unknown as FileExternalParent
-    return (actualParent as any).originalType
+    return actualParent.originalType
   },
 
   modifications: async (parent, _args, ctx) => {
@@ -383,7 +384,7 @@ export const profilePictureFileResolvers: ProfilePictureFileResolvers = {
 
   originalType: (parent) => {
     const actualParent = parent as unknown as FileExternalParent
-    return (actualParent as any).originalType
+    return actualParent.originalType
   },
 
   modifications: async (parent, _args, ctx) => {

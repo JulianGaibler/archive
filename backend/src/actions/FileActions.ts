@@ -29,7 +29,6 @@ import { z } from 'zod/v4'
 import topics from '@src/pubsub/topics.js'
 import ActionUtils from './ActionUtils.js'
 import {
-  getPersistentModifications,
   ModificationActionData,
   ModificationActions,
 } from '@src/files/processing-metadata.js'
@@ -433,7 +432,7 @@ const FileActions = {
 
     // Prepare database update fields
     // processingMeta: SOURCE OF TRUTH for all modifications (crop, trim, fileType)
-    const dbUpdate: any = {
+    const dbUpdate: Record<string, unknown> = {
       processingMeta:
         Object.keys(newModifications).length > 0 ? newModifications : null,
       processingStatus: 'QUEUED',
@@ -481,7 +480,7 @@ const FileActions = {
         console.log(
           `[FileActions] Deleted UNMODIFIED_COMPRESSED for ${fields.fileId}`,
         )
-      } catch (err) {
+      } catch (_err) {
         // Variant may not exist, that's okay
         console.log(
           `[FileActions] UNMODIFIED_COMPRESSED not found for ${fields.fileId}, skipping`,
@@ -498,7 +497,7 @@ const FileActions = {
         console.log(
           `[FileActions] Deleted UNMODIFIED_THUMBNAIL_POSTER for ${fields.fileId}`,
         )
-      } catch (err) {
+      } catch (_err) {
         // Variant may not exist, that's okay
         console.log(
           `[FileActions] UNMODIFIED_THUMBNAIL_POSTER not found for ${fields.fileId}, skipping`,
@@ -701,7 +700,7 @@ const FileActions = {
     for (const variant of variantsToDelete) {
       try {
         await Context.fileStorage.deleteVariant(ctx, fileId, variant)
-      } catch (err) {
+      } catch (_err) {
         // Ignore errors if variant doesn't exist
         console.log(
           `[FileActions] Variant ${variant} not found for file ${fileId}, skipping`,

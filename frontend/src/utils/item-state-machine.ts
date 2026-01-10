@@ -120,8 +120,8 @@ export function getAvailableItemOperations(
   // Add modification reversal options if modifications exist
   const modifications = item.data.file.modifications
   if (modifications && callbacks.onRemoveModifications) {
-    const hasCrop = !!(modifications as any).crop
-    const hasTrim = !!(modifications as any).trim
+    const hasCrop = !!modifications.crop
+    const hasTrim = !!modifications.trim
     const hasFileType = !!modifications.fileType
     const modCount =
       (hasCrop ? 1 : 0) + (hasTrim ? 1 : 0) + (hasFileType ? 1 : 0)

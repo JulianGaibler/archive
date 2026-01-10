@@ -22,7 +22,7 @@
     buttonClick: ContextClickHandler | undefined
   }
 
-  let { item, loading, itemActions, buttonClick }: Props = $props()
+  let { item, loading: _, itemActions, buttonClick }: Props = $props()
 </script>
 
 <!-- Media Display -->

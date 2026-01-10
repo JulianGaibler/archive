@@ -96,13 +96,13 @@ export const mutationResolvers: MutationResolvers = {
 
     return ItemActions._mModifyItem(ctx, {
       itemId: args.itemId,
-      addModifications: modifications as any,
+      addModifications: modifications as Record<string, unknown>,
     })
   },
 
   removeModifications: async (_, args, ctx) =>
-    ItemActions.mRemoveModifications(ctx, args as any),
+    ItemActions.mRemoveModifications(ctx, args),
 
   resetAndReprocessFile: async (_, args, ctx) =>
-    ItemActions.mResetAndReprocessFile(ctx, args as any),
+    ItemActions.mResetAndReprocessFile(ctx, args),
 }

@@ -1,5 +1,6 @@
 import Context from '@src/Context.js'
 import topics from '@src/pubsub/topics.js'
+import type { FileProcessingUpdatePayload } from '@src/actions/FileActions.js'
 
 /**
  * Batches file processing subscription updates to reduce message spam.
@@ -20,7 +21,7 @@ import topics from '@src/pubsub/topics.js'
  * - 100ms delay is imperceptible to users
  */
 class SubscriptionBatcher {
-  private pendingUpdates = new Map<string, any>()
+  private pendingUpdates = new Map<string, FileProcessingUpdatePayload>()
   private publishTimeout?: NodeJS.Timeout
   private readonly BATCH_DELAY_MS = 100
 
@@ -31,7 +32,7 @@ class SubscriptionBatcher {
    * @param fileId - The file ID
    * @param payload - The complete subscription payload
    */
-  addUpdate(fileId: string, payload: any): void {
+  addUpdate(fileId: string, payload: FileProcessingUpdatePayload): void {
     this.pendingUpdates.set(fileId, payload)
     this.schedulePublish()
   }

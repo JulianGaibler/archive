@@ -11,7 +11,6 @@ import {
 import PostActions from '@src/actions/PostActions.js'
 import Context from '@src/Context.js'
 import FileActions from '@src/actions/FileActions.js'
-import HashId, { HashIdTypes } from '@src/models/HashId.js'
 
 export const itemResolvers: ItemResolvers = {
   creator: async (parent, _args, ctx) =>

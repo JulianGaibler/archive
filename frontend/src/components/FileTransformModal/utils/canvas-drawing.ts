@@ -117,7 +117,6 @@ export function drawDimensionLabel(
 
   // Pill dimensions
   const paddingX = 12
-  const paddingY = 6
   const pillWidth = textWidth + paddingX * 2
   const pillHeight = 24
   const borderRadius = pillHeight / 2

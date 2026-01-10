@@ -70,17 +70,24 @@ export function collectProcessingFileIds(
  * @param item - Any item that might have a processing status
  * @returns True if the item is actively processing (QUEUED or PROCESSING)
  */
-export function isItemProcessing(item: any): boolean {
+export function isItemProcessing(item: unknown): boolean {
+  if (typeof item !== 'object' || item === null) return false
+
   // Check for processingStatus field directly on the item (ProcessingItem)
   if ('processingStatus' in item) {
-    const status = item.processingStatus as FileProcessingStatus
+    const status = (item as Record<string, unknown>)
+      .processingStatus as FileProcessingStatus
     return status !== Status.Done && status !== Status.Failed
   }
 
   // Check for processingStatus on the file field (media items)
-  if ('file' in item && item.file && 'processingStatus' in item.file) {
-    const status = item.file.processingStatus as FileProcessingStatus
-    return status !== Status.Done && status !== Status.Failed
+  if ('file' in item) {
+    const file = (item as Record<string, unknown>).file
+    if (file && typeof file === 'object' && 'processingStatus' in file) {
+      const status = (file as Record<string, unknown>)
+        .processingStatus as FileProcessingStatus
+      return status !== Status.Done && status !== Status.Failed
+    }
   }
 
   return false
@@ -93,14 +100,17 @@ export function isItemProcessing(item: any): boolean {
  * @param item - Potential ProcessingItem
  * @returns File ID if actively processing, null otherwise
  */
-export function getProcessingItemFileId(item: any): string | null {
+export function getProcessingItemFileId(item: unknown): string | null {
+  if (typeof item !== 'object' || item === null) return null
+
+  const obj = item as Record<string, unknown>
   // Check for ProcessingItem with fileId
-  if (item.__typename === 'ProcessingItem' && 'fileId' in item && item.fileId) {
+  if (obj.__typename === 'ProcessingItem' && 'fileId' in obj && obj.fileId) {
     // Also check processingStatus to exclude DONE/FAILED items
     // This is critical because the backend may send ProcessingItem with DONE status
     // during the transition period before typename changes
     if (isItemProcessing(item)) {
-      return item.fileId
+      return obj.fileId as string
     }
   }
 
@@ -122,10 +132,13 @@ export function getProcessingItemFileId(item: any): string | null {
  * @param item - Potential media item with file field
  * @returns File ID if actively processing, null otherwise
  */
-export function getMediaItemFileId(item: any): string | null {
-  if ('file' in item && item.file) {
-    if (isItemProcessing(item)) {
-      return item.file.id
+export function getMediaItemFileId(item: unknown): string | null {
+  if (typeof item !== 'object' || item === null) return null
+
+  if ('file' in item) {
+    const file = (item as Record<string, unknown>).file
+    if (file && typeof file === 'object' && isItemProcessing(item)) {
+      return (file as Record<string, unknown>).id as string
     }
   }
 

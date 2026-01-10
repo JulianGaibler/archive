@@ -297,7 +297,6 @@
 
     // Draw dimension label if dragging
     if (showDimensionLabel && labelSourceDimensions) {
-      const _canvasWidth = displayWidth + VIDEO_MARGIN * 2
       const canvasHeight = displayHeight + VIDEO_MARGIN * 2
 
       // Position in center of crop area if it's large enough, otherwise below crop area
@@ -468,6 +467,18 @@
               clamp(dragStartArea.y + dy, 0, displayHeight - cropArea.height),
             ),
           }
+
+          // Convert display coordinates to source and update source of truth
+          const scaleX = sourceDims.width / displayWidth
+          const scaleY = sourceDims.height / displayHeight
+
+          sourceCropArea = {
+            x: Math.round(newDisplayCrop.x * scaleX),
+            y: Math.round(newDisplayCrop.y * scaleY),
+            width: Math.round(newDisplayCrop.width * scaleX),
+            height: Math.round(newDisplayCrop.height * scaleY),
+          }
+          // cropArea will be updated automatically via $effect
         } else if (dragMode?.startsWith('resize-')) {
           // Use source-coordinate-based approach to preserve fixed corner
           if (!fixedSourceCorner) return
@@ -530,18 +541,6 @@
             y: newSourceY,
             width: newSourceWidth,
             height: newSourceHeight,
-          }
-          // cropArea will be updated automatically via $effect
-        } else if (dragMode === 'move') {
-          // Convert display coordinates to source and update source of truth
-          const scaleX = sourceDims.width / displayWidth
-          const scaleY = sourceDims.height / displayHeight
-
-          sourceCropArea = {
-            x: Math.round(newDisplayCrop.x * scaleX),
-            y: Math.round(newDisplayCrop.y * scaleY),
-            width: Math.round(newDisplayCrop.width * scaleX),
-            height: Math.round(newDisplayCrop.height * scaleY),
           }
           // cropArea will be updated automatically via $effect
         } else {

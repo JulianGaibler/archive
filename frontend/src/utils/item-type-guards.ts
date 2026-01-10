@@ -20,8 +20,8 @@ import type { ExistingItem, UploadItem, EditableItem } from './edit-manager'
  * @param item - Any item that might be a ProcessingItem
  * @returns True if item has __typename === 'ProcessingItem'
  */
-export function isProcessingItem(item: any): boolean {
-  return item?.__typename === 'ProcessingItem'
+export function isProcessingItem(item: unknown): boolean {
+  return (item as Record<string, unknown>)?.__typename === 'ProcessingItem'
 }
 
 /**
@@ -34,8 +34,15 @@ export function isProcessingItem(item: any): boolean {
  * @param item - Any item that might have a file field
  * @returns True if item has a file field
  */
-export function hasFileField(item: any): boolean {
-  return item && 'file' in item && item.file !== null && item.file !== undefined
+export function hasFileField(item: unknown): boolean {
+  return (
+    item !== null &&
+    item !== undefined &&
+    typeof item === 'object' &&
+    'file' in item &&
+    (item as Record<string, unknown>).file !== null &&
+    (item as Record<string, unknown>).file !== undefined
+  )
 }
 
 /**
@@ -44,7 +51,7 @@ export function hasFileField(item: any): boolean {
  * @param item - Any item that might be a media item
  * @returns True if item is one of the four media types
  */
-export function isMediaItem(item: any): boolean {
+export function isMediaItem(item: unknown): boolean {
   return (
     isVideoItem(item) ||
     isAudioItem(item) ||
@@ -59,8 +66,8 @@ export function isMediaItem(item: any): boolean {
  * @param item - Any item that might be a VideoItem
  * @returns True if item has __typename === 'VideoItem'
  */
-export function isVideoItem(item: any): boolean {
-  return item?.__typename === 'VideoItem'
+export function isVideoItem(item: unknown): boolean {
+  return (item as Record<string, unknown>)?.__typename === 'VideoItem'
 }
 
 /**
@@ -69,8 +76,8 @@ export function isVideoItem(item: any): boolean {
  * @param item - Any item that might be an AudioItem
  * @returns True if item has __typename === 'AudioItem'
  */
-export function isAudioItem(item: any): boolean {
-  return item?.__typename === 'AudioItem'
+export function isAudioItem(item: unknown): boolean {
+  return (item as Record<string, unknown>)?.__typename === 'AudioItem'
 }
 
 /**
@@ -79,8 +86,8 @@ export function isAudioItem(item: any): boolean {
  * @param item - Any item that might be an ImageItem
  * @returns True if item has __typename === 'ImageItem'
  */
-export function isImageItem(item: any): boolean {
-  return item?.__typename === 'ImageItem'
+export function isImageItem(item: unknown): boolean {
+  return (item as Record<string, unknown>)?.__typename === 'ImageItem'
 }
 
 /**
@@ -89,8 +96,8 @@ export function isImageItem(item: any): boolean {
  * @param item - Any item that might be a GifItem
  * @returns True if item has __typename === 'GifItem'
  */
-export function isGifItem(item: any): boolean {
-  return item?.__typename === 'GifItem'
+export function isGifItem(item: unknown): boolean {
+  return (item as Record<string, unknown>)?.__typename === 'GifItem'
 }
 
 /**

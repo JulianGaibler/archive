@@ -98,7 +98,6 @@
     height: number
   } | null = null
   let originalTrimStart: number | null = null
-  let _originalTrimEnd: number | null = null
 
   // Derived values - determine what operations are available
   const canCrop = $derived.by(() => {
@@ -715,7 +714,6 @@
       duration > 0
     ) {
       originalTrimStart = trimStart
-      originalTrimEnd = trimEnd
     }
   })
 
@@ -730,7 +728,6 @@
       trimEnd = 0
       originalCropArea = null
       originalTrimStart = null
-      originalTrimEnd = null
 
       const element = getMediaElement()
       if (element) {

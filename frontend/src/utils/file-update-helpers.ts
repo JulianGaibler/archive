@@ -1,4 +1,12 @@
-import type { FileProcessingUpdatesSubscription } from '@src/generated/graphql'
+import type {
+  AudioFile,
+  FileProcessingUpdatesSubscription,
+  GifFile,
+  PhotoFile,
+  VideoFile,
+} from '@src/generated/graphql'
+
+type ProcessableFile = AudioFile | GifFile | PhotoFile | VideoFile
 
 /**
  * Updates file processing fields on a target file object with data from a
@@ -12,7 +20,7 @@ import type { FileProcessingUpdatesSubscription } from '@src/generated/graphql'
  * @param updatedFile - The subscription data containing new file information
  */
 export function updateFileProcessingFields(
-  targetFile: any,
+  targetFile: ProcessableFile,
   updatedFile: FileProcessingUpdatesSubscription['fileProcessingUpdates']['file'],
 ): void {
   // Update core processing fields (always present)
