@@ -21,6 +21,8 @@
     createThumbnailAnimator,
     cleanupThumbnails,
   } from './utils/thumbnail-generator'
+  import { TRIM_CONSTANTS } from './utils/constants'
+  import { getMediaElement } from './utils/media-element'
 
   // Module-level helper functions for canvas drawing
 
@@ -266,10 +268,10 @@
   let thumbnailAnimator = createThumbnailAnimator(200) // 200ms fade
   let animationFrameId: number | null = null
 
-  // Trim handle constants
-  const TRIM_HANDLE_WIDTH = 16
+  // Import constants from shared file
+  const TRIM_HANDLE_WIDTH = TRIM_CONSTANTS.HANDLE_WIDTH
   const THUMBNAIL_MARGIN = TRIM_HANDLE_WIDTH // 16px margins to align with handles
-  const BORDER_RADIUS = 8 // Border radius for handles and container
+  const BORDER_RADIUS = TRIM_CONSTANTS.BORDER_RADIUS
 
   // Cached trim positions (single source of truth, recalculated when dependencies change)
   let trimPositions = $derived.by(() => {
@@ -347,7 +349,7 @@
 
   // Listen to media playback to update playback position
   $effect(() => {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement(mediaType, videoElement, audioElement)
     if (!element) return
 
     let rafId: number | null = null
@@ -416,7 +418,7 @@
 
   // Initialize playback settings from media element
   $effect(() => {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement(mediaType, videoElement, audioElement)
     if (!element) return
 
     // Initialize state from element
@@ -427,7 +429,7 @@
 
   // Listen to buffering events
   $effect(() => {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement(mediaType, videoElement, audioElement)
     if (!element) return
 
     const handleWaiting = () => {
@@ -685,7 +687,7 @@
 
   // Playback controls
   function togglePlayback() {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement(mediaType, videoElement, audioElement)
     if (!element) return
 
     if (isPlaying) {
@@ -697,7 +699,7 @@
   }
 
   function handleSeek(percentage: number) {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement(mediaType, videoElement, audioElement)
     if (!element) return
 
     const seekTime = (percentage / 100) * duration
@@ -706,7 +708,7 @@
   }
 
   function handleSkipBackward() {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement(mediaType, videoElement, audioElement)
     if (!element) return
 
     element.currentTime = Math.max(0, element.currentTime - 5)
@@ -714,7 +716,7 @@
   }
 
   function handleSkipForward() {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement(mediaType, videoElement, audioElement)
     if (!element) return
 
     element.currentTime = Math.min(duration, element.currentTime + 10)
@@ -722,7 +724,7 @@
   }
 
   function handleVolumeChange(newVolume: number) {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement(mediaType, videoElement, audioElement)
     if (!element) return
 
     volume = newVolume
@@ -736,7 +738,7 @@
   }
 
   function handleToggleMute() {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement(mediaType, videoElement, audioElement)
     if (!element) return
 
     isMuted = !isMuted
@@ -744,7 +746,7 @@
   }
 
   function handlePlaybackRateChange(newRate: number) {
-    const element = mediaType === 'video' ? videoElement : audioElement
+    const element = getMediaElement(mediaType, videoElement, audioElement)
     if (!element) return
 
     playbackRate = newRate

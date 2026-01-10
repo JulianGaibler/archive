@@ -99,6 +99,31 @@ export function getCSSColor(
   return value || fallback
 }
 
+/**
+ * Create rounded rectangle path with uniform border radius Does not fill or
+ * stroke - just creates the path
+ */
+export function createRoundedRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+): void {
+  ctx.beginPath()
+  ctx.moveTo(x + radius, y)
+  ctx.lineTo(x + width - radius, y)
+  ctx.arcTo(x + width, y, x + width, y + radius, radius)
+  ctx.lineTo(x + width, y + height - radius)
+  ctx.arcTo(x + width, y + height, x + width - radius, y + height, radius)
+  ctx.lineTo(x + radius, y + height)
+  ctx.arcTo(x, y + height, x, y + height - radius, radius)
+  ctx.lineTo(x, y + radius)
+  ctx.arcTo(x, y, x + radius, y, radius)
+  ctx.closePath()
+}
+
 /** Draw dimension label (pill-shaped with dimensions) */
 export function drawDimensionLabel(
   ctx: CanvasRenderingContext2D,
@@ -127,29 +152,7 @@ export function drawDimensionLabel(
 
   // Draw pill background
   ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
-  ctx.beginPath()
-  ctx.moveTo(pillX + borderRadius, pillY)
-  ctx.lineTo(pillX + pillWidth - borderRadius, pillY)
-  ctx.arcTo(
-    pillX + pillWidth,
-    pillY,
-    pillX + pillWidth,
-    pillY + pillHeight,
-    borderRadius,
-  )
-  ctx.lineTo(pillX + pillWidth, pillY + pillHeight - borderRadius)
-  ctx.arcTo(
-    pillX + pillWidth,
-    pillY + pillHeight,
-    pillX + pillWidth - borderRadius,
-    pillY + pillHeight,
-    borderRadius,
-  )
-  ctx.lineTo(pillX + borderRadius, pillY + pillHeight)
-  ctx.arcTo(pillX, pillY + pillHeight, pillX, pillY, borderRadius)
-  ctx.lineTo(pillX, pillY + borderRadius)
-  ctx.arcTo(pillX, pillY, pillX + borderRadius, pillY, borderRadius)
-  ctx.closePath()
+  createRoundedRectPath(ctx, pillX, pillY, pillWidth, pillHeight, borderRadius)
   ctx.fill()
 
   // Draw text

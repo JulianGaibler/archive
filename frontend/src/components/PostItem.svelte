@@ -1,8 +1,9 @@
 <script lang="ts">
   import TextField from 'tint/components/TextField.svelte'
+  import Modal from 'tint/components/Modal.svelte'
+  import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
   import ItemMediaDisplay from '@src/components/ItemMediaDisplay.svelte'
   import UploadItemDisplay from '@src/components/UploadItemDisplay.svelte'
-  import FileTransformModal from '@src/components/FileTransformModal.svelte'
   import Menu, {
     MENU_SEPARATOR,
     type ContextClickHandler,
@@ -86,6 +87,12 @@
   let showTransformModal = $state(false)
   let transformLoading = $state(false)
 
+  // Lazy-loaded FileTransformModal component
+  type FileTransformModalType =
+    typeof import('@src/components/FileTransformModal.svelte').default
+  let FileTransformModal = $state<FileTransformModalType | null>(null)
+  let loadingModal = $state(false)
+
   // Conversion and cropping functions
   async function handleConvertToVideo() {
     if (item.type === 'existing' && onConvertItem) {
@@ -105,9 +112,26 @@
     }
   }
 
-  // Open transform modal
-  function handleTransformItem() {
+  // Open transform modal (with lazy loading)
+  async function handleTransformItem() {
     if (item.type === 'existing') {
+      loadingModal = true
+
+      // Lazy load the modal component only when needed
+      if (!FileTransformModal) {
+        try {
+          const module = await import(
+            '@src/components/FileTransformModal.svelte'
+          )
+          FileTransformModal = module.default
+        } catch (error) {
+          console.error('Failed to load FileTransformModal:', error)
+          loadingModal = false
+          return
+        }
+      }
+
+      loadingModal = false
       showTransformModal = true
     }
   }
@@ -288,8 +312,20 @@
   <Menu variant="button" bind:contextClick={buttonClick} items={itemActions} />
 {/if}
 
-{#if item.type === 'existing'}
-  <FileTransformModal
+<!-- Show loading state while modal loads -->
+{#if loadingModal}
+  <Modal open={true}>
+    <div style="padding: 2rem; text-align: center;">
+      <LoadingIndicator />
+      <p>Loading editor...</p>
+    </div>
+  </Modal>
+{/if}
+
+<!-- Render modal only after it's loaded -->
+{#if FileTransformModal && item.type === 'existing'}
+  <svelte:component
+    this={FileTransformModal}
     open={showTransformModal}
     loading={transformLoading}
     {item}

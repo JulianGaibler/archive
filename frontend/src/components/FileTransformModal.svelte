@@ -4,13 +4,24 @@
   import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
   import CropController from '@src/components/FileTransformModal/CropController.svelte'
   import TrimController from '@src/components/FileTransformModal/TrimController.svelte'
-  import {
-    detectLetterboxInImage,
-    detectLetterboxInVideo,
-  } from '@src/components/FileTransformModal/utils/letterbox-detector'
   import type { EditableItem } from '@src/utils/edit-manager'
   import type { CropInput, TrimInput } from '@src/generated/graphql'
   import { getResourceUrl } from '@src/utils/resource-urls'
+  import {
+    CROP_CONSTANTS,
+    TRIM_CONSTANTS,
+  } from '@src/components/FileTransformModal/utils/constants'
+  import { getSourceDimensions } from '@src/components/FileTransformModal/utils/media-dimensions'
+  import { getMediaElement as getMediaElementUtil } from '@src/components/FileTransformModal/utils/media-element'
+
+  // Type for file with modifications
+  interface FileWithModifications {
+    relativeHeight?: number
+    modifications?: {
+      crop?: CropInput
+      trim?: TrimInput
+    }
+  }
 
   interface Props {
     open: boolean
@@ -51,9 +62,6 @@
   let duration = $state(0)
   let currentTime = $state(0)
   let isPlaying = $state(false)
-  let _volume = $state(1)
-  let isMuted = $state(false)
-  let _playbackRate = $state(1)
 
   // Crop state (bound from CropController)
   let cropArea = $state<
@@ -77,7 +85,7 @@
 
   // Helper to get the current media element based on type
   function getMediaElement(): HTMLMediaElement | undefined {
-    return mediaType === 'video' ? videoElement : audioElement
+    return getMediaElementUtil(mediaType, videoElement, audioElement)
   }
 
   // Helper to get display name for media type
@@ -100,21 +108,16 @@
   let originalTrimStart: number | null = null
 
   // Derived values - determine what operations are available
-  const canCrop = $derived.by(() => {
-    if (item.type !== 'existing') return false
-    const typename = item.data.__typename
-    return (
-      typename === 'ImageItem' ||
-      typename === 'VideoItem' ||
-      typename === 'GifItem'
-    )
-  })
+  const canCrop = $derived(
+    item.type === 'existing' &&
+      ['ImageItem', 'VideoItem', 'GifItem'].includes(item.data.__typename),
+  )
 
-  const canTrim = $derived.by(() => {
-    if (item.type !== 'existing') return false
-    const typename = item.data.__typename
-    return typename === 'VideoItem' || typename === 'AudioItem'
-  })
+  const canTrim = $derived(
+    item.type === 'existing' &&
+      (item.data.__typename === 'VideoItem' ||
+        item.data.__typename === 'AudioItem'),
+  )
 
   const mediaType = $derived.by(() => {
     if (item.type !== 'existing') return 'image'
@@ -126,62 +129,42 @@
   })
 
   // Get original file for accessing modifications
-  const originalFile = $derived.by(() => {
-    if (item.type !== 'existing' || !('file' in item.data)) return null
-    return item.data.file
-  })
+  const originalFile = $derived(
+    item.type === 'existing' && 'file' in item.data ? item.data.file : null,
+  )
 
-  // Get relativeHeight for aspect ratio
-  const relativeHeight = $derived.by(() => {
-    if (!originalFile || !('relativeHeight' in originalFile)) return 56.25 // Default 16:9
-    return originalFile.relativeHeight || 56.25
-  })
+  // Get relativeHeight for aspect ratio (default 16:9)
+  const relativeHeight = $derived(
+    originalFile && 'relativeHeight' in originalFile
+      ? originalFile.relativeHeight || 56.25
+      : 56.25,
+  )
 
   // Helper to get initial crop from modifications
-  const initialCrop = $derived.by(() => {
-    if (!originalFile || !('modifications' in originalFile)) return undefined
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (originalFile as any).modifications?.crop
-  })
+  const initialCrop = $derived(
+    originalFile && 'modifications' in originalFile
+      ? (originalFile as FileWithModifications).modifications?.crop
+      : undefined,
+  )
 
   // Helper to get initial trim from modifications
-  const initialTrim = $derived.by(() => {
-    if (!originalFile || !('modifications' in originalFile)) return undefined
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (originalFile as any).modifications?.trim
-  })
+  const initialTrim = $derived(
+    originalFile && 'modifications' in originalFile
+      ? (originalFile as FileWithModifications).modifications?.trim
+      : undefined,
+  )
 
   // Check if INITIAL crop (from DB) is significant (outside margin threshold)
-  const hasSignificantCrop = $derived.by(() => {
-    if (!initialCrop) {
-      return false
-    }
-
-    // Get source dimensions
-    const sourceWidth =
-      mediaType === 'image'
-        ? img?.naturalWidth || 0
-        : videoElement?.videoWidth || 0
-    const sourceHeight =
-      mediaType === 'image'
-        ? img?.naturalHeight || 0
-        : videoElement?.videoHeight || 0
-
-    // If dimensions not loaded, assume significant
-    if (sourceWidth === 0 || sourceHeight === 0) {
-      return true
-    }
-
-    // Check the INITIAL crop values from DB (not current selection)
-    const CROP_MARGIN = 5
-    const isWithinMargin =
-      initialCrop.left <= CROP_MARGIN &&
-      initialCrop.top <= CROP_MARGIN &&
-      initialCrop.right <= CROP_MARGIN &&
-      initialCrop.bottom <= CROP_MARGIN
-
-    return !isWithinMargin // Significant if NOT within margin
-  })
+  const hasSignificantCrop = $derived(
+    initialCrop
+      ? !(
+          initialCrop.left <= CROP_CONSTANTS.MARGIN &&
+          initialCrop.top <= CROP_CONSTANTS.MARGIN &&
+          initialCrop.right <= CROP_CONSTANTS.MARGIN &&
+          initialCrop.bottom <= CROP_CONSTANTS.MARGIN
+        )
+      : false,
+  )
 
   // Check if INITIAL trim (from DB) is significant (outside margin threshold)
   const hasSignificantTrim = $derived.by(() => {
@@ -191,10 +174,9 @@
     if (duration === 0) return true
 
     // Check the INITIAL trim values from DB (not current selection)
-    const TRIM_MARGIN = 0.75
     const isWithinMargin =
-      initialTrim.startTime <= TRIM_MARGIN &&
-      duration - initialTrim.endTime <= TRIM_MARGIN
+      initialTrim.startTime <= TRIM_CONSTANTS.MARGIN &&
+      duration - initialTrim.endTime <= TRIM_CONSTANTS.MARGIN
 
     return !isWithinMargin // Significant if NOT within margin
   })
@@ -229,18 +211,12 @@
     }
 
     // Get source (natural) dimensions
-    const sourceWidth =
-      mediaType === 'image'
-        ? img?.naturalWidth || 0
-        : videoElement?.videoWidth || 0
-    const sourceHeight =
-      mediaType === 'image'
-        ? img?.naturalHeight || 0
-        : videoElement?.videoHeight || 0
-
-    if (sourceWidth === 0 || sourceHeight === 0) {
+    const sourceDims = getSourceDimensions(mediaType, img, videoElement)
+    if (!sourceDims) {
       return null
     }
+
+    const { width: sourceWidth, height: sourceHeight } = sourceDims
 
     // Calculate pixel offsets from edges directly from source coordinates
     return {
@@ -293,9 +269,6 @@
       const element = getMediaElement()
       // Check if element is already ready (readyState >= 1 means HAVE_METADATA or more)
       if (element && element.readyState >= 1) {
-        console.log(
-          'Media metadata already loaded, triggering handleMediaLoaded',
-        )
         handleMediaLoaded()
       } else {
         loadMedia()
@@ -303,7 +276,7 @@
     }
   })
 
-  // Observe actual rendered video/image dimensions
+  // Calculate actual rendered video/image dimensions
   $effect(() => {
     if (!mediaLoaded) return
 
@@ -317,31 +290,79 @@
 
     if (!element) return
 
-    // Use ResizeObserver to watch actual rendered size
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect
-        displayWidth = Math.floor(width)
-        displayHeight = Math.floor(height)
+    const updateDimensions = () => {
+      if (element instanceof HTMLVideoElement) {
+        const videoWidth = element.videoWidth
+        const videoHeight = element.videoHeight
+
+        if (videoWidth === 0 || videoHeight === 0) return
+
+        // Video has max-height: 600px and max-width: 100%
+        // Calculate actual rendered size maintaining aspect ratio
+        const maxHeight = 600
+        const WRAPPER_PADDING = 32 // 16px on each side
+        const maxWidth = (element.parentElement?.clientWidth || 900) - WRAPPER_PADDING
+
+        const aspectRatio = videoWidth / videoHeight
+        let renderWidth = videoWidth
+        let renderHeight = videoHeight
+
+        // Scale to fit within maxHeight
+        if (renderHeight > maxHeight) {
+          renderHeight = maxHeight
+          renderWidth = renderHeight * aspectRatio
+        }
+
+        // Scale to fit within maxWidth
+        if (renderWidth > maxWidth) {
+          renderWidth = maxWidth
+          renderHeight = renderWidth / aspectRatio
+        }
+
+        displayWidth = Math.floor(renderWidth)
+        displayHeight = Math.floor(renderHeight)
+      } else if (element instanceof HTMLImageElement && element.complete) {
+        // For images, use naturalWidth/Height with same constraints
+        const naturalWidth = element.naturalWidth
+        const naturalHeight = element.naturalHeight
+
+        if (naturalWidth === 0 || naturalHeight === 0) return
+
+        const maxHeight = 600
+        const WRAPPER_PADDING = 32 // 16px on each side
+        const maxWidth = (element.parentElement?.clientWidth || 900) - WRAPPER_PADDING
+
+        const aspectRatio = naturalWidth / naturalHeight
+        let renderWidth = naturalWidth
+        let renderHeight = naturalHeight
+
+        if (renderHeight > maxHeight) {
+          renderHeight = maxHeight
+          renderWidth = renderHeight * aspectRatio
+        }
+
+        if (renderWidth > maxWidth) {
+          renderWidth = maxWidth
+          renderHeight = renderWidth / aspectRatio
+        }
+
+        displayWidth = Math.floor(renderWidth)
+        displayHeight = Math.floor(renderHeight)
       }
+    }
+
+    // Use ResizeObserver to recalculate when container resizes
+    const observer = new ResizeObserver(() => {
+      updateDimensions()
     })
 
     observer.observe(element)
-
-    // Also set initial dimensions immediately
-    if (element instanceof HTMLVideoElement) {
-      displayWidth = element.clientWidth
-      displayHeight = element.clientHeight
-    } else if (element instanceof HTMLImageElement && element.complete) {
-      displayWidth = element.clientWidth
-      displayHeight = element.clientHeight
-    }
+    updateDimensions() // Initial calculation
 
     return () => observer.disconnect()
   })
 
   async function loadMedia() {
-    console.log('loadMedia called', { mediaType, mediaUrl })
     mediaLoaded = false
     mediaError = null
     cropArea = undefined
@@ -352,13 +373,11 @@
       if (mediaType === 'image') {
         await loadImage()
       } else if (mediaType === 'video') {
-        console.log('Waiting for video metadata...', { videoElement })
         // With preload="none", we need to manually trigger loading
         if (videoElement) {
           videoElement.load()
         }
       } else if (mediaType === 'audio') {
-        console.log('Waiting for audio metadata...', { audioElement })
         // With preload="none", we need to manually trigger loading
         if (audioElement) {
           audioElement.load()
@@ -383,30 +402,22 @@
     })
 
     img = image
+    console.log('[FileTransformModal] Image loaded:', {
+      width: image.width,
+      height: image.height,
+      naturalWidth: image.naturalWidth,
+      naturalHeight: image.naturalHeight,
+    })
     mediaLoaded = true
   }
 
   function handleMediaLoaded() {
-    console.log('handleMediaLoaded called', {
-      mediaType,
-      videoElement,
-      audioElement,
-    })
     const element = getMediaElement()
     if (!element) {
-      console.log('No element found, returning')
       return
     }
 
     duration = element.duration
-    console.log('Setting mediaLoaded to true, duration:', duration)
-
-    if (mediaType === 'video' && videoElement) {
-      console.log('Video loaded:', {
-        naturalWidth: videoElement.videoWidth,
-        naturalHeight: videoElement.videoHeight,
-      })
-    }
 
     if (mediaType === 'image') {
       void loadImage()
@@ -442,68 +453,6 @@
   }
 
   // Playback controls
-  function _togglePlayback() {
-    const element = getMediaElement()
-    if (!element) return
-
-    if (isPlaying) {
-      element.pause()
-    } else {
-      // Jump to trim start if outside trim range
-      if (trimStart !== null && trimEnd !== null) {
-        if (currentTime < trimStart || currentTime >= trimEnd) {
-          element.currentTime = trimStart
-          currentTime = trimStart
-        }
-      }
-      element.play()
-    }
-  }
-
-  function _handleSkipBackward() {
-    const element = getMediaElement()
-    if (!element) return
-    const minTime = trimStart !== null ? trimStart : 0
-    element.currentTime = Math.max(minTime, currentTime - 5)
-  }
-
-  function _handleSkipForward() {
-    const element = getMediaElement()
-    if (!element) return
-    const maxTime = trimEnd !== null ? trimEnd : duration
-    element.currentTime = Math.min(maxTime, currentTime + 10)
-  }
-
-  function _handleSeek(value: number) {
-    const element = getMediaElement()
-    if (!element) return
-    element.currentTime = (value / 100) * duration
-  }
-
-  function _handleVolumeChange(value: number) {
-    const element = getMediaElement()
-    if (!element) return
-    element.volume = value
-    _volume = value
-    if (value > 0 && isMuted) {
-      isMuted = false
-    }
-  }
-
-  function _handleToggleMute() {
-    const element = getMediaElement()
-    if (!element) return
-    isMuted = !isMuted
-    element.muted = isMuted
-  }
-
-  function _handlePlaybackRateChange(rate: number) {
-    const element = getMediaElement()
-    if (!element) return
-    element.playbackRate = rate
-    _playbackRate = rate
-  }
-
   function handleTimeUpdate() {
     const element = getMediaElement()
     if (!element) return
@@ -535,6 +484,11 @@
     autoCropping = true
 
     try {
+      // Lazy load the letterbox detector only when Auto Crop is clicked
+      const { detectLetterboxInImage, detectLetterboxInVideo } = await import(
+        './FileTransformModal/utils/letterbox-detector'
+      )
+
       let detectedBounds = null
 
       if (mediaType === 'image' && img) {
@@ -579,17 +533,10 @@
     // === CROP VALIDATION WITH MARGIN ===
     if (canCrop && cropArea && cropPixelOffsets) {
       // Get source dimensions
-      const sourceWidth =
-        mediaType === 'image'
-          ? img?.naturalWidth || 0
-          : videoElement?.videoWidth || 0
-      const sourceHeight =
-        mediaType === 'image'
-          ? img?.naturalHeight || 0
-          : videoElement?.videoHeight || 0
+      const sourceDims = getSourceDimensions(mediaType, img, videoElement)
 
       // Skip margin validation if dimensions not loaded
-      if (sourceWidth === 0 || sourceHeight === 0) {
+      if (!sourceDims) {
         // Dimensions not loaded - apply crop normally
         params.crop = {
           left: cropPixelOffsets.left,
@@ -599,12 +546,11 @@
         }
       } else {
         // Check if crop is within 5px margin on ALL edges
-        const CROP_MARGIN = 5
         const isWithinMargin =
-          cropPixelOffsets.left <= CROP_MARGIN &&
-          cropPixelOffsets.top <= CROP_MARGIN &&
-          cropPixelOffsets.right <= CROP_MARGIN &&
-          cropPixelOffsets.bottom <= CROP_MARGIN
+          cropPixelOffsets.left <= CROP_CONSTANTS.MARGIN &&
+          cropPixelOffsets.top <= CROP_CONSTANTS.MARGIN &&
+          cropPixelOffsets.right <= CROP_CONSTANTS.MARGIN &&
+          cropPixelOffsets.bottom <= CROP_CONSTANTS.MARGIN
 
         if (isWithinMargin) {
           // Within margin - check if we need to remove existing crop
@@ -635,11 +581,10 @@
           endTime: trimEnd,
         }
       } else {
-        const TRIM_MARGIN = 0.75 // seconds
-
         // Check if trim is within margin on BOTH start and end
         const isWithinMargin =
-          trimStart <= TRIM_MARGIN && duration - trimEnd <= TRIM_MARGIN
+          trimStart <= TRIM_CONSTANTS.MARGIN &&
+          duration - trimEnd <= TRIM_CONSTANTS.MARGIN
 
         if (isWithinMargin) {
           // Within margin - check if we need to remove existing trim
@@ -678,6 +623,19 @@
     }
     onCancel()
   }
+
+  // Debug: Track img state for image wrapper sizing
+  $effect(() => {
+    console.log('[FileTransformModal] img state changed:', {
+      hasImg: !!img,
+      mediaType,
+      mediaLoaded,
+      canCrop,
+      imgSrc: img?.src,
+      imgWidth: img?.width,
+      imgHeight: img?.height,
+    })
+  })
 
   // Update playing state
   $effect(() => {
@@ -775,12 +733,7 @@
                   ontimeupdate={handleTimeUpdate}
                   controls={false}
                   preload="none"
-                  style:aspect-ratio={relativeHeight
-                    ? `100 / ${relativeHeight}`
-                    : undefined}
-                  style="max-width: 100%; max-height: 600px; margin: 16px; {!mediaLoaded
-                    ? 'opacity: 0;'
-                    : ''}"
+                  style="{!mediaLoaded ? 'opacity: 0;' : ''}"
                 />
                 {#if canCrop && mediaLoaded}
                   <CropController
@@ -807,12 +760,14 @@
                 style="display: none;"
               ></audio>
             {:else}
-              <div
-                class="image-wrapper"
-                style:aspect-ratio={relativeHeight
-                  ? `100 / ${relativeHeight}`
-                  : undefined}
-              >
+              <div class="image-wrapper">
+                {#if img}
+                  <img
+                    src={img.src}
+                    alt="Preview"
+                    style="{!mediaLoaded ? 'opacity: 0;' : ''}"
+                  />
+                {/if}
                 {#if canCrop && mediaLoaded}
                   <CropController
                     mediaType="image"
@@ -933,17 +888,14 @@
   .video-wrapper,
   .image-wrapper
     position: relative
-    display: flex
-    align-items: center
-    justify-content: center
     margin: 0 auto
     max-width: 100%
-    width: 100%
+    padding: 16px
 
-    video
+    video,
+    img
       max-width: 100%
       max-height: 600px
-      width: 100%
       height: auto
       display: block
 

@@ -19,6 +19,8 @@
   } from './utils/drag-handler'
   import { drawPixelPreview } from './utils/pixel-preview'
   import type { Rect, Point, DragMode } from './utils/types'
+  import { CROP_CONSTANTS } from './utils/constants'
+  import { getSourceDimensions as getMediaSourceDimensions } from './utils/media-dimensions'
 
   interface Props {
     mediaType: 'image' | 'video' | 'gif'
@@ -45,19 +47,18 @@
   // Source of truth: crop in source (natural) coordinates
   let sourceCropArea = $state<Rect | undefined>(undefined)
 
-  // Margin around video for handles/interaction
-  const VIDEO_MARGIN = 16
-  const HANDLE_SIZE = 12
-  const HANDLE_TOLERANCE = 6
-  const MIN_CROP_SIZE = 50
-
-  // Pixel preview constants
-  const PREVIEW_SIZE = 128 // Display size of preview box
-  const PREVIEW_SOURCE_SIZE = 10 // Source pixels to sample (10×10)
-  const PREVIEW_PADDING = 16 // Padding from video edges (inside VIDEO_MARGIN)
-  const PREVIEW_CURSOR_THRESHOLD = 150 // Distance to trigger position swap
+  // Import constants from shared file
+  const VIDEO_MARGIN = CROP_CONSTANTS.VIDEO_MARGIN
+  const HANDLE_SIZE = CROP_CONSTANTS.HANDLE_SIZE
+  const HANDLE_TOLERANCE = CROP_CONSTANTS.HANDLE_TOLERANCE
+  const MIN_CROP_SIZE = CROP_CONSTANTS.MIN_SIZE
+  const PREVIEW_SIZE = CROP_CONSTANTS.PREVIEW_SIZE
+  const PREVIEW_SOURCE_SIZE = CROP_CONSTANTS.PREVIEW_SOURCE_SIZE
+  const PREVIEW_PADDING = CROP_CONSTANTS.PREVIEW_PADDING
+  const PREVIEW_CURSOR_THRESHOLD = CROP_CONSTANTS.PREVIEW_CURSOR_THRESHOLD
 
   // Internal state
+  let canvasContainer: HTMLDivElement | undefined = $state(undefined)
   let canvas: HTMLCanvasElement | undefined = $state(undefined)
   let ctx: CanvasRenderingContext2D | null = null
   let renderer: ReturnType<typeof createRenderer> | null = null
@@ -73,21 +74,6 @@
   )
   let fixedSourceCorner = $state<Point | null>(null) // Fixed corner in source coordinates during resize
 
-  // Helper to get source dimensions
-  function getSourceDimensions(): { width: number; height: number } | null {
-    const sourceWidth =
-      mediaType === 'video'
-        ? videoElement?.videoWidth || 0
-        : img?.naturalWidth || 0
-    const sourceHeight =
-      mediaType === 'video'
-        ? videoElement?.videoHeight || 0
-        : img?.naturalHeight || 0
-
-    if (sourceWidth === 0 || sourceHeight === 0) return null
-    return { width: sourceWidth, height: sourceHeight }
-  }
-
   // Initialize crop area from initial crop or defaults (in source coordinates)
   $effect(() => {
     // Only initialize if sourceCropArea hasn't been set yet
@@ -97,7 +83,7 @@
     if (displayWidth <= 0 || displayHeight <= 0) return
 
     // Need valid source dimensions
-    const sourceDims = getSourceDimensions()
+    const sourceDims = getMediaSourceDimensions(mediaType, img, videoElement)
     if (!sourceDims) return
 
     if (initialCrop) {
@@ -131,7 +117,7 @@
       return
     }
 
-    const sourceDims = getSourceDimensions()
+    const sourceDims = getMediaSourceDimensions(mediaType, img, videoElement)
     if (!sourceDims || displayWidth === 0 || displayHeight === 0) {
       return
     }
@@ -140,11 +126,32 @@
     const scaleX = displayWidth / sourceDims.width
     const scaleY = displayHeight / sourceDims.height
 
-    cropArea = {
-      x: Math.round(sourceCropArea.x * scaleX),
-      y: Math.round(sourceCropArea.y * scaleY),
-      width: Math.round(sourceCropArea.width * scaleX),
-      height: Math.round(sourceCropArea.height * scaleY),
+    // Convert to display coordinates
+    const displayX = Math.round(sourceCropArea.x * scaleX)
+    const displayY = Math.round(sourceCropArea.y * scaleY)
+    const displayW = Math.round(sourceCropArea.width * scaleX)
+    const displayH = Math.round(sourceCropArea.height * scaleY)
+
+    // CLAMP to media bounds (critical fix!)
+    const clampedX = Math.max(0, Math.min(displayX, displayWidth))
+    const clampedY = Math.max(0, Math.min(displayY, displayHeight))
+
+    const newCropArea = {
+      x: clampedX,
+      y: clampedY,
+      width: Math.max(1, Math.min(displayW, displayWidth - clampedX)),
+      height: Math.max(1, Math.min(displayH, displayHeight - clampedY)),
+    }
+
+    // Only update if values actually changed (prevent infinite loop)
+    if (
+      !cropArea ||
+      cropArea.x !== newCropArea.x ||
+      cropArea.y !== newCropArea.y ||
+      cropArea.width !== newCropArea.width ||
+      cropArea.height !== newCropArea.height
+    ) {
+      cropArea = newCropArea
     }
   })
 
@@ -173,31 +180,107 @@
     }
   })
 
-  // Setup canvas with high DPI support
+  // Setup canvas to observe wrapper size and update buffer dimensions
   $effect(() => {
-    if (canvas && displayWidth > 0 && displayHeight > 0) {
-      const logicalWidth = displayWidth + VIDEO_MARGIN * 2
-      const logicalHeight = displayHeight + VIDEO_MARGIN * 2
+    if (!canvasContainer || !canvas) return
 
-      ctx = setupCanvas(canvas, logicalWidth, logicalHeight)
+    // Watch grandparent (image-wrapper/video-wrapper), not parent (canvas-container)
+    const wrapper = canvasContainer.parentElement
+    if (!wrapper) return
 
-      // Create renderer if not exists
-      if (!renderer) {
-        renderer = createRenderer(canvas, draw)
+    console.log('[CropController] Setup - Initial dimensions:', {
+      wrapper: {
+        clientWidth: wrapper.clientWidth,
+        clientHeight: wrapper.clientHeight,
+        offsetWidth: wrapper.offsetWidth,
+        offsetHeight: wrapper.offsetHeight,
+        className: wrapper.className,
+      },
+      canvasContainer: {
+        clientWidth: canvasContainer.clientWidth,
+        clientHeight: canvasContainer.clientHeight,
+        offsetWidth: canvasContainer.offsetWidth,
+        offsetHeight: canvasContainer.offsetHeight,
+      },
+      canvas: {
+        width: canvas.width,
+        height: canvas.height,
+        clientWidth: canvas.clientWidth,
+        clientHeight: canvas.clientHeight,
+        styleWidth: canvas.style.width,
+        styleHeight: canvas.style.height,
+      },
+      displayWidth,
+      displayHeight,
+    })
+
+    // Observer to watch wrapper size and update canvas buffer
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // Use borderBoxSize to get dimensions INCLUDING padding
+        // contentRect excludes padding, but we want the full wrapper size
+        const borderBoxSize = entry.borderBoxSize?.[0] || entry.borderBoxSize
+        const width = borderBoxSize?.inlineSize || entry.target.clientWidth
+        const height = borderBoxSize?.blockSize || entry.target.clientHeight
+
+        console.log('[CropController] ResizeObserver fired:', {
+          contentRect: entry.contentRect,
+          borderBoxSize: { width, height },
+          wrapper: {
+            clientWidth: wrapper.clientWidth,
+            clientHeight: wrapper.clientHeight,
+          },
+          canvasContainer: {
+            clientWidth: canvasContainer.clientWidth,
+            clientHeight: canvasContainer.clientHeight,
+          },
+          canvasBefore: {
+            width: canvas.width,
+            height: canvas.height,
+            clientWidth: canvas.clientWidth,
+            clientHeight: canvas.clientHeight,
+          },
+          mediaType,
+          displayWidth,
+          displayHeight,
+        })
+
+        const logicalWidth = Math.floor(width)
+        const logicalHeight = Math.floor(height)
+
+        // Setup canvas buffer for high DPI rendering
+        // Container and canvas CSS handle display size (inset: 0 and width/height: 100%)
+        ctx = setupCanvas(canvas, logicalWidth, logicalHeight)
+
+        console.log('[CropController] After setupCanvas:', {
+          canvasBuffer: { width: canvas.width, height: canvas.height },
+          canvasDisplay: { width: canvas.clientWidth, height: canvas.clientHeight },
+          canvasStyle: { width: canvas.style.width, height: canvas.style.height },
+          dpr: window.devicePixelRatio,
+        })
+
+        // Create renderer if not exists
+        if (!renderer) {
+          renderer = createRenderer(canvas, draw)
+        }
+
+        // Trigger re-render
+        renderer?.render()
       }
+    })
 
-      // Trigger initial render
-      renderer.render()
-    }
+    observer.observe(wrapper)
+    return () => observer.disconnect()
   })
 
-  // Re-render when image loads or crop area changes
+  // Trigger render when image loads
   $effect(() => {
     if (mediaType === 'image' && img && img.complete && renderer) {
       renderer.render()
     }
   })
 
+  // Trigger render when crop area changes
   $effect(() => {
     if (cropArea && renderer) {
       renderer.render()
@@ -300,7 +383,7 @@
       const canvasHeight = displayHeight + VIDEO_MARGIN * 2
 
       // Position in center of crop area if it's large enough, otherwise below crop area
-      const MIN_CROP_SIZE_FOR_LABEL = 100 // Minimum crop size to center label inside
+      const MIN_CROP_SIZE_FOR_LABEL = CROP_CONSTANTS.MIN_SIZE_FOR_LABEL
 
       let labelX: number
       let labelY: number
@@ -391,7 +474,11 @@
           dragStartPos = { x: adjustedX, y: adjustedY }
 
           // Calculate and store fixed corner in SOURCE coordinates
-          const sourceDims = getSourceDimensions()
+          const sourceDims = getMediaSourceDimensions(
+            mediaType,
+            img,
+            videoElement,
+          )
           if (sourceDims && sourceCropArea) {
             // Determine which corner is fixed (opposite of the one being dragged)
             let fixedDisplayX: number
@@ -445,7 +532,11 @@
         if (!cropArea || !dragStartArea) return
 
         // Get source dimensions for conversion
-        const sourceDims = getSourceDimensions()
+        const sourceDims = getMediaSourceDimensions(
+          mediaType,
+          img,
+          videoElement,
+        )
         if (!sourceDims) return
 
         // Adjust for padding
@@ -632,24 +723,29 @@
   })
 </script>
 
-<div class="crop-wrapper">
+<div bind:this={canvasContainer} class="canvas-container">
   <canvas
     bind:this={canvas}
     class="crop-overlay"
     {...dragHandler?.mouseHandlers || {}}
     {...dragHandler?.touchHandlers || {}}
-    style="width: {displayWidth + VIDEO_MARGIN * 2}px; height: {displayHeight +
-      VIDEO_MARGIN * 2}px; cursor: {cursor}"
+    style="cursor: {cursor}"
   ></canvas>
 </div>
 
 <style lang="sass">
 
-  .crop-overlay
+  .canvas-container
     position: absolute
-    top: 0
-    left: 0
+    inset: 0
+    overflow: hidden
+    pointer-events: none
+
+  .crop-overlay
     display: block
     touch-action: none
     z-index: 2
+    pointer-events: auto
+    width: 100%
+    height: 100%
 </style>

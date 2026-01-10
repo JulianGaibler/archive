@@ -135,26 +135,17 @@ export function drawPixelPreview(
       : displayWidth + margin - previewSize - padding
   const displayY = canvasHeight - margin - previewSize - padding
 
-  // Clamp source position to valid range (in display space)
-  const halfSource = sourceSize / 2
-  const clampedX = Math.max(
-    halfSource,
-    Math.min(displayWidth - halfSource, sourceX),
-  )
-  const clampedY = Math.max(
-    halfSource,
-    Math.min(displayHeight - halfSource, sourceY),
-  )
-
   // Calculate source rectangle in ORIGINAL source dimensions
+  // Don't clamp - let the preview extend beyond bounds and show black pixels
+  const halfSource = sourceSize / 2
   const sourceRect = {
-    x: (clampedX - halfSource) * scaleX,
-    y: (clampedY - halfSource) * scaleY,
+    x: (sourceX - halfSource) * scaleX,
+    y: (sourceY - halfSource) * scaleY,
     width: sourceSize * scaleX,
     height: sourceSize * scaleY,
   }
 
-  // Draw preview background
+  // Draw preview background (black fill)
   ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'
   ctx.fillRect(displayX, displayY, previewSize, previewSize)
 
@@ -171,19 +162,46 @@ export function drawPixelPreview(
   ctx.rect(displayX, displayY, previewSize, previewSize)
   ctx.clip()
 
-  // Draw magnified pixels
-  ctx.imageSmoothingEnabled = false
-  ctx.drawImage(
-    source,
-    sourceRect.x,
-    sourceRect.y,
-    sourceRect.width,
-    sourceRect.height,
-    displayX,
-    displayY,
-    previewSize,
-    previewSize,
-  )
+  // Calculate intersection of source rectangle with valid image bounds
+  const validSourceX = Math.max(0, sourceRect.x)
+  const validSourceY = Math.max(0, sourceRect.y)
+  const validSourceWidth = Math.min(
+    sourceWidth,
+    sourceRect.x + sourceRect.width,
+  ) - validSourceX
+  const validSourceHeight = Math.min(
+    sourceHeight,
+    sourceRect.y + sourceRect.height,
+  ) - validSourceY
+
+  // Only draw if there's a valid intersection
+  if (validSourceWidth > 0 && validSourceHeight > 0) {
+    // Calculate corresponding destination rectangle
+    // If source starts at -10 but valid starts at 0, we skip the first 10 pixels in display
+    const offsetX = (validSourceX - sourceRect.x) / sourceRect.width
+    const offsetY = (validSourceY - sourceRect.y) / sourceRect.height
+    const scaleWidth = validSourceWidth / sourceRect.width
+    const scaleHeight = validSourceHeight / sourceRect.height
+
+    const destX = displayX + offsetX * previewSize
+    const destY = displayY + offsetY * previewSize
+    const destWidth = scaleWidth * previewSize
+    const destHeight = scaleHeight * previewSize
+
+    // Draw magnified pixels (only the valid portion)
+    ctx.imageSmoothingEnabled = false
+    ctx.drawImage(
+      source,
+      validSourceX,
+      validSourceY,
+      validSourceWidth,
+      validSourceHeight,
+      destX,
+      destY,
+      destWidth,
+      destHeight,
+    )
+  }
 
   // Restore context
   ctx.restore()

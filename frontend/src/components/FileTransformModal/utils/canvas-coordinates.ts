@@ -11,11 +11,10 @@ export function eventToCanvasCoords(
   canvas: HTMLCanvasElement,
 ): Point {
   const rect = canvas.getBoundingClientRect()
-  const logicalWidth = parseInt(canvas.style.width) || canvas.width
-  const logicalHeight = parseInt(canvas.style.height) || canvas.height
 
-  const x = ((event.clientX - rect.left) / rect.width) * logicalWidth
-  const y = ((event.clientY - rect.top) / rect.height) * logicalHeight
+  // Use getBoundingClientRect dimensions directly (already in CSS pixels)
+  const x = event.clientX - rect.left
+  const y = event.clientY - rect.top
 
   return { x, y }
 }
