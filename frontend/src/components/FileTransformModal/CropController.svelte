@@ -6,7 +6,12 @@
     clearCanvas,
   } from './utils/canvas-renderer'
   import { clamp } from './utils/canvas-coordinates'
-  import { drawOverlay, drawHandle, getCSSColor } from './utils/canvas-drawing'
+  import {
+    drawOverlay,
+    drawHandle,
+    getCSSColor,
+    drawDimensionLabel,
+  } from './utils/canvas-drawing'
   import {
     createDragHandler,
     getCornerHit,
@@ -15,14 +20,15 @@
   import { drawPixelPreview } from './utils/pixel-preview'
   import type { Rect, Point, DragMode } from './utils/types'
 
-  type Props = {
+  interface Props {
     mediaType: 'image' | 'video' | 'gif'
     img: HTMLImageElement | undefined
     videoElement: HTMLVideoElement | undefined
     displayWidth: number
     displayHeight: number
     initialCrop?: CropInput
-    cropArea: Rect | undefined
+    cropArea?: Rect | undefined
+    sourceCrop?: Rect | undefined
   }
 
   let {
@@ -33,7 +39,11 @@
     displayHeight,
     initialCrop,
     cropArea = $bindable(),
+    sourceCrop = $bindable(),
   }: Props = $props()
+
+  // Source of truth: crop in source (natural) coordinates
+  let sourceCropArea = $state<Rect | undefined>(undefined)
 
   // Margin around video for handles/interaction
   const VIDEO_MARGIN = 16
@@ -57,71 +67,89 @@
   let showPixelPreview = $state(false)
   let previewSourcePos = $state<Point>({ x: 0, y: 0 }) // Position in video coordinates
   let previewDisplayPos = $state<'bottom-left' | 'bottom-right'>('bottom-left')
+  let showDimensionLabel = $state(false)
+  let labelSourceDimensions = $state<{ width: number; height: number } | null>(
+    null,
+  )
 
-  // Initialize crop area from initial crop or defaults
+  // Helper to get source dimensions
+  function getSourceDimensions(): { width: number; height: number } | null {
+    const sourceWidth =
+      mediaType === 'video'
+        ? videoElement?.videoWidth || 0
+        : img?.naturalWidth || 0
+    const sourceHeight =
+      mediaType === 'video'
+        ? videoElement?.videoHeight || 0
+        : img?.naturalHeight || 0
+
+    if (sourceWidth === 0 || sourceHeight === 0) return null
+    return { width: sourceWidth, height: sourceHeight }
+  }
+
+  // Initialize crop area from initial crop or defaults (in source coordinates)
   $effect(() => {
-    // Only initialize if cropArea hasn't been set yet
-    if (cropArea) return
+    // Only initialize if sourceCropArea hasn't been set yet
+    if (sourceCropArea) return
 
     // Need valid display dimensions
     if (displayWidth <= 0 || displayHeight <= 0) return
 
+    // Need valid source dimensions
+    const sourceDims = getSourceDimensions()
+    if (!sourceDims) return
+
     if (initialCrop) {
-      // Use existing crop from DB (convert percentages to pixels)
-      cropArea = {
-        x: Math.floor((initialCrop.left / 100) * displayWidth),
-        y: Math.floor((initialCrop.top / 100) * displayHeight),
-        width: Math.floor(
-          ((initialCrop.right - initialCrop.left) / 100) * displayWidth,
+      // Convert DB percentages directly to source pixels (no intermediate display conversion)
+      sourceCropArea = {
+        x: Math.round((initialCrop.left / 100) * sourceDims.width),
+        y: Math.round((initialCrop.top / 100) * sourceDims.height),
+        width: Math.round(
+          ((initialCrop.right - initialCrop.left) / 100) * sourceDims.width,
         ),
-        height: Math.floor(
-          ((initialCrop.bottom - initialCrop.top) / 100) * displayHeight,
+        height: Math.round(
+          ((initialCrop.bottom - initialCrop.top) / 100) * sourceDims.height,
         ),
       }
     } else if (initialCrop === undefined) {
-      // No crop in DB - start with full frame (100%)
-      cropArea = {
+      // No crop in DB - start with full frame in source coordinates
+      sourceCropArea = {
         x: 0,
         y: 0,
-        width: displayWidth,
-        height: displayHeight,
+        width: sourceDims.width,
+        height: sourceDims.height,
       }
     }
-    // If initialCrop is null (explicitly no crop), don't set cropArea
+    // If initialCrop is null (explicitly no crop), don't set sourceCropArea
   })
 
-  // Update crop area proportionally when display dimensions change
-  let previousDisplayWidth = displayWidth
-  let previousDisplayHeight = displayHeight
-
+  // Derive display coordinates from source coordinates (reactive)
   $effect(() => {
-    if (!cropArea) return
-    if (displayWidth <= 0 || displayHeight <= 0) return
-    if (previousDisplayWidth === 0 || previousDisplayHeight === 0) {
-      previousDisplayWidth = displayWidth
-      previousDisplayHeight = displayHeight
+    if (!sourceCropArea) {
+      cropArea = undefined
       return
     }
 
-    // Check if dimensions actually changed
-    if (
-      displayWidth !== previousDisplayWidth ||
-      displayHeight !== previousDisplayHeight
-    ) {
-      // Scale crop area proportionally
-      const scaleX = displayWidth / previousDisplayWidth
-      const scaleY = displayHeight / previousDisplayHeight
-
-      cropArea = {
-        x: Math.floor(cropArea.x * scaleX),
-        y: Math.floor(cropArea.y * scaleY),
-        width: Math.floor(cropArea.width * scaleX),
-        height: Math.floor(cropArea.height * scaleY),
-      }
-
-      previousDisplayWidth = displayWidth
-      previousDisplayHeight = displayHeight
+    const sourceDims = getSourceDimensions()
+    if (!sourceDims || displayWidth === 0 || displayHeight === 0) {
+      return
     }
+
+    // Scale from source to display coordinates
+    const scaleX = displayWidth / sourceDims.width
+    const scaleY = displayHeight / sourceDims.height
+
+    cropArea = {
+      x: Math.round(sourceCropArea.x * scaleX),
+      y: Math.round(sourceCropArea.y * scaleY),
+      width: Math.round(sourceCropArea.width * scaleX),
+      height: Math.round(sourceCropArea.height * scaleY),
+    }
+  })
+
+  // Sync sourceCrop binding with sourceCropArea
+  $effect(() => {
+    sourceCrop = sourceCropArea ? { ...sourceCropArea } : undefined
   })
 
   // Setup canvas with high DPI support
@@ -246,6 +274,44 @@
       drawHandle(ctx!, corner.x, corner.y, HANDLE_SIZE, handleColor)
     })
 
+    // Draw dimension label if dragging
+    if (showDimensionLabel && labelSourceDimensions) {
+      const canvasWidth = displayWidth + VIDEO_MARGIN * 2
+      const canvasHeight = displayHeight + VIDEO_MARGIN * 2
+
+      // Position in center of crop area if it's large enough, otherwise below crop area
+      const MIN_CROP_SIZE_FOR_LABEL = 100 // Minimum crop size to center label inside
+
+      let labelX: number
+      let labelY: number
+
+      if (
+        adjustedCrop.width >= MIN_CROP_SIZE_FOR_LABEL &&
+        adjustedCrop.height >= MIN_CROP_SIZE_FOR_LABEL
+      ) {
+        // Center in crop area
+        labelX = adjustedCrop.x + adjustedCrop.width / 2
+        labelY = adjustedCrop.y + adjustedCrop.height / 2
+      } else {
+        // Crop too small - position below crop area
+        labelX = adjustedCrop.x + adjustedCrop.width / 2
+        labelY = adjustedCrop.y + adjustedCrop.height + 40
+
+        // If too close to bottom edge, position above instead
+        if (labelY > canvasHeight - 30) {
+          labelY = adjustedCrop.y - 30
+        }
+      }
+
+      drawDimensionLabel(
+        ctx!,
+        labelSourceDimensions.width,
+        labelSourceDimensions.height,
+        labelX,
+        labelY,
+      )
+    }
+
     // Draw pixel preview if dragging
     if (showPixelPreview) {
       const source = mediaType === 'video' ? videoElement : img
@@ -304,6 +370,7 @@
           dragStartArea = { ...cropArea }
           dragStartPos = { x: adjustedX, y: adjustedY }
           showPixelPreview = true
+          showDimensionLabel = true
           return { mode: dragMode, startArea: dragStartArea }
         }
 
@@ -312,6 +379,7 @@
           dragMode = 'move'
           dragStartArea = { ...cropArea }
           dragStartPos = { x: adjustedX, y: adjustedY }
+          showDimensionLabel = true
           // Don't show pixel preview when moving the entire crop area
           return { mode: 'move', startArea: dragStartArea }
         }
@@ -322,14 +390,21 @@
       onMove: (x, y) => {
         if (!cropArea || !dragStartArea) return
 
+        // Get source dimensions for conversion
+        const sourceDims = getSourceDimensions()
+        if (!sourceDims) return
+
         // Adjust for padding
         const adjustedX = x - VIDEO_MARGIN
         const adjustedY = y - VIDEO_MARGIN
         const dx = adjustedX - dragStartPos.x
         const dy = adjustedY - dragStartPos.y
 
+        // Calculate new crop in display coordinates
+        let newDisplayCrop: Rect
+
         if (dragMode === 'move') {
-          cropArea = {
+          newDisplayCrop = {
             ...cropArea,
             x: Math.floor(
               clamp(dragStartArea.x + dx, 0, displayWidth - cropArea.width),
@@ -386,12 +461,32 @@
             }
           }
 
-          cropArea = {
+          newDisplayCrop = {
             x: Math.floor(newX),
             y: Math.floor(newY),
             width: Math.floor(newWidth),
             height: Math.floor(newHeight),
           }
+        } else {
+          return
+        }
+
+        // Convert display coordinates to source and update source of truth
+        const scaleX = sourceDims.width / displayWidth
+        const scaleY = sourceDims.height / displayHeight
+
+        sourceCropArea = {
+          x: Math.round(newDisplayCrop.x * scaleX),
+          y: Math.round(newDisplayCrop.y * scaleY),
+          width: Math.round(newDisplayCrop.width * scaleX),
+          height: Math.round(newDisplayCrop.height * scaleY),
+        }
+        // cropArea will be updated automatically via $effect
+
+        // Update label dimensions (in source coordinates)
+        labelSourceDimensions = {
+          width: sourceCropArea.width,
+          height: sourceCropArea.height,
         }
 
         // Calculate the crop edge position being dragged (in video coordinates)
@@ -449,6 +544,7 @@
 
       onEnd: () => {
         showPixelPreview = false
+        showDimensionLabel = false
         dragMode = null
         dragStartArea = null
         renderer?.render()

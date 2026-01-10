@@ -4,14 +4,15 @@
   import UserPicture from './UserPicture.svelte'
   import Button from 'tint/components/Button.svelte'
   import IconMore from 'tint/icons/20-more.svg?raw'
-  import IconTune from 'tint/icons/20-tune.svg?raw'
-  import IconEdit from 'tint/icons/20-edit.svg?raw'
-  import IconRefresh from 'tint/icons/20-refresh.svg?raw'
+  import ItemCrop from 'tint/icons/20-crop.svg?raw'
+  import IconCut from 'tint/icons/20-cut.svg?raw'
+  import IconTransform from 'tint/icons/20-transform.svg?raw'
   import { formatDate } from '@src/utils'
   import { FileProcessingStatus } from '@src/generated/graphql'
   import { getResourceUrl } from '@src/utils/resource-urls'
   import type { ExistingItem } from '@src/utils/edit-manager'
   import type { ContextClickHandler } from 'tint/components/Menu.svelte'
+  import { tooltip } from 'tint/actions/tooltip'
   import type { MenuItem } from '@src/utils/item-state-machine'
 
   interface Props {
@@ -55,21 +56,24 @@
     {#if 'file' in item.data && item.data.file && 'modifications' in item.data.file}
       {@const mods = item.data.file.modifications}
       {#if mods?.crop}
-        <span class="status-icon" title="Cropped">
-          {@html IconTune}
+        <span class="status-icon" use:tooltip={'Cropped'}>
+          {@html ItemCrop}
         </span>
       {/if}
       {#if mods?.trim}
-        <span class="status-icon" title="Trimmed">
-          {@html IconEdit}
+        <span class="status-icon" use:tooltip={'Trimmed'}>
+          {@html IconCut}
         </span>
       {/if}
       {#if mods?.fileType && 'originalType' in item.data.file && item.data.file.originalType}
         {@const originalType =
           item.data.file.originalType.charAt(0) +
           item.data.file.originalType.slice(1).toLowerCase()}
-        <span class="status-icon" title="Converted from {originalType}">
-          {@html IconRefresh}
+        <span
+          class="status-icon"
+          use:tooltip={`Converted from ${originalType}`}
+        >
+          {@html IconTransform}
         </span>
       {/if}
     {/if}
@@ -108,59 +112,51 @@
   </div>
 </div>
 
-<style>
-  .info {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 0;
-    gap: 10px;
-  }
+<style lang="sass">
+.info
+  display: flex
+  align-items: center
+  justify-content: space-between
+  padding: 10px 0
+  gap: 10px
 
-  .origin {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-    min-width: 0;
-  }
+.origin
+  display: flex
+  align-items: center
+  gap: 8px
+  flex: 1
+  min-width: 0
 
-  .pipelist {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    gap: 8px;
-  }
+.pipelist
+  list-style: none
+  padding: 0
+  margin: 0
+  display: flex
+  gap: 8px
 
-  .pipelist li {
-    display: flex;
-    align-items: center;
-  }
+  li
+    display: flex
+    align-items: center
 
-  .pipelist li:not(:last-child)::after {
-    content: '|';
-    margin-left: 8px;
-    opacity: 0.5;
-  }
+    &:not(:last-child)::after
+      content: '|'
+      margin-left: 8px
+      opacity: 0.5
 
-  .actions {
-    display: flex;
-    gap: 8px;
-  }
+.actions
+  display: flex
+  gap: 8px
 
-  .status-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    color: var(--tint-text-tertiary);
-  }
+.status-icon
+  display: flex
+  align-items: center
+  justify-content: center
+  width: 32px
+  height: 32px
+  background: var(--tint-input-bg)
+  border-radius: 50%
+  box-sizing: border-box
 
-  .status-icon :global(svg) {
-    width: 100%;
-    height: 100%;
-    fill: currentColor;
-  }
+  :global(svg)
+    fill: var(--tint-text-secondary)
 </style>

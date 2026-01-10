@@ -60,6 +60,9 @@
   let cropArea = $state<
     { x: number; y: number; width: number; height: number } | undefined
   >(undefined)
+  let sourceCrop = $state<
+    { x: number; y: number; width: number; height: number } | undefined
+  >(undefined)
 
   // Trim state (bound from TrimController)
   let trimStart = $state<number>(0)
@@ -217,9 +220,9 @@
     return null
   })
 
-  // Crop pixel offsets for API
+  // Crop pixel offsets for API (simplified - directly from source coordinates)
   const cropPixelOffsets = $derived.by(() => {
-    if (!cropArea || displayWidth === 0 || displayHeight === 0) {
+    if (!sourceCrop) {
       return null
     }
 
@@ -237,21 +240,12 @@
       return null
     }
 
-    // Scale crop area from display coordinates to source coordinates
-    const scaleX = sourceWidth / displayWidth
-    const scaleY = sourceHeight / displayHeight
-
-    const scaledX = Math.round(cropArea.x * scaleX)
-    const scaledY = Math.round(cropArea.y * scaleY)
-    const scaledWidth = Math.round(cropArea.width * scaleX)
-    const scaledHeight = Math.round(cropArea.height * scaleY)
-
-    // Calculate pixel offsets from edges
+    // Calculate pixel offsets from edges directly from source coordinates
     return {
-      left: scaledX,
-      top: scaledY,
-      right: sourceWidth - (scaledX + scaledWidth),
-      bottom: sourceHeight - (scaledY + scaledHeight),
+      left: sourceCrop.x,
+      top: sourceCrop.y,
+      right: sourceWidth - (sourceCrop.x + sourceCrop.width),
+      bottom: sourceHeight - (sourceCrop.y + sourceCrop.height),
     }
   })
 
@@ -553,27 +547,14 @@
         return
       }
 
-      // Convert from source coordinates to display coordinates
-      const sourceWidth =
-        mediaType === 'image' ? img!.naturalWidth : videoElement!.videoWidth
-      const sourceHeight =
-        mediaType === 'image' ? img!.naturalHeight : videoElement!.videoHeight
-
-      const scaleX = displayWidth / sourceWidth
-      const scaleY = displayHeight / sourceHeight
-
-      // Set crop area in display coordinates
-      // Use Math.round() to match the reverse conversion in cropPixelOffsets
-      cropArea = {
-        x: Math.round(detectedBounds.left * scaleX),
-        y: Math.round(detectedBounds.top * scaleY),
-        width: Math.round(
-          (detectedBounds.right - detectedBounds.left) * scaleX,
-        ),
-        height: Math.round(
-          (detectedBounds.bottom - detectedBounds.top) * scaleY,
-        ),
+      // Set crop area directly in source coordinates (detectedBounds is already in source)
+      sourceCrop = {
+        x: detectedBounds.left,
+        y: detectedBounds.top,
+        width: detectedBounds.right - detectedBounds.left,
+        height: detectedBounds.bottom - detectedBounds.top,
       }
+      // cropArea will be updated automatically via CropController's $effect
 
       // Save for undo (if no previous crop)
       if (!originalCropArea) {
@@ -760,190 +741,175 @@
 <Modal {open} onclose={handleCancel} notClosable={loading}>
   <div class="transform-modal">
     <h2 class="tint--type-title-serif-3">
-      Transform {getMediaTypeDisplayName(mediaType)}
+      Edit {getMediaTypeDisplayName(mediaType)}
     </h2>
-    <p class="tint--type-body">
-      {#if canCrop && canTrim}
-        Drag the crop area to select a region and use the timeline to trim the
-        duration.
-      {:else if canCrop}
-        Drag the crop area to select the region you want to keep.
-      {:else if canTrim}
-        Use the timeline to select the portion you want to keep.
-      {/if}
-    </p>
 
-    <!-- Preview Area (hidden for audio with waveform) -->
-    {#if !(mediaType === 'audio' && waveform)}
-      <div class="preview-area" bind:this={containerElement}>
-        {#if mediaError}
-          <div class="error-state">
-            <p>{mediaError}</p>
-          </div>
-        {:else if !mediaUrl}
-          <div class="error-state">
-            <p>No media available</p>
-          </div>
-        {:else if !mediaLoaded}
-          <div class="loading-state">
-            <LoadingIndicator />
-            <p>Loading media...</p>
-          </div>
-        {/if}
+    <div class="video-area">
+      <!-- Preview Area (hidden for audio with waveform) -->
+      {#if !(mediaType === 'audio' && waveform)}
+        <div class="preview-area" bind:this={containerElement}>
+          {#if mediaError}
+            <div class="error-state">
+              <p>{mediaError}</p>
+            </div>
+          {:else if !mediaUrl}
+            <div class="error-state">
+              <p>No media available</p>
+            </div>
+          {:else if !mediaLoaded}
+            <div class="loading-state">
+              <LoadingIndicator />
+              <p>Loading media...</p>
+            </div>
+          {/if}
 
-        {#if mediaUrl}
-          {#if mediaType === 'video'}
-            <div
-              class="video-wrapper"
-              style="width: {displayWidth
-                ? displayWidth + 32
-                : 832}px; height: {displayHeight ? displayHeight + 32 : 632}px;"
-            >
-              <video
-                bind:this={videoElement}
+          {#if mediaUrl}
+            {#if mediaType === 'video'}
+              <div
+                class="video-wrapper"
+                style="width: {displayWidth
+                  ? displayWidth + 32
+                  : 832}px; height: {displayHeight
+                  ? displayHeight + 32
+                  : 632}px;"
+              >
+                <video
+                  bind:this={videoElement}
+                  src={mediaUrl}
+                  crossorigin="anonymous"
+                  onloadedmetadata={handleMediaLoaded}
+                  onerror={handleMediaError}
+                  ontimeupdate={handleTimeUpdate}
+                  controls={false}
+                  preload="none"
+                  style="width: {displayWidth}px; height: {displayHeight}px; margin: 16px; {!mediaLoaded
+                    ? 'opacity: 0;'
+                    : ''}"
+                />
+                {#if canCrop && mediaLoaded}
+                  <CropController
+                    mediaType="video"
+                    {img}
+                    {videoElement}
+                    {displayWidth}
+                    {displayHeight}
+                    {initialCrop}
+                    bind:cropArea
+                    bind:sourceCrop
+                  />
+                {/if}
+              </div>
+            {:else if mediaType === 'audio'}
+              <!-- Audio element (hidden, no preview needed) -->
+              <audio
+                bind:this={audioElement}
                 src={mediaUrl}
-                crossorigin="anonymous"
                 onloadedmetadata={handleMediaLoaded}
                 onerror={handleMediaError}
                 ontimeupdate={handleTimeUpdate}
-                controls={false}
                 preload="none"
-                style="width: {displayWidth}px; height: {displayHeight}px; margin: 16px; {!mediaLoaded
-                  ? 'opacity: 0;'
-                  : ''}"
-              />
-              {#if canCrop && mediaLoaded}
-                <CropController
-                  mediaType="video"
-                  {img}
-                  {videoElement}
-                  {displayWidth}
-                  {displayHeight}
-                  {initialCrop}
-                  bind:cropArea
-                />
-              {/if}
-            </div>
-          {:else if mediaType === 'audio'}
-            <!-- Audio element (hidden, no preview needed) -->
-            <audio
-              bind:this={audioElement}
-              src={mediaUrl}
-              onloadedmetadata={handleMediaLoaded}
-              onerror={handleMediaError}
-              ontimeupdate={handleTimeUpdate}
-              preload="none"
-              style="display: none;"
-            ></audio>
-          {:else}
-            <div
-              class="image-wrapper"
-              style="width: {displayWidth || 800}px; height: {displayHeight ||
-                600}px;"
-            >
-              {#if canCrop && mediaLoaded}
-                <CropController
-                  mediaType="image"
-                  {img}
-                  {videoElement}
-                  {displayWidth}
-                  {displayHeight}
-                  {initialCrop}
-                  bind:cropArea
-                />
-              {/if}
-            </div>
+                style="display: none;"
+              ></audio>
+            {:else}
+              <div
+                class="image-wrapper"
+                style="width: {displayWidth || 800}px; height: {displayHeight ||
+                  600}px;"
+              >
+                {#if canCrop && mediaLoaded}
+                  <CropController
+                    mediaType="image"
+                    {img}
+                    {videoElement}
+                    {displayWidth}
+                    {displayHeight}
+                    {initialCrop}
+                    bind:cropArea
+                    bind:sourceCrop
+                  />
+                {/if}
+              </div>
+            {/if}
           {/if}
-        {/if}
-      </div>
-    {:else}
-      <!-- Audio element for audio with waveform -->
-      <audio
-        bind:this={audioElement}
-        src={mediaUrl}
-        onloadedmetadata={handleMediaLoaded}
-        onerror={handleMediaError}
-        ontimeupdate={handleTimeUpdate}
-        preload="none"
-        style="display: none;"
-      ></audio>
-    {/if}
+        </div>
+      {:else}
+        <!-- Audio element for audio with waveform -->
+        <audio
+          bind:this={audioElement}
+          src={mediaUrl}
+          onloadedmetadata={handleMediaLoaded}
+          onerror={handleMediaError}
+          ontimeupdate={handleTimeUpdate}
+          preload="none"
+          style="display: none;"
+        ></audio>
+      {/if}
 
-    <!-- Crop Info -->
-    {#if canCrop && mediaLoaded && cropPixelOffsets}
-      <div class="crop-info">
-        {#if cropArea}
-          <span>Size: {cropArea.width} × {cropArea.height}px</span>
-          <span>
-            Offsets: Left {cropPixelOffsets.left}px, Top {cropPixelOffsets.top}px,
-            Right {cropPixelOffsets.right}px, Bottom {cropPixelOffsets.bottom}px
-          </span>
+      <div class="other-controls">
+        <!-- Trim Controls and Timeline -->
+        {#if canTrim && mediaLoaded && (mediaType === 'video' || mediaType === 'audio')}
+          <!-- eslint-disable-next-line @typescript-eslint/no-explicit-any -->
+          <TrimController
+            {mediaType}
+            {videoElement}
+            {audioElement}
+            {duration}
+            {waveform}
+            {waveformThumbnail}
+            {initialTrim}
+            bind:trimStart
+            bind:trimEnd
+            bind:currentTime
+            bind:isPlaying
+            bind:trimDragging
+          />
         {/if}
-      </div>
-    {/if}
 
-    <!-- Trim Controls and Timeline -->
-    {#if canTrim && mediaLoaded && (mediaType === 'video' || mediaType === 'audio')}
-      <!-- eslint-disable-next-line @typescript-eslint/no-explicit-any -->
-      <TrimController
-        {mediaType}
-        {videoElement}
-        {audioElement}
-        {duration}
-        {waveform}
-        {waveformThumbnail}
-        {initialTrim}
-        bind:trimStart
-        bind:trimEnd
-        bind:currentTime
-        bind:isPlaying
-        bind:trimDragging
-      />
-    {/if}
+        <!-- Actions -->
+        <div class="actions">
+          <div class="action-buttons-left">
+            {#if canCrop && mediaLoaded}
+              <Button
+                small
+                onclick={handleAutoCrop}
+                disabled={loading || autoCropping}
+                loading={autoCropping}
+              >
+                Auto Crop
+              </Button>
+            {/if}
+            {#if hasSignificantCrop}
+              <Button
+                small
+                onclick={handleRemoveCropModification}
+                disabled={loading}
+              >
+                Remove Crop
+              </Button>
+            {/if}
+            {#if hasSignificantTrim}
+              <Button
+                small
+                onclick={handleRemoveTrimModification}
+                disabled={loading}
+              >
+                Remove Trim
+              </Button>
+            {/if}
+          </div>
 
-    <!-- Actions -->
-    <div class="actions">
-      <div class="action-buttons-left">
-        {#if canCrop && mediaLoaded}
-          <Button
-            small
-            onclick={handleAutoCrop}
-            disabled={loading || autoCropping}
-            loading={autoCropping}
-          >
-            Auto Crop
-          </Button>
-        {/if}
-        {#if hasSignificantCrop}
-          <Button
-            small
-            onclick={handleRemoveCropModification}
-            disabled={loading}
-          >
-            Remove Crop
-          </Button>
-        {/if}
-        {#if hasSignificantTrim}
-          <Button
-            small
-            onclick={handleRemoveTrimModification}
-            disabled={loading}
-          >
-            Remove Trim
-          </Button>
-        {/if}
-      </div>
-
-      <div class="action-buttons-right">
-        <Button onclick={handleCancel} disabled={loading}>Cancel</Button>
-        <Button
-          variant="primary"
-          onclick={handleSubmit}
-          {loading}
-          disabled={loading || !isValid || !mediaLoaded}
-        >
-          Apply Transformations
-        </Button>
+          <div class="action-buttons-right">
+            <Button onclick={handleCancel} disabled={loading}>Cancel</Button>
+            <Button
+              variant="primary"
+              onclick={handleSubmit}
+              {loading}
+              disabled={loading || !isValid || !mediaLoaded}
+            >
+              Apply Transformations
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -955,8 +921,10 @@
     width: min(900px, calc(100vw - tint.$size-32))
     display: flex
     flex-direction: column
-    padding: tint.$size-32
-    gap: tint.$size-16
+    padding-block: tint.$size-32
+
+  .other-controls, h2
+    margin-inline: tint.$size-32
 
   .preview-area
     width: 100%
@@ -997,8 +965,14 @@
     display: flex
     flex-direction: column
     gap: tint.$size-4
-    font-size: 12px
     color: var(--tint-text-secondary)
+    display: flex
+    justify-content: center
+    align-items: center
+    > span
+      border: 1px solid
+      padding: 2px 6px
+      border-radius: 32px
 
   .playback-controls-wrapper
     // Hide the scrubber/progress bar as requested
@@ -1053,7 +1027,6 @@
   .trim-info
     display: flex
     justify-content: space-between
-    font-size: 12px
     color: var(--tint-text-secondary)
 
   .actions
@@ -1063,10 +1036,12 @@
     align-items: center
     padding-top: tint.$size-16
     border-top: 1px solid var(--tint-border)
+    flex-wrap: wrap
 
   .action-buttons-left,
   .action-buttons-right
     display: flex
     gap: tint.$size-8
     align-items: center
+    flex-wrap: wrap
 </style>

@@ -98,3 +98,64 @@ export function getCSSColor(
   const value = getComputedStyle(element).getPropertyValue(propertyName).trim()
   return value || fallback
 }
+
+/** Draw dimension label (pill-shaped with dimensions) */
+export function drawDimensionLabel(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  x: number,
+  y: number,
+): void {
+  // Format dimensions with multiplication sign (U+00D7)
+  const text = `${width} × ${height}`
+
+  // Measure text
+  ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+  const metrics = ctx.measureText(text)
+  const textWidth = metrics.width
+
+  // Pill dimensions
+  const paddingX = 12
+  const paddingY = 6
+  const pillWidth = textWidth + paddingX * 2
+  const pillHeight = 24
+  const borderRadius = pillHeight / 2
+
+  // Center the pill at the given position
+  const pillX = x - pillWidth / 2
+  const pillY = y - pillHeight / 2
+
+  // Draw pill background
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
+  ctx.beginPath()
+  ctx.moveTo(pillX + borderRadius, pillY)
+  ctx.lineTo(pillX + pillWidth - borderRadius, pillY)
+  ctx.arcTo(
+    pillX + pillWidth,
+    pillY,
+    pillX + pillWidth,
+    pillY + pillHeight,
+    borderRadius,
+  )
+  ctx.lineTo(pillX + pillWidth, pillY + pillHeight - borderRadius)
+  ctx.arcTo(
+    pillX + pillWidth,
+    pillY + pillHeight,
+    pillX + pillWidth - borderRadius,
+    pillY + pillHeight,
+    borderRadius,
+  )
+  ctx.lineTo(pillX + borderRadius, pillY + pillHeight)
+  ctx.arcTo(pillX, pillY + pillHeight, pillX, pillY, borderRadius)
+  ctx.lineTo(pillX, pillY + borderRadius)
+  ctx.arcTo(pillX, pillY, pillX + borderRadius, pillY, borderRadius)
+  ctx.closePath()
+  ctx.fill()
+
+  // Draw text
+  ctx.fillStyle = '#ffffff'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(text, x, y)
+}
