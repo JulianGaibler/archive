@@ -4,7 +4,6 @@
   import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
   import CropController from '@src/components/FileTransformModal/CropController.svelte'
   import TrimController from '@src/components/FileTransformModal/TrimController.svelte'
-  import { observeResize } from '@src/components/FileTransformModal/utils/canvas-renderer'
   import {
     detectLetterboxInImage,
     detectLetterboxInVideo,
@@ -72,8 +71,6 @@
   // Display dimensions
   let displayWidth = $state(0)
   let displayHeight = $state(0)
-  let containerElement: HTMLDivElement | undefined = $state(undefined)
-  let containerWidth = $state(0)
 
   // Auto crop state
   let autoCropping = $state(false)
@@ -101,7 +98,7 @@
     height: number
   } | null = null
   let originalTrimStart: number | null = null
-  let originalTrimEnd: number | null = null
+  let _originalTrimEnd: number | null = null
 
   // Derived values - determine what operations are available
   const canCrop = $derived.by(() => {
@@ -133,6 +130,12 @@
   const originalFile = $derived.by(() => {
     if (item.type !== 'existing' || !('file' in item.data)) return null
     return item.data.file
+  })
+
+  // Get relativeHeight for aspect ratio
+  const relativeHeight = $derived.by(() => {
+    if (!originalFile || !('relativeHeight' in originalFile)) return 56.25 // Default 16:9
+    return originalFile.relativeHeight || 56.25
   })
 
   // Helper to get initial crop from modifications
@@ -301,41 +304,41 @@
     }
   })
 
-  // Observe container resize for responsive dimensions
+  // Observe actual rendered video/image dimensions
   $effect(() => {
-    if (!containerElement) return
+    if (!mediaLoaded) return
 
-    return observeResize(containerElement, (width, _height) => {
-      containerWidth = width
+    let element: HTMLVideoElement | HTMLImageElement | null = null
+
+    if (mediaType === 'video' && videoElement) {
+      element = videoElement
+    } else if (mediaType === 'image' && img) {
+      element = img
+    }
+
+    if (!element) return
+
+    // Use ResizeObserver to watch actual rendered size
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect
+        displayWidth = Math.floor(width)
+        displayHeight = Math.floor(height)
+      }
     })
-  })
 
-  // Reactively calculate display dimensions based on container size
-  $effect(() => {
-    if (!img && !videoElement) return
+    observer.observe(element)
 
-    // For videos, also depend on mediaLoaded to ensure dimensions are available
-    if (mediaType === 'video' && !mediaLoaded) return
+    // Also set initial dimensions immediately
+    if (element instanceof HTMLVideoElement) {
+      displayWidth = element.clientWidth
+      displayHeight = element.clientHeight
+    } else if (element instanceof HTMLImageElement && element.complete) {
+      displayWidth = element.clientWidth
+      displayHeight = element.clientHeight
+    }
 
-    const sourceWidth = img ? img.naturalWidth : videoElement?.videoWidth || 0
-    const sourceHeight = img
-      ? img.naturalHeight
-      : videoElement?.videoHeight || 0
-
-    if (sourceWidth === 0 || sourceHeight === 0) return
-
-    // Use container width with padding, or fallback to 800px
-    const maxWidth = containerWidth > 0 ? containerWidth - 64 : 800
-    const maxHeight = 600 // Keep height constraint for modal
-
-    const ratio = Math.min(
-      maxWidth / sourceWidth,
-      maxHeight / sourceHeight,
-      1, // Never scale up
-    )
-
-    displayWidth = Math.floor(sourceWidth * ratio)
-    displayHeight = Math.floor(sourceHeight * ratio)
+    return () => observer.disconnect()
   })
 
   async function loadMedia() {
@@ -747,7 +750,7 @@
     <div class="video-area">
       <!-- Preview Area (hidden for audio with waveform) -->
       {#if !(mediaType === 'audio' && waveform)}
-        <div class="preview-area" bind:this={containerElement}>
+        <div class="preview-area">
           {#if mediaError}
             <div class="error-state">
               <p>{mediaError}</p>
@@ -765,14 +768,7 @@
 
           {#if mediaUrl}
             {#if mediaType === 'video'}
-              <div
-                class="video-wrapper"
-                style="width: {displayWidth
-                  ? displayWidth + 32
-                  : 832}px; height: {displayHeight
-                  ? displayHeight + 32
-                  : 632}px;"
-              >
+              <div class="video-wrapper">
                 <video
                   bind:this={videoElement}
                   src={mediaUrl}
@@ -782,7 +778,10 @@
                   ontimeupdate={handleTimeUpdate}
                   controls={false}
                   preload="none"
-                  style="width: {displayWidth}px; height: {displayHeight}px; margin: 16px; {!mediaLoaded
+                  style:aspect-ratio={relativeHeight
+                    ? `100 / ${relativeHeight}`
+                    : undefined}
+                  style="max-width: 100%; max-height: 600px; margin: 16px; {!mediaLoaded
                     ? 'opacity: 0;'
                     : ''}"
                 />
@@ -813,8 +812,9 @@
             {:else}
               <div
                 class="image-wrapper"
-                style="width: {displayWidth || 800}px; height: {displayHeight ||
-                  600}px;"
+                style:aspect-ratio={relativeHeight
+                  ? `100 / ${relativeHeight}`
+                  : undefined}
               >
                 {#if canCrop && mediaLoaded}
                   <CropController
@@ -906,7 +906,7 @@
               {loading}
               disabled={loading || !isValid || !mediaLoaded}
             >
-              Apply Transformations
+              Apply
             </Button>
           </div>
         </div>
@@ -940,8 +940,14 @@
     align-items: center
     justify-content: center
     margin: 0 auto
+    max-width: 100%
+    width: 100%
 
     video
+      max-width: 100%
+      max-height: 600px
+      width: 100%
+      height: auto
       display: block
 
   .crop-overlay

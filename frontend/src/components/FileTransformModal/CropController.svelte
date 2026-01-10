@@ -71,6 +71,7 @@
   let labelSourceDimensions = $state<{ width: number; height: number } | null>(
     null,
   )
+  let fixedSourceCorner = $state<Point | null>(null) // Fixed corner in source coordinates during resize
 
   // Helper to get source dimensions
   function getSourceDimensions(): { width: number; height: number } | null {
@@ -147,9 +148,29 @@
     }
   })
 
-  // Sync sourceCrop binding with sourceCropArea
+  // Sync sourceCrop binding with sourceCropArea (internal → parent)
   $effect(() => {
     sourceCrop = sourceCropArea ? { ...sourceCropArea } : undefined
+  })
+
+  // Watch for external changes to sourceCrop (parent → internal)
+  $effect(() => {
+    // If sourceCrop is set externally (e.g., from auto crop)
+    if (sourceCrop) {
+      // Only update if different to avoid infinite loops
+      if (
+        !sourceCropArea ||
+        sourceCropArea.x !== sourceCrop.x ||
+        sourceCropArea.y !== sourceCrop.y ||
+        sourceCropArea.width !== sourceCrop.width ||
+        sourceCropArea.height !== sourceCrop.height
+      ) {
+        sourceCropArea = { ...sourceCrop }
+      }
+    } else if (sourceCrop === undefined && sourceCropArea) {
+      // Parent cleared the crop
+      sourceCropArea = undefined
+    }
   })
 
   // Setup canvas with high DPI support
@@ -276,7 +297,7 @@
 
     // Draw dimension label if dragging
     if (showDimensionLabel && labelSourceDimensions) {
-      const canvasWidth = displayWidth + VIDEO_MARGIN * 2
+      const _canvasWidth = displayWidth + VIDEO_MARGIN * 2
       const canvasHeight = displayHeight + VIDEO_MARGIN * 2
 
       // Position in center of crop area if it's large enough, otherwise below crop area
@@ -369,6 +390,40 @@
           dragMode = `resize-${corner}` as DragMode
           dragStartArea = { ...cropArea }
           dragStartPos = { x: adjustedX, y: adjustedY }
+
+          // Calculate and store fixed corner in SOURCE coordinates
+          const sourceDims = getSourceDimensions()
+          if (sourceDims && sourceCropArea) {
+            // Determine which corner is fixed (opposite of the one being dragged)
+            let fixedDisplayX: number
+            let fixedDisplayY: number
+
+            if (corner.includes('w')) {
+              // Dragging west (left), east (right) is fixed
+              fixedDisplayX = cropArea.x + cropArea.width
+            } else {
+              // Dragging east (right), west (left) is fixed
+              fixedDisplayX = cropArea.x
+            }
+
+            if (corner.includes('n')) {
+              // Dragging north (top), south (bottom) is fixed
+              fixedDisplayY = cropArea.y + cropArea.height
+            } else {
+              // Dragging south (bottom), north (top) is fixed
+              fixedDisplayY = cropArea.y
+            }
+
+            // Convert fixed corner to source coordinates (ONCE)
+            const scaleX = sourceDims.width / displayWidth
+            const scaleY = sourceDims.height / displayHeight
+
+            fixedSourceCorner = {
+              x: Math.round(fixedDisplayX * scaleX),
+              y: Math.round(fixedDisplayY * scaleY),
+            }
+          }
+
           showPixelPreview = true
           showDimensionLabel = true
           return { mode: dragMode, startArea: dragStartArea }
@@ -414,74 +469,84 @@
             ),
           }
         } else if (dragMode?.startsWith('resize-')) {
-          // Calculate the fixed (opposite) corner coordinates
-          let fixedX: number
-          let fixedY: number
+          // Use source-coordinate-based approach to preserve fixed corner
+          if (!fixedSourceCorner) return
 
-          // Determine which corner stays fixed based on drag mode
-          if (dragMode.includes('w')) {
-            // Dragging left edge, right edge is fixed
-            fixedX = dragStartArea.x + dragStartArea.width
-          } else {
-            // Dragging right edge, left edge is fixed
-            fixedX = dragStartArea.x
-          }
+          // Clamp cursor to display bounds
+          const movingDisplayX = clamp(adjustedX, 0, displayWidth)
+          const movingDisplayY = clamp(adjustedY, 0, displayHeight)
 
-          if (dragMode.includes('n')) {
-            // Dragging top edge, bottom edge is fixed
-            fixedY = dragStartArea.y + dragStartArea.height
-          } else {
-            // Dragging bottom edge, top edge is fixed
-            fixedY = dragStartArea.y
-          }
+          // Convert moving corner to source coordinates
+          const scaleX = sourceDims.width / displayWidth
+          const scaleY = sourceDims.height / displayHeight
 
-          // Calculate new crop area using cursor position as the moving corner
-          const movingX = clamp(adjustedX, 0, displayWidth)
-          const movingY = clamp(adjustedY, 0, displayHeight)
+          const movingSourceX = Math.round(movingDisplayX * scaleX)
+          const movingSourceY = Math.round(movingDisplayY * scaleY)
 
-          // New crop area spans from fixed corner to moving cursor position
-          let newX = Math.min(fixedX, movingX)
-          let newY = Math.min(fixedY, movingY)
-          let newWidth = Math.abs(fixedX - movingX)
-          let newHeight = Math.abs(fixedY - movingY)
+          // Calculate new source crop from fixed and moving corners
+          const minSourceX = Math.min(fixedSourceCorner.x, movingSourceX)
+          const maxSourceX = Math.max(fixedSourceCorner.x, movingSourceX)
+          const minSourceY = Math.min(fixedSourceCorner.y, movingSourceY)
+          const maxSourceY = Math.max(fixedSourceCorner.y, movingSourceY)
 
-          // Enforce minimum size on each axis independently
-          if (newWidth < MIN_CROP_SIZE) {
-            newWidth = MIN_CROP_SIZE
-            // Adjust x position based on which edge is being dragged
+          let newSourceWidth = maxSourceX - minSourceX
+          let newSourceHeight = maxSourceY - minSourceY
+
+          // Calculate minimum size in source coordinates
+          const minSourceWidth = Math.round(MIN_CROP_SIZE * scaleX)
+          const minSourceHeight = Math.round(MIN_CROP_SIZE * scaleY)
+
+          // Apply minimum size constraints in source space
+          let newSourceX = minSourceX
+          let newSourceY = minSourceY
+
+          if (newSourceWidth < minSourceWidth) {
+            newSourceWidth = minSourceWidth
+            // Adjust position based on which edge is being dragged
             if (dragMode.includes('w')) {
-              newX = fixedX - MIN_CROP_SIZE
+              // Dragging left edge, keep right edge fixed
+              newSourceX = fixedSourceCorner.x - minSourceWidth
             }
-          }
-          if (newHeight < MIN_CROP_SIZE) {
-            newHeight = MIN_CROP_SIZE
-            // Adjust y position based on which edge is being dragged
-            if (dragMode.includes('n')) {
-              newY = fixedY - MIN_CROP_SIZE
-            }
+            // If dragging east (right), newSourceX stays as minSourceX (left edge fixed)
           }
 
-          newDisplayCrop = {
-            x: Math.floor(newX),
-            y: Math.floor(newY),
-            width: Math.floor(newWidth),
-            height: Math.floor(newHeight),
+          if (newSourceHeight < minSourceHeight) {
+            newSourceHeight = minSourceHeight
+            // Adjust position based on which edge is being dragged
+            if (dragMode.includes('n')) {
+              // Dragging top edge, keep bottom edge fixed
+              newSourceY = fixedSourceCorner.y - minSourceHeight
+            }
+            // If dragging south (bottom), newSourceY stays as minSourceY (top edge fixed)
           }
+
+          // Clamp to source bounds
+          newSourceX = clamp(newSourceX, 0, sourceDims.width - newSourceWidth)
+          newSourceY = clamp(newSourceY, 0, sourceDims.height - newSourceHeight)
+
+          // Update source crop directly - no intermediate display conversion
+          sourceCropArea = {
+            x: newSourceX,
+            y: newSourceY,
+            width: newSourceWidth,
+            height: newSourceHeight,
+          }
+          // cropArea will be updated automatically via $effect
+        } else if (dragMode === 'move') {
+          // Convert display coordinates to source and update source of truth
+          const scaleX = sourceDims.width / displayWidth
+          const scaleY = sourceDims.height / displayHeight
+
+          sourceCropArea = {
+            x: Math.round(newDisplayCrop.x * scaleX),
+            y: Math.round(newDisplayCrop.y * scaleY),
+            width: Math.round(newDisplayCrop.width * scaleX),
+            height: Math.round(newDisplayCrop.height * scaleY),
+          }
+          // cropArea will be updated automatically via $effect
         } else {
           return
         }
-
-        // Convert display coordinates to source and update source of truth
-        const scaleX = sourceDims.width / displayWidth
-        const scaleY = sourceDims.height / displayHeight
-
-        sourceCropArea = {
-          x: Math.round(newDisplayCrop.x * scaleX),
-          y: Math.round(newDisplayCrop.y * scaleY),
-          width: Math.round(newDisplayCrop.width * scaleX),
-          height: Math.round(newDisplayCrop.height * scaleY),
-        }
-        // cropArea will be updated automatically via $effect
 
         // Update label dimensions (in source coordinates)
         labelSourceDimensions = {
@@ -547,6 +612,7 @@
         showDimensionLabel = false
         dragMode = null
         dragStartArea = null
+        fixedSourceCorner = null
         renderer?.render()
       },
     })
