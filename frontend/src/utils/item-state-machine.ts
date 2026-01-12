@@ -159,6 +159,20 @@ export function getAvailableItemOperations(
     }
   }
 
+  // Always show reprocess option for files (unless already failed and shown above)
+  if (
+    callbacks.onReprocess &&
+    item.data.file.processingStatus !== FileProcessingStatus.Failed
+  ) {
+    if (conversions.length > 0) {
+      conversions.push(MENU_SEPARATOR)
+    }
+    conversions.push({
+      label: 'Reprocess from original',
+      onClick: callbacks.onReprocess,
+    })
+  }
+
   return conversions
 }
 

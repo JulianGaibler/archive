@@ -1,5 +1,6 @@
 import { spawn } from 'child_process'
 import path from 'path'
+import { avSyncOptions } from './config.js'
 
 export interface FFProbeMetadata {
   format: {
@@ -593,7 +594,8 @@ export class FFmpegWrapper {
     })
 
     // Pass 2: Apply normalization with measurements
-    const audioFilter = `loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}:linear=${linear ? 'true' : 'false'}:measured_I=${measurements.input_i}:measured_LRA=${measurements.input_lra}:measured_TP=${measurements.input_tp}:measured_thresh=${measurements.input_thresh}:offset=${measurements.target_offset}:dual_mono=${dualMono ? 'true' : 'false'}`
+    // Audio filter chain: aresample (sync) -> loudnorm (normalize) -> asetpts (reset timestamps) -> apad (pad silence)
+    const audioFilter = `aresample=async=1:first_pts=0,loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}:linear=${linear ? 'true' : 'false'}:measured_I=${measurements.input_i}:measured_LRA=${measurements.input_lra}:measured_TP=${measurements.input_tp}:measured_thresh=${measurements.input_thresh}:offset=${measurements.target_offset}:dual_mono=${dualMono ? 'true' : 'false'},asetpts=PTS-STARTPTS,apad`
 
     // Build filter complex if video filters are provided
     let filterComplex: string | undefined
@@ -631,13 +633,21 @@ export class FFmpegWrapper {
       }
     }
 
+    // Add A/V sync flags before codec options
     outputOptions.push(
+      ...avSyncOptions.output,
       ...(options.audioOptions || []),
       ...(options.videoOptions || []),
     )
 
+    // Merge A/V sync input options with user-provided input options
+    const mergedInputOptions = [
+      ...avSyncOptions.input,
+      ...(options.inputOptions || []),
+    ]
+
     return FFmpegWrapper.convert(inputPath, outputPath, {
-      inputOptions: options.inputOptions,
+      inputOptions: mergedInputOptions,
       outputOptions,
       filterComplex,
       onProgress: options.onProgress,

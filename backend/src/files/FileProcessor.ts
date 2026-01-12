@@ -26,6 +26,7 @@ import {
   audioEncodingOptions,
   audioNormalizationOptions,
   processingConfig,
+  ENABLE_AUDIO_NORMALIZATION,
 } from './config.js'
 
 const pipeline = util.promisify(stream.pipeline)
@@ -180,7 +181,13 @@ export default class FileProcessor {
         duration = await new Promise<number>((resolve, reject) => {
           ffprobe(filePath, (err: Error | null, metadata?: FFProbeMetadata) => {
             if (err) return reject(err)
-            resolve(metadata?.format?.duration || 0)
+            // ffprobe returns duration as string in JSON output, parse it to number
+            const durationValue = metadata?.format?.duration
+            const parsedDuration =
+              typeof durationValue === 'number'
+                ? durationValue
+                : parseFloat(durationValue || '0')
+            resolve(parsedDuration || 0)
           })
         })
       } catch (err) {
@@ -352,14 +359,20 @@ export default class FileProcessor {
         trimOptions?: { start: number; duration: number },
       ): Promise<void> => {
         if (!hasAudio) {
-          // No audio, use standard video rendering
+          // No audio: standard rendering
           return renderVideo(renderIdx, inputPath, outputPath, size, [
             ...videoOptions,
             '-an', // No audio
           ])
         }
 
-        // Create temp file for normalized audio processing
+        // Feature flag check: use standard rendering (no normalization) if disabled
+        if (!ENABLE_AUDIO_NORMALIZATION) {
+          const allOptions = [...videoOptions, ...audioOptions]
+          return renderVideo(renderIdx, inputPath, outputPath, size, allOptions)
+        }
+
+        // Audio normalization enabled: use 2-pass loudnorm processing
         const tmpDir = tmp.dirSync({ postfix: '-audio-norm' })
         const tempOutputPath = fileUtils.resolvePath(
           tmpDir.name,
@@ -367,7 +380,7 @@ export default class FileProcessor {
         )
 
         try {
-          // Use audio normalization with progress tracking
+          // Apply 2-pass loudnorm audio normalization with progress tracking
           await FFmpegWrapper.normalizeAudio(inputPath, tempOutputPath, {
             inputOptions: trimOptions
               ? [
@@ -643,7 +656,13 @@ export default class FileProcessor {
         duration = await new Promise<number>((resolve, reject) => {
           ffprobe(filePath, (err: Error | null, metadata?: FFProbeMetadata) => {
             if (err) return reject(err)
-            resolve(metadata?.format?.duration || 0)
+            // ffprobe returns duration as string in JSON output, parse it to number
+            const durationValue = metadata?.format?.duration
+            const parsedDuration =
+              typeof durationValue === 'number'
+                ? durationValue
+                : parseFloat(durationValue || '0')
+            resolve(parsedDuration || 0)
           })
         })
       } catch (err) {

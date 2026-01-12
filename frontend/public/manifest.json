@@ -6,8 +6,8 @@
   "name": "Archive",
   "short_name": "Archive",
   "start_url": "/",
-  "scope": "https://archive.jwels.berlin/",
-  "id": "archive.jwels.berlin",
+  "scope": "https://archive.juliana.me/",
+  "id": "archive.juliana.me",
   "description": "Where memes go to die.",
   "edge_side_panel": {},
   "icons": [

@@ -301,7 +301,8 @@
         // Calculate actual rendered size maintaining aspect ratio
         const maxHeight = 600
         const WRAPPER_PADDING = 32 // 16px on each side
-        const maxWidth = (element.parentElement?.clientWidth || 900) - WRAPPER_PADDING
+        const maxWidth =
+          (element.parentElement?.clientWidth || 900) - WRAPPER_PADDING
 
         const aspectRatio = videoWidth / videoHeight
         let renderWidth = videoWidth
@@ -330,7 +331,8 @@
 
         const maxHeight = 600
         const WRAPPER_PADDING = 32 // 16px on each side
-        const maxWidth = (element.parentElement?.clientWidth || 900) - WRAPPER_PADDING
+        const maxWidth =
+          (element.parentElement?.clientWidth || 900) - WRAPPER_PADDING
 
         const aspectRatio = naturalWidth / naturalHeight
         let renderWidth = naturalWidth
@@ -733,7 +735,7 @@
                   ontimeupdate={handleTimeUpdate}
                   controls={false}
                   preload="none"
-                  style="{!mediaLoaded ? 'opacity: 0;' : ''}"
+                  style={!mediaLoaded ? 'opacity: 0;' : ''}
                 />
                 {#if canCrop && mediaLoaded}
                   <CropController
@@ -765,7 +767,7 @@
                   <img
                     src={img.src}
                     alt="Preview"
-                    style="{!mediaLoaded ? 'opacity: 0;' : ''}"
+                    style={!mediaLoaded ? 'opacity: 0;' : ''}
                   />
                 {/if}
                 {#if canCrop && mediaLoaded}

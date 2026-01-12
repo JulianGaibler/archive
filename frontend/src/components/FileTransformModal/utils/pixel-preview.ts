@@ -165,14 +165,10 @@ export function drawPixelPreview(
   // Calculate intersection of source rectangle with valid image bounds
   const validSourceX = Math.max(0, sourceRect.x)
   const validSourceY = Math.max(0, sourceRect.y)
-  const validSourceWidth = Math.min(
-    sourceWidth,
-    sourceRect.x + sourceRect.width,
-  ) - validSourceX
-  const validSourceHeight = Math.min(
-    sourceHeight,
-    sourceRect.y + sourceRect.height,
-  ) - validSourceY
+  const validSourceWidth =
+    Math.min(sourceWidth, sourceRect.x + sourceRect.width) - validSourceX
+  const validSourceHeight =
+    Math.min(sourceHeight, sourceRect.y + sourceRect.height) - validSourceY
 
   // Only draw if there's a valid intersection
   if (validSourceWidth > 0 && validSourceHeight > 0) {

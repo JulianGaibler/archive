@@ -338,7 +338,7 @@ async function checkStatus(ctx: Context | null, msgCtx: any) {
       try {
         ctx.isAuthenticated()
         await msgCtx.reply(
-          'You are already connected to Archive. Go to archive.jwels.berlin/settings if you want to unlink your Account.',
+          'You are already connected to Archive. Go to archive.juliana.me/settings if you want to unlink your Account.',
         )
         return
       } catch {
@@ -349,7 +349,7 @@ async function checkStatus(ctx: Context | null, msgCtx: any) {
     const buttonObj = {
       text: 'Login to Archive',
       login_url: {
-        url: 'https://archive.jwels.berlin/settings/link-telegram',
+        url: 'https://archive.juliana.me/settings/link-telegram',
       },
     }
     await msgCtx.reply(

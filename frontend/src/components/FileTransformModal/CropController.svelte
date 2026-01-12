@@ -254,8 +254,14 @@
 
         console.log('[CropController] After setupCanvas:', {
           canvasBuffer: { width: canvas.width, height: canvas.height },
-          canvasDisplay: { width: canvas.clientWidth, height: canvas.clientHeight },
-          canvasStyle: { width: canvas.style.width, height: canvas.style.height },
+          canvasDisplay: {
+            width: canvas.clientWidth,
+            height: canvas.clientHeight,
+          },
+          canvasStyle: {
+            width: canvas.style.width,
+            height: canvas.style.height,
+          },
           dpr: window.devicePixelRatio,
         })
 
@@ -551,10 +557,10 @@
         if (dragMode === 'move') {
           newDisplayCrop = {
             ...cropArea,
-            x: Math.floor(
+            x: Math.round(
               clamp(dragStartArea.x + dx, 0, displayWidth - cropArea.width),
             ),
-            y: Math.floor(
+            y: Math.round(
               clamp(dragStartArea.y + dy, 0, displayHeight - cropArea.height),
             ),
           }
@@ -645,35 +651,45 @@
         }
 
         // Calculate the crop edge position being dragged (in video coordinates)
-        if (dragMode && cropArea) {
-          let edgeX = 0
-          let edgeY = 0
+        // IMPORTANT: Use sourceCropArea directly (not cropArea) to avoid 1-frame lag
+        if (dragMode && sourceCropArea) {
+          // Determine edge position in SOURCE coordinates
+          let edgeSourceX = 0
+          let edgeSourceY = 0
 
           switch (dragMode) {
             case 'resize-nw':
-            case 'resize-sw':
-              edgeX = cropArea.x
-              edgeY =
-                dragMode === 'resize-nw'
-                  ? cropArea.y
-                  : cropArea.y + cropArea.height
+              edgeSourceX = sourceCropArea.x
+              edgeSourceY = sourceCropArea.y
               break
             case 'resize-ne':
+              edgeSourceX = sourceCropArea.x + sourceCropArea.width
+              edgeSourceY = sourceCropArea.y
+              break
+            case 'resize-sw':
+              edgeSourceX = sourceCropArea.x
+              edgeSourceY = sourceCropArea.y + sourceCropArea.height
+              break
             case 'resize-se':
-              edgeX = cropArea.x + cropArea.width
-              edgeY =
-                dragMode === 'resize-ne'
-                  ? cropArea.y
-                  : cropArea.y + cropArea.height
+              edgeSourceX = sourceCropArea.x + sourceCropArea.width
+              edgeSourceY = sourceCropArea.y + sourceCropArea.height
               break
             case 'move':
               // For move, use the center of the crop area
-              edgeX = cropArea.x + cropArea.width / 2
-              edgeY = cropArea.y + cropArea.height / 2
+              edgeSourceX = sourceCropArea.x + sourceCropArea.width / 2
+              edgeSourceY = sourceCropArea.y + sourceCropArea.height / 2
               break
           }
 
-          previewSourcePos = { x: edgeX, y: edgeY }
+          // Convert from source to display coordinates (same formula as $effect)
+          const edgeDisplayX = (edgeSourceX / sourceDims.width) * displayWidth
+          const edgeDisplayY = (edgeSourceY / sourceDims.height) * displayHeight
+
+          // Use display coordinates (drawPixelPreview expects display space, not canvas space)
+          previewSourcePos = {
+            x: edgeDisplayX,
+            y: edgeDisplayY,
+          }
 
           // Determine preview position based on cursor proximity
           // Check if cursor is near bottom-left corner
