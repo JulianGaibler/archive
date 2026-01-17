@@ -299,6 +299,9 @@ export default class FileProcessor {
       const { videoFilters, needsTrim, trimStart, trimDuration } =
         buildFilters(modifications)
 
+      // Flag to prevent duplicate filter_complex when callback handles filters
+      let filtersHandledByCallback = false
+
       const renderVideo = (
         renderIdx: number,
         inputPath: string,
@@ -321,22 +324,43 @@ export default class FileProcessor {
           if (optionsCallback) {
             optionsCallback(f)
           }
-          if (size) {
+
+          // Apply video filters (crop, etc.) using filter_complex
+          // Skip if callback already handled filters (e.g., GIF with crop)
+          let needsCustomMapping = false
+
+          if (videoFilters.length > 0 && !filtersHandledByCallback) {
+            const filterChain = [...videoFilters]
+
+            // Add scale filter if size is provided
+            if (size) {
+              if (size.startsWith('?x')) {
+                const height = size.substring(2)
+                filterChain.push(`scale=-2:${height}`)
+              } else if (size.includes('x')) {
+                filterChain.push(`scale=${size}`)
+              }
+            }
+
+            const filterString = filterChain.join(',')
+            f.addOption('-filter_complex', `[0:v]${filterString}[v]`)
+            needsCustomMapping = true // Mark that we need -map options
+          } else if (size) {
+            // No video filters, apply size normally
             f.size(size)
           }
 
-          // Apply video filters (crop, etc.) using filter_complex
-          if (videoFilters.length > 0) {
-            const filterString = videoFilters.join(',')
-            f.addOption('-filter_complex', `[0:v]${filterString}[v]`)
+          f.output(outputPath)
+            .outputOptions(outputOptions)
+
+          // Add -map options AFTER outputOptions to prevent them being overwritten
+          if (needsCustomMapping) {
             f.addOption('-map', '[v]')
             // Keep audio if it exists
             f.addOption('-map', '0:a?')
           }
 
-          f.output(outputPath)
-            .outputOptions(outputOptions)
-            .on(
+          f.on(
               'progress',
               (p: { percent?: number }) =>
                 p.percent !== undefined && updateProgress(renderIdx, p.percent),
@@ -468,13 +492,35 @@ export default class FileProcessor {
             undefined,
             [],
             (f: FfmpegCommand) => {
+              // Build GIF filter chain, including crop if present
+              const gifVideoFilters: string[] = []
+
+              // Prepend crop filters if they exist
+              if (videoFilters.length > 0) {
+                gifVideoFilters.push(...videoFilters)
+                // Set flag to prevent duplicate filter application
+                filtersHandledByCallback = true
+              }
+
+              // Add GIF-specific filters
+              const gifWidth = width > 480 ? 480 : width
+              gifVideoFilters.push(
+                'fps=25',
+                `scale=${gifWidth}:-2`,
+                'split[a][b]'
+              )
+
+              const gifFilterChain = gifVideoFilters.join(',')
+
               f.addOption(
                 '-filter_complex',
-                `[0:v]fps=25,scale=${width > 480 ? 480 : width}:-2,split[a][b];[a]palettegen[p];[b][p]paletteuse`,
+                `[0:v]${gifFilterChain};[a]palettegen[p];[b][p]paletteuse`,
               )
             },
           )
           promises.push(renderGif)
+          // Reset flag for subsequent renders
+          filtersHandledByCallback = false
         } catch (err) {
           throw new FileProcessingError(
             'Failed to initialize GIF rendering',

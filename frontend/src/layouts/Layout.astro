@@ -25,7 +25,7 @@ const pageTitle = title ? `${title} | ${siteName}` : siteName
       Object.values(fonts).map((item) => (
         <link
           rel="preload"
-          href={item}
+          href={item.url}
           as="font"
           type="font/woff2"
           crossorigin

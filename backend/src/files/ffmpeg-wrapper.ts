@@ -594,8 +594,17 @@ export class FFmpegWrapper {
     })
 
     // Pass 2: Apply normalization with measurements
-    // Audio filter chain: aresample (sync) -> loudnorm (normalize) -> asetpts (reset timestamps) -> apad (pad silence)
-    const audioFilter = `aresample=async=1:first_pts=0,loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}:linear=${linear ? 'true' : 'false'}:measured_I=${measurements.input_i}:measured_LRA=${measurements.input_lra}:measured_TP=${measurements.input_tp}:measured_thresh=${measurements.input_thresh}:offset=${measurements.target_offset}:dual_mono=${dualMono ? 'true' : 'false'},asetpts=PTS-STARTPTS,apad`
+    // Determine if this is audio-only processing (no video in output)
+    const isAudioOnly = !options.videoFilters || options.videoFilters.length === 0
+
+    // Audio filter chain - conditionally include apad only for video+audio
+    // The apad filter pads silence indefinitely and requires -shortest flag to stop
+    // For audio-only processing, -shortest doesn't work properly, causing FFmpeg to hang
+    const applyApad = !isAudioOnly // Only use apad when video stream is present
+    const audioPadFilter = applyApad ? ',apad' : ''
+
+    // Audio filter chain: aresample (sync) -> loudnorm (normalize) -> asetpts (reset timestamps) -> [apad (pad silence)]
+    const audioFilter = `aresample=async=1:first_pts=0,loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}:linear=${linear ? 'true' : 'false'}:measured_I=${measurements.input_i}:measured_LRA=${measurements.input_lra}:measured_TP=${measurements.input_tp}:measured_thresh=${measurements.input_thresh}:offset=${measurements.target_offset}:dual_mono=${dualMono ? 'true' : 'false'},asetpts=PTS-STARTPTS${audioPadFilter}`
 
     // Build filter complex if video filters are provided
     let filterComplex: string | undefined
@@ -755,8 +764,6 @@ export class FFmpegWrapper {
 
       // Add output path and overwrite flag
       args.push('-y', outputPath)
-
-      console.log('Running ffmpeg with args:', args)
 
       const process = spawn('ffmpeg', args)
       let stderr = ''
