@@ -7,9 +7,9 @@ import * as cookie from 'cookie'
 import serverEnv from 'virtual:env/server'
 import clientEnv from 'virtual:env/client'
 
-const PUBLIC_URL = `${clientEnv.FRONTEND_PUBLIC_API_BASE_URL}${clientEnv.FRONTEND_PUBLIC_GRAPHQL_ENDPOINT}`
-const PUBLIC_URL_WS = `${clientEnv.FRONTEND_PUBLIC_API_BASE_URL}${clientEnv.FRONTEND_PUBLIC_WS_ENDPOINT}`
-const PRIVATE_URL = `${serverEnv.FRONTEND_PRIVATE_API_BASE_URL}${serverEnv.FRONTEND_PRIVATE_GRAPHQL_ENDPOINT}`
+const PUBLIC_URL = `${clientEnv.FRONTEND_PUBLIC_API_BASE_URL}${clientEnv.GRAPHQL_PATH}`
+const PUBLIC_URL_WS = `${clientEnv.FRONTEND_PUBLIC_API_BASE_URL}${clientEnv.WEBSOCKET_PATH}`
+const PRIVATE_URL = `${serverEnv.FRONTEND_PRIVATE_API_BASE_URL}${serverEnv.GRAPHQL_PATH}`
 
 export const getSsrClient = (
   token: string | undefined,

@@ -487,9 +487,8 @@
 
     try {
       // Lazy load the letterbox detector only when Auto Crop is clicked
-      const { detectLetterboxInImage, detectLetterboxInVideo } = await import(
-        './FileTransformModal/utils/letterbox-detector'
-      )
+      const { detectLetterboxInImage, detectLetterboxInVideo } =
+        await import('./FileTransformModal/utils/letterbox-detector')
 
       let detectedBounds = null
 

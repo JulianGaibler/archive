@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro'
 import clientEnv from 'virtual:env/client'
 
 export const GET: APIRoute = () => {
-  const publicUrl = clientEnv.FRONTEND_PUBLIC_URL || 'http://localhost:4321'
+  const publicUrl = clientEnv.PUBLIC_URL || 'http://localhost:4321'
   // Remove trailing slash for consistency
   const baseUrl = publicUrl.replace(/\/$/, '')
   // Extract hostname for the id field

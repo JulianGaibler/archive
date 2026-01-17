@@ -13,7 +13,7 @@ server {
 
     # WebSocket endpoint - most specific location first
     location = /api/websocket {
-        proxy_pass http://${DOCKER_BACKEND_HOST}:${BACKEND_PORT}/websocket;
+        proxy_pass http://backend:${BACKEND_PORT}/websocket;
         # Forward headers properly through the proxy chain
         proxy_set_header Host $http_host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -43,7 +43,7 @@ server {
         limit_req_status 429;
         
         # Forward to backend (strip /api/ prefix by adding trailing slash)
-        proxy_pass http://${DOCKER_BACKEND_HOST}:${BACKEND_PORT}/;
+        proxy_pass http://backend:${BACKEND_PORT}/;
         # Forward headers properly through the proxy chain
         proxy_set_header Host $http_host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -169,7 +169,7 @@ server {
         # Use general API rate limiting for SSR requests
         limit_req zone=api burst=20 nodelay;
 
-        proxy_pass http://${DOCKER_FRONTEND_HOST}:${FRONTEND_PORT};
+        proxy_pass http://frontend:${FRONTEND_PORT};
 
         # Forward headers
         proxy_set_header Host $host;

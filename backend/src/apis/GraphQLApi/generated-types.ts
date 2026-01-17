@@ -1282,8 +1282,8 @@ export type ResolversParentTypes = ResolversObject<{
 
 export type AffectedItemResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['AffectedItem'] = ResolversParentTypes['AffectedItem'],
+  ParentType extends ResolversParentTypes['AffectedItem'] =
+    ResolversParentTypes['AffectedItem'],
 > = ResolversObject<{
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
   position?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>
@@ -1293,8 +1293,8 @@ export type AffectedItemResolvers<
 
 export type AudioFileResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['AudioFile'] = ResolversParentTypes['AudioFile'],
+  ParentType extends ResolversParentTypes['AudioFile'] =
+    ResolversParentTypes['AudioFile'],
 > = ResolversObject<{
   compressedPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
@@ -1339,8 +1339,8 @@ export type AudioFileResolvers<
 
 export type AudioItemResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['AudioItem'] = ResolversParentTypes['AudioItem'],
+  ParentType extends ResolversParentTypes['AudioItem'] =
+    ResolversParentTypes['AudioItem'],
 > = ResolversObject<{
   caption?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
@@ -1356,8 +1356,8 @@ export type AudioItemResolvers<
 
 export type CropMetadataResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['CropMetadata'] = ResolversParentTypes['CropMetadata'],
+  ParentType extends ResolversParentTypes['CropMetadata'] =
+    ResolversParentTypes['CropMetadata'],
 > = ResolversObject<{
   bottom?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
   left?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
@@ -1366,15 +1366,17 @@ export type CropMetadataResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
-export interface DateTimeScalarConfig
-  extends GraphQLScalarTypeConfig<ResolversTypes['DateTime'], any> {
+export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<
+  ResolversTypes['DateTime'],
+  any
+> {
   name: 'DateTime'
 }
 
 export type FileResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['File'] = ResolversParentTypes['File'],
+  ParentType extends ResolversParentTypes['File'] =
+    ResolversParentTypes['File'],
 > = ResolversObject<{
   __resolveType: TypeResolveFn<
     'AudioFile' | 'GifFile' | 'PhotoFile' | 'ProfilePictureFile' | 'VideoFile',
@@ -1415,8 +1417,8 @@ export type FileResolvers<
 
 export type FileModificationsResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['FileModifications'] = ResolversParentTypes['FileModifications'],
+  ParentType extends ResolversParentTypes['FileModifications'] =
+    ResolversParentTypes['FileModifications'],
 > = ResolversObject<{
   crop?: Resolver<
     Maybe<ResolversTypes['CropMetadata']>,
@@ -1438,8 +1440,8 @@ export type FileModificationsResolvers<
 
 export type FileProcessingUpdateResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['FileProcessingUpdate'] = ResolversParentTypes['FileProcessingUpdate'],
+  ParentType extends ResolversParentTypes['FileProcessingUpdate'] =
+    ResolversParentTypes['FileProcessingUpdate'],
 > = ResolversObject<{
   affectedItems?: Resolver<
     Maybe<Array<ResolversTypes['AffectedItem']>>,
@@ -1454,8 +1456,8 @@ export type FileProcessingUpdateResolvers<
 
 export type GifFileResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['GifFile'] = ResolversParentTypes['GifFile'],
+  ParentType extends ResolversParentTypes['GifFile'] =
+    ResolversParentTypes['GifFile'],
 > = ResolversObject<{
   compressedGifPath?: Resolver<
     ResolversTypes['String'],
@@ -1505,8 +1507,8 @@ export type GifFileResolvers<
 
 export type GifItemResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['GifItem'] = ResolversParentTypes['GifItem'],
+  ParentType extends ResolversParentTypes['GifItem'] =
+    ResolversParentTypes['GifItem'],
 > = ResolversObject<{
   caption?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
@@ -1522,8 +1524,8 @@ export type GifItemResolvers<
 
 export type ImageItemResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['ImageItem'] = ResolversParentTypes['ImageItem'],
+  ParentType extends ResolversParentTypes['ImageItem'] =
+    ResolversParentTypes['ImageItem'],
 > = ResolversObject<{
   caption?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
@@ -1539,8 +1541,8 @@ export type ImageItemResolvers<
 
 export type ItemResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['Item'] = ResolversParentTypes['Item'],
+  ParentType extends ResolversParentTypes['Item'] =
+    ResolversParentTypes['Item'],
 > = ResolversObject<{
   __resolveType: TypeResolveFn<
     'AudioItem' | 'GifItem' | 'ImageItem' | 'ProcessingItem' | 'VideoItem',
@@ -1558,8 +1560,8 @@ export type ItemResolvers<
 
 export type ItemConnectionResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['ItemConnection'] = ResolversParentTypes['ItemConnection'],
+  ParentType extends ResolversParentTypes['ItemConnection'] =
+    ResolversParentTypes['ItemConnection'],
 > = ResolversObject<{
   endCursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>
   hasNextPage?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>
@@ -1576,8 +1578,8 @@ export type ItemConnectionResolvers<
 
 export type KeywordResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['Keyword'] = ResolversParentTypes['Keyword'],
+  ParentType extends ResolversParentTypes['Keyword'] =
+    ResolversParentTypes['Keyword'],
 > = ResolversObject<{
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>
@@ -1593,8 +1595,8 @@ export type KeywordResolvers<
 
 export type KeywordConnectionResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['KeywordConnection'] = ResolversParentTypes['KeywordConnection'],
+  ParentType extends ResolversParentTypes['KeywordConnection'] =
+    ResolversParentTypes['KeywordConnection'],
 > = ResolversObject<{
   endCursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>
   hasNextPage?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>
@@ -1611,8 +1613,8 @@ export type KeywordConnectionResolvers<
 
 export type MutationResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation'],
+  ParentType extends ResolversParentTypes['Mutation'] =
+    ResolversParentTypes['Mutation'],
 > = ResolversObject<{
   changeName?: Resolver<
     ResolversTypes['Boolean'],
@@ -1793,8 +1795,8 @@ export type MutationResolvers<
 
 export type NodeResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['Node'] = ResolversParentTypes['Node'],
+  ParentType extends ResolversParentTypes['Node'] =
+    ResolversParentTypes['Node'],
 > = ResolversObject<{
   __resolveType: TypeResolveFn<
     | 'AudioItem'
@@ -1814,8 +1816,8 @@ export type NodeResolvers<
 
 export type PhotoFileResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['PhotoFile'] = ResolversParentTypes['PhotoFile'],
+  ParentType extends ResolversParentTypes['PhotoFile'] =
+    ResolversParentTypes['PhotoFile'],
 > = ResolversObject<{
   compressedPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
@@ -1860,8 +1862,8 @@ export type PhotoFileResolvers<
 
 export type PostResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['Post'] = ResolversParentTypes['Post'],
+  ParentType extends ResolversParentTypes['Post'] =
+    ResolversParentTypes['Post'],
 > = ResolversObject<{
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
@@ -1881,8 +1883,8 @@ export type PostResolvers<
 
 export type PostConnectionResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['PostConnection'] = ResolversParentTypes['PostConnection'],
+  ParentType extends ResolversParentTypes['PostConnection'] =
+    ResolversParentTypes['PostConnection'],
 > = ResolversObject<{
   endCursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>
   hasNextPage?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>
@@ -1899,8 +1901,8 @@ export type PostConnectionResolvers<
 
 export type ProcessingItemResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['ProcessingItem'] = ResolversParentTypes['ProcessingItem'],
+  ParentType extends ResolversParentTypes['ProcessingItem'] =
+    ResolversParentTypes['ProcessingItem'],
 > = ResolversObject<{
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
@@ -1930,8 +1932,8 @@ export type ProcessingItemResolvers<
 
 export type ProfilePictureFileResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['ProfilePictureFile'] = ResolversParentTypes['ProfilePictureFile'],
+  ParentType extends ResolversParentTypes['ProfilePictureFile'] =
+    ResolversParentTypes['ProfilePictureFile'],
 > = ResolversObject<{
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
@@ -1974,8 +1976,8 @@ export type ProfilePictureFileResolvers<
 
 export type QueryResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['Query'] = ResolversParentTypes['Query'],
+  ParentType extends ResolversParentTypes['Query'] =
+    ResolversParentTypes['Query'],
 > = ResolversObject<{
   items?: Resolver<
     Maybe<ResolversTypes['ItemConnection']>,
@@ -2029,8 +2031,8 @@ export type QueryResolvers<
 
 export type SessionResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['Session'] = ResolversParentTypes['Session'],
+  ParentType extends ResolversParentTypes['Session'] =
+    ResolversParentTypes['Session'],
 > = ResolversObject<{
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
   current?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>
@@ -2045,8 +2047,8 @@ export type SessionResolvers<
 
 export type SubscriptionResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['Subscription'] = ResolversParentTypes['Subscription'],
+  ParentType extends ResolversParentTypes['Subscription'] =
+    ResolversParentTypes['Subscription'],
 > = ResolversObject<{
   fileProcessingUpdates?: SubscriptionResolver<
     ResolversTypes['FileProcessingUpdate'],
@@ -2059,23 +2061,25 @@ export type SubscriptionResolvers<
 
 export type TrimMetadataResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['TrimMetadata'] = ResolversParentTypes['TrimMetadata'],
+  ParentType extends ResolversParentTypes['TrimMetadata'] =
+    ResolversParentTypes['TrimMetadata'],
 > = ResolversObject<{
   endTime?: Resolver<ResolversTypes['Float'], ParentType, ContextType>
   startTime?: Resolver<ResolversTypes['Float'], ParentType, ContextType>
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
-export interface UploadScalarConfig
-  extends GraphQLScalarTypeConfig<ResolversTypes['Upload'], any> {
+export interface UploadScalarConfig extends GraphQLScalarTypeConfig<
+  ResolversTypes['Upload'],
+  any
+> {
   name: 'Upload'
 }
 
 export type UserResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['User'] = ResolversParentTypes['User'],
+  ParentType extends ResolversParentTypes['User'] =
+    ResolversParentTypes['User'],
 > = ResolversObject<{
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
   linkedTelegram?: Resolver<
@@ -2102,8 +2106,8 @@ export type UserResolvers<
 
 export type UserConnectionResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['UserConnection'] = ResolversParentTypes['UserConnection'],
+  ParentType extends ResolversParentTypes['UserConnection'] =
+    ResolversParentTypes['UserConnection'],
 > = ResolversObject<{
   endCursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>
   hasNextPage?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>
@@ -2120,8 +2124,8 @@ export type UserConnectionResolvers<
 
 export type VideoFileResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['VideoFile'] = ResolversParentTypes['VideoFile'],
+  ParentType extends ResolversParentTypes['VideoFile'] =
+    ResolversParentTypes['VideoFile'],
 > = ResolversObject<{
   compressedPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
@@ -2176,8 +2180,8 @@ export type VideoFileResolvers<
 
 export type VideoItemResolvers<
   ContextType = Context,
-  ParentType extends
-    ResolversParentTypes['VideoItem'] = ResolversParentTypes['VideoItem'],
+  ParentType extends ResolversParentTypes['VideoItem'] =
+    ResolversParentTypes['VideoItem'],
 > = ResolversObject<{
   caption?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>

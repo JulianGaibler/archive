@@ -30,14 +30,6 @@ const ENV_VARIABLES = [
     availability: 'server',
     requiredInProduction: true,
   },
-  {
-    name: 'FRONTEND_PRIVATE_GRAPHQL_ENDPOINT',
-    type: 'string',
-    description: 'GraphQL endpoint for private API',
-    fallback: '/graphql',
-    availability: 'server',
-    requiredInProduction: true,
-  },
 
   // Client-accessible variables (public data)
   {
@@ -48,21 +40,23 @@ const ENV_VARIABLES = [
     availability: 'client',
     requiredInProduction: true,
   },
+
+  // Shared path variables (both client and server)
   {
-    name: 'FRONTEND_PUBLIC_GRAPHQL_ENDPOINT',
+    name: 'GRAPHQL_PATH',
     type: 'string',
-    description: 'GraphQL endpoint for public API',
+    description: 'GraphQL endpoint path',
     fallback: '/graphql',
-    availability: 'client',
-    requiredInProduction: true,
+    availability: 'both',
+    requiredInProduction: false,
   },
   {
-    name: 'FRONTEND_PUBLIC_WS_ENDPOINT',
+    name: 'WEBSOCKET_PATH',
     type: 'string',
-    description: 'WebSocket endpoint for real-time updates',
-    fallback: '/graphql/ws',
-    availability: 'client',
-    requiredInProduction: true,
+    description: 'WebSocket endpoint path',
+    fallback: '/websocket',
+    availability: 'both',
+    requiredInProduction: false,
   },
   
   // Variables available on both client and server
@@ -83,9 +77,9 @@ const ENV_VARIABLES = [
     requiredInProduction: false,
   },
   {
-    name: 'FRONTEND_PUBLIC_URL',
+    name: 'PUBLIC_URL',
     type: 'string',
-    description: 'Public URL for the frontend application',
+    description: 'Public URL for the application',
     fallback: 'http://localhost:4321',
     availability: 'both',
     requiredInProduction: false,
@@ -94,7 +88,7 @@ const ENV_VARIABLES = [
     name: 'FRONTEND_LEGAL_LINK_LABEL',
     type: 'string',
     description: 'Label for the legal/impressum link in footer (e.g., "Impressum", "Legal", "Imprint")',
-    fallback: 'Impressum',
+    fallback: 'Legal',
     availability: 'client',
     requiredInProduction: false,
   },
@@ -102,7 +96,7 @@ const ENV_VARIABLES = [
     name: 'FRONTEND_LEGAL_LINK_URL',
     type: 'string',
     description: 'URL for the legal/impressum link in footer',
-    fallback: '//juliana.me/imprint',
+    fallback: '//example.com/',
     availability: 'client',
     requiredInProduction: false,
   },

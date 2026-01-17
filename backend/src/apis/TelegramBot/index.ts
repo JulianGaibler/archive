@@ -15,7 +15,7 @@ import PostModel, { PostExternal } from '@src/models/PostModel.js'
 
 const BOT_TOKEN = env.BACKEND_TELEGRAM_BOT_TOKEN
 const SECRET = BOT_TOKEN ? createHash('sha256').update(BOT_TOKEN).digest() : ''
-const ORIGIN = env.BACKEND_TELEGRAM_BOT_RESOURCE_URL
+const ORIGIN = env.PUBLIC_URL + '/files/'
 
 // Restart configuration
 const MAX_RESTART_ATTEMPTS = 5
@@ -55,9 +55,9 @@ export default class TelegramBot {
       return Promise.resolve()
     }
 
-    if (!ORIGIN) {
+    if (!env.PUBLIC_URL) {
       console.error(
-        '🤖 Telegram bot: No resource URL configured. Please set BACKEND_TELEGRAM_BOT_RESOURCE_URL for the bot to start',
+        '🤖 Telegram bot: No PUBLIC_URL configured. The bot requires PUBLIC_URL to generate file URLs.',
       )
     }
 
@@ -338,7 +338,7 @@ async function checkStatus(ctx: Context | null, msgCtx: any) {
       try {
         ctx.isAuthenticated()
         await msgCtx.reply(
-          `You are already connected to Archive. Go to ${env.BACKEND_PUBLIC_URL}/settings if you want to unlink your Account.`,
+          `You are already connected to Archive. Go to ${env.PUBLIC_URL}/settings if you want to unlink your Account.`,
         )
         return
       } catch {
@@ -349,7 +349,7 @@ async function checkStatus(ctx: Context | null, msgCtx: any) {
     const buttonObj = {
       text: 'Login to Archive',
       login_url: {
-        url: `${env.BACKEND_PUBLIC_URL}/settings/link-telegram`,
+        url: `${env.PUBLIC_URL}/settings/link-telegram`,
       },
     }
     await msgCtx.reply(

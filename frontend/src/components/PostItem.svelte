@@ -120,9 +120,8 @@
       // Lazy load the modal component only when needed
       if (!FileTransformModal) {
         try {
-          const module = await import(
-            '@src/components/FileTransformModal.svelte'
-          )
+          const module =
+            await import('@src/components/FileTransformModal.svelte')
           FileTransformModal = module.default
         } catch (error) {
           console.error('Failed to load FileTransformModal:', error)

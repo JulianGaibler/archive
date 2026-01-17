@@ -17,9 +17,9 @@ const corsOptions: cors.CorsOptions = {
 
 const OPTIONS = {
   port: env.BACKEND_PORT,
-  endpoint: env.BACKEND_GRAPHQL_PATH,
-  websocketPath: env.BACKEND_WEBSOCKET_PATH,
-  fileServePath: env.BACKEND_FILE_SERVE_PATH,
+  endpoint: env.GRAPHQL_PATH,
+  websocketPath: env.WEBSOCKET_PATH,
+  fileServePath: '/files',
   fileStorageDir: env.BACKEND_FILE_STORAGE_DIR,
   corsOptions,
 }
