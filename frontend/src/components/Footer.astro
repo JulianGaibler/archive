@@ -1,12 +1,15 @@
 ---
+import clientEnv from 'virtual:env/client'
+
 const currentYear = new Date().getFullYear()
+const legalLabel = clientEnv.FRONTEND_LEGAL_LINK_LABEL || 'Impressum'
+const legalUrl = clientEnv.FRONTEND_LEGAL_LINK_URL || '//juliana.me/imprint'
 ---
 
 <footer>
   <span
-    >© 2016-{currentYear} Juliana Gaibler and contributors · <a
-      lang="de"
-      href="//juliana.me/imprint">Impressum</a
+    >© 2016-{currentYear} Juliana Gaibler · <a
+      href={legalUrl}>{legalLabel}</a
     ></span
   >
 </footer>

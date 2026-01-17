@@ -82,6 +82,30 @@ const ENV_VARIABLES = [
     availability: 'both',
     requiredInProduction: false,
   },
+  {
+    name: 'FRONTEND_PUBLIC_URL',
+    type: 'string',
+    description: 'Public URL for the frontend application',
+    fallback: 'http://localhost:4321',
+    availability: 'both',
+    requiredInProduction: false,
+  },
+  {
+    name: 'FRONTEND_LEGAL_LINK_LABEL',
+    type: 'string',
+    description: 'Label for the legal/impressum link in footer (e.g., "Impressum", "Legal", "Imprint")',
+    fallback: 'Impressum',
+    availability: 'client',
+    requiredInProduction: false,
+  },
+  {
+    name: 'FRONTEND_LEGAL_LINK_URL',
+    type: 'string',
+    description: 'URL for the legal/impressum link in footer',
+    fallback: '//juliana.me/imprint',
+    availability: 'client',
+    requiredInProduction: false,
+  },
 ]
 
 /**
