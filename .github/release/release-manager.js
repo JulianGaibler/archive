@@ -115,10 +115,19 @@ function formatReleaseNotes(version, entry) {
   return body.trim()
 }
 
-// Get release title (e.g., "Archive 2.3")
+// Get release title (e.g., "Archive 2.3" for 2.3.0, "Archive 2.3.1" for 2.3.1)
 function getReleaseTitle(version) {
   const parts = version.split('.')
-  return `Archive ${parts[0]}.${parts[1]}`
+  const major = parts[0]
+  const minor = parts[1]
+  const patch = parts[2]
+
+  // Include patch version only if it's not .0
+  if (patch && patch !== '0') {
+    return `Archive ${major}.${minor}.${patch}`
+  }
+
+  return `Archive ${major}.${minor}`
 }
 
 // Create GitHub release via API

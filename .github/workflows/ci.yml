@@ -2,8 +2,16 @@ name: CI
 
 on:
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.github/**/*.md'
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.github/**/*.md'
 
 jobs:
   validate:
