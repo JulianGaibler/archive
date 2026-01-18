@@ -1,6 +1,6 @@
 {
   "name": "archive",
-  "version": "2.0.0",
+  "version": "2.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -39,6 +39,7 @@
     "concurrently": "^9.1.0",
     "dotenv-cli": "^8.0.0",
     "semver": "^7.7.3",
-    "wait-port": "^1.1.0"
+    "wait-port": "^1.1.0",
+    "yaml": "^2.8.2"
   }
 }

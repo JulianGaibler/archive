@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for git tags
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check if new release is needed
+        id: check
+        run: |
+          # Parse changelog to get latest version
+          LATEST_VERSION=$(node -e "
+            const fs = require('fs');
+            const { parse } = require('yaml');
+            const changelog = parse(fs.readFileSync('changelog.yaml', 'utf8'));
+            const versions = Object.keys(changelog).filter(k => /^\d+\.\d+\.\d+$/.test(k));
+            console.log(versions[0]);
+          ")
+
+          # Get latest git tag
+          LATEST_TAG=$(git tag --list 'v*' --sort=-version:refname | head -n1 | sed 's/^v//')
+
+          echo "Latest changelog version: $LATEST_VERSION"
+          echo "Latest git tag: ${LATEST_TAG:-none}"
+          echo "latest_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+
+          # Check if release is needed
+          if [ -z "$LATEST_TAG" ] || [ "$LATEST_VERSION" != "$LATEST_TAG" ]; then
+            echo "needs_release=true" >> $GITHUB_OUTPUT
+            echo "New release needed: $LATEST_VERSION"
+          else
+            echo "needs_release=false" >> $GITHUB_OUTPUT
+            echo "No new release needed"
+          fi
+
+      - name: Create git tag
+        if: steps.check.outputs.needs_release == 'true'
+        run: |
+          VERSION="${{ steps.check.outputs.latest_version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+          echo "Created and pushed tag: v$VERSION"
+
+      - name: Create GitHub Release
+        if: steps.check.outputs.needs_release == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node .github/release/release-manager.js --create
