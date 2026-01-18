@@ -55,7 +55,7 @@ function buildVariantPath(
   extension: string,
 ): string {
   const fileName = `${variant}.${extension}`
-  return path.join(storageOptions.dir, fileId, fileName)
+  return path.join(storageOptions.dist, 'content', fileId, fileName)
 }
 
 /**

@@ -279,6 +279,10 @@ const ItemActions = {
     if (fields.addModifications) {
       const file = await FileActions._qFileInternal(ctx, item.fileId)
 
+      if (!file) {
+        throw new InputError('File not found for validation')
+      }
+
       // Validate crop operation
       if (fields.addModifications.crop) {
         // Check file type supports cropping
@@ -288,8 +292,13 @@ const ItemActions = {
 
         // Validate crop dimensions are positive
         const crop = fields.addModifications.crop
-        if (crop.x < 0 || crop.y < 0 || crop.width <= 0 || crop.height <= 0) {
-          throw new InputError('Crop dimensions must be positive')
+        if (
+          crop.left < 0 ||
+          crop.top < 0 ||
+          crop.right < 0 ||
+          crop.bottom < 0
+        ) {
+          throw new InputError('Crop offsets must be non-negative')
         }
       }
 
@@ -302,7 +311,7 @@ const ItemActions = {
 
         // Validate trim times are positive and start < end
         const trim = fields.addModifications.trim
-        if (trim.start < 0 || trim.end <= trim.start) {
+        if (trim.startTime < 0 || trim.endTime <= trim.startTime) {
           throw new InputError(
             'Invalid trim times: start must be before end and both must be positive',
           )

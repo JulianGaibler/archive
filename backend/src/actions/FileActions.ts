@@ -39,7 +39,7 @@ import { subscriptionBatcher } from '@src/files/SubscriptionBatcher.js'
 import { DataLoaderCacheManager } from '@src/files/DataLoaderCacheManager.js'
 
 // Type for file processing subscription payloads
-interface FileProcessingUpdatePayload {
+export interface FileProcessingUpdatePayload {
   id: string // external ID
   kind: 'CHANGED'
   file: FileExternal & {

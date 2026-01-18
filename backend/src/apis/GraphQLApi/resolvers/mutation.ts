@@ -1,5 +1,6 @@
 import UserActions from '@src/actions/UserActions.js'
 import { MutationResolvers } from '../generated-types.js'
+import { PersistentModifications } from '@src/files/processing-metadata.js'
 import KeywordActions from '@src/actions/KeywordActions.js'
 import PostActions from '@src/actions/PostActions.js'
 import SessionActions from '@src/actions/SessionActions.js'
@@ -101,7 +102,14 @@ export const mutationResolvers: MutationResolvers = {
   },
 
   removeModifications: async (_, args, ctx) =>
-    ItemActions.mRemoveModifications(ctx, args),
+    ItemActions.mRemoveModifications(ctx, {
+      itemId: args.itemId,
+      removeModifications: args.removeModifications as (
+        | keyof PersistentModifications
+        | 'fileType'
+      )[],
+      clearAllModifications: args.clearAllModifications ?? undefined,
+    }),
 
   resetAndReprocessFile: async (_, args, ctx) =>
     ItemActions.mResetAndReprocessFile(ctx, args),

@@ -15,6 +15,7 @@ import * as fileUtils from './file-utils.js'
 import { FileType, FileProcessingResult, FileUpdateCallback } from './types.js'
 import {
   ModificationActionData,
+  PersistentModifications,
   getPersistentModifications,
 } from './processing-metadata.js'
 import { FilePathManager } from './FilePathManager.js'
