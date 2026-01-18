@@ -215,10 +215,14 @@ async function main() {
     `Latest git tag: ${latestTag ? chalk.cyan(latestTag) : chalk.gray('none')}`,
   )
 
-  // Check if release is needed
-  if (latestTag && semver.gte(latestTag, latestVersion)) {
-    console.log(chalk.gray('\nAlready up to date - no release needed'))
-    return
+  // In --create mode, skip the version check (workflow handles this)
+  // Just create the release for the latest version
+  if (!isCreate) {
+    // Dry-run mode: check if release is needed
+    if (latestTag && semver.gte(latestTag, latestVersion)) {
+      console.log(chalk.gray('\nAlready up to date - no release needed'))
+      return
+    }
   }
 
   // Create release
