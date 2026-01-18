@@ -688,6 +688,9 @@ export default class FileStorage {
     // Step 1: Move all files to permanent storage
     await Promise.all(movePromises)
 
+    // Update progress after file moving (85-95% range)
+    await updateCallback({ processingProgress: 95 })
+
     // Create file variants in database with metadata
     const variants = []
 
@@ -823,8 +826,14 @@ export default class FileStorage {
       throw dbError
     }
 
+    // Update progress after database variant creation
+    await updateCallback({ processingProgress: 97 })
+
     // Update file sizes for each variant
     await this.updateVariantSizes(fileId, variants)
+
+    // Update progress after size updates
+    await updateCallback({ processingProgress: 99 })
 
     // Update file status
     await updateCallback({

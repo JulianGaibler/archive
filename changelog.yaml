@@ -1,6 +1,10 @@
 # Changelog
 # Labels: [Added], [Fixed], [Improved], [Removed], [Deprecated], [Security]
 
+2.3.1:
+  date: '2026-01-18'
+  changes:
+    - '[Fixed] Progress bars no longer stay at 100% for an extended time'
 2.3.0:
   date: '2026-01-18'
   notes: |

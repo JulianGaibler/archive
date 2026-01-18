@@ -40,6 +40,22 @@ export default class FileProcessor {
     this.updateCallback = updateCallback
   }
 
+  /**
+   * Maps FFmpeg progress (0-100%) to an allocated range.
+   *
+   * @param ffmpegPercent - FFmpeg progress (0-100)
+   * @param minRange - Start of allocated range (e.g., 0)
+   * @param maxRange - End of allocated range (e.g., 85)
+   * @returns Mapped progress value
+   */
+  private mapProgressToRange(
+    ffmpegPercent: number,
+    minRange: number,
+    maxRange: number,
+  ): number {
+    return Math.floor(minRange + (ffmpegPercent / 100) * (maxRange - minRange))
+  }
+
   async processImage(
     filePath: string,
     directory: string,
@@ -232,7 +248,9 @@ export default class FileProcessor {
         renderProgress[idx] = progress
         const average =
           renderProgress.reduce((a, b) => a + b, 0) / renderProgress.length
-        this.updateCallback({ processingProgress: Math.floor(average) })
+        // Map to 0-85% range (FFmpeg uses 85% of total progress)
+        const mappedProgress = this.mapProgressToRange(average, 0, 85)
+        this.updateCallback({ processingProgress: mappedProgress })
       }
 
       // Process modifications to build filter chains
@@ -632,8 +650,6 @@ export default class FileProcessor {
       fileUtils.remove(compressedScreenshotPath)
       tmpDir2.removeCallback()
 
-      await this.updateCallback({ processingProgress: 100 })
-
       return {
         relHeight: round((croppedHeight / croppedWidth) * 100, 4),
         createdFiles: {
@@ -691,7 +707,7 @@ export default class FileProcessor {
       }
 
       // Generate waveform data (10% of processing time)
-      this.updateCallback({ processingProgress: 5 })
+      this.updateCallback({ processingProgress: 4 })
 
       // Calculate samples for full waveform (6 samples per second, max 80)
       const samplesPerSecond = 8
@@ -729,7 +745,7 @@ export default class FileProcessor {
             channel: 'mono',
           })
 
-          this.updateCallback({ processingProgress: 15 })
+          this.updateCallback({ processingProgress: 13 })
 
           thumbnailWaveformData = await FFmpegWrapper.generateWaveform(
             tempTrimmedPath,
@@ -763,7 +779,7 @@ export default class FileProcessor {
           )
         }
 
-        this.updateCallback({ processingProgress: 15 })
+        this.updateCallback({ processingProgress: 13 })
 
         try {
           thumbnailWaveformData = await FFmpegWrapper.generateWaveform(
@@ -782,7 +798,7 @@ export default class FileProcessor {
         }
       }
 
-      this.updateCallback({ processingProgress: 25 })
+      this.updateCallback({ processingProgress: 21 })
 
       // Compress to MP3 with audio normalization (75% of processing time)
       const mp3AudioOptions = audioEncodingOptions.mp3.audio
@@ -797,8 +813,8 @@ export default class FileProcessor {
           normalizationOptions: audioNormalizationOptions.ebuR128,
           onProgress: (progress: { percent?: number }) => {
             if (progress.percent !== undefined) {
-              // Map progress from 25% to 95% (70% of total processing)
-              const mappedProgress = 25 + progress.percent * 0.7
+              // Map FFmpeg 0-100% to range 21-85% (64% of total)
+              const mappedProgress = 21 + progress.percent * 0.64
               this.updateCallback({
                 processingProgress: Math.floor(mappedProgress),
               })
@@ -812,8 +828,6 @@ export default class FileProcessor {
           err as Error,
         )
       }
-
-      await this.updateCallback({ processingProgress: 100 })
 
       return {
         relHeight: 0, // Not applicable for audio
