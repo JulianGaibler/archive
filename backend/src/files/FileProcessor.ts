@@ -288,14 +288,73 @@ export default class FileProcessor {
       // Flag to prevent duplicate filter_complex when callback handles filters
       let filtersHandledByCallback = false
 
-      const renderVideo = (
+      const renderVideo = async (
         renderIdx: number,
         inputPath: string,
         outputPath: string,
-        size?: string,
-        outputOptions: string[] = [],
-        optionsCallback?: (f: FfmpegCommand) => void,
+        options: {
+          size?: string
+          outputOptions?: string[]
+          videoOptions?: string[]
+          audioOptions?: string[]
+          hasAudio?: boolean
+          enableNormalization?: boolean
+          optionsCallback?: (f: FfmpegCommand) => void
+        } = {},
       ): Promise<void> => {
+        const {
+          size,
+          outputOptions = [],
+          videoOptions = [],
+          audioOptions = [],
+          hasAudio = true,
+          enableNormalization = false,
+          optionsCallback,
+        } = options
+
+        // Determine if we should use normalization
+        const useNormalization =
+          enableNormalization && hasAudio && ENABLE_AUDIO_NORMALIZATION
+
+        // If normalization is enabled and needed, use FFmpegWrapper.normalizeAudio
+        if (useNormalization) {
+          const tmpDir = tmp.dirSync({ postfix: '-audio-norm' })
+          const tempOutputPath = fileUtils.resolvePath(
+            tmpDir.name,
+            'temp_normalized.mp4',
+          )
+
+          try {
+            const trimOpts = needsTrim
+              ? ModificationProcessor.buildTrimInputOptions({
+                  trimStart,
+                  trimDuration,
+                })
+              : undefined
+
+            await FFmpegWrapper.normalizeAudio(inputPath, tempOutputPath, {
+              inputOptions: trimOpts,
+              videoFilters,
+              videoSize: size,
+              videoOptions,
+              audioOptions,
+              normalizationOptions: audioNormalizationOptions.ebuR128,
+              onProgress: (progress: { percent?: number }) => {
+                if (progress.percent !== undefined) {
+                  updateProgress(renderIdx, progress.percent)
+                }
+              },
+            })
+
+            // Move the temp file to final destination
+            await fileUtils.moveAsync(tempOutputPath, outputPath)
+          } finally {
+            tmpDir.removeCallback()
+          }
+          return
+        }
+
+        // Standard rendering (no normalization)
         return new Promise((resolve, reject) => {
           // Build input options array for trim
           const inputOpts = needsTrim
@@ -304,6 +363,18 @@ export default class FileProcessor {
                 trimDuration,
               })
             : []
+
+          // Combine video and audio options
+          const allOutputOptions = [
+            ...outputOptions,
+            ...videoOptions,
+            ...audioOptions,
+          ]
+
+          // Add -an flag if no audio
+          if (!hasAudio) {
+            allOutputOptions.push('-an')
+          }
 
           // Create ffmpeg command with input options
           const f = ffmpeg(inputPath)
@@ -340,8 +411,7 @@ export default class FileProcessor {
             f.size(size)
           }
 
-          f.output(outputPath)
-            .outputOptions(outputOptions)
+          f.output(outputPath).outputOptions(allOutputOptions)
 
           // Add -map options AFTER outputOptions to prevent them being overwritten
           if (needsCustomMapping) {
@@ -361,69 +431,6 @@ export default class FileProcessor {
         })
       }
 
-      const renderVideoWithNormalization = async (
-        renderIdx: number,
-        inputPath: string,
-        outputPath: string,
-        size?: string,
-        videoOptions: string[] = [],
-        audioOptions: string[] = [],
-        hasAudio = true,
-        videoFilters?: string[],
-        trimOptions?: { start: number; duration: number },
-      ): Promise<void> => {
-        if (!hasAudio) {
-          // No audio: standard rendering
-          return renderVideo(renderIdx, inputPath, outputPath, size, [
-            ...videoOptions,
-            '-an', // No audio
-          ])
-        }
-
-        // Feature flag check: use standard rendering (no normalization) if disabled
-        if (!ENABLE_AUDIO_NORMALIZATION) {
-          const allOptions = [...videoOptions, ...audioOptions]
-          return renderVideo(renderIdx, inputPath, outputPath, size, allOptions)
-        }
-
-        // Audio normalization enabled: use 2-pass loudnorm processing
-        const tmpDir = tmp.dirSync({ postfix: '-audio-norm' })
-        const tempOutputPath = fileUtils.resolvePath(
-          tmpDir.name,
-          'temp_normalized.mp4',
-        )
-
-        try {
-          // Apply 2-pass loudnorm audio normalization with progress tracking
-          await FFmpegWrapper.normalizeAudio(inputPath, tempOutputPath, {
-            inputOptions: trimOptions
-              ? [
-                  '-ss',
-                  trimOptions.start.toString(),
-                  '-t',
-                  trimOptions.duration.toString(),
-                ]
-              : undefined,
-            videoFilters,
-            videoSize: size,
-            videoOptions,
-            audioOptions,
-            normalizationOptions: audioNormalizationOptions.ebuR128,
-            onProgress: (progress: { percent?: number }) => {
-              if (progress.percent !== undefined) {
-                updateProgress(renderIdx, progress.percent)
-              }
-            },
-          })
-
-          // Move the temp file to final destination
-          await fileUtils.moveAsync(tempOutputPath, outputPath)
-        } finally {
-          // Clean up temp directory
-          tmpDir.removeCallback()
-        }
-      }
-
       const mp4VideoOptions = videoEncodingOptions.mp4.video
       const mp4AudioOptions = videoEncodingOptions.mp4.audio
 
@@ -439,28 +446,28 @@ export default class FileProcessor {
 
       // Render main MP4 video
       try {
-        const renderA = renderVideoWithNormalization(
+        const renderA = renderVideo(
           0,
           filePath,
           filePaths.mp4!,
-          `?x${outputHeight}`,
-          [
-            ...mp4VideoOptions,
-            '-b:v',
-            '2500k',
-            '-bufsize',
-            '2000k',
-            '-maxrate',
-            '4500k',
-          ],
-          fileType === FileType.VIDEO
-            ? [...mp4AudioOptions, '-b:a', '192k']
-            : [],
-          fileType === FileType.VIDEO, // hasAudio
-          videoFilters,
-          needsTrim && trimStart !== undefined && trimDuration !== undefined
-            ? { start: trimStart, duration: trimDuration }
-            : undefined,
+          {
+            size: `?x${outputHeight}`,
+            videoOptions: [
+              ...mp4VideoOptions,
+              '-b:v',
+              '2500k',
+              '-bufsize',
+              '2000k',
+              '-maxrate',
+              '4500k',
+            ],
+            audioOptions:
+              fileType === FileType.VIDEO
+                ? [...mp4AudioOptions, '-b:a', '192k']
+                : [],
+            hasAudio: fileType === FileType.VIDEO,
+            enableNormalization: true,
+          },
         )
         promises.push(renderA)
       } catch (err) {
@@ -479,33 +486,34 @@ export default class FileProcessor {
             1,
             filePath,
             filePaths.gif,
-            undefined,
-            [],
-            (f: FfmpegCommand) => {
-              // Build GIF filter chain, including crop if present
-              const gifVideoFilters: string[] = []
+            {
+              hasAudio: false, // GIFs don't have audio
+              optionsCallback: (f: FfmpegCommand) => {
+                // Build GIF filter chain, including crop if present
+                const gifVideoFilters: string[] = []
 
-              // Prepend crop filters if they exist
-              if (videoFilters.length > 0) {
-                gifVideoFilters.push(...videoFilters)
-                // Set flag to prevent duplicate filter application
-                filtersHandledByCallback = true
-              }
+                // Prepend crop filters if they exist
+                if (videoFilters.length > 0) {
+                  gifVideoFilters.push(...videoFilters)
+                  // Set flag to prevent duplicate filter application
+                  filtersHandledByCallback = true
+                }
 
-              // Add GIF-specific filters
-              const gifWidth = width > 480 ? 480 : width
-              gifVideoFilters.push(
-                'fps=25',
-                `scale=${gifWidth}:-2`,
-                'split[a][b]'
-              )
+                // Add GIF-specific filters
+                const gifWidth = width > 480 ? 480 : width
+                gifVideoFilters.push(
+                  'fps=25',
+                  `scale=${gifWidth}:-2`,
+                  'split[a][b]',
+                )
 
-              const gifFilterChain = gifVideoFilters.join(',')
+                const gifFilterChain = gifVideoFilters.join(',')
 
-              f.addOption(
-                '-filter_complex',
-                `[0:v]${gifFilterChain};[a]palettegen[p];[b][p]paletteuse`,
-              )
+                f.addOption(
+                  '-filter_complex',
+                  `[0:v]${gifFilterChain};[a]palettegen[p];[b][p]paletteuse`,
+                )
+              },
             },
           )
           promises.push(renderGif)
