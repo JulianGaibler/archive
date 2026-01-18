@@ -57,6 +57,9 @@ RUN npm ci --omit=dev && npm cache clean --force
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
 
+# Copy changelog.yaml for runtime server-side rendering
+COPY --from=builder /changelog.yaml ../changelog.yaml
+
 # Copy startup script
 COPY frontend/docker-scripts/start-frontend.sh /app/start.sh
 RUN chmod +x /app/start.sh

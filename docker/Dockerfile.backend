@@ -13,8 +13,8 @@ RUN npm run build
 # Production stage
 FROM node:22-alpine AS production
 
-# Install wget for health checks, ffmpeg for media processing, and postgresql-client for pg_isready
-RUN apk add --no-cache wget ffmpeg postgresql-client
+# Install wget for health checks, ffmpeg for media processing, postgresql-client for pg_isready, and su-exec for user switching
+RUN apk add --no-cache wget ffmpeg postgresql-client su-exec
 
 WORKDIR /app
 
@@ -47,11 +47,11 @@ RUN mkdir -p "$BACKEND_FILE_STORAGE_DIR"
 RUN addgroup -g 101 -S nodejs && \
     adduser -S nodejs -u 101 -G nodejs
 
-# Change ownership of storage directories
+# Change ownership of storage directories (build-time only)
 RUN chown -R nodejs:nodejs "$BACKEND_FILE_STORAGE_DIR"
 
-# Switch to non-root user
-USER nodejs
+# DON'T switch to nodejs yet - entrypoint needs root to fix volume permissions
+# USER nodejs will be called from entrypoint after fixing permissions
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \

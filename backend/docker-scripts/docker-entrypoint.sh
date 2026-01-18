@@ -7,6 +7,14 @@ set -e
 
 echo "🚀 Starting Archive Server..."
 
+# Fix file permissions for mounted volumes
+# When volumes are mounted, they override build-time permissions
+# This ensures the nodejs user can read/write files
+if [ -n "$BACKEND_FILE_STORAGE_DIR" ] && [ -d "$BACKEND_FILE_STORAGE_DIR" ]; then
+    echo "🔐 Fixing file storage permissions..."
+    chown -R nodejs:nodejs "$BACKEND_FILE_STORAGE_DIR" || echo "⚠️  Warning: Could not fix permissions (may already be correct)"
+fi
+
 # Set DATABASE_URL from environment variables
 export DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${BACKEND_POSTGRES_HOST}:${BACKEND_POSTGRES_PORT}/${POSTGRES_DB}"
 
@@ -35,9 +43,9 @@ wait_for_db() {
 
 # Function to run migrations
 run_migrations() {
-    echo "🔄 Running database migrations..."
+    echo "🔄 Running database migrations as nodejs user..."
 
-    if npx tsx ./node_modules/.bin/node-pg-migrate up; then
+    if su-exec nodejs npx tsx ./node_modules/.bin/node-pg-migrate up; then
         echo "✅ Migrations completed successfully!"
     else
         echo "❌ Migration failed!"
@@ -48,8 +56,9 @@ run_migrations() {
 
 # Function to start server
 start_server() {
-    echo "🚀 Starting server..."
-    exec node dist/src/index.js
+    echo "🚀 Starting server as nodejs user..."
+    # Switch to nodejs user and start server
+    exec su-exec nodejs node dist/src/index.js
 }
 
 # Main execution
