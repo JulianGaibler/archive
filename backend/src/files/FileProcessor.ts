@@ -537,7 +537,7 @@ export default class FileProcessor {
 
       // Now generate thumbnails from the COMPRESSED video (with modifications applied)
       const tmpDir2 = tmp.dirSync()
-      const tmpFilename2 = 'thumb-compressed.png'
+      const tmpFilename2 = 'thumb-compressed.jpg'
 
       // Adjust screenshot time if video was trimmed
       const trimInfo = ModificationProcessor.extractTrim(modifications)
