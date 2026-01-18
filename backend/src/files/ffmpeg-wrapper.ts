@@ -820,6 +820,7 @@ export class FfmpegCommand {
   private inputPath: string
   private outputPath?: string
   private sizeOption?: string
+  private inputOpts: string[] = []
   private outputOpts: string[] = []
   private filterComplexOption?: string
   private progressCallback?: ProgressCallback
@@ -828,6 +829,11 @@ export class FfmpegCommand {
 
   constructor(inputPath: string) {
     this.inputPath = inputPath
+  }
+
+  inputOptions(options: string[]) {
+    this.inputOpts = options
+    return this
   }
 
   screenshots(options: ScreenshotOptions) {
@@ -894,6 +900,7 @@ export class FfmpegCommand {
 
     const convertOptions = {
       size: this.sizeOption,
+      inputOptions: this.inputOpts.length > 0 ? this.inputOpts : undefined,
       outputOptions: this.outputOpts,
       filterComplex: this.filterComplexOption,
       onProgress: this.progressCallback,

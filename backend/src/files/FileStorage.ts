@@ -499,8 +499,9 @@ export default class FileStorage {
       )
     }
 
-    const modifications = getPersistentModifications(modificationsData)
-    const modificationArray = modifications ? [modifications] : []
+    const modificationArray = Object.keys(modificationsData).length > 0
+      ? [modificationsData]
+      : []
 
     let result
     if (targetFileType === FileType.GIF || targetFileType === FileType.VIDEO) {

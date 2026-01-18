@@ -311,14 +311,19 @@ export default class FileProcessor {
         optionsCallback?: (f: FfmpegCommand) => void,
       ): Promise<void> => {
         return new Promise((resolve, reject) => {
-          const f = ffmpeg(inputPath)
-
-          // Apply trim if needed (input options)
+          // Build input options array for trim
+          const inputOpts: string[] = []
           if (needsTrim && trimStart !== undefined) {
-            f.addOption('-ss', trimStart.toString())
+            inputOpts.push('-ss', trimStart.toString())
             if (trimDuration !== undefined) {
-              f.addOption('-t', trimDuration.toString())
+              inputOpts.push('-t', trimDuration.toString())
             }
+          }
+
+          // Create ffmpeg command with input options
+          const f = ffmpeg(inputPath)
+          if (inputOpts.length > 0) {
+            f.inputOptions(inputOpts)
           }
 
           if (optionsCallback) {

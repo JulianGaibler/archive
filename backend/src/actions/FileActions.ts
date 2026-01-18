@@ -654,6 +654,7 @@ const FileActions = {
       .update(fileTable)
       .set({
         processingMeta: null,
+        type: file.originalType,  // Revert to original file type
         processingStatus: 'DONE',
         updatedAt: Date.now(),
       })

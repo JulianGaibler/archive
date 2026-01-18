@@ -301,13 +301,12 @@
       trimStart = initialTrim.startTime
       trimEnd = initialTrim.endTime
       trimInitialized = true
-    } else if (initialTrim === undefined) {
+    } else if (!initialTrim) {
       // No trim in DB - use full duration as default
       trimStart = 0
       trimEnd = duration
       trimInitialized = true
     }
-    // If initialTrim === null (explicitly no trim), don't initialize
   })
 
   // Update canvas dimensions when container resizes
