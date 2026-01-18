@@ -144,6 +144,42 @@ export class FFmpegWrapper {
     return 0
   }
 
+  /**
+   * Builds scale filter string for use in filter chains.
+   * Handles both height-based (?x720) and width x height (1280x720) formats.
+   * Returns null if no size provided.
+   */
+  private static buildScaleFilter(size?: string): string | null {
+    if (!size) return null
+
+    if (size.startsWith('?x')) {
+      const height = size.substring(2)
+      return `scale=-2:${height}`
+    } else if (size.includes('x')) {
+      return `scale=${size}`
+    }
+
+    return null
+  }
+
+  /**
+   * Builds scale arguments for FFmpeg command line.
+   * Handles both height-based (?x720) and width x height (1280x720) formats.
+   * Returns empty array if no size provided.
+   */
+  private static buildScaleArgs(size?: string): string[] {
+    if (!size) return []
+
+    if (size.startsWith('?x')) {
+      const height = size.substring(2)
+      return ['-vf', `scale=-2:${height}`]
+    } else if (size.includes('x')) {
+      return ['-s', size]
+    }
+
+    return []
+  }
+
   private static normalizeDbToPeakLevel(dbValue: number): number {
     // Convert dB to linear scale (0-1)
     // dB values are typically negative, with 0 dB being the maximum
@@ -585,13 +621,9 @@ export class FFmpegWrapper {
       const videoFilterChain = [...options.videoFilters]
 
       // Add scale filter if videoSize is provided
-      if (options.videoSize) {
-        if (options.videoSize.startsWith('?x')) {
-          const height = options.videoSize.substring(2)
-          videoFilterChain.push(`scale=-2:${height}`)
-        } else {
-          videoFilterChain.push(`scale=${options.videoSize}`)
-        }
+      const scaleFilter = this.buildScaleFilter(options.videoSize)
+      if (scaleFilter) {
+        videoFilterChain.push(scaleFilter)
       }
 
       const videoFilterString = videoFilterChain.join(',')
@@ -602,13 +634,9 @@ export class FFmpegWrapper {
       outputOptions.push('-af', audioFilter)
 
       // Add scale separately when no filter_complex
-      if (options.videoSize) {
-        if (options.videoSize.startsWith('?x')) {
-          const height = options.videoSize.substring(2)
-          outputOptions.push('-vf', `scale=-2:${height}`)
-        } else {
-          outputOptions.push('-s', options.videoSize)
-        }
+      const scaleArgs = this.buildScaleArgs(options.videoSize)
+      if (scaleArgs.length > 0) {
+        outputOptions.push(...scaleArgs)
       }
     }
 
@@ -711,15 +739,11 @@ export class FFmpegWrapper {
     // Add filter complex if provided
     if (options.filterComplex) {
       args.push('-filter_complex', options.filterComplex)
-    } else if (options.size) {
-      // Only add -vf if no filter_complex is used (they conflict)
-      if (options.size.startsWith('?x')) {
-        // Height-based scaling
-        const height = options.size.substring(2)
-        args.push('-vf', `scale=-2:${height}`)
-      } else if (options.size.includes('x')) {
-        // Width x Height
-        args.push('-s', options.size)
+    } else {
+      // Only add scale if no filter_complex is used (they conflict)
+      const scaleArgs = this.buildScaleArgs(options.size)
+      if (scaleArgs.length > 0) {
+        args.push(...scaleArgs)
       }
     }
 

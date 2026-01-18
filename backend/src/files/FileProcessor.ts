@@ -173,28 +173,8 @@ export default class FileProcessor {
       const tmpDir = tmp.dirSync()
       const tmpFilename = 'thumb.png'
 
-      // Probe video duration
-      let duration: number
-      try {
-        duration = await new Promise<number>((resolve, reject) => {
-          ffprobe(filePath, (err: Error | null, metadata?: FFProbeMetadata) => {
-            if (err) return reject(err)
-            // ffprobe returns duration as string in JSON output, parse it to number
-            const durationValue = metadata?.format?.duration
-            const parsedDuration =
-              typeof durationValue === 'number'
-                ? durationValue
-                : parseFloat(durationValue || '0')
-            resolve(parsedDuration || 0)
-          })
-        })
-      } catch (err) {
-        throw new FileProcessingError(
-          'Failed to probe video metadata',
-          'metadata extraction',
-          err as Error,
-        )
-      }
+      // Probe video metadata
+      const { duration } = await this.getMediaMetadata(filePath)
 
       // Get initial screenshot for dimensions (from original video)
       let screenshotTime = 1
@@ -690,27 +670,7 @@ export default class FileProcessor {
       }
 
       // Get audio metadata
-      let duration: number
-      try {
-        duration = await new Promise<number>((resolve, reject) => {
-          ffprobe(filePath, (err: Error | null, metadata?: FFProbeMetadata) => {
-            if (err) return reject(err)
-            // ffprobe returns duration as string in JSON output, parse it to number
-            const durationValue = metadata?.format?.duration
-            const parsedDuration =
-              typeof durationValue === 'number'
-                ? durationValue
-                : parseFloat(durationValue || '0')
-            resolve(parsedDuration || 0)
-          })
-        })
-      } catch (err) {
-        throw new FileProcessingError(
-          'Failed to probe audio metadata',
-          'metadata extraction',
-          err as Error,
-        )
-      }
+      const { duration } = await this.getMediaMetadata(filePath)
 
       if (duration <= 0) {
         throw new InputError(
@@ -986,6 +946,51 @@ export default class FileProcessor {
       throw new FileProcessingError(
         'Unexpected error during poster thumbnail creation',
         'poster thumbnail creation',
+        err as Error,
+      )
+    }
+  }
+
+  /**
+   * Extracts media metadata (duration and dimensions) from a file using ffprobe.
+   * Handles both video and audio files.
+   */
+  private async getMediaMetadata(filePath: string): Promise<{
+    duration: number
+    width?: number
+    height?: number
+  }> {
+    try {
+      const metadata = await new Promise<FFProbeMetadata>(
+        (resolve, reject) => {
+          ffprobe(filePath, (err: Error | null, metadata?: FFProbeMetadata) => {
+            if (err) return reject(err)
+            resolve(metadata!)
+          })
+        },
+      )
+
+      // Parse duration (may be string or number)
+      const durationValue = metadata?.format?.duration
+      const duration =
+        typeof durationValue === 'number'
+          ? durationValue
+          : parseFloat(durationValue || '0')
+
+      // Extract video dimensions if available
+      const videoStream = metadata?.streams?.find(
+        (s) => s.codec_type === 'video',
+      )
+
+      return {
+        duration: duration || 0,
+        width: videoStream?.width,
+        height: videoStream?.height,
+      }
+    } catch (err) {
+      throw new FileProcessingError(
+        'Failed to probe media metadata',
+        'metadata extraction',
         err as Error,
       )
     }

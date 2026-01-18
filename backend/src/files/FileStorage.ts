@@ -21,6 +21,7 @@ import { FilePathManager } from './FilePathManager.js'
 import { FileProcessingQueue } from './QueueManager.js'
 import { FFmpegWrapper } from './ffmpeg-wrapper.js'
 import { fileVariant as fileVariantTable } from '@db/schema.js'
+import { VariantType, VariantRegistry } from './variant-types.js'
 
 const pipeline = util.promisify(stream.pipeline)
 
@@ -122,7 +123,7 @@ export default class FileStorage {
 
     // Get the file's ORIGINAL variant
     const variants = await FileActions._qFileVariantsInternal(ctx, fileId)
-    const originalVariant = variants.find((v) => v.variant === 'ORIGINAL')
+    const originalVariant = variants.find((v) => v.variant === VariantType.ORIGINAL)
     if (!originalVariant) {
       throw new RequestError('Original variant not found for file')
     }
@@ -291,15 +292,15 @@ export default class FileStorage {
           await this.renameVariant(
             ctx,
             fileId,
-            'COMPRESSED',
-            'UNMODIFIED_COMPRESSED',
+            VariantType.COMPRESSED,
+            VariantType.UNMODIFIED_COMPRESSED,
           )
           if (file.type === 'VIDEO' || file.type === 'GIF') {
             await this.renameVariant(
               ctx,
               fileId,
-              'THUMBNAIL_POSTER',
-              'UNMODIFIED_THUMBNAIL_POSTER',
+              VariantType.THUMBNAIL_POSTER,
+              VariantType.UNMODIFIED_THUMBNAIL_POSTER,
             )
           }
 
@@ -319,10 +320,10 @@ export default class FileStorage {
           console.log(
             `[FileStorage] hasUnmodified=true, deleting old variants for file ${fileId}`,
           )
-          await this.deleteVariant(ctx, fileId, 'COMPRESSED')
-          await this.deleteVariant(ctx, fileId, 'COMPRESSED_GIF')
-          await this.deleteVariant(ctx, fileId, 'THUMBNAIL')
-          await this.deleteVariant(ctx, fileId, 'THUMBNAIL_POSTER')
+          await this.deleteVariant(ctx, fileId, VariantType.COMPRESSED)
+          await this.deleteVariant(ctx, fileId, VariantType.COMPRESSED_GIF)
+          await this.deleteVariant(ctx, fileId, VariantType.THUMBNAIL)
+          await this.deleteVariant(ctx, fileId, VariantType.THUMBNAIL_POSTER)
           console.log(`[FileStorage] Deleted old variants for file ${fileId}`)
         } else {
           console.log(
@@ -366,15 +367,15 @@ export default class FileStorage {
               await this.renameVariant(
                 ctx,
                 fileId,
-                'UNMODIFIED_COMPRESSED',
-                'COMPRESSED',
+                VariantType.UNMODIFIED_COMPRESSED,
+                VariantType.COMPRESSED,
               )
               if (file.type === 'VIDEO' || file.type === 'GIF') {
                 await this.renameVariant(
                   ctx,
                   fileId,
-                  'UNMODIFIED_THUMBNAIL_POSTER',
-                  'THUMBNAIL_POSTER',
+                  VariantType.UNMODIFIED_THUMBNAIL_POSTER,
+                  VariantType.THUMBNAIL_POSTER,
                 )
               }
               console.log(
@@ -410,15 +411,15 @@ export default class FileStorage {
             await this.renameVariant(
               ctx,
               fileId,
-              'UNMODIFIED_COMPRESSED',
-              'COMPRESSED',
+              VariantType.UNMODIFIED_COMPRESSED,
+              VariantType.COMPRESSED,
             )
             if (file.type === 'VIDEO' || file.type === 'GIF') {
               await this.renameVariant(
                 ctx,
                 fileId,
-                'UNMODIFIED_THUMBNAIL_POSTER',
-                'THUMBNAIL_POSTER',
+                VariantType.UNMODIFIED_THUMBNAIL_POSTER,
+                VariantType.THUMBNAIL_POSTER,
               )
             }
             console.log(
@@ -544,7 +545,7 @@ export default class FileStorage {
     extension: string,
   ): string {
     // For ORIGINAL variant, use the original MIME type
-    if (variantType === 'ORIGINAL') {
+    if (variantType === VariantType.ORIGINAL) {
       return originalMimeType
     }
 
@@ -1104,7 +1105,7 @@ export default class FileStorage {
     fileId: string,
   ): Promise<boolean> {
     const variants = await FileActions._qFileVariantsInternal(ctx, fileId)
-    return variants.some((v) => v.variant === 'UNMODIFIED_COMPRESSED')
+    return variants.some((v) => VariantRegistry.isUnmodifiedVariant(v.variant))
   }
 
   /**
