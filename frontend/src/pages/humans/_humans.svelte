@@ -2,6 +2,7 @@
   import Button from 'tint/components/Button.svelte'
   import SearchField from 'tint/components/SearchField.svelte'
   import UserPicture from '@src/components/UserPicture.svelte'
+  import { SvelteURLSearchParams } from 'svelte/reactivity'
   import { getSdk, type UsersQuery } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
 
@@ -38,7 +39,7 @@
     search = value.trim()
     search = search.length === 0 ? null : search
     // add, update or remove query parameter
-    const params = new URLSearchParams(window.location.search)
+    const params = new SvelteURLSearchParams(window.location.search)
     if (search) {
       params.set('q', search)
     } else {

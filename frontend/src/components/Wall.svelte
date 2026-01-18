@@ -4,6 +4,7 @@
   import UserPicture from '@src/components/UserPicture.svelte'
   import IconAdd from 'tint/icons/20-add.svg?raw'
   import { onMount } from 'svelte'
+  import { SvelteURLSearchParams } from 'svelte/reactivity'
   import { getSdk, type PostsQuery } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
   import { getResourceUrl } from '@src/utils/resource-urls'
@@ -112,7 +113,7 @@
     byContent = value.trim()
     byContent = byContent.length === 0 ? null : byContent
     // add, update or remove query parameter
-    const params = new URLSearchParams(window.location.search)
+    const params = new SvelteURLSearchParams(window.location.search)
     if (byContent) {
       params.set('q', byContent)
     } else {

@@ -133,13 +133,6 @@
     item.type === 'existing' && 'file' in item.data ? item.data.file : null,
   )
 
-  // Get relativeHeight for aspect ratio (default 16:9)
-  const relativeHeight = $derived(
-    originalFile && 'relativeHeight' in originalFile
-      ? originalFile.relativeHeight || 56.25
-      : 56.25,
-  )
-
   // Helper to get initial crop from modifications
   const initialCrop = $derived(
     originalFile && 'modifications' in originalFile

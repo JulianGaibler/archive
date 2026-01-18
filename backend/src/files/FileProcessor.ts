@@ -295,7 +295,7 @@ export default class FileProcessor {
       }
 
       const {
-        filterBuilder,
+        filterBuilder: _filterBuilder,
         videoFilters,
         needsTrim,
         trimStart,

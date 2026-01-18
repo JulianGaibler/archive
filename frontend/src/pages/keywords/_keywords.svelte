@@ -1,6 +1,7 @@
 <script lang="ts">
   import Button from 'tint/components/Button.svelte'
   import SearchField from 'tint/components/SearchField.svelte'
+  import { SvelteURLSearchParams } from 'svelte/reactivity'
   import { getSdk, type KeywordsQuery } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
 
@@ -37,7 +38,7 @@
     byName = value.trim()
     byName = byName.length === 0 ? null : byName
     // add, update or remove query parameter
-    const params = new URLSearchParams(window.location.search)
+    const params = new SvelteURLSearchParams(window.location.search)
     if (byName) {
       params.set('q', byName)
     } else {
