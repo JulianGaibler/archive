@@ -471,12 +471,6 @@ export default class FileProcessor {
           const filterString = renderFilterBuilder.build().join(',')
           filterComplex = `[0:v]${filterString}[v]`
           allOutputOptions.push('-map', '[v]', '-map', '0:a?')
-        } else if (size) {
-          // Add scale via output options when no filter_complex
-          const scaleFilter = FFmpegWrapper.buildScaleFilter(size)
-          if (scaleFilter) {
-            allOutputOptions.push('-vf', scaleFilter)
-          }
         }
 
         // Use FFmpegWrapper with accurate time-based progress
@@ -484,6 +478,7 @@ export default class FileProcessor {
           inputOptions: inputOpts.length > 0 ? inputOpts : undefined,
           outputOptions: allOutputOptions,
           filterComplex,
+          size, // Let FFmpegWrapper handle scale when no filter_complex
           onProgress: (progress) => {
             if (progress.percent !== undefined) {
               updateProgress(renderIdx, progress.percent)
