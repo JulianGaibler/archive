@@ -497,7 +497,7 @@ export const ENV_VARIABLES = [
     longDescription: 'Base URL for accessing uploaded files. In development, points to backend file server. In production, uses relative path.',
     type: 'string',
     category: 'Frontend',
-    devDefault: null,
+    devDefault: 'http://localhost:4000/files',
     prodDefault: '/files',
     ciDefault: 'http://localhost:4000/files',
     required: { dev: false, prod: true },

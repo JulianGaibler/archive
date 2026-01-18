@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * Generate .env.ci file for CI/CD and testing
- * This file can be committed to git as it contains no secrets
- * Uses safe defaults suitable for building and testing
+ * Generate environment file for CI/CD and testing
+ * Generates .env.dev by default with safe defaults (no secrets)
+ * Usage: node generate-ci-env.js [--mode=dev|prod|ci] [--output=.env.xxx]
  */
 
 import fs from 'fs';
@@ -20,15 +20,16 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
 /**
- * Generate CI environment file content
+ * Generate environment file content
+ * @param {string} mode - 'development', 'production', or 'ci'
  * @returns {string}
  */
-function generateCIContent() {
-  const mode = 'ci';
+function generateEnvContent(mode) {
+  const modeLabel = mode === 'development' ? 'Development' : mode === 'production' ? 'Production' : 'CI/Testing';
 
   let content = `# ENV_VERSION=${ENV_VERSION}
-# CI/Testing Environment - Safe to commit (no secrets)
-# This file is used for CI builds and local testing
+# ${modeLabel} Environment - Generated for CI/testing
+# Contains safe defaults, no secrets
 
 `;
 
@@ -43,8 +44,8 @@ function generateCIContent() {
 
   // Generate content for each category
   for (const [category, variables] of Object.entries(categories)) {
-    // Add category comment with special note for Database
-    if (category === 'Database') {
+    // Add category comment with special note for Database in CI
+    if (category === 'Database' && mode === 'ci') {
       content += `# ${category} (test values)\n`;
     } else {
       content += `# ${category}\n`;
@@ -63,29 +64,50 @@ function generateCIContent() {
 }
 
 /**
+ * Parse command line arguments
+ */
+function parseArgs() {
+  const args = process.argv.slice(2);
+  let mode = 'development'; // Default to dev mode for CI
+  let output = '.env.dev';  // Default to .env.dev (what frontend build expects)
+
+  for (const arg of args) {
+    if (arg.startsWith('--mode=')) {
+      mode = arg.split('=')[1];
+    } else if (arg.startsWith('--output=')) {
+      output = arg.split('=')[1];
+    }
+  }
+
+  return { mode, output };
+}
+
+/**
  * Main function
  */
 function main() {
-  console.log('📝 Generating CI environment file...\n');
+  const { mode, output } = parseArgs();
+
+  console.log(`📝 Generating ${output} for ${mode} mode...\n`);
 
   try {
-    const content = generateCIContent();
-    const outputPath = path.join(rootDir, '.env.ci');
+    const content = generateEnvContent(mode);
+    const outputPath = path.join(rootDir, output);
 
     // Write file
     fs.writeFileSync(outputPath, content, 'utf-8');
 
     console.log(`✓ Generated ${outputPath}`);
+    console.log(`  Mode: ${mode}`);
     console.log(`  Lines: ${content.split('\n').length}`);
     console.log(`  Variables: ${ENV_VARIABLES.length}`);
 
-    console.log('\n✨ CI environment file generated successfully!');
-    console.log('\nUsage:');
-    console.log('  • CI: npm run build:ci (generates and uses .env.ci)');
-    console.log('  • Local: npm run generate-ci-env && npm run build:ci');
-    console.log('\nNote: .env.ci is gitignored and generated on-the-fly in CI.');
+    console.log('\n✨ Environment file generated successfully!');
+    console.log('\nUsage in CI:');
+    console.log('  • npm run build:ci (auto-generates .env.dev and builds)');
+    console.log('  • npm run build (uses the generated .env.dev)');
   } catch (error) {
-    console.error('❌ Error generating CI environment file:', error.message);
+    console.error('❌ Error generating environment file:', error.message);
     process.exit(1);
   }
 }

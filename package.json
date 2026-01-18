@@ -17,7 +17,7 @@
     "dev:db:stop": "docker compose -f docker-compose.dev.yml down",
     "dev:migrate": "wait-port localhost:5432 -t 30000 && cd backend && npm run migrate:latest",
     "build": "npm run build:frontend && npm run build:backend",
-    "build:ci": "npm run generate-ci-env && dotenv -e .env.ci -- npm run build",
+    "build:ci": "npm run generate-ci-env && npm run build",
     "build:frontend": "cd frontend && npm install && npm run build",
     "build:backend": "cd backend && npm install && npm run build",
     "docker:deploy": "dotenv -e .env.prod -- ./deploy.sh",
