@@ -69,8 +69,9 @@ type ErrorCallback = (error: Error) => void
 type EndCallback = () => void
 
 /**
- * Configuration for waveform dynamic range enhancement algorithm.
- * These values control how the algorithm identifies and enhances low-variance audio sections.
+ * Configuration for waveform dynamic range enhancement algorithm. These values
+ * control how the algorithm identifies and enhances low-variance audio
+ * sections.
  */
 const WAVEFORM_ENHANCEMENT_CONFIG = {
   // Range thresholds for detecting compressed/quiet sections
@@ -179,9 +180,9 @@ export class FFmpegWrapper {
   }
 
   /**
-   * Builds scale filter string for use in filter chains.
-   * Handles both height-based (?x720) and width x height (1280x720) formats.
-   * Returns null if no size provided.
+   * Builds scale filter string for use in filter chains. Handles both
+   * height-based (?x720) and width x height (1280x720) formats. Returns null if
+   * no size provided.
    */
   private static buildScaleFilter(size?: string): string | null {
     if (!size) return null
@@ -197,9 +198,9 @@ export class FFmpegWrapper {
   }
 
   /**
-   * Builds scale arguments for FFmpeg command line.
-   * Handles both height-based (?x720) and width x height (1280x720) formats.
-   * Returns empty array if no size provided.
+   * Builds scale arguments for FFmpeg command line. Handles both height-based
+   * (?x720) and width x height (1280x720) formats. Returns empty array if no
+   * size provided.
    */
   private static buildScaleArgs(size?: string): string[] {
     if (!size) return []
@@ -256,8 +257,8 @@ export class FFmpegWrapper {
   }
 
   /**
-   * Calculates statistical properties of audio peak data.
-   * Used to identify compressed/quiet sections that need enhancement.
+   * Calculates statistical properties of audio peak data. Used to identify
+   * compressed/quiet sections that need enhancement.
    */
   private static calculatePeakStats(data: number[]): {
     min: number
@@ -271,8 +272,7 @@ export class FFmpegWrapper {
     const max = Math.max(...data)
     const mean = data.reduce((sum, val) => sum + val, 0) / data.length
     const variance =
-      data.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
-      data.length
+      data.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / data.length
 
     return {
       min,
@@ -285,8 +285,9 @@ export class FFmpegWrapper {
   }
 
   /**
-   * Applies enhancement with edge smoothing to avoid abrupt transitions.
-   * Blends the enhanced value with the original based on smoothing factor and blend strength.
+   * Applies enhancement with edge smoothing to avoid abrupt transitions. Blends
+   * the enhanced value with the original based on smoothing factor and blend
+   * strength.
    */
   private static applyEnhancementBlend(
     originalValue: number,
@@ -329,12 +330,15 @@ export class FFmpegWrapper {
   /**
    * Enhances dynamic range of waveform data to improve visualization.
    *
-   * This two-pass algorithm identifies and enhances compressed/quiet audio sections:
+   * This two-pass algorithm identifies and enhances compressed/quiet audio
+   * sections:
+   *
    * - Pass 1: Processes large chunks to enhance globally compressed regions
    * - Pass 2: Uses a sliding window to enhance locally compressed areas
    *
    * The algorithm only enhances sections with low variance (stdDev < threshold)
-   * and compressed range (range < threshold), preserving the character of dynamic audio.
+   * and compressed range (range < threshold), preserving the character of
+   * dynamic audio.
    *
    * @param peaks Normalized peak values (0-1)
    * @returns Enhanced peak values with improved dynamic range
@@ -408,11 +412,15 @@ export class FFmpegWrapper {
             Math.max(stats.stdDev, config.MIN_STDDEV_WINDOW),
         )
 
-        const enhancedValue = stats.center + (enhanced[i] - stats.center) * factor
+        const enhancedValue =
+          stats.center + (enhanced[i] - stats.center) * factor
 
         // Apply edge smoothing for gradual transitions
         const edgeDistance = Math.min(i - start, end - i)
-        const smoothing = Math.min(1, edgeDistance / config.WINDOW_EDGE_SMOOTHING)
+        const smoothing = Math.min(
+          1,
+          edgeDistance / config.WINDOW_EDGE_SMOOTHING,
+        )
 
         enhanced[i] = this.applyEnhancementBlend(
           enhanced[i],
@@ -431,8 +439,8 @@ export class FFmpegWrapper {
   }
 
   /**
-   * Shared process executor for FFmpeg/FFprobe commands.
-   * Handles process spawning, output collection, and error handling.
+   * Shared process executor for FFmpeg/FFprobe commands. Handles process
+   * spawning, output collection, and error handling.
    */
   private static async executeFFmpeg(
     command: 'ffmpeg' | 'ffprobe',
@@ -482,9 +490,7 @@ export class FFmpegWrapper {
 
       process.on('close', (code) => {
         if (code !== 0) {
-          reject(
-            new Error(`${command} failed with code ${code}: ${stderr}`),
-          )
+          reject(new Error(`${command} failed with code ${code}: ${stderr}`))
           return
         }
         resolve({ stdout, stderr })
@@ -713,7 +719,8 @@ export class FFmpegWrapper {
 
     // Pass 2: Apply normalization with measurements
     // Determine if this is audio-only processing (no video in output)
-    const isAudioOnly = !options.videoFilters || options.videoFilters.length === 0
+    const isAudioOnly =
+      !options.videoFilters || options.videoFilters.length === 0
 
     // Audio filter chain - conditionally include apad only for video+audio
     // The apad filter pads silence indefinitely and requires -shortest flag to stop

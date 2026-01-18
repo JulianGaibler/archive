@@ -1,6 +1,6 @@
 /**
- * Centralized variant type definitions and utilities.
- * Prevents typo bugs by using TypeScript enums instead of string literals.
+ * Centralized variant type definitions and utilities. Prevents typo bugs by
+ * using TypeScript enums instead of string literals.
  */
 
 export enum VariantType {
@@ -14,13 +14,12 @@ export enum VariantType {
   UNMODIFIED_THUMBNAIL_POSTER = 'UNMODIFIED_THUMBNAIL_POSTER',
 }
 
-/**
- * Registry for variant type operations and relationships.
- */
+/** Registry for variant type operations and relationships. */
 export class VariantRegistry {
   /**
-   * Maps modifiable variant types to their unmodified equivalents.
-   * When modifications are applied, these variants are renamed to preserve the unmodified version.
+   * Maps modifiable variant types to their unmodified equivalents. When
+   * modifications are applied, these variants are renamed to preserve the
+   * unmodified version.
    */
   private static readonly UNMODIFIED_MAP: Record<string, string> = {
     [VariantType.COMPRESSED]: VariantType.UNMODIFIED_COMPRESSED,
@@ -29,8 +28,8 @@ export class VariantRegistry {
   }
 
   /**
-   * Gets the unmodified variant equivalent for a given variant type.
-   * Returns null if the variant type doesn't have an unmodified equivalent.
+   * Gets the unmodified variant equivalent for a given variant type. Returns
+   * null if the variant type doesn't have an unmodified equivalent.
    *
    * @param type The variant type to get the unmodified equivalent for
    * @returns The unmodified variant type, or null if none exists
@@ -50,7 +49,8 @@ export class VariantRegistry {
   }
 
   /**
-   * Gets the list of variant types that can be modified (have UNMODIFIED_* equivalents).
+   * Gets the list of variant types that can be modified (have UNMODIFIED_*
+   * equivalents).
    *
    * @returns Array of modifiable variant types
    */
@@ -63,8 +63,8 @@ export class VariantRegistry {
   }
 
   /**
-   * Gets the original (modified) variant type from an unmodified variant.
-   * E.g., UNMODIFIED_COMPRESSED -> COMPRESSED
+   * Gets the original (modified) variant type from an unmodified variant. E.g.,
+   * UNMODIFIED_COMPRESSED -> COMPRESSED
    *
    * @param unmodifiedType The unmodified variant type
    * @returns The original variant type, or null if not an unmodified variant

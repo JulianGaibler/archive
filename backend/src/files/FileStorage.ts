@@ -22,6 +22,7 @@ import { FileProcessingQueue } from './QueueManager.js'
 import { FFmpegWrapper } from './ffmpeg-wrapper.js'
 import { fileVariant as fileVariantTable } from '@db/schema.js'
 import { VariantType, VariantRegistry } from './variant-types.js'
+import { DataLoaderCacheManager } from './DataLoaderCacheManager.js'
 
 const pipeline = util.promisify(stream.pipeline)
 
@@ -123,7 +124,9 @@ export default class FileStorage {
 
     // Get the file's ORIGINAL variant
     const variants = await FileActions._qFileVariantsInternal(ctx, fileId)
-    const originalVariant = variants.find((v) => v.variant === VariantType.ORIGINAL)
+    const originalVariant = variants.find(
+      (v) => v.variant === VariantType.ORIGINAL,
+    )
     if (!originalVariant) {
       throw new RequestError('Original variant not found for file')
     }
@@ -307,7 +310,8 @@ export default class FileStorage {
           // CRITICAL FIX: Clear dataloader cache after renaming variants
           // The cache contains the old variant list (before rename)
           // Subsequent calls to deleteVariant() need the updated list
-          ctx.dataLoaders.file.getVariantsByFileId.clear(fileId)
+          const cacheManager = new DataLoaderCacheManager(ctx)
+          cacheManager.clearVariantCache(fileId)
 
           didRenameVariants = true
         }
@@ -500,9 +504,8 @@ export default class FileStorage {
       )
     }
 
-    const modificationArray = Object.keys(modificationsData).length > 0
-      ? [modificationsData]
-      : []
+    const modificationArray =
+      Object.keys(modificationsData).length > 0 ? [modificationsData] : []
 
     let result
     if (targetFileType === FileType.GIF || targetFileType === FileType.VIDEO) {

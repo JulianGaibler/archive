@@ -1,14 +1,17 @@
-import type { ModificationActionData, CropMetadata } from './processing-metadata.js'
+import type {
+  ModificationActionData,
+  CropMetadata,
+} from './processing-metadata.js'
 
 /**
- * Centralized processor for file modifications (trim, crop).
- * Consolidates extraction and application logic that was previously duplicated
- * across multiple file processing methods.
+ * Centralized processor for file modifications (trim, crop). Consolidates
+ * extraction and application logic that was previously duplicated across
+ * multiple file processing methods.
  */
 export class ModificationProcessor {
   /**
-   * Extracts trim metadata from modifications array.
-   * Handles the common pattern of checking for trim and calculating duration.
+   * Extracts trim metadata from modifications array. Handles the common pattern
+   * of checking for trim and calculating duration.
    */
   static extractTrim(modifications?: ModificationActionData[]): {
     needsTrim: boolean
@@ -33,8 +36,8 @@ export class ModificationProcessor {
   }
 
   /**
-   * Builds FFmpeg input options for trim.
-   * These options must be placed BEFORE the -i flag for proper input seeking.
+   * Builds FFmpeg input options for trim. These options must be placed BEFORE
+   * the -i flag for proper input seeking.
    */
   static buildTrimInputOptions(trim: {
     trimStart?: number
@@ -53,8 +56,8 @@ export class ModificationProcessor {
   }
 
   /**
-   * Extracts crop metadata from modifications array.
-   * Returns null if no crop modification exists.
+   * Extracts crop metadata from modifications array. Returns null if no crop
+   * modification exists.
    */
   static extractCrop(
     modifications?: ModificationActionData[],
@@ -69,8 +72,8 @@ export class ModificationProcessor {
   }
 
   /**
-   * Builds FFmpeg crop filter string.
-   * Calculates width/height from boundaries: width = total - left - right
+   * Builds FFmpeg crop filter string. Calculates width/height from boundaries:
+   * width = total - left - right
    */
   static buildCropFilter(
     crop: CropMetadata,
@@ -82,8 +85,8 @@ export class ModificationProcessor {
   }
 
   /**
-   * Validates trim parameters against file duration.
-   * Throws error if trim times are invalid.
+   * Validates trim parameters against file duration. Throws error if trim times
+   * are invalid.
    */
   static validateTrim(
     trim: { trimStart: number; trimDuration: number },

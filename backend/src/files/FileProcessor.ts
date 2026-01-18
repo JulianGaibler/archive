@@ -20,6 +20,7 @@ import {
 } from './types.js'
 import { ModificationActionData } from './processing-metadata.js'
 import { ModificationProcessor } from './ModificationProcessor.js'
+import { FFmpegFilterBuilder } from './FFmpegFilterBuilder.js'
 import {
   profilePictureOptions,
   itemTypes,
@@ -37,6 +38,34 @@ export default class FileProcessor {
 
   constructor(updateCallback: FileUpdateCallback) {
     this.updateCallback = updateCallback
+  }
+
+  /**
+   * Wraps file processing operations with consistent error handling. Re-throws
+   * FileProcessingError and InputError as-is, wraps other errors.
+   *
+   * @param operation The async operation to wrap
+   * @param step Description of the processing step (e.g., "image processing")
+   * @returns Promise resolving to the operation result
+   */
+  private async wrapProcessingError<T>(
+    operation: () => Promise<T>,
+    step: string,
+  ): Promise<T> {
+    try {
+      return await operation()
+    } catch (err) {
+      // Re-throw known error types as-is
+      if (err instanceof FileProcessingError || err instanceof InputError) {
+        throw err
+      }
+      // Wrap unexpected errors
+      throw new FileProcessingError(
+        `Unexpected error during ${step}`,
+        step,
+        err as Error,
+      )
+    }
   }
 
   async processImage(
@@ -238,32 +267,40 @@ export default class FileProcessor {
       const buildFilters = (
         modifications?: ModificationActionData[],
       ): {
+        filterBuilder: FFmpegFilterBuilder
         videoFilters: string[]
         needsTrim: boolean
         trimStart?: number
         trimDuration?: number
       } => {
-        const videoFilters: string[] = []
+        const filterBuilder = new FFmpegFilterBuilder()
 
         // Extract crop and build filter
         const crop = ModificationProcessor.extractCrop(modifications)
         if (crop && width && height) {
-          const cropFilter = ModificationProcessor.buildCropFilter(crop, {
-            width,
-            height,
-          })
-          videoFilters.push(cropFilter)
+          filterBuilder.addCrop(crop, { width, height })
         }
 
         // Extract trim metadata
         const { needsTrim, trimStart, trimDuration } =
           ModificationProcessor.extractTrim(modifications)
 
-        return { videoFilters, needsTrim, trimStart, trimDuration }
+        return {
+          filterBuilder,
+          videoFilters: filterBuilder.build(),
+          needsTrim,
+          trimStart,
+          trimDuration,
+        }
       }
 
-      const { videoFilters, needsTrim, trimStart, trimDuration } =
-        buildFilters(modifications)
+      const {
+        filterBuilder,
+        videoFilters,
+        needsTrim,
+        trimStart,
+        trimDuration,
+      } = buildFilters(modifications)
 
       // Flag to prevent duplicate filter_complex when callback handles filters
       let filtersHandledByCallback = false
@@ -371,19 +408,18 @@ export default class FileProcessor {
           let needsCustomMapping = false
 
           if (videoFilters.length > 0 && !filtersHandledByCallback) {
-            const filterChain = [...videoFilters]
+            // Create a new builder with existing filters and add scale if needed
+            const renderFilterBuilder = new FFmpegFilterBuilder()
+            videoFilters.forEach((filter) =>
+              renderFilterBuilder.addCustomFilter(filter),
+            )
 
             // Add scale filter if size is provided
             if (size) {
-              if (size.startsWith('?x')) {
-                const height = size.substring(2)
-                filterChain.push(`scale=-2:${height}`)
-              } else if (size.includes('x')) {
-                filterChain.push(`scale=${size}`)
-              }
+              renderFilterBuilder.addScale(size)
             }
 
-            const filterString = filterChain.join(',')
+            const filterString = renderFilterBuilder.build().join(',')
             f.addOption('-filter_complex', `[0:v]${filterString}[v]`)
             needsCustomMapping = true // Mark that we need -map options
           } else if (size) {
@@ -401,10 +437,10 @@ export default class FileProcessor {
           }
 
           f.on(
-              'progress',
-              (p: { percent?: number }) =>
-                p.percent !== undefined && updateProgress(renderIdx, p.percent),
-            )
+            'progress',
+            (p: { percent?: number }) =>
+              p.percent !== undefined && updateProgress(renderIdx, p.percent),
+          )
             .on('error', reject)
             .on('end', () => resolve())
             .run()
@@ -426,29 +462,24 @@ export default class FileProcessor {
 
       // Render main MP4 video
       try {
-        const renderA = renderVideo(
-          0,
-          filePath,
-          filePaths.mp4!,
-          {
-            size: `?x${outputHeight}`,
-            videoOptions: [
-              ...mp4VideoOptions,
-              '-b:v',
-              '2500k',
-              '-bufsize',
-              '2000k',
-              '-maxrate',
-              '4500k',
-            ],
-            audioOptions:
-              fileType === FileType.VIDEO
-                ? [...mp4AudioOptions, '-b:a', '192k']
-                : [],
-            hasAudio: fileType === FileType.VIDEO,
-            enableNormalization: true,
-          },
-        )
+        const renderA = renderVideo(0, filePath, filePaths.mp4!, {
+          size: `?x${outputHeight}`,
+          videoOptions: [
+            ...mp4VideoOptions,
+            '-b:v',
+            '2500k',
+            '-bufsize',
+            '2000k',
+            '-maxrate',
+            '4500k',
+          ],
+          audioOptions:
+            fileType === FileType.VIDEO
+              ? [...mp4AudioOptions, '-b:a', '192k']
+              : [],
+          hasAudio: fileType === FileType.VIDEO,
+          enableNormalization: true,
+        })
         promises.push(renderA)
       } catch (err) {
         throw new FileProcessingError(
@@ -462,40 +493,33 @@ export default class FileProcessor {
       if (fileType === FileType.GIF) {
         filePaths.gif = `${compressed}.gif`
         try {
-          const renderGif = renderVideo(
-            1,
-            filePath,
-            filePaths.gif,
-            {
-              hasAudio: false, // GIFs don't have audio
-              optionsCallback: (f: FfmpegCommand) => {
-                // Build GIF filter chain, including crop if present
-                const gifVideoFilters: string[] = []
+          const renderGif = renderVideo(1, filePath, filePaths.gif, {
+            hasAudio: false, // GIFs don't have audio
+            optionsCallback: (f: FfmpegCommand) => {
+              // Build GIF filter chain using builder
+              const gifFilterBuilder = new FFmpegFilterBuilder()
 
-                // Prepend crop filters if they exist
-                if (videoFilters.length > 0) {
-                  gifVideoFilters.push(...videoFilters)
-                  // Set flag to prevent duplicate filter application
-                  filtersHandledByCallback = true
-                }
-
-                // Add GIF-specific filters
-                const gifWidth = width > 480 ? 480 : width
-                gifVideoFilters.push(
-                  'fps=25',
-                  `scale=${gifWidth}:-2`,
-                  'split[a][b]',
+              // Add existing filters (crop, etc.) if they exist
+              if (videoFilters.length > 0) {
+                videoFilters.forEach((filter) =>
+                  gifFilterBuilder.addCustomFilter(filter),
                 )
+                // Set flag to prevent duplicate filter application
+                filtersHandledByCallback = true
+              }
 
-                const gifFilterChain = gifVideoFilters.join(',')
+              // Add GIF-specific filters
+              const gifWidth = width > 480 ? 480 : width
+              gifFilterBuilder.addGifOptimization(gifWidth)
 
-                f.addOption(
-                  '-filter_complex',
-                  `[0:v]${gifFilterChain};[a]palettegen[p];[b][p]paletteuse`,
-                )
-              },
+              const gifFilterChain = gifFilterBuilder.build().join(',')
+
+              f.addOption(
+                '-filter_complex',
+                `[0:v]${gifFilterChain};[a]palettegen[p];[b][p]paletteuse`,
+              )
             },
-          )
+          })
           promises.push(renderGif)
           // Reset flag for subsequent renders
           filtersHandledByCallback = false
@@ -670,7 +694,8 @@ export default class FileProcessor {
       }
 
       // Get audio metadata
-      const { duration } = await this.getMediaMetadata(filePath)
+      const metadata = await this.getMediaMetadata(filePath)
+      let duration = metadata.duration
 
       if (duration <= 0) {
         throw new InputError(
@@ -952,8 +977,8 @@ export default class FileProcessor {
   }
 
   /**
-   * Extracts media metadata (duration and dimensions) from a file using ffprobe.
-   * Handles both video and audio files.
+   * Extracts media metadata (duration and dimensions) from a file using
+   * ffprobe. Handles both video and audio files.
    */
   private async getMediaMetadata(filePath: string): Promise<{
     duration: number
@@ -961,14 +986,12 @@ export default class FileProcessor {
     height?: number
   }> {
     try {
-      const metadata = await new Promise<FFProbeMetadata>(
-        (resolve, reject) => {
-          ffprobe(filePath, (err: Error | null, metadata?: FFProbeMetadata) => {
-            if (err) return reject(err)
-            resolve(metadata!)
-          })
-        },
-      )
+      const metadata = await new Promise<FFProbeMetadata>((resolve, reject) => {
+        ffprobe(filePath, (err: Error | null, metadata?: FFProbeMetadata) => {
+          if (err) return reject(err)
+          resolve(metadata!)
+        })
+      })
 
       // Parse duration (may be string or number)
       const durationValue = metadata?.format?.duration

@@ -36,6 +36,7 @@ import * as fileUtils from '@src/files/file-utils.js'
 import { storageOptions } from '@src/files/config.js'
 import fs from 'fs'
 import { subscriptionBatcher } from '@src/files/SubscriptionBatcher.js'
+import { DataLoaderCacheManager } from '@src/files/DataLoaderCacheManager.js'
 
 // Type for file processing subscription payloads
 interface FileProcessingUpdatePayload {
@@ -465,6 +466,9 @@ const FileActions = {
       file.processingMeta && Object.keys(file.processingMeta).length > 0
     const hasModifications = Object.keys(newModifications).length > 0
 
+    // Create cache manager for cleanup
+    const cacheManager = new DataLoaderCacheManager(ctx)
+
     if (hadModifications && !hasModifications) {
       console.log(
         `[FileActions] All modifications removed, cleaning up UNMODIFIED variants for ${fields.fileId}`,
@@ -505,11 +509,11 @@ const FileActions = {
       }
 
       // Clear variants cache since we deleted variants
-      ctx.dataLoaders.file.getVariantsByFileId.clear(fields.fileId)
+      cacheManager.clearVariantCache(fields.fileId)
     }
 
     // Clear dataloader cache
-    ctx.dataLoaders.file.getById.clear(fields.fileId)
+    cacheManager.clearFileCache(fields.fileId)
 
     // Queue for reprocessing using its own ORIGINAL variant
     await Context.fileStorage.queueFileForReprocessing(ctx, fields.fileId)
@@ -581,6 +585,86 @@ const FileActions = {
       sizeBytes: unmodifiedCompressed.sizeBytes,
       meta: unmodifiedCompressed.meta,
     })
+
+    // Regenerate THUMBNAIL from the restored COMPRESSED file for videos/gifs
+    if (file.type === 'VIDEO' || file.type === 'GIF') {
+      const sharp = (await import('sharp')).default
+      const ffmpeg = (await import('@src/files/ffmpeg-wrapper.js')).default
+      const tmp = (await import('tmp')).default
+
+      // Create temp directory for screenshot
+      const tmpDir = tmp.dirSync()
+      try {
+        // Take screenshot from restored compressed video
+        const screenshotPath = fileUtils.resolvePath(tmpDir.name, 'thumb.png')
+        await new Promise<void>((resolve, reject) => {
+          ffmpeg(compressedPath)
+            .screenshots({
+              timestamps: [1],
+              filename: 'thumb.png',
+              folder: tmpDir.name,
+            })
+            .on('error', reject)
+            .on('end', () => resolve())
+        })
+
+        // Generate thumbnail from screenshot
+        const thumbnailDir = fileUtils.resolvePath(
+          storageOptions.dist,
+          'content',
+          fileId,
+        )
+        const thumbnailPath = fileUtils.resolvePath(
+          thumbnailDir,
+          'THUMBNAIL.jpeg',
+        )
+
+        await sharp(screenshotPath)
+          .rotate()
+          .removeAlpha()
+          .resize(400, 400, { fit: 'inside' })
+          .toFormat('jpeg', { quality: 90, progressive: true })
+          .toFile(thumbnailPath)
+
+        // Get thumbnail file stats
+        const thumbnailStats = await fs.promises.stat(thumbnailPath)
+
+        // Delete old THUMBNAIL variant record and create new one
+        await ctx.db
+          .delete(fileVariantTable)
+          .where(
+            and(
+              eq(fileVariantTable.file, fileId),
+              eq(fileVariantTable.variant, 'THUMBNAIL'),
+            ),
+          )
+
+        await ctx.db.insert(fileVariantTable).values({
+          file: fileId,
+          variant: 'THUMBNAIL',
+          mimeType: 'image/jpeg',
+          extension: 'jpeg',
+          sizeBytes: thumbnailStats.size,
+          meta: null,
+        })
+      } catch (error) {
+        console.error('Failed to regenerate thumbnail during revert:', error)
+        // Continue with revert even if thumbnail regeneration fails
+      } finally {
+        // Clean up temp directory and files
+        try {
+          const files = await fs.promises.readdir(tmpDir.name)
+          for (const file of files) {
+            await fs.promises.unlink(
+              fileUtils.resolvePath(tmpDir.name, file),
+            )
+          }
+          tmpDir.removeCallback()
+        } catch (cleanupError) {
+          console.error('Failed to clean up temp directory:', cleanupError)
+        }
+      }
+    }
 
     // If video/gif, copy UNMODIFIED_THUMBNAIL_POSTER back to THUMBNAIL_POSTER
     if (unmodifiedPoster) {
@@ -654,14 +738,15 @@ const FileActions = {
       .update(fileTable)
       .set({
         processingMeta: null,
-        type: file.originalType,  // Revert to original file type
+        type: file.originalType, // Revert to original file type
         processingStatus: 'DONE',
         updatedAt: Date.now(),
       })
       .where(eq(fileTable.id, fileId))
 
-    // Clear dataloader cache
-    ctx.dataLoaders.file.getById.clear(fileId)
+    // Clear dataloader cache (both file and variant caches since we modified variants)
+    const cacheManager = new DataLoaderCacheManager(ctx)
+    cacheManager.clearAllFileRelatedCaches(fileId)
   },
 
   /**
@@ -710,8 +795,8 @@ const FileActions = {
     }
 
     // Step 3: Clear dataloader cache
-    ctx.dataLoaders.file.getById.clear(fileId)
-    ctx.dataLoaders.file.getVariantsByFileId.clear(fileId)
+    const cacheManager = new DataLoaderCacheManager(ctx)
+    cacheManager.clearAllFileRelatedCaches(fileId)
 
     // Step 4: Queue for reprocessing from ORIGINAL
     await Context.fileStorage.queueFileForReprocessing(ctx, fileId)
@@ -999,7 +1084,8 @@ const FileActions = {
 
     // CRITICAL: Clear dataloader cache so subscription update fetches fresh data
     // Without this, _publishFileProcessingUpdate reads stale cached status
-    ctx.dataLoaders.file.getById.clear(fileId)
+    const cacheManager = new DataLoaderCacheManager(ctx)
+    cacheManager.clearFileCache(fileId)
 
     // Publish file processing update if status or progress changed
     if (changes.processingStatus || changes.processingProgress !== undefined) {
