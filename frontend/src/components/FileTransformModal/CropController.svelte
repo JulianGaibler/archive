@@ -87,16 +87,14 @@
     if (!sourceDims) return
 
     if (initialCrop) {
-      // Convert DB percentages directly to source pixels (no intermediate display conversion)
+      // Convert edge offsets (pixels) to x,y,width,height format
+      // Backend sends crop as edge offsets: {left: 100, top: 0, right: 0, bottom: 0}
+      // means "100px from left edge, 0px from other edges"
       sourceCropArea = {
-        x: Math.round((initialCrop.left / 100) * sourceDims.width),
-        y: Math.round((initialCrop.top / 100) * sourceDims.height),
-        width: Math.round(
-          ((initialCrop.right - initialCrop.left) / 100) * sourceDims.width,
-        ),
-        height: Math.round(
-          ((initialCrop.bottom - initialCrop.top) / 100) * sourceDims.height,
-        ),
+        x: initialCrop.left, // left offset IS the x position
+        y: initialCrop.top, // top offset IS the y position
+        width: sourceDims.width - initialCrop.left - initialCrop.right,
+        height: sourceDims.height - initialCrop.top - initialCrop.bottom,
       }
     } else if (initialCrop === undefined) {
       // No crop in DB - start with full frame in source coordinates

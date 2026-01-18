@@ -5,12 +5,16 @@
   date: '2026-01-08'
   notes: |
     This release adds editing functionality for items. Items can be duplicated, converted between formats (e.g., video to GIF or audio), and edited with cropping and trimming tools. The editor includes an auto-crop feature that attempts to remove letterboxing.
+
+    **Audio normalization has been disabled** due to a bug in Firefox that causes audio playback issues. This only affects newly uploaded and reprocessed files. Existing files are not affected and will continue to work normally. A new **"Reprocess from original" option** has been added to allow reprocessing files that were affected by the audio bug or had processing failures.
   changes:
     - '[Added] Items can now be duplicated'
     - '[Added] Items can now be converted to different types (e.g., video to GIF or audio)'
     - '[Added] Items can now be edited with cropping and trimming tools'
     - '[Added] Auto-crop feature in the editor that automatically removes letterboxing (black bars)'
+    - '[Added] "Reprocess from original" option to reprocess files with audio issues or failed processing'
     - '[Improved] File processing is now more error resilient'
+    - '[Removed] Audio normalization temporarily disabled due to Firefox compatibility issues'
 2.2.1:
   date: '2025-09-12'
   changes:
