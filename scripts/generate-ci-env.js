@@ -80,10 +80,10 @@ function main() {
     console.log(`  Variables: ${ENV_VARIABLES.length}`);
 
     console.log('\n✨ CI environment file generated successfully!');
-    console.log('\nUsage in CI:');
-    console.log('  • GitHub Actions: Load with dotenv-cli or actions/setup-node');
-    console.log('  • Local testing: dotenv -e .env.ci -- npm run build');
-    console.log('\nNote: This file contains no secrets and can be committed to git.');
+    console.log('\nUsage:');
+    console.log('  • CI: npm run build:ci (generates and uses .env.ci)');
+    console.log('  • Local: npm run generate-ci-env && npm run build:ci');
+    console.log('\nNote: .env.ci is gitignored and generated on-the-fly in CI.');
   } catch (error) {
     console.error('❌ Error generating CI environment file:', error.message);
     process.exit(1);
