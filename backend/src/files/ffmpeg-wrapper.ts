@@ -68,6 +68,40 @@ type ProgressCallback = (progress: FFmpegProgress) => void
 type ErrorCallback = (error: Error) => void
 type EndCallback = () => void
 
+/**
+ * Configuration for waveform dynamic range enhancement algorithm.
+ * These values control how the algorithm identifies and enhances low-variance audio sections.
+ */
+const WAVEFORM_ENHANCEMENT_CONFIG = {
+  // Range thresholds for detecting compressed/quiet sections
+  RANGE_THRESHOLD: 0.6, // Sections with range < 0.6 are considered compressed
+  STDDEV_THRESHOLD_CHUNK: 0.25, // Chunk standard deviation threshold for enhancement
+  STDDEV_THRESHOLD_WINDOW: 0.25, // Window standard deviation threshold for enhancement
+
+  // Enhancement factors
+  MAX_CHUNK_FACTOR: 4.0, // Maximum enhancement factor for chunk processing
+  MAX_WINDOW_FACTOR: 2.5, // Maximum enhancement factor for window processing
+  MIN_STDDEV_CHUNK: 0.01, // Minimum stddev to avoid division by zero (chunk)
+  MIN_STDDEV_WINDOW: 0.02, // Minimum stddev to avoid division by zero (window)
+
+  // Smoothing and blending
+  CHUNK_EDGE_SMOOTHING: 5, // Number of samples to smooth at chunk edges
+  WINDOW_EDGE_SMOOTHING: 2, // Number of samples to smooth at window edges
+  CHUNK_BLEND_STRENGTH: 0.9, // How strongly to apply chunk enhancement (0-1)
+  WINDOW_BLEND_STRENGTH: 0.8, // How strongly to apply window enhancement (0-1)
+
+  // Window sizing
+  CHUNK_DIVISOR: 20, // Divide total length by this for chunk size
+  MIN_CHUNK_SIZE: 50, // Minimum chunk size in samples
+  WINDOW_DIVISOR: 10, // Divide total length by this for window size
+  MIN_WINDOW_SIZE: 20, // Minimum window size in samples
+  MAX_WINDOW_SIZE: 100, // Maximum window size in samples
+
+  // Baseline factor calculation
+  BASELINE_FACTOR_NUMERATOR: 0.4, // Numerator for chunk factor calculation
+  BASELINE_FACTOR_NUMERATOR_WINDOW: 0.3, // Numerator for window factor calculation
+} as const
+
 export class FFmpegWrapper {
   private static parseProgress(line: string): Partial<FFmpegProgress> {
     const progress: Partial<FFmpegProgress> = {}
@@ -221,98 +255,176 @@ export class FFmpegWrapper {
     return result
   }
 
+  /**
+   * Calculates statistical properties of audio peak data.
+   * Used to identify compressed/quiet sections that need enhancement.
+   */
+  private static calculatePeakStats(data: number[]): {
+    min: number
+    max: number
+    range: number
+    mean: number
+    stdDev: number
+    center: number
+  } {
+    const min = Math.min(...data)
+    const max = Math.max(...data)
+    const mean = data.reduce((sum, val) => sum + val, 0) / data.length
+    const variance =
+      data.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
+      data.length
+
+    return {
+      min,
+      max,
+      range: max - min,
+      mean,
+      stdDev: Math.sqrt(variance),
+      center: (min + max) / 2,
+    }
+  }
+
+  /**
+   * Applies enhancement with edge smoothing to avoid abrupt transitions.
+   * Blends the enhanced value with the original based on smoothing factor and blend strength.
+   */
+  private static applyEnhancementBlend(
+    originalValue: number,
+    enhancedValue: number,
+    smoothingFactor: number,
+    blendStrength: number,
+  ): number {
+    return (
+      originalValue +
+      (enhancedValue - originalValue) * smoothingFactor * blendStrength
+    )
+  }
+
+  /**
+   * Enhances a range of samples by expanding them around their center point.
+   * Applies edge smoothing to prevent discontinuities at range boundaries.
+   */
+  private static enhanceRange(
+    data: number[],
+    start: number,
+    end: number,
+    factor: number,
+    center: number,
+    edgeSmoothing: number,
+    blendStrength: number,
+  ): void {
+    for (let i = start; i < end; i++) {
+      const enhanced = center + (data[i] - center) * factor
+      const edgeDistance = Math.min(i - start, end - i)
+      const smoothing = Math.min(1, edgeDistance / edgeSmoothing)
+      data[i] = this.applyEnhancementBlend(
+        data[i],
+        enhanced,
+        smoothing,
+        blendStrength,
+      )
+    }
+  }
+
+  /**
+   * Enhances dynamic range of waveform data to improve visualization.
+   *
+   * This two-pass algorithm identifies and enhances compressed/quiet audio sections:
+   * - Pass 1: Processes large chunks to enhance globally compressed regions
+   * - Pass 2: Uses a sliding window to enhance locally compressed areas
+   *
+   * The algorithm only enhances sections with low variance (stdDev < threshold)
+   * and compressed range (range < threshold), preserving the character of dynamic audio.
+   *
+   * @param peaks Normalized peak values (0-1)
+   * @returns Enhanced peak values with improved dynamic range
+   */
   private static enhanceDynamicRange(peaks: number[]): number[] {
     if (peaks.length === 0) return peaks
 
-    // Helper function to calculate statistics
-    const getStats = (data: number[]) => {
-      const min = Math.min(...data)
-      const max = Math.max(...data)
-      const mean = data.reduce((sum, val) => sum + val, 0) / data.length
-      const variance =
-        data.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
-        data.length
-      return {
-        min,
-        max,
-        range: max - min,
-        mean,
-        stdDev: Math.sqrt(variance),
-        center: (min + max) / 2,
-      }
-    }
-
-    // Helper function to apply enhancement with smoothing
-    const applyEnhancement = (
-      originalValue: number,
-      enhancedValue: number,
-      smoothingFactor: number,
-      blendStrength: number,
-    ) => {
-      return (
-        originalValue +
-        (enhancedValue - originalValue) * smoothingFactor * blendStrength
-      )
-    }
-
-    // Helper function to enhance a range of values
-    const enhanceRange = (
-      data: number[],
-      start: number,
-      end: number,
-      factor: number,
-      center: number,
-      edgeSmoothing: number,
-    ) => {
-      for (let i = start; i < end; i++) {
-        const enhanced = center + (data[i] - center) * factor
-        const edgeDistance = Math.min(i - start, end - i)
-        const smoothing = Math.min(1, edgeDistance / edgeSmoothing)
-        data[i] = applyEnhancement(data[i], enhanced, smoothing, 0.9)
-      }
-    }
-
+    const config = WAVEFORM_ENHANCEMENT_CONFIG
     const enhanced = [...peaks]
 
-    // First pass: Global chunk enhancement
-    const chunkSize = Math.max(50, Math.floor(peaks.length / 20))
+    // Pass 1: Global chunk-based enhancement
+    // Processes large sections to catch globally compressed audio
+    const chunkSize = Math.max(
+      config.MIN_CHUNK_SIZE,
+      Math.floor(peaks.length / config.CHUNK_DIVISOR),
+    )
+
     for (let start = 0; start < peaks.length; start += chunkSize) {
       const end = Math.min(peaks.length, start + chunkSize)
-      const stats = getStats(peaks.slice(start, end))
+      const stats = this.calculatePeakStats(peaks.slice(start, end))
 
-      if (stats.range < 0.6 && stats.stdDev < 0.25) {
-        const factor = Math.min(4.0, 0.4 / Math.max(stats.stdDev, 0.01))
-        enhanceRange(enhanced, start, end, factor, stats.center, 5)
-      }
-    }
+      // Only enhance compressed sections (low range and low variance)
+      if (
+        stats.range < config.RANGE_THRESHOLD &&
+        stats.stdDev < config.STDDEV_THRESHOLD_CHUNK
+      ) {
+        // Calculate enhancement factor inversely proportional to stddev
+        // Lower stddev = more compression = stronger enhancement
+        const factor = Math.min(
+          config.MAX_CHUNK_FACTOR,
+          config.BASELINE_FACTOR_NUMERATOR /
+            Math.max(stats.stdDev, config.MIN_STDDEV_CHUNK),
+        )
 
-    // Second pass: Local sliding window enhancement
-    const windowSize = Math.min(
-      100,
-      Math.max(20, Math.floor(peaks.length / 10)),
-    )
-    for (let i = 0; i < enhanced.length; i++) {
-      const start = Math.max(0, i - Math.floor(windowSize / 2))
-      const end = Math.min(enhanced.length, i + Math.floor(windowSize / 2))
-      const stats = getStats(enhanced.slice(start, end))
-
-      if (stats.range <= 0.6 && stats.stdDev <= 0.25) {
-        const factor = Math.min(2.5, 0.3 / Math.max(stats.stdDev, 0.02))
-        const enhancedValue =
-          stats.center + (enhanced[i] - stats.center) * factor
-        const edgeDistance = Math.min(i - start, end - i)
-        const smoothing = Math.min(1, edgeDistance / 2)
-        enhanced[i] = applyEnhancement(
-          enhanced[i],
-          enhancedValue,
-          smoothing,
-          0.8,
+        this.enhanceRange(
+          enhanced,
+          start,
+          end,
+          factor,
+          stats.center,
+          config.CHUNK_EDGE_SMOOTHING,
+          config.CHUNK_BLEND_STRENGTH,
         )
       }
     }
 
-    // Final normalization
-    const finalStats = getStats(enhanced)
+    // Pass 2: Local sliding window enhancement
+    // Fine-tunes enhancement for small compressed regions missed by chunk processing
+    const windowSize = Math.min(
+      config.MAX_WINDOW_SIZE,
+      Math.max(
+        config.MIN_WINDOW_SIZE,
+        Math.floor(peaks.length / config.WINDOW_DIVISOR),
+      ),
+    )
+
+    for (let i = 0; i < enhanced.length; i++) {
+      const start = Math.max(0, i - Math.floor(windowSize / 2))
+      const end = Math.min(enhanced.length, i + Math.floor(windowSize / 2))
+      const stats = this.calculatePeakStats(enhanced.slice(start, end))
+
+      // Only enhance compressed sections
+      if (
+        stats.range <= config.RANGE_THRESHOLD &&
+        stats.stdDev <= config.STDDEV_THRESHOLD_WINDOW
+      ) {
+        // Calculate enhancement factor
+        const factor = Math.min(
+          config.MAX_WINDOW_FACTOR,
+          config.BASELINE_FACTOR_NUMERATOR_WINDOW /
+            Math.max(stats.stdDev, config.MIN_STDDEV_WINDOW),
+        )
+
+        const enhancedValue = stats.center + (enhanced[i] - stats.center) * factor
+
+        // Apply edge smoothing for gradual transitions
+        const edgeDistance = Math.min(i - start, end - i)
+        const smoothing = Math.min(1, edgeDistance / config.WINDOW_EDGE_SMOOTHING)
+
+        enhanced[i] = this.applyEnhancementBlend(
+          enhanced[i],
+          enhancedValue,
+          smoothing,
+          config.WINDOW_BLEND_STRENGTH,
+        )
+      }
+    }
+
+    // Final normalization to 0-1 range
+    const finalStats = this.calculatePeakStats(enhanced)
     return finalStats.range > 0
       ? enhanced.map((value) => (value - finalStats.min) / finalStats.range)
       : enhanced
