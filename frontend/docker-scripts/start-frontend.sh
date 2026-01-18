@@ -2,7 +2,9 @@
 
 # Copy client static files to shared volume for nginx
 if [ -d "/static-files" ] && [ -d "./dist/client" ]; then
-    echo "Copying client static files to shared volume..."
+    echo "Clearing old static files from shared volume..."
+    rm -rf /static-files/*
+    echo "Copying new client static files to shared volume..."
     cp -r ./dist/client/* /static-files/
     echo "Static files copied successfully"
 else
