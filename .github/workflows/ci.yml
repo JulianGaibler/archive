@@ -15,6 +15,10 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
+      - name: Install backend dependencies
+        run: cd backend && npm ci
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
       - name: Check version sync
         run: node .github/release/check-version.js
       - name: Lint
@@ -31,4 +35,8 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
+      - name: Install backend dependencies
+        run: cd backend && npm ci
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
       - run: npm run build:ci
