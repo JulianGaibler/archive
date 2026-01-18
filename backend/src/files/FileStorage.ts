@@ -349,6 +349,7 @@ export default class FileStorage {
             updateCallback,
             file,
           )
+
           await this.moveProcessedFiles(
             result,
             file,
@@ -619,8 +620,6 @@ export default class FileStorage {
     updateCallback: FileUpdateCallback,
     ctx: Context, // Accept context as parameter for dataloader cache management
   ): Promise<void> {
-    const movePromises: Promise<void>[] = []
-
     // Ensure the file directory exists in the new structure
     const fileDir = this.pathManager.getFileDirectoryPath(fileId)
     await fs.promises.mkdir(fileDir, { recursive: true })
@@ -628,25 +627,29 @@ export default class FileStorage {
     // Derive extension from file type
     const ext = this.getExtensionFromFileType(fileType)
 
-    // Move processed files to their final destinations using new structure
-    // Only create ORIGINAL if this is initial processing (not reprocessing)
-    // During reprocessing, we keep the existing ORIGINAL variant
+    // Check for existing variants (only create ORIGINAL if initial processing)
     const existingVariants = await FileActions._qFileVariantsInternal(
       ctx,
       fileId,
     )
     const hasOriginal = existingVariants.some((v) => v.variant === 'ORIGINAL')
 
+    // Collect all files that need to be moved
+    const filesToMove: Array<{ src: string; dest: string }> = []
+
+    // Collect ORIGINAL
     if (result.createdFiles.original && !hasOriginal) {
       const destPath = this.pathManager.getVariantPath(fileId, 'ORIGINAL', ext)
-      movePromises.push(
-        fileUtils.moveAsync(result.createdFiles.original, destPath),
-      )
+      filesToMove.push({
+        src: result.createdFiles.original,
+        dest: destPath,
+      })
     } else if (result.createdFiles.original && hasOriginal) {
       // Clean up the temp original file since we're not using it
       await fileUtils.remove(result.createdFiles.original)
     }
 
+    // Collect COMPRESSED variants
     if (result.createdFiles.compressed) {
       Object.keys(result.createdFiles.compressed).forEach((fileExt) => {
         const srcPath = result.createdFiles.compressed[fileExt]
@@ -656,10 +659,11 @@ export default class FileStorage {
           variant,
           fileExt,
         )
-        movePromises.push(fileUtils.moveAsync(srcPath, destPath))
+        filesToMove.push({ src: srcPath, dest: destPath })
       })
     }
 
+    // Collect THUMBNAIL variants
     if (result.createdFiles.thumbnail) {
       Object.keys(result.createdFiles.thumbnail).forEach((fileExt) => {
         const srcPath = result.createdFiles.thumbnail[fileExt]
@@ -668,11 +672,11 @@ export default class FileStorage {
           'THUMBNAIL',
           fileExt,
         )
-        movePromises.push(fileUtils.moveAsync(srcPath, destPath))
+        filesToMove.push({ src: srcPath, dest: destPath })
       })
     }
 
-    // Move poster thumbnail files (only for videos)
+    // Collect THUMBNAIL_POSTER variants (only for videos)
     if (result.createdFiles.posterThumbnail) {
       Object.keys(result.createdFiles.posterThumbnail).forEach((fileExt) => {
         const srcPath = result.createdFiles.posterThumbnail![fileExt]
@@ -681,15 +685,20 @@ export default class FileStorage {
           'THUMBNAIL_POSTER',
           fileExt,
         )
-        movePromises.push(fileUtils.moveAsync(srcPath, destPath))
+        filesToMove.push({ src: srcPath, dest: destPath })
       })
     }
 
-    // Step 1: Move all files to permanent storage
-    await Promise.all(movePromises)
+    // Move files sequentially with progress updates (98-99% range)
+    const totalFiles = filesToMove.length
+    for (let i = 0; i < filesToMove.length; i++) {
+      const file = filesToMove[i]
+      await fileUtils.moveAsync(file.src, file.dest)
 
-    // Update progress after file moving (85-95% range)
-    await updateCallback({ processingProgress: 95 })
+      // Update progress: 98% + (fileIndex / totalFiles) * 1%
+      const progress = 98 + ((i + 1) / totalFiles) * 1
+      await updateCallback({ processingProgress: Math.floor(progress) })
+    }
 
     // Create file variants in database with metadata
     const variants = []
@@ -826,13 +835,10 @@ export default class FileStorage {
       throw dbError
     }
 
-    // Update progress after database variant creation
-    await updateCallback({ processingProgress: 97 })
-
     // Update file sizes for each variant
     await this.updateVariantSizes(fileId, variants)
 
-    // Update progress after size updates
+    // Update progress after database operations complete (99%)
     await updateCallback({ processingProgress: 99 })
 
     // Update file status

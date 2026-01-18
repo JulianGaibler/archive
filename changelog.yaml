@@ -4,7 +4,8 @@
 2.3.1:
   date: '2026-01-18'
   changes:
-    - '[Fixed] Progress bars no longer stay at 100% for an extended time'
+    - '[Fixed] Video encoding progress now updates smoothly instead of appearing stuck at 100%'
+    - '[Fixed] Audio normalization flag now properly applies to audio files'
 2.3.0:
   date: '2026-01-18'
   notes: |

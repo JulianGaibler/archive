@@ -248,8 +248,8 @@ export default class FileProcessor {
         renderProgress[idx] = progress
         const average =
           renderProgress.reduce((a, b) => a + b, 0) / renderProgress.length
-        // Map to 0-85% range (FFmpeg uses 85% of total progress)
-        const mappedProgress = this.mapProgressToRange(average, 0, 85)
+        // Map to 0-98% range (FFmpeg encoding is the bulk of processing)
+        const mappedProgress = this.mapProgressToRange(average, 0, 98)
         this.updateCallback({ processingProgress: mappedProgress })
       }
 
@@ -361,79 +361,134 @@ export default class FileProcessor {
           return
         }
 
-        // Standard rendering (no normalization)
-        return new Promise((resolve, reject) => {
-          // Build input options array for trim
-          const inputOpts = needsTrim
-            ? ModificationProcessor.buildTrimInputOptions({
-                trimStart,
-                trimDuration,
-              })
-            : []
+        // GIF rendering or other special cases that need optionsCallback
+        // Use fluent-ffmpeg (will be refactored later)
+        if (optionsCallback) {
+          return new Promise((resolve, reject) => {
+            // Build input options array for trim
+            const inputOpts = needsTrim
+              ? ModificationProcessor.buildTrimInputOptions({
+                  trimStart,
+                  trimDuration,
+                })
+              : []
 
-          // Combine video and audio options
-          const allOutputOptions = [
-            ...outputOptions,
-            ...videoOptions,
-            ...audioOptions,
-          ]
+            // Combine video and audio options
+            const allOutputOptions = [
+              ...outputOptions,
+              ...videoOptions,
+              ...audioOptions,
+            ]
 
-          // Add -an flag if no audio
-          if (!hasAudio) {
-            allOutputOptions.push('-an')
-          }
-
-          // Create ffmpeg command with input options
-          const f = ffmpeg(inputPath)
-          if (inputOpts.length > 0) {
-            f.inputOptions(inputOpts)
-          }
-
-          if (optionsCallback) {
-            optionsCallback(f)
-          }
-
-          // Apply video filters (crop, etc.) using filter_complex
-          // Skip if callback already handled filters (e.g., GIF with crop)
-          let needsCustomMapping = false
-
-          if (videoFilters.length > 0 && !filtersHandledByCallback) {
-            // Create a new builder with existing filters and add scale if needed
-            const renderFilterBuilder = new FFmpegFilterBuilder()
-            videoFilters.forEach((filter) =>
-              renderFilterBuilder.addCustomFilter(filter),
-            )
-
-            // Add scale filter if size is provided
-            if (size) {
-              renderFilterBuilder.addScale(size)
+            // Add -an flag if no audio
+            if (!hasAudio) {
+              allOutputOptions.push('-an')
             }
 
-            const filterString = renderFilterBuilder.build().join(',')
-            f.addOption('-filter_complex', `[0:v]${filterString}[v]`)
-            needsCustomMapping = true // Mark that we need -map options
-          } else if (size) {
-            // No video filters, apply size normally
-            f.size(size)
-          }
+            // Create ffmpeg command with input options
+            const f = ffmpeg(inputPath)
+            if (inputOpts.length > 0) {
+              f.inputOptions(inputOpts)
+            }
 
-          f.output(outputPath).outputOptions(allOutputOptions)
+            optionsCallback(f)
 
-          // Add -map options AFTER outputOptions to prevent them being overwritten
-          if (needsCustomMapping) {
-            f.addOption('-map', '[v]')
-            // Keep audio if it exists
-            f.addOption('-map', '0:a?')
-          }
+            // Apply video filters (crop, etc.) using filter_complex
+            // Skip if callback already handled filters (e.g., GIF with crop)
+            let needsCustomMapping = false
 
-          f.on(
-            'progress',
-            (p: { percent?: number }) =>
-              p.percent !== undefined && updateProgress(renderIdx, p.percent),
+            if (videoFilters.length > 0 && !filtersHandledByCallback) {
+              // Create a new builder with existing filters and add scale if needed
+              const renderFilterBuilder = new FFmpegFilterBuilder()
+              videoFilters.forEach((filter) =>
+                renderFilterBuilder.addCustomFilter(filter),
+              )
+
+              // Add scale filter if size is provided
+              if (size) {
+                renderFilterBuilder.addScale(size)
+              }
+
+              const filterString = renderFilterBuilder.build().join(',')
+              f.addOption('-filter_complex', `[0:v]${filterString}[v]`)
+              needsCustomMapping = true // Mark that we need -map options
+            } else if (size) {
+              // No video filters, apply size normally
+              f.size(size)
+            }
+
+            f.output(outputPath).outputOptions(allOutputOptions)
+
+            // Add -map options AFTER outputOptions to prevent them being overwritten
+            if (needsCustomMapping) {
+              f.addOption('-map', '[v]')
+              // Keep audio if it exists
+              f.addOption('-map', '0:a?')
+            }
+
+            f.on('progress', (p: { percent?: number }) => {
+              if (p.percent !== undefined) {
+                updateProgress(renderIdx, p.percent)
+              }
+            })
+              .on('error', reject)
+              .on('end', () => resolve())
+              .run()
+          })
+        }
+
+        // Standard MP4 rendering with FFmpegWrapper (accurate time-based progress)
+        const inputOpts = needsTrim
+          ? ModificationProcessor.buildTrimInputOptions({
+              trimStart,
+              trimDuration,
+            })
+          : []
+
+        // Build output options
+        const allOutputOptions = [
+          ...outputOptions,
+          ...videoOptions,
+          ...audioOptions,
+        ]
+
+        if (!hasAudio) {
+          allOutputOptions.push('-an')
+        }
+
+        // Build filter_complex string
+        let filterComplex: string | undefined
+        if (videoFilters.length > 0 && !filtersHandledByCallback) {
+          const renderFilterBuilder = new FFmpegFilterBuilder()
+          videoFilters.forEach((filter) =>
+            renderFilterBuilder.addCustomFilter(filter),
           )
-            .on('error', reject)
-            .on('end', () => resolve())
-            .run()
+
+          if (size) {
+            renderFilterBuilder.addScale(size)
+          }
+
+          const filterString = renderFilterBuilder.build().join(',')
+          filterComplex = `[0:v]${filterString}[v]`
+          allOutputOptions.push('-map', '[v]', '-map', '0:a?')
+        } else if (size) {
+          // Add scale via output options when no filter_complex
+          const scaleFilter = FFmpegWrapper.buildScaleFilter(size)
+          if (scaleFilter) {
+            allOutputOptions.push('-vf', scaleFilter)
+          }
+        }
+
+        // Use FFmpegWrapper with accurate time-based progress
+        await FFmpegWrapper.convert(inputPath, outputPath, {
+          inputOptions: inputOpts.length > 0 ? inputOpts : undefined,
+          outputOptions: allOutputOptions,
+          filterComplex,
+          onProgress: (progress) => {
+            if (progress.percent !== undefined) {
+              updateProgress(renderIdx, progress.percent)
+            }
+          },
         })
       }
 
@@ -800,27 +855,48 @@ export default class FileProcessor {
 
       this.updateCallback({ processingProgress: 21 })
 
-      // Compress to MP3 with audio normalization (75% of processing time)
+      // Compress to MP3 (with or without normalization based on flag)
       const mp3AudioOptions = audioEncodingOptions.mp3.audio
 
       try {
-        await FFmpegWrapper.normalizeAudio(filePath, filePaths.mp3!, {
-          inputOptions:
-            trimStart !== undefined
-              ? ['-ss', trimStart.toString(), '-t', trimDuration!.toString()]
-              : [],
-          audioOptions: mp3AudioOptions,
-          normalizationOptions: audioNormalizationOptions.ebuR128,
-          onProgress: (progress: { percent?: number }) => {
-            if (progress.percent !== undefined) {
-              // Map FFmpeg 0-100% to range 21-85% (64% of total)
-              const mappedProgress = 21 + progress.percent * 0.64
-              this.updateCallback({
-                processingProgress: Math.floor(mappedProgress),
-              })
-            }
-          },
-        })
+        if (ENABLE_AUDIO_NORMALIZATION) {
+          // Use audio normalization (2-pass EBU R128)
+          await FFmpegWrapper.normalizeAudio(filePath, filePaths.mp3!, {
+            inputOptions:
+              trimStart !== undefined
+                ? ['-ss', trimStart.toString(), '-t', trimDuration!.toString()]
+                : [],
+            audioOptions: mp3AudioOptions,
+            normalizationOptions: audioNormalizationOptions.ebuR128,
+            onProgress: (progress: { percent?: number }) => {
+              if (progress.percent !== undefined) {
+                // Map FFmpeg 0-100% to range 21-85% (64% of total)
+                const mappedProgress = 21 + progress.percent * 0.64
+                this.updateCallback({
+                  processingProgress: Math.floor(mappedProgress),
+                })
+              }
+            },
+          })
+        } else {
+          // Standard audio compression without normalization
+          await FFmpegWrapper.convert(filePath, filePaths.mp3!, {
+            inputOptions:
+              trimStart !== undefined
+                ? ['-ss', trimStart.toString(), '-t', trimDuration!.toString()]
+                : [],
+            outputOptions: mp3AudioOptions,
+            onProgress: (progress: { percent?: number }) => {
+              if (progress.percent !== undefined) {
+                // Map FFmpeg 0-100% to range 21-85% (64% of total)
+                const mappedProgress = 21 + progress.percent * 0.64
+                this.updateCallback({
+                  processingProgress: Math.floor(mappedProgress),
+                })
+              }
+            },
+          })
+        }
       } catch (err) {
         throw new FileProcessingError(
           'Failed to compress audio to MP3',

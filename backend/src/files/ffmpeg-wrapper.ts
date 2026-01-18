@@ -161,8 +161,10 @@ export class FFmpegWrapper {
   ): number {
     if (!duration || duration <= 0) return 0
 
+    // NOTE: Despite the name "out_time_ms", FFmpeg actually reports this in MICROSECONDS
+    // See: https://ffmpeg.org/ffmpeg.html#Main-options (progress output format)
     if (progress.out_time_ms) {
-      return Math.min(100, (progress.out_time_ms / 1000 / duration) * 100)
+      return Math.min(100, (progress.out_time_ms / 1000000 / duration) * 100)
     }
 
     if (progress.out_time) {
@@ -641,7 +643,10 @@ export class FFmpegWrapper {
    */
   static async analyzeAudioLoudness(
     inputPath: string,
-    options: AudioNormalizationOptions & { inputOptions?: string[] } = {},
+    options: AudioNormalizationOptions & {
+      inputOptions?: string[]
+      onProgress?: (progress: FFmpegProgress) => void
+    } = {},
   ): Promise<AudioNormalizationMeasurements> {
     const {
       integratedLoudness = -16,
@@ -649,7 +654,22 @@ export class FFmpegWrapper {
       loudnessRange = 11,
       linear = true,
       inputOptions,
+      onProgress,
     } = options
+
+    // Get duration for progress calculation
+    let duration: number | undefined
+    if (onProgress) {
+      try {
+        const metadata = await FFmpegWrapper.ffprobe(inputPath)
+        duration = metadata.format.duration
+      } catch (error) {
+        console.warn(
+          'Could not get duration for analysis progress calculation:',
+          error,
+        )
+      }
+    }
 
     const args = ['-hide_banner', '-nostats']
 
@@ -668,7 +688,10 @@ export class FFmpegWrapper {
       '-',
     )
 
-    const { stderr } = await this.executeFFmpeg('ffmpeg', args)
+    const { stderr } = await this.executeFFmpeg('ffmpeg', args, {
+      onProgress,
+      duration,
+    })
 
     try {
       // Parse loudnorm measurements from stderr
@@ -709,15 +732,26 @@ export class FFmpegWrapper {
       dualMono = true,
     } = options.normalizationOptions || {}
 
-    // Pass 1: Analyze audio for measurements
+    // Pass 1: Analyze audio for measurements (0-50% of progress)
     const measurements = await FFmpegWrapper.analyzeAudioLoudness(inputPath, {
       integratedLoudness,
       truePeak,
       loudnessRange,
       inputOptions: options.inputOptions,
+      onProgress: options.onProgress
+        ? (progress) => {
+            // Map pass 1 progress (0-100%) to 0-50% of total
+            if (progress.percent !== undefined) {
+              options.onProgress!({
+                ...progress,
+                percent: progress.percent * 0.5,
+              })
+            }
+          }
+        : undefined,
     })
 
-    // Pass 2: Apply normalization with measurements
+    // Pass 2: Apply normalization with measurements (50-100% of progress)
     // Determine if this is audio-only processing (no video in output)
     const isAudioOnly =
       !options.videoFilters || options.videoFilters.length === 0
@@ -776,7 +810,17 @@ export class FFmpegWrapper {
       inputOptions: mergedInputOptions,
       outputOptions,
       filterComplex,
-      onProgress: options.onProgress,
+      onProgress: options.onProgress
+        ? (progress) => {
+            // Map pass 2 progress (0-100%) to 50-100% of total
+            if (progress.percent !== undefined) {
+              options.onProgress!({
+                ...progress,
+                percent: 50 + progress.percent * 0.5,
+              })
+            }
+          }
+        : undefined,
     })
   }
 
