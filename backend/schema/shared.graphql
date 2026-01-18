@@ -167,3 +167,45 @@ enum FileType {
   """
   AUDIO
 }
+
+"""
+Input type for cropping parameters.
+Defines a rectangular area to crop from a file.
+"""
+input CropInput {
+  """
+  Left edge of the crop area in pixels.
+  """
+  left: Int!
+
+  """
+  Top edge of the crop area in pixels.
+  """
+  top: Int!
+
+  """
+  Right edge of the crop area in pixels.
+  """
+  right: Int!
+
+  """
+  Bottom edge of the crop area in pixels.
+  """
+  bottom: Int!
+}
+
+"""
+Input type for trimming parameters.
+Defines a time range to trim from video/audio files.
+"""
+input TrimInput {
+  """
+  Start time of the trim in seconds.
+  """
+  startTime: Float!
+
+  """
+  End time of the trim in seconds.
+  """
+  endTime: Float!
+}

@@ -1,10 +1,9 @@
-import { pgTable, index, foreignKey, unique, integer, text, bigint, uuid, uniqueIndex, varchar, serial, type AnyPgColumn, smallint, primaryKey, json, pgMaterializedView, pgSequence, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, index, foreignKey, unique, integer, text, bigint, uuid, uniqueIndex, varchar, serial, smallint, json, primaryKey, pgMaterializedView, pgSequence, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
+export const taskStatus = pgEnum("TaskStatus", ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'])
 export const fileType = pgEnum("file_type", ['VIDEO', 'IMAGE', 'GIF', 'AUDIO', 'PROFILE_PICTURE'])
-export const format = pgEnum("format", ['VIDEO', 'IMAGE', 'GIF', 'PROCESSING', 'AUDIO', 'TEXT'])
-export const taskStatus = pgEnum("task_status", ['DONE', 'QUEUED', 'PROCESSING', 'FAILED'])
-export const variantType = pgEnum("variant_type", ['ORIGINAL', 'THUMBNAIL', 'COMPRESSED', 'COMPRESSED_GIF', 'PROFILE_256', 'PROFILE_64', 'THUMBNAIL_POSTER'])
+export const variantType = pgEnum("variant_type", ['ORIGINAL', 'THUMBNAIL', 'THUMBNAIL_POSTER', 'COMPRESSED', 'COMPRESSED_GIF', 'PROFILE_256', 'PROFILE_64', 'UNMODIFIED_COMPRESSED', 'UNMODIFIED_THUMBNAIL_POSTER'])
 
 export const taskIdSeq = pgSequence("Task_id_seq", {  startWith: "1", increment: "1", minValue: "1", maxValue: "9223372036854775807", cache: "1", cycle: false })
 export const itemIdSeq = pgSequence("item_id_seq", {  startWith: "1", increment: "1", minValue: "1", maxValue: "9223372036854775807", cache: "1", cycle: false })
@@ -108,6 +107,7 @@ export const file = pgTable("file", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	creatorId: integer("creator_id").notNull(),
 	type: fileType().notNull(),
+	originalType: fileType("original_type").notNull(),
 	processingStatus: taskStatus("processing_status").default('DONE').notNull(),
 	processingProgress: smallint("processing_progress"),
 	processingNotes: text("processing_notes"),
@@ -117,35 +117,13 @@ export const file = pgTable("file", {
 	updatedAt: bigint("updated_at", { mode: "number" }).default(sql`get_current_timestamp_ms()`).notNull(),
 	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
 	createdAt: bigint("created_at", { mode: "number" }).default(sql`get_current_timestamp_ms()`).notNull(),
+	processingMeta: json("processing_meta"),
 }, (table): any => [
 	foreignKey({
 			columns: [table.creatorId],
 			foreignColumns: [user.id],
 			name: "file_creator_id_fkey"
 		}).onDelete("cascade"),
-]);
-
-export const fileMigrationLog = pgTable("file_migration_log", {
-	id: serial().primaryKey().notNull(),
-	oldPath: varchar("old_path", { length: 512 }).notNull(),
-	fileId: uuid("file_id"),
-	variantType: variantType("variant_type"),
-	extension: varchar({ length: 10 }).notNull(),
-	migrationStatus: varchar("migration_status", { length: 20 }).default('PENDING').notNull(),
-	notes: text(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	createdAt: bigint("created_at", { mode: "number" }).default(sql`get_current_timestamp_ms()`).notNull(),
-}, (table) => [
-	foreignKey({
-			columns: [table.fileId],
-			foreignColumns: [file.id],
-			name: "file_migration_log_file_id_fkey"
-		}).onDelete("set null"),
-	foreignKey({
-			columns: [table.fileId, table.variantType],
-			foreignColumns: [fileVariant.file, fileVariant.variant],
-			name: "file_migration_log_file_variant_fkey"
-		}).onDelete("set null"),
 ]);
 
 export const user = pgTable("user", {
@@ -206,7 +184,7 @@ export const fileVariant = pgTable("file_variant", {
 			columns: [table.file],
 			foreignColumns: [file.id],
 			name: "file_variant_file_fkey"
-		}).onDelete("cascade"),
+		}).onDelete("restrict"),
 	primaryKey({ columns: [table.file, table.variant], name: "file_variant_pkey"}),
 ]);
 export const postSearchView = pgMaterializedView("post_search_view", {	postId: integer("post_id"),

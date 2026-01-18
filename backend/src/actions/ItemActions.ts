@@ -13,10 +13,19 @@ import PaginationUtils, {
   PaginationArgs,
   Connection,
 } from './PaginationUtils.js'
-import { NotFoundError } from '@src/errors/index.js'
+import {
+  NotFoundError,
+  InputError,
+  AuthorizationError,
+} from '@src/errors/index.js'
 import PostModel from '@src/models/PostModel.js'
 import { UserExternal, UserInternal } from '@src/models/UserModel.js'
-
+import {
+  CropMetadata,
+  TrimMetadata,
+  ModificationActions,
+} from '@src/files/processing-metadata.js'
+import FileActions from './FileActions.js'
 const itemTable = ItemModel.table
 const itemSearchView = ItemModel.itemSearchView
 
@@ -233,6 +242,264 @@ const ItemActions = {
       totalCount,
       paginationInfo,
     )
+  },
+
+  /// Mutations
+
+  /**
+   * Modifies an existing item by reprocessing its associated file in-place
+   * (same file ID).
+   */
+  async _mModifyItem(
+    ctx: Context,
+    fields: {
+      itemId: ItemExternal['id']
+    } & Omit<Parameters<typeof FileActions._mModifyFile>[1], 'fileId'>,
+  ): Promise<string> {
+    const userId = ctx.isAuthenticated()
+
+    // Get the item
+    const itemId = ItemModel.decodeId(fields.itemId)
+    const item = await ctx.dataLoaders.item.getById.load(itemId)
+    if (!item) {
+      throw new NotFoundError('Item not found')
+    }
+
+    // Validate ownership
+    if (item.creatorId !== userId) {
+      throw new AuthorizationError('You can only modify your own items')
+    }
+
+    // Check if item has a file
+    if (!item.fileId) {
+      throw new InputError('Item does not have an associated file')
+    }
+
+    // Validate modifications BEFORE queueing (fail fast)
+    if (fields.addModifications) {
+      const file = await FileActions._qFileInternal(ctx, item.fileId)
+
+      if (!file) {
+        throw new InputError('File not found for validation')
+      }
+
+      // Validate crop operation
+      if (fields.addModifications.crop) {
+        // Check file type supports cropping
+        if (!['VIDEO', 'IMAGE', 'GIF'].includes(file.type)) {
+          throw new InputError(`Cannot crop ${file.type} files`)
+        }
+
+        // Validate crop dimensions are positive
+        const crop = fields.addModifications.crop
+        if (
+          crop.left < 0 ||
+          crop.top < 0 ||
+          crop.right < 0 ||
+          crop.bottom < 0
+        ) {
+          throw new InputError('Crop offsets must be non-negative')
+        }
+      }
+
+      // Validate trim operation
+      if (fields.addModifications.trim) {
+        // Check file type supports trimming (only video and audio)
+        if (!['VIDEO', 'AUDIO'].includes(file.type)) {
+          throw new InputError(`Cannot trim ${file.type} files`)
+        }
+
+        // Validate trim times are positive and start < end
+        const trim = fields.addModifications.trim
+        if (trim.startTime < 0 || trim.endTime <= trim.startTime) {
+          throw new InputError(
+            'Invalid trim times: start must be before end and both must be positive',
+          )
+        }
+      }
+
+      // Validate file type conversion
+      if (fields.addModifications.fileType) {
+        const targetType = fields.addModifications.fileType
+
+        // Check valid conversion paths
+        if (file.originalType === 'IMAGE' && targetType !== 'IMAGE') {
+          throw new InputError('Images can only be converted to IMAGE format')
+        }
+        if (
+          file.originalType === 'AUDIO' &&
+          !['AUDIO', 'VIDEO'].includes(targetType)
+        ) {
+          throw new InputError(
+            'Audio can only be converted to AUDIO or VIDEO format',
+          )
+        }
+      }
+    }
+
+    // Modify the file in-place (same file ID)
+    await FileActions._mModifyFile(ctx, {
+      ...fields,
+      fileId: item.fileId,
+    })
+
+    // Return the same file ID (not a new one)
+    return item.fileId
+  },
+
+  /** Modifies an item by applying a crop modification. */
+  async mCropItem(
+    ctx: Context,
+    fields: {
+      itemId: ItemExternal['id']
+      crop: CropMetadata
+    },
+  ): Promise<string> {
+    return await ItemActions._mModifyItem(ctx, {
+      itemId: fields.itemId,
+      addModifications: {
+        crop: fields.crop,
+      },
+    })
+  },
+
+  /** Trims an item by applying a trim modification. */
+  async mTrimItem(
+    ctx: Context,
+    fields: {
+      itemId: ItemExternal['id']
+      trim: TrimMetadata
+    },
+  ): Promise<string> {
+    return await ItemActions._mModifyItem(ctx, {
+      itemId: fields.itemId,
+      addModifications: {
+        trim: fields.trim,
+      },
+    })
+  },
+
+  /** Converts the file type of an item to the specified format. */
+  async mConvertItem(
+    ctx: Context,
+    fields: {
+      itemId: ItemExternal['id']
+      convertTo: 'VIDEO' | 'IMAGE' | 'GIF' | 'AUDIO'
+    },
+  ): Promise<string> {
+    return await ItemActions._mModifyItem(ctx, {
+      itemId: fields.itemId,
+      addModifications: {
+        fileType: fields.convertTo,
+      },
+    })
+  },
+
+  /**
+   * Removes specified modifications from an item or clears all modifications if
+   * specified.
+   */
+  async mRemoveModifications(
+    ctx: Context,
+    fields: {
+      itemId: ItemExternal['id']
+      removeModifications: ModificationActions[]
+      clearAllModifications?: boolean
+    },
+  ): Promise<string> {
+    const userId = ctx.isAuthenticated()
+
+    // Get the item
+    const itemId = ItemModel.decodeId(fields.itemId)
+    const item = await ctx.dataLoaders.item.getById.load(itemId)
+    if (!item) {
+      throw new NotFoundError('Item not found')
+    }
+
+    // Validate ownership
+    if (item.creatorId !== userId) {
+      throw new AuthorizationError('You can only modify your own items')
+    }
+
+    // Check if item has a file
+    if (!item.fileId) {
+      throw new InputError('Item does not have an associated file')
+    }
+
+    // If clearing all modifications, revert to UNMODIFIED variants
+    if (fields.clearAllModifications) {
+      await FileActions._mRevertFileToUnmodified(ctx, item.fileId)
+    } else {
+      // For partial removals, use the normal modify flow
+      await FileActions._mModifyFile(ctx, {
+        fileId: item.fileId,
+        removeModifications: fields.removeModifications,
+        clearAllModifications: false,
+      })
+    }
+
+    return item.fileId
+  },
+
+  async mResetAndReprocessFile(
+    ctx: Context,
+    fields: {
+      itemId: ItemExternal['id']
+    },
+  ): Promise<string> {
+    const userId = ctx.isAuthenticated()
+
+    // Get the item
+    const itemId = ItemModel.decodeId(fields.itemId)
+    const item = await ctx.dataLoaders.item.getById.load(itemId)
+    if (!item) {
+      throw new NotFoundError('Item not found')
+    }
+
+    // Validate ownership
+    if (item.creatorId !== userId) {
+      throw new AuthorizationError('You can only modify your own items')
+    }
+
+    // Check if item has a file
+    if (!item.fileId) {
+      throw new InputError('Item does not have an associated file')
+    }
+
+    // Perform reset and reprocess
+    await FileActions._mResetAndReprocessFile(ctx, item.fileId)
+
+    return fields.itemId
+  },
+
+  /**
+   * Replace the file reference in an item with a new file This is used when
+   * processing completes successfully
+   */
+  async _mReplaceItemFile(
+    ctx: Context,
+    itemId: number,
+    newFileId: string,
+  ): Promise<void> {
+    await ctx.db
+      .update(itemTable)
+      .set({ fileId: newFileId })
+      .where(eq(itemTable.id, itemId))
+  },
+
+  /**
+   * Revert the file reference in an item back to original file This is used
+   * when processing fails
+   */
+  async _mRevertItemFile(
+    ctx: Context,
+    itemId: number,
+    originalFileId: string,
+  ): Promise<void> {
+    await ctx.db
+      .update(itemTable)
+      .set({ fileId: originalFileId })
+      .where(eq(itemTable.id, itemId))
   },
 }
 

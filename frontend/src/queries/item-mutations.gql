@@ -1,0 +1,35 @@
+mutation convertItem($itemId: ID!, $targetType: FileType!, $crop: CropInput) {
+  convertItem(itemId: $itemId, targetType: $targetType, crop: $crop)
+}
+
+mutation cropItem($itemId: ID!, $crop: CropInput!) {
+  cropItem(itemId: $itemId, crop: $crop)
+}
+
+mutation trimItem($itemId: ID!, $trim: TrimInput!) {
+  trimItem(itemId: $itemId, trim: $trim)
+}
+
+mutation modifyItem($itemId: ID!, $crop: CropInput, $trim: TrimInput) {
+  modifyItem(itemId: $itemId, crop: $crop, trim: $trim)
+}
+
+mutation removeModifications(
+  $itemId: ID!
+  $removeModifications: [String!]!
+  $clearAllModifications: Boolean
+) {
+  removeModifications(
+    itemId: $itemId
+    removeModifications: $removeModifications
+    clearAllModifications: $clearAllModifications
+  )
+}
+
+mutation resetAndReprocessFile($itemId: ID!) {
+  resetAndReprocessFile(itemId: $itemId)
+}
+
+mutation duplicateItem($itemId: ID!) {
+  duplicateItem(itemId: $itemId)
+}

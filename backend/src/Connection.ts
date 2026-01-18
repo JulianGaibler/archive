@@ -10,6 +10,7 @@ export type DbConnection = NodePgDatabase
 
 class DrizzleLogger implements Logger {
   logQuery(query: string, params: unknown[]): void {
+    return
     const prefix = chalk.blue.bold('[Database]')
     // Simple regex for session verification SELECT
     const sessionVerificationRegex =

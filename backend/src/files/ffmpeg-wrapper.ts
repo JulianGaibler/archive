@@ -1,5 +1,6 @@
 import { spawn } from 'child_process'
 import path from 'path'
+import { avSyncOptions } from './config.js'
 
 export interface FFProbeMetadata {
   format: {
@@ -66,6 +67,41 @@ export interface AudioNormalizationOptions {
 type ProgressCallback = (progress: FFmpegProgress) => void
 type ErrorCallback = (error: Error) => void
 type EndCallback = () => void
+
+/**
+ * Configuration for waveform dynamic range enhancement algorithm. These values
+ * control how the algorithm identifies and enhances low-variance audio
+ * sections.
+ */
+const WAVEFORM_ENHANCEMENT_CONFIG = {
+  // Range thresholds for detecting compressed/quiet sections
+  RANGE_THRESHOLD: 0.6, // Sections with range < 0.6 are considered compressed
+  STDDEV_THRESHOLD_CHUNK: 0.25, // Chunk standard deviation threshold for enhancement
+  STDDEV_THRESHOLD_WINDOW: 0.25, // Window standard deviation threshold for enhancement
+
+  // Enhancement factors
+  MAX_CHUNK_FACTOR: 4.0, // Maximum enhancement factor for chunk processing
+  MAX_WINDOW_FACTOR: 2.5, // Maximum enhancement factor for window processing
+  MIN_STDDEV_CHUNK: 0.01, // Minimum stddev to avoid division by zero (chunk)
+  MIN_STDDEV_WINDOW: 0.02, // Minimum stddev to avoid division by zero (window)
+
+  // Smoothing and blending
+  CHUNK_EDGE_SMOOTHING: 5, // Number of samples to smooth at chunk edges
+  WINDOW_EDGE_SMOOTHING: 2, // Number of samples to smooth at window edges
+  CHUNK_BLEND_STRENGTH: 0.9, // How strongly to apply chunk enhancement (0-1)
+  WINDOW_BLEND_STRENGTH: 0.8, // How strongly to apply window enhancement (0-1)
+
+  // Window sizing
+  CHUNK_DIVISOR: 20, // Divide total length by this for chunk size
+  MIN_CHUNK_SIZE: 50, // Minimum chunk size in samples
+  WINDOW_DIVISOR: 10, // Divide total length by this for window size
+  MIN_WINDOW_SIZE: 20, // Minimum window size in samples
+  MAX_WINDOW_SIZE: 100, // Maximum window size in samples
+
+  // Baseline factor calculation
+  BASELINE_FACTOR_NUMERATOR: 0.4, // Numerator for chunk factor calculation
+  BASELINE_FACTOR_NUMERATOR_WINDOW: 0.3, // Numerator for window factor calculation
+} as const
 
 export class FFmpegWrapper {
   private static parseProgress(line: string): Partial<FFmpegProgress> {
@@ -143,6 +179,42 @@ export class FFmpegWrapper {
     return 0
   }
 
+  /**
+   * Builds scale filter string for use in filter chains. Handles both
+   * height-based (?x720) and width x height (1280x720) formats. Returns null if
+   * no size provided.
+   */
+  private static buildScaleFilter(size?: string): string | null {
+    if (!size) return null
+
+    if (size.startsWith('?x')) {
+      const height = size.substring(2)
+      return `scale=-2:${height}`
+    } else if (size.includes('x')) {
+      return `scale=${size}`
+    }
+
+    return null
+  }
+
+  /**
+   * Builds scale arguments for FFmpeg command line. Handles both height-based
+   * (?x720) and width x height (1280x720) formats. Returns empty array if no
+   * size provided.
+   */
+  private static buildScaleArgs(size?: string): string[] {
+    if (!size) return []
+
+    if (size.startsWith('?x')) {
+      const height = size.substring(2)
+      return ['-vf', `scale=-2:${height}`]
+    } else if (size.includes('x')) {
+      return ['-s', size]
+    }
+
+    return []
+  }
+
   private static normalizeDbToPeakLevel(dbValue: number): number {
     // Convert dB to linear scale (0-1)
     // dB values are typically negative, with 0 dB being the maximum
@@ -184,145 +256,271 @@ export class FFmpegWrapper {
     return result
   }
 
+  /**
+   * Calculates statistical properties of audio peak data. Used to identify
+   * compressed/quiet sections that need enhancement.
+   */
+  private static calculatePeakStats(data: number[]): {
+    min: number
+    max: number
+    range: number
+    mean: number
+    stdDev: number
+    center: number
+  } {
+    const min = Math.min(...data)
+    const max = Math.max(...data)
+    const mean = data.reduce((sum, val) => sum + val, 0) / data.length
+    const variance =
+      data.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / data.length
+
+    return {
+      min,
+      max,
+      range: max - min,
+      mean,
+      stdDev: Math.sqrt(variance),
+      center: (min + max) / 2,
+    }
+  }
+
+  /**
+   * Applies enhancement with edge smoothing to avoid abrupt transitions. Blends
+   * the enhanced value with the original based on smoothing factor and blend
+   * strength.
+   */
+  private static applyEnhancementBlend(
+    originalValue: number,
+    enhancedValue: number,
+    smoothingFactor: number,
+    blendStrength: number,
+  ): number {
+    return (
+      originalValue +
+      (enhancedValue - originalValue) * smoothingFactor * blendStrength
+    )
+  }
+
+  /**
+   * Enhances a range of samples by expanding them around their center point.
+   * Applies edge smoothing to prevent discontinuities at range boundaries.
+   */
+  private static enhanceRange(
+    data: number[],
+    start: number,
+    end: number,
+    factor: number,
+    center: number,
+    edgeSmoothing: number,
+    blendStrength: number,
+  ): void {
+    for (let i = start; i < end; i++) {
+      const enhanced = center + (data[i] - center) * factor
+      const edgeDistance = Math.min(i - start, end - i)
+      const smoothing = Math.min(1, edgeDistance / edgeSmoothing)
+      data[i] = this.applyEnhancementBlend(
+        data[i],
+        enhanced,
+        smoothing,
+        blendStrength,
+      )
+    }
+  }
+
+  /**
+   * Enhances dynamic range of waveform data to improve visualization.
+   *
+   * This two-pass algorithm identifies and enhances compressed/quiet audio
+   * sections:
+   *
+   * - Pass 1: Processes large chunks to enhance globally compressed regions
+   * - Pass 2: Uses a sliding window to enhance locally compressed areas
+   *
+   * The algorithm only enhances sections with low variance (stdDev < threshold)
+   * and compressed range (range < threshold), preserving the character of
+   * dynamic audio.
+   *
+   * @param peaks Normalized peak values (0-1)
+   * @returns Enhanced peak values with improved dynamic range
+   */
   private static enhanceDynamicRange(peaks: number[]): number[] {
     if (peaks.length === 0) return peaks
 
-    // Helper function to calculate statistics
-    const getStats = (data: number[]) => {
-      const min = Math.min(...data)
-      const max = Math.max(...data)
-      const mean = data.reduce((sum, val) => sum + val, 0) / data.length
-      const variance =
-        data.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
-        data.length
-      return {
-        min,
-        max,
-        range: max - min,
-        mean,
-        stdDev: Math.sqrt(variance),
-        center: (min + max) / 2,
-      }
-    }
-
-    // Helper function to apply enhancement with smoothing
-    const applyEnhancement = (
-      originalValue: number,
-      enhancedValue: number,
-      smoothingFactor: number,
-      blendStrength: number,
-    ) => {
-      return (
-        originalValue +
-        (enhancedValue - originalValue) * smoothingFactor * blendStrength
-      )
-    }
-
-    // Helper function to enhance a range of values
-    const enhanceRange = (
-      data: number[],
-      start: number,
-      end: number,
-      factor: number,
-      center: number,
-      edgeSmoothing: number,
-    ) => {
-      for (let i = start; i < end; i++) {
-        const enhanced = center + (data[i] - center) * factor
-        const edgeDistance = Math.min(i - start, end - i)
-        const smoothing = Math.min(1, edgeDistance / edgeSmoothing)
-        data[i] = applyEnhancement(data[i], enhanced, smoothing, 0.9)
-      }
-    }
-
+    const config = WAVEFORM_ENHANCEMENT_CONFIG
     const enhanced = [...peaks]
 
-    // First pass: Global chunk enhancement
-    const chunkSize = Math.max(50, Math.floor(peaks.length / 20))
+    // Pass 1: Global chunk-based enhancement
+    // Processes large sections to catch globally compressed audio
+    const chunkSize = Math.max(
+      config.MIN_CHUNK_SIZE,
+      Math.floor(peaks.length / config.CHUNK_DIVISOR),
+    )
+
     for (let start = 0; start < peaks.length; start += chunkSize) {
       const end = Math.min(peaks.length, start + chunkSize)
-      const stats = getStats(peaks.slice(start, end))
+      const stats = this.calculatePeakStats(peaks.slice(start, end))
 
-      if (stats.range < 0.6 && stats.stdDev < 0.25) {
-        const factor = Math.min(4.0, 0.4 / Math.max(stats.stdDev, 0.01))
-        enhanceRange(enhanced, start, end, factor, stats.center, 5)
-      }
-    }
+      // Only enhance compressed sections (low range and low variance)
+      if (
+        stats.range < config.RANGE_THRESHOLD &&
+        stats.stdDev < config.STDDEV_THRESHOLD_CHUNK
+      ) {
+        // Calculate enhancement factor inversely proportional to stddev
+        // Lower stddev = more compression = stronger enhancement
+        const factor = Math.min(
+          config.MAX_CHUNK_FACTOR,
+          config.BASELINE_FACTOR_NUMERATOR /
+            Math.max(stats.stdDev, config.MIN_STDDEV_CHUNK),
+        )
 
-    // Second pass: Local sliding window enhancement
-    const windowSize = Math.min(
-      100,
-      Math.max(20, Math.floor(peaks.length / 10)),
-    )
-    for (let i = 0; i < enhanced.length; i++) {
-      const start = Math.max(0, i - Math.floor(windowSize / 2))
-      const end = Math.min(enhanced.length, i + Math.floor(windowSize / 2))
-      const stats = getStats(enhanced.slice(start, end))
-
-      if (stats.range <= 0.6 && stats.stdDev <= 0.25) {
-        const factor = Math.min(2.5, 0.3 / Math.max(stats.stdDev, 0.02))
-        const enhancedValue =
-          stats.center + (enhanced[i] - stats.center) * factor
-        const edgeDistance = Math.min(i - start, end - i)
-        const smoothing = Math.min(1, edgeDistance / 2)
-        enhanced[i] = applyEnhancement(
-          enhanced[i],
-          enhancedValue,
-          smoothing,
-          0.8,
+        this.enhanceRange(
+          enhanced,
+          start,
+          end,
+          factor,
+          stats.center,
+          config.CHUNK_EDGE_SMOOTHING,
+          config.CHUNK_BLEND_STRENGTH,
         )
       }
     }
 
-    // Final normalization
-    const finalStats = getStats(enhanced)
+    // Pass 2: Local sliding window enhancement
+    // Fine-tunes enhancement for small compressed regions missed by chunk processing
+    const windowSize = Math.min(
+      config.MAX_WINDOW_SIZE,
+      Math.max(
+        config.MIN_WINDOW_SIZE,
+        Math.floor(peaks.length / config.WINDOW_DIVISOR),
+      ),
+    )
+
+    for (let i = 0; i < enhanced.length; i++) {
+      const start = Math.max(0, i - Math.floor(windowSize / 2))
+      const end = Math.min(enhanced.length, i + Math.floor(windowSize / 2))
+      const stats = this.calculatePeakStats(enhanced.slice(start, end))
+
+      // Only enhance compressed sections
+      if (
+        stats.range <= config.RANGE_THRESHOLD &&
+        stats.stdDev <= config.STDDEV_THRESHOLD_WINDOW
+      ) {
+        // Calculate enhancement factor
+        const factor = Math.min(
+          config.MAX_WINDOW_FACTOR,
+          config.BASELINE_FACTOR_NUMERATOR_WINDOW /
+            Math.max(stats.stdDev, config.MIN_STDDEV_WINDOW),
+        )
+
+        const enhancedValue =
+          stats.center + (enhanced[i] - stats.center) * factor
+
+        // Apply edge smoothing for gradual transitions
+        const edgeDistance = Math.min(i - start, end - i)
+        const smoothing = Math.min(
+          1,
+          edgeDistance / config.WINDOW_EDGE_SMOOTHING,
+        )
+
+        enhanced[i] = this.applyEnhancementBlend(
+          enhanced[i],
+          enhancedValue,
+          smoothing,
+          config.WINDOW_BLEND_STRENGTH,
+        )
+      }
+    }
+
+    // Final normalization to 0-1 range
+    const finalStats = this.calculatePeakStats(enhanced)
     return finalStats.range > 0
       ? enhanced.map((value) => (value - finalStats.min) / finalStats.range)
       : enhanced
   }
 
-  static async ffprobe(inputPath: string): Promise<FFProbeMetadata> {
+  /**
+   * Shared process executor for FFmpeg/FFprobe commands. Handles process
+   * spawning, output collection, and error handling.
+   */
+  private static async executeFFmpeg(
+    command: 'ffmpeg' | 'ffprobe',
+    args: string[],
+    options: {
+      parseStdout?: (data: string) => void
+      parseStderr?: (data: string) => void
+      onProgress?: (progress: FFmpegProgress) => void
+      duration?: number
+    } = {},
+  ): Promise<{ stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {
-      const args = [
-        '-v',
-        'quiet',
-        '-print_format',
-        'json',
-        '-show_format',
-        '-show_streams',
-        inputPath,
-      ]
-
-      const process = spawn('ffprobe', args)
+      const process = spawn(command, args)
       let stdout = ''
       let stderr = ''
 
       process.stdout.on('data', (data) => {
-        stdout += data.toString()
+        const chunk = data.toString()
+        stdout += chunk
+        if (options.parseStdout) {
+          options.parseStdout(chunk)
+        }
       })
 
       process.stderr.on('data', (data) => {
-        stderr += data.toString()
+        const chunk = data.toString()
+        stderr += chunk
+
+        if (options.parseStderr) {
+          options.parseStderr(chunk)
+        }
+
+        // Parse progress if handler provided
+        if (options.onProgress) {
+          const lines = chunk.split('\n')
+          for (const line of lines) {
+            const progress = this.parseProgress(line)
+            if (Object.keys(progress).length > 0) {
+              const percent = options.duration
+                ? this.calculatePercent(progress, options.duration)
+                : undefined
+              options.onProgress({ ...progress, percent })
+            }
+          }
+        }
       })
 
       process.on('close', (code) => {
         if (code !== 0) {
-          reject(new Error(`ffprobe failed with code ${code}: ${stderr}`))
+          reject(new Error(`${command} failed with code ${code}: ${stderr}`))
           return
         }
-
-        try {
-          const metadata = JSON.parse(stdout)
-          resolve(metadata)
-        } catch (error) {
-          reject(new Error(`Failed to parse ffprobe output: ${error}`))
-        }
+        resolve({ stdout, stderr })
       })
 
       process.on('error', (error) => {
-        reject(new Error(`Failed to spawn ffprobe: ${error.message}`))
+        reject(new Error(`Failed to spawn ${command}: ${error.message}`))
       })
     })
+  }
+
+  static async ffprobe(inputPath: string): Promise<FFProbeMetadata> {
+    const args = [
+      '-v',
+      'quiet',
+      '-print_format',
+      'json',
+      '-show_format',
+      '-show_streams',
+      inputPath,
+    ]
+
+    const { stdout } = await this.executeFFmpeg('ffprobe', args)
+
+    try {
+      const metadata = JSON.parse(stdout)
+      return metadata
+    } catch (error) {
+      throw new Error(`Failed to parse ffprobe output: ${error}`)
+    }
   }
 
   static async generateWaveform(
@@ -345,142 +543,93 @@ export class FFmpegWrapper {
     const rawSamples = Math.max(samples * 4, 2000) // Get more raw data for better averaging
     const samplesPerChunk = Math.floor((44100 * duration) / rawSamples)
 
-    return new Promise((resolve, reject) => {
-      // Build the filter string based on channel selection
-      let filterString = 'aresample=44100'
-      if (channel === 'mono') {
-        filterString += ',pan=mono|c0=0.5*c0+0.5*c1'
-      } else if (channel === 'left') {
-        filterString += ',pan=mono|c0=c0'
-      } else if (channel === 'right') {
-        filterString += ',pan=mono|c0=c1'
+    // Build the filter string based on channel selection
+    let filterString = 'aresample=44100'
+    if (channel === 'mono') {
+      filterString += ',pan=mono|c0=0.5*c0+0.5*c1'
+    } else if (channel === 'left') {
+      filterString += ',pan=mono|c0=c0'
+    } else if (channel === 'right') {
+      filterString += ',pan=mono|c0=c1'
+    }
+
+    filterString += `,asetnsamples=${samplesPerChunk},astats=metadata=1:reset=1`
+
+    const args = [
+      '-v',
+      'error',
+      '-f',
+      'lavfi',
+      '-i',
+      `amovie=${inputPath},${filterString}`,
+      '-show_entries',
+      'frame_tags=lavfi.astats.Overall.Peak_level',
+      '-of',
+      'json',
+    ]
+
+    const { stdout } = await this.executeFFmpeg('ffprobe', args)
+
+    try {
+      const output = JSON.parse(stdout)
+      const frames = output.frames || []
+
+      // Extract peak levels and convert to normalized values
+      const rawPeaks: number[] = []
+
+      for (const frame of frames) {
+        const tags = frame.tags || {}
+        const peakLevel = tags['lavfi.astats.Overall.Peak_level']
+
+        if (peakLevel !== undefined) {
+          const dbValue = parseFloat(peakLevel)
+          if (!isNaN(dbValue)) {
+            rawPeaks.push(FFmpegWrapper.normalizeDbToPeakLevel(dbValue))
+          }
+        }
       }
 
-      filterString += `,asetnsamples=${samplesPerChunk},astats=metadata=1:reset=1`
+      if (rawPeaks.length === 0) {
+        throw new Error('No peak data found in audio file')
+      }
 
-      const args = [
-        '-v',
-        'error',
-        '-f',
-        'lavfi',
-        '-i',
-        `amovie=${inputPath},${filterString}`,
-        '-show_entries',
-        'frame_tags=lavfi.astats.Overall.Peak_level',
-        '-of',
-        'json',
-      ]
+      // Average the raw peaks down to the target number of samples
+      let peaks = FFmpegWrapper.averageArray(rawPeaks, samples)
 
-      const process = spawn('ffprobe', args)
-      let stdout = ''
-      let stderr = ''
+      // Enhance dynamic range if the waveform is too compressed
+      peaks = FFmpegWrapper.enhanceDynamicRange(peaks)
 
-      process.stdout.on('data', (data) => {
-        stdout += data.toString()
-      })
+      const waveformData: WaveformData = {
+        peaks,
+        duration,
+        sampleRate: peaks.length / duration,
+      }
 
-      process.stderr.on('data', (data) => {
-        stderr += data.toString()
-      })
-
-      process.on('close', (code) => {
-        if (code !== 0) {
-          reject(
-            new Error(
-              `ffprobe waveform generation failed with code ${code}: ${stderr}`,
-            ),
-          )
-          return
-        }
-
-        try {
-          const output = JSON.parse(stdout)
-          const frames = output.frames || []
-
-          // Extract peak levels and convert to normalized values
-          const rawPeaks: number[] = []
-
-          for (const frame of frames) {
-            const tags = frame.tags || {}
-            const peakLevel = tags['lavfi.astats.Overall.Peak_level']
-
-            if (peakLevel !== undefined) {
-              const dbValue = parseFloat(peakLevel)
-              if (!isNaN(dbValue)) {
-                rawPeaks.push(FFmpegWrapper.normalizeDbToPeakLevel(dbValue))
-              }
-            }
-          }
-
-          if (rawPeaks.length === 0) {
-            reject(new Error('No peak data found in audio file'))
-            return
-          }
-
-          // Average the raw peaks down to the target number of samples
-          let peaks = FFmpegWrapper.averageArray(rawPeaks, samples)
-
-          // Enhance dynamic range if the waveform is too compressed
-          peaks = FFmpegWrapper.enhanceDynamicRange(peaks)
-
-          const waveformData: WaveformData = {
-            peaks,
-            duration,
-            sampleRate: peaks.length / duration,
-          }
-
-          resolve(waveformData)
-        } catch (error) {
-          reject(new Error(`Failed to parse waveform output: ${error}`))
-        }
-      })
-
-      process.on('error', (error) => {
-        reject(new Error(`Failed to spawn ffprobe: ${error.message}`))
-      })
-    })
+      return waveformData
+    } catch (error) {
+      throw new Error(`Failed to parse waveform output: ${error}`)
+    }
   }
 
   static async screenshots(
     inputPath: string,
     options: ScreenshotOptions,
   ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const timestamp = options.timestamps[0] || 1
-      const outputPath = path.join(options.folder, options.filename)
+    const timestamp = options.timestamps[0] || 1
+    const outputPath = path.join(options.folder, options.filename)
 
-      const args = [
-        '-i',
-        inputPath,
-        '-ss',
-        timestamp.toString(),
-        '-vframes',
-        '1',
-        '-y', // Overwrite output file
-        outputPath,
-      ]
+    const args = [
+      '-i',
+      inputPath,
+      '-ss',
+      timestamp.toString(),
+      '-vframes',
+      '1',
+      '-y', // Overwrite output file
+      outputPath,
+    ]
 
-      const process = spawn('ffmpeg', args)
-      let stderr = ''
-
-      process.stderr.on('data', (data) => {
-        stderr += data.toString()
-      })
-
-      process.on('close', (code) => {
-        if (code !== 0) {
-          reject(
-            new Error(`ffmpeg screenshots failed with code ${code}: ${stderr}`),
-          )
-          return
-        }
-        resolve()
-      })
-
-      process.on('error', (error) => {
-        reject(new Error(`Failed to spawn ffmpeg: ${error.message}`))
-      })
-    })
+    await this.executeFFmpeg('ffmpeg', args)
   }
 
   /**
@@ -492,60 +641,42 @@ export class FFmpegWrapper {
    */
   static async analyzeAudioLoudness(
     inputPath: string,
-    options: AudioNormalizationOptions = {},
+    options: AudioNormalizationOptions & { inputOptions?: string[] } = {},
   ): Promise<AudioNormalizationMeasurements> {
     const {
       integratedLoudness = -16,
       truePeak = -1.5,
       loudnessRange = 11,
       linear = true,
+      inputOptions,
     } = options
 
-    return new Promise((resolve, reject) => {
-      const args = [
-        '-hide_banner',
-        '-nostats',
-        '-i',
-        inputPath,
-        '-af',
-        `loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}:print_format=json:linear=${linear ? 'true' : 'false'}`,
-        '-f',
-        'null',
-        '-',
-      ]
+    const args = ['-hide_banner', '-nostats']
 
-      const process = spawn('ffmpeg', args)
-      let stderr = ''
+    // Add input options before -i flag
+    if (inputOptions) {
+      args.push(...inputOptions)
+    }
 
-      process.stderr.on('data', (data) => {
-        stderr += data.toString()
-      })
+    args.push(
+      '-i',
+      inputPath,
+      '-af',
+      `loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}:print_format=json:linear=${linear ? 'true' : 'false'}`,
+      '-f',
+      'null',
+      '-',
+    )
 
-      process.on('close', (code) => {
-        if (code !== 0) {
-          reject(
-            new Error(`Audio analysis failed with code ${code}: ${stderr}`),
-          )
-          return
-        }
+    const { stderr } = await this.executeFFmpeg('ffmpeg', args)
 
-        try {
-          // Parse loudnorm measurements from stderr
-          const measurements = FFmpegWrapper.parseLoudnormMeasurements(stderr)
-          resolve(measurements)
-        } catch (error) {
-          reject(new Error(`Failed to parse loudnorm measurements: ${error}`))
-        }
-      })
-
-      process.on('error', (error) => {
-        reject(
-          new Error(
-            `Failed to spawn ffmpeg for audio analysis: ${error.message}`,
-          ),
-        )
-      })
-    })
+    try {
+      // Parse loudnorm measurements from stderr
+      const measurements = FFmpegWrapper.parseLoudnormMeasurements(stderr)
+      return measurements
+    } catch (error) {
+      throw new Error(`Failed to parse loudnorm measurements: ${error}`)
+    }
   }
 
   /**
@@ -561,8 +692,11 @@ export class FFmpegWrapper {
     inputPath: string,
     outputPath: string,
     options: {
+      inputOptions?: string[]
       audioOptions?: string[]
       videoOptions?: string[]
+      videoFilters?: string[]
+      videoSize?: string
       normalizationOptions?: AudioNormalizationOptions
       onProgress?: (progress: FFmpegProgress) => void
     } = {},
@@ -580,18 +714,68 @@ export class FFmpegWrapper {
       integratedLoudness,
       truePeak,
       loudnessRange,
+      inputOptions: options.inputOptions,
     })
 
     // Pass 2: Apply normalization with measurements
-    const audioFilter = `loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}:linear=${linear ? 'true' : 'false'}:measured_I=${measurements.input_i}:measured_LRA=${measurements.input_lra}:measured_TP=${measurements.input_tp}:measured_thresh=${measurements.input_thresh}:offset=${measurements.target_offset}:dual_mono=${dualMono ? 'true' : 'false'}`
+    // Determine if this is audio-only processing (no video in output)
+    const isAudioOnly =
+      !options.videoFilters || options.videoFilters.length === 0
+
+    // Audio filter chain - conditionally include apad only for video+audio
+    // The apad filter pads silence indefinitely and requires -shortest flag to stop
+    // For audio-only processing, -shortest doesn't work properly, causing FFmpeg to hang
+    const applyApad = !isAudioOnly // Only use apad when video stream is present
+    const audioPadFilter = applyApad ? ',apad' : ''
+
+    // Audio filter chain: aresample (sync) -> loudnorm (normalize) -> asetpts (reset timestamps) -> [apad (pad silence)]
+    const audioFilter = `aresample=async=1:first_pts=0,loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}:linear=${linear ? 'true' : 'false'}:measured_I=${measurements.input_i}:measured_LRA=${measurements.input_lra}:measured_TP=${measurements.input_tp}:measured_thresh=${measurements.input_thresh}:offset=${measurements.target_offset}:dual_mono=${dualMono ? 'true' : 'false'},asetpts=PTS-STARTPTS${audioPadFilter}`
+
+    // Build filter complex if video filters are provided
+    let filterComplex: string | undefined
+    const outputOptions: string[] = []
+
+    if (options.videoFilters && options.videoFilters.length > 0) {
+      // Apply video filters (crop, etc.) and scale
+      const videoFilterChain = [...options.videoFilters]
+
+      // Add scale filter if videoSize is provided
+      const scaleFilter = this.buildScaleFilter(options.videoSize)
+      if (scaleFilter) {
+        videoFilterChain.push(scaleFilter)
+      }
+
+      const videoFilterString = videoFilterChain.join(',')
+      filterComplex = `[0:v]${videoFilterString}[v];[0:a]${audioFilter}[a]`
+      outputOptions.push('-map', '[v]', '-map', '[a]')
+    } else {
+      // No video filters, just audio normalization
+      outputOptions.push('-af', audioFilter)
+
+      // Add scale separately when no filter_complex
+      const scaleArgs = this.buildScaleArgs(options.videoSize)
+      if (scaleArgs.length > 0) {
+        outputOptions.push(...scaleArgs)
+      }
+    }
+
+    // Add A/V sync flags before codec options
+    outputOptions.push(
+      ...avSyncOptions.output,
+      ...(options.audioOptions || []),
+      ...(options.videoOptions || []),
+    )
+
+    // Merge A/V sync input options with user-provided input options
+    const mergedInputOptions = [
+      ...avSyncOptions.input,
+      ...(options.inputOptions || []),
+    ]
 
     return FFmpegWrapper.convert(inputPath, outputPath, {
-      outputOptions: [
-        '-af',
-        audioFilter,
-        ...(options.audioOptions || []),
-        ...(options.videoOptions || []),
-      ],
+      inputOptions: mergedInputOptions,
+      outputOptions,
+      filterComplex,
       onProgress: options.onProgress,
     })
   }
@@ -646,6 +830,7 @@ export class FFmpegWrapper {
     outputPath: string,
     options: {
       size?: string
+      inputOptions?: string[]
       outputOptions?: string[]
       filterComplex?: string
       onProgress?: (progress: FFmpegProgress) => void
@@ -661,82 +846,49 @@ export class FFmpegWrapper {
       console.warn('Could not get duration for progress calculation:', error)
     }
 
-    return new Promise((resolve, reject) => {
-      const args = ['-i', inputPath]
+    const args: string[] = []
 
-      // Add filter complex if provided
-      if (options.filterComplex) {
-        args.push('-filter_complex', options.filterComplex)
-      } else if (options.size) {
-        // Only add -vf if no filter_complex is used (they conflict)
-        if (options.size.startsWith('?x')) {
-          // Height-based scaling
-          const height = options.size.substring(2)
-          args.push('-vf', `scale=-2:${height}`)
-        } else if (options.size.includes('x')) {
-          // Width x Height
-          args.push('-s', options.size)
-        }
+    // Add input options before -i flag
+    if (options.inputOptions) {
+      args.push(...options.inputOptions)
+    }
+
+    args.push('-i', inputPath)
+
+    // Add filter complex if provided
+    if (options.filterComplex) {
+      args.push('-filter_complex', options.filterComplex)
+    } else {
+      // Only add scale if no filter_complex is used (they conflict)
+      const scaleArgs = this.buildScaleArgs(options.size)
+      if (scaleArgs.length > 0) {
+        args.push(...scaleArgs)
       }
+    }
 
-      // Add output options
-      if (options.outputOptions) {
-        args.push(...options.outputOptions)
-      }
+    // Add output options
+    if (options.outputOptions) {
+      args.push(...options.outputOptions)
+    }
 
-      // Add progress reporting - use pipe:2 instead of pipe:1 to avoid conflicts
-      args.push('-progress', 'pipe:2')
+    // Add progress reporting - use pipe:2 instead of pipe:1 to avoid conflicts
+    args.push('-progress', 'pipe:2')
 
-      // Add output path and overwrite flag
-      args.push('-y', outputPath)
+    // Add output path and overwrite flag
+    args.push('-y', outputPath)
 
-      const process = spawn('ffmpeg', args)
-      let stderr = ''
-
-      // Progress reporting comes through stderr when using pipe:2
-      process.stderr.on('data', (data) => {
-        const output = data.toString()
-        stderr += output
-
-        // Parse progress information
-        if (options.onProgress) {
-          const lines = output.split('\n')
-          for (const line of lines) {
-            if (line.trim() && line.includes('=')) {
-              const progress = FFmpegWrapper.parseProgress(line)
-              if (duration && progress.out_time) {
-                progress.percent = FFmpegWrapper.calculatePercent(
-                  progress,
-                  duration,
-                )
-              }
-              options.onProgress(progress as FFmpegProgress)
-            }
-          }
-        }
-      })
-
-      process.on('close', (code) => {
-        if (code !== 0) {
-          reject(
-            new Error(`ffmpeg conversion failed with code ${code}: ${stderr}`),
-          )
-          return
-        }
-        // Send final progress update
-        if (options.onProgress) {
-          options.onProgress({
-            percent: 100,
-            progress: 'end',
-          } as FFmpegProgress)
-        }
-        resolve()
-      })
-
-      process.on('error', (error) => {
-        reject(new Error(`Failed to spawn ffmpeg: ${error.message}`))
-      })
+    await this.executeFFmpeg('ffmpeg', args, {
+      onProgress: options.onProgress,
+      duration,
     })
+
+    // Send final progress update
+    if (options.onProgress) {
+      options.onProgress({
+        percent: 100,
+        progress: 'end',
+      } as FFmpegProgress)
+    }
   }
 }
 
@@ -745,6 +897,7 @@ export class FfmpegCommand {
   private inputPath: string
   private outputPath?: string
   private sizeOption?: string
+  private inputOpts: string[] = []
   private outputOpts: string[] = []
   private filterComplexOption?: string
   private progressCallback?: ProgressCallback
@@ -753,6 +906,11 @@ export class FfmpegCommand {
 
   constructor(inputPath: string) {
     this.inputPath = inputPath
+  }
+
+  inputOptions(options: string[]) {
+    this.inputOpts = options
+    return this
   }
 
   screenshots(options: ScreenshotOptions) {
@@ -819,6 +977,7 @@ export class FfmpegCommand {
 
     const convertOptions = {
       size: this.sizeOption,
+      inputOptions: this.inputOpts.length > 0 ? this.inputOpts : undefined,
       outputOptions: this.outputOpts,
       filterComplex: this.filterComplexOption,
       onProgress: this.progressCallback,

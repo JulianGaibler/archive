@@ -22,10 +22,10 @@ const pageTitle = title ? `${title} | ${siteName}` : siteName
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     {description && <meta name="description" content={description} />}
     {
-      fonts.map((item) => (
+      Object.values(fonts).map((item) => (
         <link
           rel="preload"
-          href={item}
+          href={item.url}
           as="font"
           type="font/woff2"
           crossorigin

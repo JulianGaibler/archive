@@ -205,6 +205,19 @@ type Mutation {
   ): Boolean!
 
   """
+  Duplicates an item within the same post.
+  Creates an independent copy of the item with its own file copy.
+  The duplicate appears right after the original item (position + 1).
+  Returns the ID of the new duplicated item.
+  """
+  duplicateItem(
+    """
+    The ID of the item to duplicate.
+    """
+    itemId: ID!
+  ): ID!
+
+  """
   Revokes the session of a user.
   """
   revokeSession(
@@ -308,4 +321,117 @@ type Mutation {
     """
     newPassword: String!
   ): Boolean!
+
+  """
+  Convert an item's file to a different format.
+  Creates new variants while preserving the original.
+  Returns the new file ID for subscription.
+  """
+  convertItem(
+    """
+    The ID of the item to convert.
+    """
+    itemId: ID!
+
+    """
+    The target file type to convert to.
+    """
+    targetType: FileType!
+
+    """
+    Optional crop parameters to apply during conversion.
+    """
+    crop: CropInput
+  ): String!
+
+  """
+  Crop an item's file.
+  Creates new variants with crop applied while preserving the original.
+  Returns the new file ID for subscription.
+  """
+  cropItem(
+    """
+    The ID of the item to crop.
+    """
+    itemId: ID!
+
+    """
+    The crop parameters specifying the area to keep.
+    """
+    crop: CropInput!
+  ): String!
+
+  """
+  Trim an item's file.
+  Creates new variants with trim applied while preserving the original.
+  Returns the new file ID for subscription.
+  """
+  trimItem(
+    """
+    The ID of the item to trim.
+    """
+    itemId: ID!
+
+    """
+    The trim parameters specifying the time range to keep.
+    """
+    trim: TrimInput!
+  ): String!
+
+  """
+  Apply modifications (crop and/or trim) to an item's file.
+  Creates new variants with modifications applied while preserving the original.
+  This is more efficient than calling cropItem and trimItem separately.
+  Returns the new file ID for subscription.
+  """
+  modifyItem(
+    """
+    The ID of the item to modify.
+    """
+    itemId: ID!
+
+    """
+    Optional crop parameters to apply.
+    """
+    crop: CropInput
+
+    """
+    Optional trim parameters to apply.
+    """
+    trim: TrimInput
+  ): String!
+
+  """
+  Remove specific modifications from an item or revert to original.
+  Creates a new file without the specified modifications.
+  Returns the new file ID for subscription.
+  """
+  removeModifications(
+    """
+    The ID of the item to modify.
+    """
+    itemId: ID!
+
+    """
+    Specific modifications to remove (e.g., ["crop", "trim", "fileType"]).
+    If empty array, removes all modifications.
+    """
+    removeModifications: [String!]!
+
+    """
+    If true, clears all modifications and reverts to original state.
+    """
+    clearAllModifications: Boolean
+  ): String!
+
+  """
+  Reset and reprocess a file: removes all modifications, deletes all processed variants,
+  and reprocesses from the original file. Useful for recovering from processing errors.
+  """
+  resetAndReprocessFile(
+    """
+    The item ID containing the file to reset
+    """
+    itemId: ID!
+  ): String!
 }

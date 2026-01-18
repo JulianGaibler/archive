@@ -15,13 +15,30 @@ fragment ItemData on Item {
     file {
       __typename
       id
+      originalType
       processingStatus
       processingProgress
       processingNotes
+      updatedAt
       originalPath
       compressedPath
       thumbnailPath
       posterThumbnailPath
+      unmodifiedCompressedPath
+      unmodifiedThumbnailPosterPath
+      modifications {
+        crop {
+          left
+          top
+          right
+          bottom
+        }
+        trim {
+          startTime
+          endTime
+        }
+        fileType
+      }
       relativeHeight
     }
     caption
@@ -31,12 +48,24 @@ fragment ItemData on Item {
     file {
       __typename
       id
+      originalType
       processingStatus
       processingProgress
       processingNotes
+      updatedAt
       originalPath
       compressedPath
       thumbnailPath
+      unmodifiedCompressedPath
+      modifications {
+        crop {
+          left
+          top
+          right
+          bottom
+        }
+        fileType
+      }
       relativeHeight
     }
     caption
@@ -46,13 +75,29 @@ fragment ItemData on Item {
     file {
       __typename
       id
+      originalType
       processingStatus
       processingProgress
       processingNotes
+      updatedAt
       originalPath
       compressedPath
       compressedGifPath
       thumbnailPath
+      unmodifiedCompressedPath
+      modifications {
+        crop {
+          left
+          top
+          right
+          bottom
+        }
+        trim {
+          startTime
+          endTime
+        }
+        fileType
+      }
       relativeHeight
     }
     caption
@@ -62,18 +107,39 @@ fragment ItemData on Item {
     file {
       __typename
       id
+      originalType
       processingStatus
       processingProgress
       processingNotes
+      updatedAt
       originalPath
       compressedPath
+      unmodifiedCompressedPath
+      modifications {
+        crop {
+          left
+          top
+          right
+          bottom
+        }
+        trim {
+          startTime
+          endTime
+        }
+        fileType
+      }
       waveform
+      waveformThumbnail
     }
     caption
     position
   }
   ... on ProcessingItem {
     position
+    fileId
+    processingStatus
+    processingProgress
+    processingNotes
   }
 }
 

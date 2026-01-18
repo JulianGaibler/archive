@@ -4,11 +4,12 @@
 
   interface Props {
     src: string
+    fileUpdatedAt?: string | number
     waveform?: number[]
     waveformThumbnail?: number[]
   }
 
-  let { src, waveform, waveformThumbnail }: Props = $props()
+  let { src, fileUpdatedAt, waveform, waveformThumbnail }: Props = $props()
 
   let audioElement: HTMLAudioElement | undefined = $state()
   let isPlaying = $state(false)
@@ -195,8 +196,12 @@
     {#if import.meta.env.SSR}
       <noscript>
         <!-- SSR version for server-side rendering -->
-        <audio preload="metadata" controls src={getResourceUrl(src)}>
-          <source src={getResourceUrl(src)} type="audio/mpeg" />
+        <audio
+          preload="metadata"
+          controls
+          src={getResourceUrl(src, fileUpdatedAt)}
+        >
+          <source src={getResourceUrl(src, fileUpdatedAt)} type="audio/mpeg" />
         </audio>
       </noscript>
     {:else}
@@ -210,7 +215,7 @@
         onvolumechange={handleVolumeChange}
         preload="metadata"
       >
-        <source src={getResourceUrl(src)} type="audio/mpeg" />
+        <source src={getResourceUrl(src, fileUpdatedAt)} type="audio/mpeg" />
       </audio>
       <!-- Waveform visualization -->
       {#if waveformData.length > 0}

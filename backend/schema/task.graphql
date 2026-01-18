@@ -1,4 +1,25 @@
 """
+Item affected by file processing, with type info to avoid frontend refetch.
+"""
+type AffectedItem {
+  """
+  The item ID
+  """
+  id: ID!
+
+  """
+  The item typename (VideoItem, ProcessingItem, AudioItem, etc.)
+  Allows frontend to update __typename without refetching entire post.
+  """
+  typename: String!
+
+  """
+  The item position in its post (for sorting)
+  """
+  position: Int
+}
+
+"""
 Update data of a file's current processing status.
 """
 type FileProcessingUpdate {
@@ -16,4 +37,11 @@ type FileProcessingUpdate {
   The updated file.
   """
   file: File!
+
+  """
+  List of items that reference this file, with type information.
+  Useful for knowing which items were affected by the file processing
+  and updating their types in the frontend without refetching.
+  """
+  affectedItems: [AffectedItem!]
 }

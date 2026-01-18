@@ -24,6 +24,9 @@ import {
   type UploadController,
 } from './custom-fetch'
 import { webSubscriptionsClient } from '@src/gql-client'
+import { updateFileProcessingFields } from './file-update-helpers'
+import { collectProcessingFileIds } from './processing-id-collector'
+import { isProcessingItem } from './item-type-guards'
 
 type PostItemType = NonNullable<PostQuery['node']> & { __typename: 'Post' }
 
@@ -118,35 +121,8 @@ export function createEditManager(
     const currentPost = get(post)
     const currentData = get(data)
 
-    // Get processing IDs from both post data and edit data
-    const processingIds: string[] = []
-
-    // Add file IDs from existing items that are still processing
-    if (currentPost) {
-      currentPost.items.nodes?.forEach((item) => {
-        if (item && 'file' in item && item.file) {
-          // Monitor files that are not FAILED or DONE
-          if (
-            item.file.processingStatus !== FileProcessingStatus.Failed &&
-            item.file.processingStatus !== FileProcessingStatus.Done
-          ) {
-            processingIds.push(item.file.id)
-          }
-        }
-      })
-    }
-
-    // Add file IDs from uploaded items in edit data
-    if (currentData) {
-      Object.values(currentData.items).forEach((item) => {
-        if (item.type === 'upload' && item.fileId && !item.uploadError) {
-          // Only add if we don't already have it from the post data
-          if (!processingIds.includes(item.fileId)) {
-            processingIds.push(item.fileId)
-          }
-        }
-      })
-    }
+    // Get processing IDs from both post data and edit data using utility
+    const processingIds = collectProcessingFileIds(currentPost, currentData)
 
     if (processingIds.length === 0 || !webSubscriptionsClient) {
       return
@@ -169,11 +145,12 @@ export function createEditManager(
       try {
         for await (const result of subscription) {
           if (result.errors) {
-            console.error('Subscription errors:', result.errors)
+            console.error('[Subscription] Errors:', result.errors)
           }
           const subscriptionData = result.data as
             | FileProcessingUpdatesSubscription
             | undefined
+
           if (subscriptionData?.fileProcessingUpdates?.file) {
             const updatedFile = subscriptionData.fileProcessingUpdates.file
 
@@ -186,6 +163,21 @@ export function createEditManager(
 
               if (newPost.items.nodes) {
                 newPost.items.nodes = newPost.items.nodes.map((node) => {
+                  // Update ProcessingItem fields
+                  if (
+                    isProcessingItem(node) &&
+                    'fileId' in node &&
+                    node.fileId === updatedFile.id
+                  ) {
+                    return {
+                      ...node,
+                      processingStatus: updatedFile.processingStatus,
+                      processingProgress: updatedFile.processingProgress,
+                      processingNotes: updatedFile.processingNotes,
+                    }
+                  }
+
+                  // Update file fields (existing logic)
                   if (
                     node &&
                     'file' in node &&
@@ -197,58 +189,8 @@ export function createEditManager(
                     const nodeFile = (updatedNode as { file: typeof node.file })
                       .file
 
-                    // Update core processing fields
-                    nodeFile.processingStatus = updatedFile.processingStatus
-                    nodeFile.processingProgress = updatedFile.processingProgress
-                    nodeFile.processingNotes = updatedFile.processingNotes
-
-                    // Update paths if they exist in the updated file
-                    if (
-                      'originalPath' in nodeFile &&
-                      'originalPath' in updatedFile
-                    ) {
-                      nodeFile.originalPath = updatedFile.originalPath
-                    }
-                    if (
-                      'compressedPath' in nodeFile &&
-                      'compressedPath' in updatedFile
-                    ) {
-                      nodeFile.compressedPath = updatedFile.compressedPath
-                    }
-                    if (
-                      'thumbnailPath' in nodeFile &&
-                      'thumbnailPath' in updatedFile
-                    ) {
-                      nodeFile.thumbnailPath = updatedFile.thumbnailPath
-                    }
-                    if (
-                      'posterThumbnailPath' in nodeFile &&
-                      'posterThumbnailPath' in updatedFile
-                    ) {
-                      nodeFile.posterThumbnailPath =
-                        updatedFile.posterThumbnailPath
-                    }
-                    if (
-                      'compressedGifPath' in nodeFile &&
-                      'compressedGifPath' in updatedFile
-                    ) {
-                      nodeFile.compressedGifPath = updatedFile.compressedGifPath
-                    }
-                    if (
-                      'relativeHeight' in nodeFile &&
-                      'relativeHeight' in updatedFile
-                    ) {
-                      nodeFile.relativeHeight = updatedFile.relativeHeight
-                    }
-                    if ('waveform' in nodeFile && 'waveform' in updatedFile) {
-                      nodeFile.waveform = updatedFile.waveform
-                    }
-                    if (
-                      'waveformThumbnail' in nodeFile &&
-                      'waveformThumbnail' in updatedFile
-                    ) {
-                      nodeFile.waveformThumbnail = updatedFile.waveformThumbnail
-                    }
+                    // Update file fields using utility
+                    updateFileProcessingFields(nodeFile, updatedFile)
 
                     return updatedNode
                   }
@@ -273,67 +215,17 @@ export function createEditManager(
                   // Update the file data with new processing information and paths
                   const itemFile = item.data.file
 
-                  // Update core processing fields
-                  itemFile.processingStatus = updatedFile.processingStatus
-                  itemFile.processingProgress = updatedFile.processingProgress
-                  itemFile.processingNotes = updatedFile.processingNotes
-
-                  // Update paths if they exist in the updated file
-                  if (
-                    'originalPath' in itemFile &&
-                    'originalPath' in updatedFile
-                  ) {
-                    itemFile.originalPath = updatedFile.originalPath
-                  }
-                  if (
-                    'compressedPath' in itemFile &&
-                    'compressedPath' in updatedFile
-                  ) {
-                    itemFile.compressedPath = updatedFile.compressedPath
-                  }
-                  if (
-                    'thumbnailPath' in itemFile &&
-                    'thumbnailPath' in updatedFile
-                  ) {
-                    itemFile.thumbnailPath = updatedFile.thumbnailPath
-                  }
-                  if (
-                    'posterThumbnailPath' in itemFile &&
-                    'posterThumbnailPath' in updatedFile
-                  ) {
-                    itemFile.posterThumbnailPath =
-                      updatedFile.posterThumbnailPath
-                  }
-                  if (
-                    'compressedGifPath' in itemFile &&
-                    'compressedGifPath' in updatedFile
-                  ) {
-                    itemFile.compressedGifPath = updatedFile.compressedGifPath
-                  }
-                  if (
-                    'relativeHeight' in itemFile &&
-                    'relativeHeight' in updatedFile
-                  ) {
-                    itemFile.relativeHeight = updatedFile.relativeHeight
-                  }
-                  if ('waveform' in itemFile && 'waveform' in updatedFile) {
-                    itemFile.waveform = updatedFile.waveform
-                  }
-                  if (
-                    'waveformThumbnail' in itemFile &&
-                    'waveformThumbnail' in updatedFile
-                  ) {
-                    itemFile.waveformThumbnail = updatedFile.waveformThumbnail
-                  }
+                  // Update file fields using utility
+                  updateFileProcessingFields(itemFile, updatedFile)
                 } else if (
                   item.type === 'upload' &&
                   item.fileId === updatedFile.id
                 ) {
                   // Update uploaded item processing status and store complete file data
                   const uploadItem = item as UploadItem
-                  uploadItem.processingStatus = updatedFile.processingStatus
-                  uploadItem.processingProgress = updatedFile.processingProgress
-                  uploadItem.processingNotes = updatedFile.processingNotes
+
+                  // Update processing fields using utility
+                  updateFileProcessingFields(uploadItem, updatedFile)
 
                   // When processing is complete, store the complete file data for display
                   if (
@@ -347,44 +239,72 @@ export function createEditManager(
               return currentData
             })
 
+            // Update item __typename from subscription (avoids refetch)
+            // When files complete processing, their type changes (e.g., PROCESSING → VIDEO)
+            // and items need their __typename updated (ProcessingItem → VideoItem)
+            if (subscriptionData.fileProcessingUpdates.affectedItems) {
+              const affectedItems =
+                subscriptionData.fileProcessingUpdates.affectedItems
+
+              let typenameChanged = false
+
+              post.update((currentPost) => {
+                if (!currentPost?.items?.nodes) return currentPost
+
+                const newPost = { ...currentPost }
+                newPost.items = { ...newPost.items }
+                newPost.items.nodes = newPost.items.nodes.map((node) => {
+                  const affectedItem = affectedItems.find(
+                    (ai) => ai.id === node.id,
+                  )
+                  if (
+                    affectedItem &&
+                    node.__typename !== affectedItem.typename
+                  ) {
+                    // Type changed! Need to refetch post to get proper data structure
+                    typenameChanged = true
+                  }
+                  return node
+                })
+
+                return newPost
+              })
+
+              // If typename changed, refetch post to get full item data with file object
+              // ProcessingItem has { fileId, processingStatus } but VideoItem needs { file: { compressedPath, ... } }
+              if (typenameChanged) {
+                const postObject = get(post)
+                if (postObject) {
+                  sdk
+                    .Post({ id: postObject.id })
+                    .then((postResult) => {
+                      const postError = getOperationResultError(postResult)
+                      if (!postError && postResult.data?.node) {
+                        const updatedPost = postResult.data.node as PostItemType
+                        post.set(updatedPost)
+                      } else {
+                        console.error(
+                          '[Subscription] Failed to refetch post:',
+                          postError,
+                        )
+                      }
+                    })
+                    .catch((err) => {
+                      console.error('[Subscription] Refetch error:', err)
+                    })
+                }
+              }
+            }
+
             // Check if we should stop the subscription
             const updatedPost = get(post)
             const updatedData = get(data)
 
-            // Calculate remaining processing IDs using the same logic as startProcessingSubscription
-            const remainingProcessingIds: string[] = []
-
-            // Add file IDs from existing items that are still processing
-            if (updatedPost) {
-              updatedPost.items.nodes?.forEach((item) => {
-                if (item && 'file' in item && item.file) {
-                  // Monitor files that are not FAILED or DONE
-                  if (
-                    item.file.processingStatus !==
-                      FileProcessingStatus.Failed &&
-                    item.file.processingStatus !== FileProcessingStatus.Done
-                  ) {
-                    remainingProcessingIds.push(item.file.id)
-                  }
-                }
-              })
-            }
-
-            // Add file IDs from uploaded items in edit data
-            if (updatedData) {
-              Object.values(updatedData.items).forEach((item) => {
-                if (
-                  item.type === 'upload' &&
-                  item.fileId &&
-                  !item.uploadError
-                ) {
-                  // Only add if we don't already have it from the post data
-                  if (!remainingProcessingIds.includes(item.fileId)) {
-                    remainingProcessingIds.push(item.fileId)
-                  }
-                }
-              })
-            }
+            // Calculate remaining processing IDs using utility
+            const remainingProcessingIds = collectProcessingFileIds(
+              updatedPost,
+              updatedData,
+            )
 
             if (remainingProcessingIds.length === 0) {
               // No more processing files, stop subscription
@@ -397,7 +317,7 @@ export function createEditManager(
           }
         }
       } catch (error) {
-        console.error('Subscription error:', error)
+        console.error('[Subscription] Error:', error)
         // Clean up on error
         if (subscriptionUnsubscribe) {
           subscriptionUnsubscribe()
@@ -1296,6 +1216,375 @@ export function createEditManager(
     }
   }
 
+  const duplicateItem = async (itemId: string) => {
+    try {
+      loading.set(true)
+      const result = await sdk.duplicateItem({
+        itemId,
+      })
+
+      const error = getOperationResultError(result)
+      if (error) {
+        console.error(result)
+        openDialog?.({
+          heading: 'Duplication Error',
+          children: `Failed to duplicate item: ${error}`,
+        })
+        return false
+      }
+
+      // Refetch the post to get the updated item list
+      const postObject = get(post)
+      if (!postObject) return false
+
+      const postResult = await sdk.Post({ id: postObject.id })
+      const postError = getOperationResultError(postResult)
+      if (postError) {
+        console.error(postResult)
+        return false
+      }
+
+      const updatedPost = postResult.data.node as PostItemType
+      post.set(updatedPost)
+
+      // If we're in edit mode, update the edit data as well
+      data.update((currentData) => {
+        if (!currentData) return currentData
+
+        // Clear edit data to force refresh from the new post data
+        return undefined
+      })
+
+      return true
+    } catch (err) {
+      console.error(err)
+      openDialog?.({
+        heading: 'Duplication Error',
+        children: 'Failed to duplicate item. Please try again.',
+      })
+      return false
+    } finally {
+      loading.set(false)
+    }
+  }
+
+  const convertItem = async (itemId: string, targetType: FileType) => {
+    try {
+      loading.set(true)
+      const result = await sdk.convertItem({
+        itemId,
+        targetType,
+      })
+
+      const error = getOperationResultError(result)
+      if (error) {
+        console.error(result)
+        openDialog?.({
+          heading: 'Conversion Error',
+          children: `Failed to start conversion: ${error.message}`,
+        })
+        return false
+      }
+
+      // Refetch post data to get updated processing status
+      const postObject = get(post)
+      if (postObject) {
+        const postResult = await sdk.Post({ id: postObject.id })
+        const postError = getOperationResultError(postResult)
+        if (!postError && postResult.data?.node) {
+          const updatedPost = postResult.data.node as PostItemType
+          post.set(updatedPost)
+        } else {
+          console.error(
+            '[EditManager] Failed to refetch post after convertItem:',
+            postError,
+          )
+        }
+      }
+
+      // Start monitoring processing progress immediately (no dialog)
+      startProcessingSubscription()
+
+      return true
+    } catch (err) {
+      console.error(err)
+      openDialog?.({
+        heading: 'Conversion Error',
+        children: 'Failed to start conversion. Please try again.',
+      })
+      return false
+    } finally {
+      loading.set(false)
+    }
+  }
+
+  const cropItem = async (
+    itemId: string,
+    crop: { left: number; top: number; right: number; bottom: number },
+  ) => {
+    try {
+      loading.set(true)
+      const result = await sdk.cropItem({
+        itemId,
+        crop,
+      })
+
+      const error = getOperationResultError(result)
+      if (error) {
+        console.error(result)
+        openDialog?.({
+          heading: 'Crop Error',
+          children: `Failed to start cropping: ${error.message}`,
+        })
+        return false
+      }
+
+      // Refetch post data to get updated processing status
+      const postObject = get(post)
+      if (postObject) {
+        const postResult = await sdk.Post({ id: postObject.id })
+        const postError = getOperationResultError(postResult)
+        if (!postError && postResult.data?.node) {
+          const updatedPost = postResult.data.node as PostItemType
+          post.set(updatedPost)
+        } else {
+          console.error(
+            '[EditManager] Failed to refetch post after cropItem:',
+            postError,
+          )
+        }
+      }
+
+      // Start monitoring processing progress immediately (no dialog)
+      startProcessingSubscription()
+
+      return true
+    } catch (err) {
+      console.error(err)
+      openDialog?.({
+        heading: 'Crop Error',
+        children: 'Failed to start cropping. Please try again.',
+      })
+      return false
+    } finally {
+      loading.set(false)
+    }
+  }
+
+  const trimItem = async (
+    itemId: string,
+    trim: { startTime: number; endTime: number },
+  ) => {
+    try {
+      loading.set(true)
+      const result = await sdk.trimItem({
+        itemId,
+        trim,
+      })
+
+      const error = getOperationResultError(result)
+      if (error) {
+        console.error(result)
+        openDialog?.({
+          heading: 'Trim Error',
+          children: `Failed to start trimming: ${error.message}`,
+        })
+        return false
+      }
+
+      // Refetch post data to get updated processing status
+      const postObject = get(post)
+      if (postObject) {
+        const postResult = await sdk.Post({ id: postObject.id })
+        const postError = getOperationResultError(postResult)
+        if (!postError && postResult.data?.node) {
+          const updatedPost = postResult.data.node as PostItemType
+          post.set(updatedPost)
+        } else {
+          console.error(
+            '[EditManager] Failed to refetch post after trimItem:',
+            postError,
+          )
+        }
+      }
+
+      // Start monitoring processing progress immediately (no dialog)
+      startProcessingSubscription()
+
+      return true
+    } catch (err) {
+      console.error(err)
+      openDialog?.({
+        heading: 'Trim Error',
+        children: 'Failed to start trimming. Please try again.',
+      })
+      return false
+    } finally {
+      loading.set(false)
+    }
+  }
+
+  const modifyItem = async (
+    itemId: string,
+    params: {
+      crop?: { left: number; top: number; right: number; bottom: number }
+      trim?: { startTime: number; endTime: number }
+    },
+  ) => {
+    try {
+      loading.set(true)
+      const result = await sdk.modifyItem({
+        itemId,
+        crop: params.crop || null,
+        trim: params.trim || null,
+      })
+
+      const error = getOperationResultError(result)
+      if (error) {
+        console.error(result)
+        const operations = []
+        if (params.crop) operations.push('cropping')
+        if (params.trim) operations.push('trimming')
+        openDialog?.({
+          heading: 'Modification Error',
+          children: `Failed to start ${operations.join(' and ')}: ${error.message}`,
+        })
+        return false
+      }
+
+      // Refetch post data to get updated processing status
+      const postObject = get(post)
+      if (postObject) {
+        const postResult = await sdk.Post({ id: postObject.id })
+        const postError = getOperationResultError(postResult)
+        if (!postError && postResult.data?.node) {
+          const updatedPost = postResult.data.node as PostItemType
+          post.set(updatedPost)
+        } else {
+          console.error(
+            '[EditManager] Failed to refetch post after modifyItem:',
+            postError,
+          )
+        }
+      }
+
+      // Start monitoring processing progress immediately (no dialog)
+      startProcessingSubscription()
+
+      return true
+    } catch (err) {
+      console.error(err)
+      openDialog?.({
+        heading: 'Modification Error',
+        children: 'Failed to apply modifications. Please try again.',
+      })
+      return false
+    } finally {
+      loading.set(false)
+    }
+  }
+
+  const removeModifications = async (
+    itemId: string,
+    modifications: string[],
+    clearAllModifications: boolean = false,
+  ) => {
+    try {
+      loading.set(true)
+      const result = await sdk.removeModifications({
+        itemId,
+        removeModifications: modifications,
+        clearAllModifications,
+      })
+
+      const error = getOperationResultError(result)
+      if (error) {
+        console.error(result)
+        openDialog?.({
+          heading: 'Revert Error',
+          children: `Failed to revert modifications: ${error.message}`,
+        })
+        return false
+      }
+
+      // Refetch post data to get updated processing status
+      const postObject = get(post)
+      if (postObject) {
+        const postResult = await sdk.Post({ id: postObject.id })
+        const postError = getOperationResultError(postResult)
+        if (!postError && postResult.data?.node) {
+          const updatedPost = postResult.data.node as PostItemType
+          post.set(updatedPost)
+        } else {
+          console.error(
+            '[EditManager] Failed to refetch post after removeModifications:',
+            postError,
+          )
+        }
+      }
+
+      // Start monitoring processing progress immediately (no dialog)
+      startProcessingSubscription()
+
+      return true
+    } catch (err) {
+      console.error(err)
+      openDialog?.({
+        heading: 'Revert Error',
+        children: 'Failed to revert modifications. Please try again.',
+      })
+      return false
+    } finally {
+      loading.set(false)
+    }
+  }
+
+  const resetAndReprocessFile = async (itemId: string) => {
+    try {
+      loading.set(true)
+      const result = await sdk.resetAndReprocessFile({
+        itemId,
+      })
+
+      const error = getOperationResultError(result)
+      if (error) {
+        console.error(result)
+        openDialog?.({
+          heading: 'Reprocess Error',
+          children: `Failed to reset and reprocess file: ${error.message}`,
+        })
+        return false
+      }
+
+      // Refetch post data to get updated processing status
+      const postObject = get(post)
+      if (postObject) {
+        const postResult = await sdk.Post({ id: postObject.id })
+        const postError = getOperationResultError(postResult)
+        if (!postError && postResult.data?.node) {
+          const updatedPost = postResult.data.node as PostItemType
+          post.set(updatedPost)
+        } else {
+          console.error('[EditManager] Failed to refetch post:', postError)
+        }
+      }
+
+      // Start monitoring processing progress immediately (no dialog)
+      startProcessingSubscription()
+
+      return true
+    } catch (err) {
+      console.error(err)
+      openDialog?.({
+        heading: 'Reprocess Error',
+        children: 'Failed to reset and reprocess file. Please try again.',
+      })
+      return false
+    } finally {
+      loading.set(false)
+    }
+  }
+
   const removeUploadItem = (itemId: string) => {
     data.update((current) => {
       if (!current) return current
@@ -1336,6 +1625,13 @@ export function createEditManager(
     reorderItems,
     mergePost,
     moveItem,
+    duplicateItem,
+    convertItem,
+    cropItem,
+    trimItem,
+    modifyItem,
+    removeModifications,
+    resetAndReprocessFile,
   }
 }
 

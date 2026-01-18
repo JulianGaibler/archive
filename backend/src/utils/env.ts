@@ -77,16 +77,23 @@ const ENV_VARIABLES = [
     type: 'string',
     fallback: 'http://localhost:4321',
   },
+  {
+    name: 'PUBLIC_URL',
+    description:
+      'Public URL where the Archive application is hosted (e.g., https://archive.example.com)',
+    type: 'string',
+    fallback: 'http://localhost:3000',
+  },
 
   // GraphQL configuration
   {
-    name: 'BACKEND_GRAPHQL_PATH',
+    name: 'GRAPHQL_PATH',
     description: 'GraphQL endpoint path',
     type: 'string',
     fallback: '/graphql',
   },
   {
-    name: 'BACKEND_WEBSOCKET_PATH',
+    name: 'WEBSOCKET_PATH',
     description: 'WebSocket path',
     type: 'string',
     fallback: '/websocket',
@@ -98,12 +105,6 @@ const ENV_VARIABLES = [
     description: 'Backend file storage directory',
     type: 'string',
     fallback: 'public',
-  },
-  {
-    name: 'BACKEND_FILE_SERVE_PATH',
-    description: 'Backend file serve path',
-    type: 'string',
-    fallback: '/files',
   },
 
   // Upload configuration
@@ -132,18 +133,6 @@ const ENV_VARIABLES = [
   {
     name: 'BACKEND_TELEGRAM_BOT_TOKEN',
     description: 'Telegram bot token',
-    type: 'string',
-    fallback: '',
-  },
-  {
-    name: 'FRONTEND_FILES_BASE_URL',
-    description: 'Public base URL for file resources for telegram bot',
-    type: 'string',
-    fallback: '',
-  },
-  {
-    name: 'BACKEND_TELEGRAM_BOT_RESOURCE_URL',
-    description: 'The base URL for serving files to the Telegram API',
     type: 'string',
     fallback: '',
   },

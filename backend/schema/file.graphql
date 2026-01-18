@@ -7,11 +7,24 @@ interface File {
   """
   id: String!
   creator: User!
+  """
+  The original file type before any conversions.
+  Used to determine what conversions are available.
+  """
+  originalType: FileType!
   processingStatus: FileProcessingStatus!
   processingProgress: Int
   processingNotes: String
   updatedAt: DateTime!
   createdAt: DateTime!
+  """
+  Modifications applied to this file during reprocessing.
+  """
+  modifications: FileModifications
+  """
+  Path to the unmodified compressed variant (if modifications were applied).
+  """
+  unmodifiedCompressedPath: String
 }
 
 """
@@ -23,11 +36,14 @@ type PhotoFile implements File {
   """
   id: String!
   creator: User!
+  originalType: FileType!
   processingStatus: FileProcessingStatus!
   processingProgress: Int
   processingNotes: String
   updatedAt: DateTime!
   createdAt: DateTime!
+  modifications: FileModifications
+  unmodifiedCompressedPath: String
   originalPath: String!
   thumbnailPath: String
   compressedPath: String!
@@ -43,11 +59,18 @@ type VideoFile implements File {
   """
   id: String!
   creator: User!
+  originalType: FileType!
   processingStatus: FileProcessingStatus!
   processingProgress: Int
   processingNotes: String
   updatedAt: DateTime!
   createdAt: DateTime!
+  modifications: FileModifications
+  unmodifiedCompressedPath: String
+  """
+  Path to the unmodified thumbnail poster (if modifications were applied).
+  """
+  unmodifiedThumbnailPosterPath: String
   originalPath: String!
   thumbnailPath: String
   posterThumbnailPath: String
@@ -64,11 +87,14 @@ type GifFile implements File {
   """
   id: String!
   creator: User!
+  originalType: FileType!
   processingStatus: FileProcessingStatus!
   processingProgress: Int
   processingNotes: String
   updatedAt: DateTime!
   createdAt: DateTime!
+  modifications: FileModifications
+  unmodifiedCompressedPath: String
   originalPath: String!
   thumbnailPath: String
   compressedPath: String!
@@ -85,11 +111,14 @@ type AudioFile implements File {
   """
   id: String!
   creator: User!
+  originalType: FileType!
   processingStatus: FileProcessingStatus!
   processingProgress: Int
   processingNotes: String
   updatedAt: DateTime!
   createdAt: DateTime!
+  modifications: FileModifications
+  unmodifiedCompressedPath: String
   originalPath: String!
   compressedPath: String!
   waveform: [Float!]!
@@ -105,11 +134,74 @@ type ProfilePictureFile implements File {
   """
   id: String!
   creator: User!
+  originalType: FileType!
   processingStatus: FileProcessingStatus!
   processingProgress: Int
   processingNotes: String
   updatedAt: DateTime!
   createdAt: DateTime!
+  modifications: FileModifications
+  unmodifiedCompressedPath: String
   profilePicture256: String!
   profilePicture64: String!
+}
+
+"""
+Modifications applied to a file during reprocessing.
+"""
+type FileModifications {
+  """
+  Crop modification applied to the file.
+  """
+  crop: CropMetadata
+
+  """
+  Trim modification applied to the file.
+  """
+  trim: TrimMetadata
+
+  """
+  File type conversion applied.
+  """
+  fileType: FileType
+}
+
+"""
+Metadata about a crop modification.
+"""
+type CropMetadata {
+  """
+  Left edge of the crop area in pixels.
+  """
+  left: Int!
+
+  """
+  Top edge of the crop area in pixels.
+  """
+  top: Int!
+
+  """
+  Right edge of the crop area in pixels.
+  """
+  right: Int!
+
+  """
+  Bottom edge of the crop area in pixels.
+  """
+  bottom: Int!
+}
+
+"""
+Metadata about a trim modification.
+"""
+type TrimMetadata {
+  """
+  Start time of the trim in seconds.
+  """
+  startTime: Float!
+
+  """
+  End time of the trim in seconds.
+  """
+  endTime: Float!
 }

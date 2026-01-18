@@ -1,9 +1,11 @@
 import UserActions from '@src/actions/UserActions.js'
 import { MutationResolvers } from '../generated-types.js'
+import { PersistentModifications } from '@src/files/processing-metadata.js'
 import KeywordActions from '@src/actions/KeywordActions.js'
 import PostActions from '@src/actions/PostActions.js'
 import SessionActions from '@src/actions/SessionActions.js'
 import FileActions from '@src/actions/FileActions.js'
+import ItemActions from '@src/actions/ItemActions.js'
 import AuthCookieUtils from '../AuthCookieUtils.js'
 
 export const mutationResolvers: MutationResolvers = {
@@ -25,6 +27,8 @@ export const mutationResolvers: MutationResolvers = {
 
   deletePost: async (_, args, ctx) => await PostActions.mDeletePost(ctx, args),
 
+  duplicateItem: async (_, args, ctx) => PostActions.mDuplicateItem(ctx, args),
+
   editPost: async (_, args, ctx) => PostActions.mEdit(ctx, args),
 
   linkTelegram: async (_, args, ctx) => UserActions.mLinkTelegram(ctx, args),
@@ -44,7 +48,7 @@ export const mutationResolvers: MutationResolvers = {
   uploadItemFile: async (_, args, ctx) =>
     FileActions.mUploadItemFile(ctx, {
       file: args.file,
-      type: args.type || undefined, // Convert null to undefined
+      // type: args.type || undefined, // Convert null to undefined
     }),
 
   deleteTemporaryFile: async (_, args, ctx) =>
@@ -74,4 +78,39 @@ export const mutationResolvers: MutationResolvers = {
     }
     return rv
   },
+
+  convertItem: async (_, args, ctx) =>
+    ItemActions.mConvertItem(ctx, {
+      itemId: args.itemId,
+      convertTo: args.targetType,
+    }),
+
+  cropItem: async (_, args, ctx) => ItemActions.mCropItem(ctx, args),
+
+  trimItem: async (_, args, ctx) => ItemActions.mTrimItem(ctx, args),
+
+  modifyItem: async (_, args, ctx) => {
+    const modifications: { crop?: typeof args.crop; trim?: typeof args.trim } =
+      {}
+    if (args.crop) modifications.crop = args.crop
+    if (args.trim) modifications.trim = args.trim
+
+    return ItemActions._mModifyItem(ctx, {
+      itemId: args.itemId,
+      addModifications: modifications as Record<string, unknown>,
+    })
+  },
+
+  removeModifications: async (_, args, ctx) =>
+    ItemActions.mRemoveModifications(ctx, {
+      itemId: args.itemId,
+      removeModifications: args.removeModifications as (
+        | keyof PersistentModifications
+        | 'fileType'
+      )[],
+      clearAllModifications: args.clearAllModifications ?? undefined,
+    }),
+
+  resetAndReprocessFile: async (_, args, ctx) =>
+    ItemActions.mResetAndReprocessFile(ctx, args),
 }

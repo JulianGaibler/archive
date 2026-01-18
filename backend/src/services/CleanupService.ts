@@ -160,7 +160,10 @@ export default class CleanupService {
       }
 
       // Get all files that are currently queued or processing
-      const activeFiles = await FileActions._qActiveFilesInternal(ctx)
+      const activeFiles = await FileActions._qQueuedFilesInternal(ctx, {
+        includeProcessing: true,
+        limit: undefined,
+      })
       const activeFileIds = new Set(activeFiles.map((file) => file.id))
 
       // Check each file in the queue directory

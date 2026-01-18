@@ -118,7 +118,6 @@
   padding: tint.$size-16
   background: var(--tint-bg)
 .inner
-  max-width: 256px
   margin: 0 auto
   display: flex
   flex-direction: column
@@ -136,7 +135,6 @@
 details
   margin-top: 1em
   width: 100%
-  max-width: 500px
 
 code
   display: block

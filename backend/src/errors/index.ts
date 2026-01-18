@@ -1,6 +1,7 @@
 export { default as AuthenticationError } from './AuthenticationError.js'
 export { default as AuthorizationError } from './AuthorizationError.js'
 export { default as DatabaseError } from './DatabaseError.js'
+export { default as FileProcessingError } from './FileProcessingError.js'
 export { default as InputError } from './InputError.js'
 export { default as NotFoundError } from './NotFoundError.js'
 export { default as RequestError } from './RequestError.js'

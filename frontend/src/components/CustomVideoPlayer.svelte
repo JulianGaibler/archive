@@ -19,6 +19,7 @@
 
   interface Props {
     src: string
+    fileUpdatedAt?: string | number
     thumbnailPath?: string
     posterThumbnailPath?: string
     poster?: string
@@ -28,6 +29,7 @@
 
   let {
     src,
+    fileUpdatedAt,
     thumbnailPath,
     posterThumbnailPath,
     poster,
@@ -621,11 +623,11 @@
   // Use poster thumbnail (poster size), thumbnail, or explicit poster in that order
   let posterUrl = $derived(
     poster
-      ? getResourceUrl(poster)
+      ? getResourceUrl(poster, fileUpdatedAt)
       : posterThumbnailPath
-        ? getResourceUrl(posterThumbnailPath)
+        ? getResourceUrl(posterThumbnailPath, fileUpdatedAt)
         : thumbnailPath
-          ? getResourceUrl(thumbnailPath)
+          ? getResourceUrl(thumbnailPath, fileUpdatedAt)
           : undefined,
   )
 
@@ -676,12 +678,12 @@
         {/if}
         <noscript>
           <video
-            src={getResourceUrl(src)}
+            src={getResourceUrl(src, fileUpdatedAt)}
             poster={posterUrl}
             preload="metadata"
             controls
           >
-            <source src={getResourceUrl(src)} type="video/mp4" />
+            <source src={getResourceUrl(src, fileUpdatedAt)} type="video/mp4" />
             {#if captions}
               {#each captions as caption (caption.src)}
                 <track
@@ -709,7 +711,7 @@
         oncanplay={handleCanPlay}
         preload="metadata"
       >
-        <source src={getResourceUrl(src)} type="video/mp4" />
+        <source src={getResourceUrl(src, fileUpdatedAt)} type="video/mp4" />
         {#if captions}
           {#each captions as caption (caption.src)}
             <track
@@ -839,9 +841,18 @@ video, .static-player
   min-height: 200px
   display: flex
   flex-direction: column
+  align-items: center
+  justify-content: center
   noscript video
     position: absolute
     inset: 0
+
+.static-thumbnail
+  max-width: 100%
+  max-height: 80vh
+  height: auto
+  display: block
+  object-fit: contain
 
 .controls-wrapper
   opacity: 0

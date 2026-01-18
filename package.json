@@ -1,9 +1,14 @@
 {
   "name": "archive",
-  "version": "2.0.0",
+  "version": "2.3.0",
   "private": true,
   "type": "module",
   "scripts": {
+    "setup-env": "node scripts/setup-env.js",
+    "setup-env:dev": "node scripts/setup-env.js --mode=development",
+    "setup-env:prod": "node scripts/setup-env.js --mode=production",
+    "generate-env-examples": "node scripts/generate-examples.js",
+    "generate-ci-env": "node scripts/generate-ci-env.js",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:setup": "npm run dev:db:start && npm run dev:migrate",
     "dev:backend": "cd backend && npm run dev",
@@ -12,6 +17,7 @@
     "dev:db:stop": "docker compose -f docker-compose.dev.yml down",
     "dev:migrate": "wait-port localhost:5432 -t 30000 && cd backend && npm run migrate:latest",
     "build": "npm run build:frontend && npm run build:backend",
+    "build:ci": "npm run generate-ci-env && npm run build",
     "build:frontend": "cd frontend && npm install && npm run build",
     "build:backend": "cd backend && npm install && npm run build",
     "docker:deploy": "dotenv -e .env.prod -- ./deploy.sh",
@@ -28,8 +34,12 @@
     "lint": "cd backend && npm run lint && cd ../frontend && npm run lint"
   },
   "devDependencies": {
+    "@inquirer/prompts": "^8.2.0",
+    "chalk": "^5.6.2",
     "concurrently": "^9.1.0",
     "dotenv-cli": "^8.0.0",
-    "wait-port": "^1.1.0"
+    "semver": "^7.7.3",
+    "wait-port": "^1.1.0",
+    "yaml": "^2.8.2"
   }
 }

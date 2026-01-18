@@ -53,6 +53,9 @@
   let isGif = $derived(mediaType === 'gif')
   let isAudio = $derived(mediaType === 'audio')
 
+  // Get the file object for accessing updatedAt
+  let file = $derived(item && 'file' in item ? item.file : undefined)
+
   // Get the appropriate file path for the item
   let itemSrc = $derived(
     item && 'file' in item && item.file
@@ -91,22 +94,37 @@
   {#if isImage}
     <picture>
       {#if item && itemSrc}
-        <img src={getResourceUrl(itemSrc)} alt="No alt text provided" />
+        <img
+          src={getResourceUrl(itemSrc, file?.updatedAt)}
+          alt="No alt text provided"
+        />
       {/if}
     </picture>
   {:else if isVideo}
     {#if item && itemSrc}
-      <CustomVideoPlayer src={itemSrc} {thumbnailPath} {posterThumbnailPath} />
+      <CustomVideoPlayer
+        src={itemSrc}
+        fileUpdatedAt={file?.updatedAt}
+        {thumbnailPath}
+        {posterThumbnailPath}
+      />
     {/if}
   {:else if isGif}
     <video controls={false} loop autoplay muted>
       {#if item && itemSrc}
-        <source src={getResourceUrl(itemSrc)} type="video/mp4" />
+        <source
+          src={getResourceUrl(itemSrc, file?.updatedAt)}
+          type="video/mp4"
+        />
       {/if}
     </video>
   {:else if isAudio}
     {#if item && itemSrc}
-      <CustomAudioPlayer src={itemSrc} waveform={waveformData} />
+      <CustomAudioPlayer
+        src={itemSrc}
+        fileUpdatedAt={file?.updatedAt}
+        waveform={waveformData}
+      />
     {/if}
   {:else}
     <div class="unsupported-file">

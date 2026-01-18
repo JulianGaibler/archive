@@ -1,20 +1,29 @@
 import Context from '../Context.js'
-import { createId } from '@paralleldrive/cuid2'
 import FileProcessor from './FileProcessor.js'
-import { fileTypeFromBuffer, fileTypeFromFile } from 'file-type'
+import { fileTypeFromStream, fileTypeFromFile } from 'file-type'
 import fs from 'fs'
 import path from 'path'
 import stream from 'stream'
 import FileActions from '@src/actions/FileActions.js'
 import { FileInternal } from '@src/models/FileModel.js'
+import { eq, and } from 'drizzle-orm'
 import tmp from 'tmp'
 import util from 'util'
 import { FileUpload } from 'graphql-upload/processRequest.mjs'
-import { InputError } from '@src/errors/index.js'
+import { InputError, RequestError } from '@src/errors/index.js'
 import * as fileUtils from './file-utils.js'
-import { FileType, FileUpdateCallback, FileProcessingResult } from './types.js'
+import { FileType, FileProcessingResult, FileUpdateCallback } from './types.js'
+import {
+  ModificationActionData,
+  PersistentModifications,
+  getPersistentModifications,
+} from './processing-metadata.js'
 import { FilePathManager } from './FilePathManager.js'
 import { FileProcessingQueue } from './QueueManager.js'
+import { FFmpegWrapper } from './ffmpeg-wrapper.js'
+import { fileVariant as fileVariantTable } from '@db/schema.js'
+import { VariantType, VariantRegistry } from './variant-types.js'
+import { DataLoaderCacheManager } from './DataLoaderCacheManager.js'
 
 const pipeline = util.promisify(stream.pipeline)
 
@@ -36,36 +45,48 @@ export default class FileStorage {
   }
 
   /**
-   * Stores an uploaded file to the queue for processing
+   * Analyzes and stores an uploaded file to the queue for processing
    *
    * @param {Context} _ctx The context object
    * @param {Promise<FileUpload>} upload The file upload promise
    * @param {string} fileId The file ID to associate with the upload
-   * @returns {Promise<void>}
+   * @returns {Promise<FileAnalysisResult>} The analysis result
    */
-  async storeFile(
+  async queueFileFromUpload(
     _ctx: Context,
     upload: Promise<FileUpload>,
     fileId: string,
-  ): Promise<void> {
+    limitType?: ('VIDEO' | 'IMAGE' | 'GIF' | 'AUDIO')[],
+  ): Promise<FileAnalysisResult> {
     const { createReadStream } = await upload
 
-    // Read the stream to a buffer to get file type
-    const chunks: Buffer[] = []
-    const stream = createReadStream()
-
-    for await (const chunk of stream) {
-      chunks.push(chunk)
-    }
-
-    const buffer = Buffer.concat(chunks)
-    const fileTypeResult = await fileTypeFromBuffer(buffer)
+    const fileTypeResult = await fileTypeFromStream(createReadStream())
 
     if (!fileTypeResult) {
       throw new InputError('File-Type not recognized')
     }
 
     const { mime } = fileTypeResult
+
+    // Determine the inferred type from MIME
+    let inferredType: 'VIDEO' | 'IMAGE' | 'GIF' | 'AUDIO'
+    if (mime === 'image/gif') {
+      inferredType = 'GIF'
+    } else if (mime.startsWith('image/')) {
+      inferredType = 'IMAGE'
+    } else if (mime.startsWith('video/')) {
+      inferredType = 'VIDEO'
+    } else if (mime.startsWith('audio/')) {
+      inferredType = 'AUDIO'
+    } else {
+      throw new InputError('File-Type is not supported')
+    }
+
+    if (limitType && !limitType.includes(inferredType)) {
+      throw new InputError(`File-Type ${inferredType} is not allowed`)
+    }
+
+    // Validate file type
     this.validateFileType(mime) // Throws if unsupported
 
     const queuePath = this.pathManager.getQueuePath(fileId)
@@ -74,49 +95,124 @@ export default class FileStorage {
     await fs.promises.mkdir(path.dirname(queuePath), { recursive: true })
 
     // Write buffer to file
-    await fs.promises.writeFile(queuePath, buffer)
+    await fs.promises.writeFile(queuePath, createReadStream())
+
+    return {
+      type: inferredType,
+      mimeType: mime,
+    }
   }
 
   /**
-   * Stores an uploaded profile picture file to the queue for processing
+   * Queues an existing file for reprocessing by copying its ORIGINAL variant to
+   * the queue. This is used when modifying a file in-place (same file ID).
    *
-   * @param {Context} _ctx The context object
-   * @param {Promise<FileUpload>} upload The file upload promise
-   * @param {string} fileId The file ID to associate with the upload
-   * @returns {Promise<void>}
+   * @param ctx - The request context
+   * @param fileId - The ID of the file to reprocess
+   * @returns The file ID
+   * @throws {InputError} If the file is not found
+   * @throws {RequestError} If the ORIGINAL variant is not found or doesn't
+   *   exist on disk
    */
-  async storeProfilePictureFile(
-    _ctx: Context,
-    upload: Promise<FileUpload>,
+  async queueFileForReprocessing(
+    ctx: Context,
     fileId: string,
-  ): Promise<void> {
-    const { createReadStream } = await upload
-
-    // Read the stream to a buffer to get file type
-    const chunks: Buffer[] = []
-    const stream = createReadStream()
-
-    for await (const chunk of stream) {
-      chunks.push(chunk)
+  ): Promise<string> {
+    const file = await FileActions._qFileInternal(ctx, fileId)
+    if (!file) {
+      throw new InputError('File not found')
     }
 
-    const buffer = Buffer.concat(chunks)
-    const fileTypeResult = await fileTypeFromBuffer(buffer)
-
-    if (!fileTypeResult) {
-      throw new InputError('File-Type not recognized')
+    // Get the file's ORIGINAL variant
+    const variants = await FileActions._qFileVariantsInternal(ctx, fileId)
+    const originalVariant = variants.find(
+      (v) => v.variant === VariantType.ORIGINAL,
+    )
+    if (!originalVariant) {
+      throw new RequestError('Original variant not found for file')
     }
 
-    const { mime } = fileTypeResult
-    this.validateFileType(mime) // Profile pictures must be images but we'll validate with existing function
+    const sourcePath = this.pathManager.getVariantPath(
+      fileId,
+      'ORIGINAL',
+      originalVariant.extension,
+    )
 
+    // Ensure the source file exists
+    if (!fs.existsSync(sourcePath)) {
+      throw new RequestError('Original file does not exist on disk')
+    }
+
+    // Get modifications from file.processingMeta (persistent-only: crop, trim)
+    const modifications: PersistentModifications = file.processingMeta
+      ? getPersistentModifications(
+          file.processingMeta as ModificationActionData,
+        )
+      : {}
+
+    // Validate crop parameters if present
+    if (modifications.crop) {
+      const srcKind = this.determineFileType(originalVariant.mimeType)
+      if (
+        srcKind !== FileType.VIDEO &&
+        srcKind !== FileType.GIF &&
+        srcKind !== FileType.IMAGE
+      ) {
+        throw new InputError(
+          `Invalid file type for cropping: ${srcKind}. Only videos, GIFs, and images can be cropped.`,
+        )
+      }
+
+      // Validate cropping dimensions using ffprobe
+      const crop = modifications.crop as {
+        left: number
+        right: number
+        top: number
+        bottom: number
+      }
+
+      const metadata = await FFmpegWrapper.ffprobe(sourcePath)
+      if (!metadata) {
+        throw new InputError(
+          'Failed to probe media file for cropping validation',
+        )
+      }
+
+      const stream = metadata.streams.find(
+        (s) => s.codec_type === 'video' && s.width && s.height,
+      )
+      if (!stream) {
+        throw new InputError(
+          'Could not determine media dimensions for cropping',
+        )
+      }
+
+      const width = stream.width
+      const height = stream.height
+
+      if (typeof width !== 'number' || typeof height !== 'number') {
+        throw new InputError(
+          'Invalid media dimensions: width and height must be numbers',
+        )
+      }
+
+      // Calculate resulting dimensions after cropping
+      const resultWidth = width - crop.left - crop.right
+      const resultHeight = height - crop.top - crop.bottom
+
+      // Enforce minimum dimensions of 100x100
+      if (resultWidth < 100 || resultHeight < 100) {
+        throw new InputError(
+          `Resulting media dimensions after cropping (${resultWidth}x${resultHeight}) must be at least 100x100 pixels`,
+        )
+      }
+    }
+
+    // Copy ORIGINAL to queue
     const queuePath = this.pathManager.getQueuePath(fileId)
+    await fs.promises.copyFile(sourcePath, queuePath)
 
-    // Ensure directory exists
-    await fs.promises.mkdir(path.dirname(queuePath), { recursive: true })
-
-    // Write buffer to file
-    await fs.promises.writeFile(queuePath, buffer)
+    return fileId
   }
 
   /**
@@ -141,38 +237,6 @@ export default class FileStorage {
     })
 
     await Promise.all(deletionPromises)
-  }
-
-  /**
-   * Creates profile picture files and returns the generic filename
-   *
-   * @param {Promise<FileUpload>} upload The file upload promise
-   * @returns {Promise<string>} The generic filename
-   */
-  async setProfilePicture(upload: Promise<FileUpload>): Promise<string> {
-    const { createReadStream } = await upload
-    const filename = `pb-${createId()}`
-
-    await FileProcessor.createProfilePicture(
-      createReadStream(),
-      [this.pathManager.getDirectoryPath('profilePictures')],
-      filename,
-    )
-
-    return filename
-  }
-
-  /**
-   * Deletes all variants of a profile picture
-   *
-   * @param {string} filename The filename to delete
-   * @returns {Promise<void>}
-   */
-  async deleteProfilePicture(filename: string): Promise<void> {
-    return FileProcessor.deleteProfilePicture(
-      [this.pathManager.getDirectoryPath('profilePictures')],
-      filename,
-    )
   }
 
   /** Checks the queue and processes the next file if available */
@@ -207,32 +271,182 @@ export default class FileStorage {
         throw new Error(`File not found for ID ${fileId}`)
       }
 
-      // Create temporary directory for processing
-      const tmpDir = tmp.dirSync({
-        unsafeCleanup: true,
-        postfix: '-archive',
+      // Check if this is a reprocessing (file has modifications)
+      const isReprocessing = this.fileHasModifications(file)
+      const hasUnmodified = await this.hasUnmodifiedVariants(ctx, fileId)
+      const isFirstModification = isReprocessing && !hasUnmodified
+
+      console.log(`[FileStorage] Processing file ${fileId}:`, {
+        isReprocessing,
+        hasUnmodified,
+        isFirstModification,
+        fileType: file.type,
+        processingMeta: file.processingMeta,
       })
 
-      try {
-        const result = await this.processFileInTempDir(
-          filePath,
-          tmpDir.name,
-          updateCallback,
-        )
-        await this.moveProcessedFiles(result, file, fileId, updateCallback)
+      // Track whether we renamed variants (for rollback on failure)
+      let didRenameVariants = false
 
-        // Clean up
-        fileUtils.remove(filePath)
-      } catch (error) {
-        console.error(`Error processing file ${fileId}:`, error)
+      try {
+        // If this is the first modification, rename existing variants to UNMODIFIED_*
+        if (isFirstModification) {
+          console.log(
+            `[FileStorage] First modification - renaming variants for file ${fileId}`,
+          )
+          await this.renameVariant(
+            ctx,
+            fileId,
+            VariantType.COMPRESSED,
+            VariantType.UNMODIFIED_COMPRESSED,
+          )
+          if (file.type === 'VIDEO' || file.type === 'GIF') {
+            await this.renameVariant(
+              ctx,
+              fileId,
+              VariantType.THUMBNAIL_POSTER,
+              VariantType.UNMODIFIED_THUMBNAIL_POSTER,
+            )
+          }
+
+          // CRITICAL FIX: Clear dataloader cache after renaming variants
+          // The cache contains the old variant list (before rename)
+          // Subsequent calls to deleteVariant() need the updated list
+          const cacheManager = new DataLoaderCacheManager(ctx)
+          cacheManager.clearVariantCache(fileId)
+
+          didRenameVariants = true
+        }
+
+        // If reprocessing, delete old variants (they'll be recreated by moveProcessedFiles)
+        // NOTE: We do NOT delete ORIGINAL - it's the permanent unmodified source
+        // CRITICAL FIX: Delete variants if hasUnmodified is true (meaning we've processed before)
+        // This handles retries and cases where modifications were cleared but UNMODIFIED variants exist
+        if (hasUnmodified) {
+          console.log(
+            `[FileStorage] hasUnmodified=true, deleting old variants for file ${fileId}`,
+          )
+          await this.deleteVariant(ctx, fileId, VariantType.COMPRESSED)
+          await this.deleteVariant(ctx, fileId, VariantType.COMPRESSED_GIF)
+          await this.deleteVariant(ctx, fileId, VariantType.THUMBNAIL)
+          await this.deleteVariant(ctx, fileId, VariantType.THUMBNAIL_POSTER)
+          console.log(`[FileStorage] Deleted old variants for file ${fileId}`)
+        } else {
+          console.log(
+            `[FileStorage] hasUnmodified=false, skipping variant deletion (initial processing) for file ${fileId}`,
+          )
+        }
+
+        // Create temporary directory for processing
+        const tmpDir = tmp.dirSync({
+          unsafeCleanup: true,
+          postfix: '-archive',
+        })
+
+        try {
+          const result = await this.processFileInTempDir(
+            filePath,
+            tmpDir.name,
+            updateCallback,
+            file,
+          )
+          await this.moveProcessedFiles(
+            result,
+            file,
+            fileId,
+            updateCallback,
+            ctx,
+          )
+
+          // SUCCESS - processing complete
+          // Clean up queue file
+          fileUtils.remove(filePath)
+        } catch (processingError) {
+          console.error(`Error processing file ${fileId}:`, processingError)
+
+          // Rollback: If we renamed variants, rename them back
+          if (didRenameVariants) {
+            try {
+              console.log(
+                `Rolling back variant renames for file ${fileId} due to processing failure`,
+              )
+              await this.renameVariant(
+                ctx,
+                fileId,
+                VariantType.UNMODIFIED_COMPRESSED,
+                VariantType.COMPRESSED,
+              )
+              if (file.type === 'VIDEO' || file.type === 'GIF') {
+                await this.renameVariant(
+                  ctx,
+                  fileId,
+                  VariantType.UNMODIFIED_THUMBNAIL_POSTER,
+                  VariantType.THUMBNAIL_POSTER,
+                )
+              }
+              console.log(
+                `Successfully rolled back variant renames for file ${fileId}`,
+              )
+            } catch (rollbackError) {
+              console.error(
+                `Failed to rollback variant renames for file ${fileId}:`,
+                rollbackError,
+              )
+            }
+          }
+
+          await updateCallback({
+            processingStatus: 'FAILED',
+            processingNotes:
+              processingError instanceof Error
+                ? processingError.message
+                : String(processingError),
+          })
+
+          throw processingError
+        } finally {
+          tmpDir.removeCallback()
+        }
+      } catch (setupError) {
+        // Rollback: If we renamed variants before the error, rename them back
+        if (didRenameVariants) {
+          try {
+            console.log(
+              `Rolling back variant renames for file ${fileId} due to setup failure`,
+            )
+            await this.renameVariant(
+              ctx,
+              fileId,
+              VariantType.UNMODIFIED_COMPRESSED,
+              VariantType.COMPRESSED,
+            )
+            if (file.type === 'VIDEO' || file.type === 'GIF') {
+              await this.renameVariant(
+                ctx,
+                fileId,
+                VariantType.UNMODIFIED_THUMBNAIL_POSTER,
+                VariantType.THUMBNAIL_POSTER,
+              )
+            }
+            console.log(
+              `Successfully rolled back variant renames for file ${fileId}`,
+            )
+          } catch (rollbackError) {
+            console.error(
+              `Failed to rollback variant renames for file ${fileId}:`,
+              rollbackError,
+            )
+          }
+        }
+
         await updateCallback({
           processingStatus: 'FAILED',
           processingNotes:
-            error instanceof Error ? error.message : String(error),
+            setupError instanceof Error
+              ? setupError.message
+              : String(setupError),
         })
-      } finally {
-        tmpDir.removeCallback()
-        // Continue processing queue
+
+        throw setupError
       }
     } catch (error) {
       console.error(`Error setting up processing for file ${fileId}:`, error)
@@ -248,6 +462,7 @@ export default class FileStorage {
     filePath: string,
     tmpDirName: string,
     updateCallback: FileUpdateCallback,
+    file: FileInternal,
   ) {
     const processor = new FileProcessor(updateCallback)
 
@@ -257,20 +472,67 @@ export default class FileStorage {
     }
 
     const mime = fileTypeResult.mime
-    const fileType = this.determineFileType(mime)
+    let targetFileType = this.determineFileType(mime)
 
-    let result
-    if (fileType === FileType.GIF || fileType === FileType.VIDEO) {
-      result = await processor.processVideo(filePath, tmpDirName, fileType)
-    } else if (fileType === FileType.IMAGE) {
-      result = await processor.processImage(filePath, tmpDirName)
-    } else if (fileType === FileType.AUDIO) {
-      result = await processor.processAudio(filePath, tmpDirName)
-    } else {
-      throw new InputError(`Unsupported file type: ${fileType}`)
+    // Check if we need to convert to a different file type
+    if (file.type && file.type !== targetFileType) {
+      // Get the ORIGINAL file type for conversion validation
+      const originalFileType = this.fileTypeFromString(file.originalType)
+
+      // Validate the conversion is allowed from ORIGINAL type (not current type)
+      this.validateFileTypeConversion(originalFileType, file.type)
+
+      // Map string type to FileType enum (target type)
+      if (file.type === 'VIDEO') targetFileType = FileType.VIDEO
+      else if (file.type === 'GIF') targetFileType = FileType.GIF
+      else if (file.type === 'AUDIO') targetFileType = FileType.AUDIO
+      else if (file.type === 'IMAGE') targetFileType = FileType.IMAGE
     }
 
-    return { result, fileType, originalMimeType: mime }
+    // Extract modifications from the file (persistent-only: crop, trim)
+    let modificationsData: PersistentModifications = file.processingMeta
+      ? getPersistentModifications(
+          file.processingMeta as ModificationActionData,
+        )
+      : {}
+
+    // Remove incompatible modifications during conversion
+    if (file.type && file.originalType && file.type !== file.originalType) {
+      modificationsData = this.removeIncompatibleModifications(
+        modificationsData,
+        file.originalType,
+        file.type,
+      )
+    }
+
+    const modificationArray =
+      Object.keys(modificationsData).length > 0 ? [modificationsData] : []
+
+    let result
+    if (targetFileType === FileType.GIF || targetFileType === FileType.VIDEO) {
+      result = await processor.processVideo(
+        filePath,
+        tmpDirName,
+        targetFileType,
+        modificationArray,
+      )
+    } else if (targetFileType === FileType.IMAGE) {
+      result = await processor.processImage(
+        filePath,
+        tmpDirName,
+        modificationArray,
+      )
+    } else if (targetFileType === FileType.AUDIO) {
+      result = await processor.processAudio(
+        filePath,
+        tmpDirName,
+        modificationArray,
+      )
+    } else {
+      throw new InputError(`Unsupported file type: ${targetFileType}`)
+    }
+
+    return { result, fileType: targetFileType, originalMimeType: mime }
   }
 
   /**
@@ -287,7 +549,7 @@ export default class FileStorage {
     extension: string,
   ): string {
     // For ORIGINAL variant, use the original MIME type
-    if (variantType === 'ORIGINAL') {
+    if (variantType === VariantType.ORIGINAL) {
       return originalMimeType
     }
 
@@ -318,6 +580,30 @@ export default class FileStorage {
     }
   }
 
+  /**
+   * Moves processed file variants from temp directory to permanent storage and
+   * registers them in the database atomically.
+   *
+   * PRECONDITIONS:
+   *
+   * - All variant files must exist in temp directory (result.createdFiles)
+   * - File record must exist in DB
+   * - File directory in permanent storage must be created
+   *
+   * SIDE EFFECTS:
+   *
+   * - Moves files from temp to permanent storage
+   * - Creates/updates file_variant DB records (UPSERT)
+   * - Updates variant file sizes in DB
+   * - Clears dataloader cache for this file
+   * - Updates file processing status to DONE
+   *
+   * ERROR HANDLING:
+   *
+   * - On file move failure: Throws before DB insert (no cleanup needed)
+   * - On DB failure: Rolls back all file moves to maintain atomicity
+   * - Leaves DB and disk in consistent state on any error
+   */
   private async moveProcessedFiles(
     {
       result,
@@ -331,6 +617,7 @@ export default class FileStorage {
     _file: FileInternal,
     fileId: string,
     updateCallback: FileUpdateCallback,
+    ctx: Context, // Accept context as parameter for dataloader cache management
   ): Promise<void> {
     const movePromises: Promise<void>[] = []
 
@@ -342,11 +629,22 @@ export default class FileStorage {
     const ext = this.getExtensionFromFileType(fileType)
 
     // Move processed files to their final destinations using new structure
-    if (result.createdFiles.original) {
+    // Only create ORIGINAL if this is initial processing (not reprocessing)
+    // During reprocessing, we keep the existing ORIGINAL variant
+    const existingVariants = await FileActions._qFileVariantsInternal(
+      ctx,
+      fileId,
+    )
+    const hasOriginal = existingVariants.some((v) => v.variant === 'ORIGINAL')
+
+    if (result.createdFiles.original && !hasOriginal) {
       const destPath = this.pathManager.getVariantPath(fileId, 'ORIGINAL', ext)
       movePromises.push(
         fileUtils.moveAsync(result.createdFiles.original, destPath),
       )
+    } else if (result.createdFiles.original && hasOriginal) {
+      // Clean up the temp original file since we're not using it
+      await fileUtils.remove(result.createdFiles.original)
     }
 
     if (result.createdFiles.compressed) {
@@ -387,33 +685,35 @@ export default class FileStorage {
       })
     }
 
+    // Step 1: Move all files to permanent storage
     await Promise.all(movePromises)
 
     // Create file variants in database with metadata
-    const ctx = Context.createPrivilegedContext()
     const variants = []
 
-    // Original variant
-    const originalMeta: Record<string, unknown> = {}
+    // Original variant - only create if it doesn't already exist (not reprocessing)
+    if (!hasOriginal) {
+      const originalMeta: Record<string, unknown> = {}
 
-    if (fileType === FileType.AUDIO) {
-      if (result.waveform) {
-        originalMeta.waveform = result.waveform
+      if (fileType === FileType.AUDIO) {
+        if (result.waveform) {
+          originalMeta.waveform = result.waveform
+        }
+        if (result.waveformThumbnail) {
+          originalMeta.waveform_thumbnail = result.waveformThumbnail
+        }
+      } else {
+        originalMeta.relative_height = result.relHeight
       }
-      if (result.waveformThumbnail) {
-        originalMeta.waveform_thumbnail = result.waveformThumbnail
-      }
-    } else {
-      originalMeta.relative_height = result.relHeight
+
+      variants.push({
+        file: fileId,
+        variant: 'ORIGINAL' as const,
+        extension: ext,
+        mimeType: this.getMimeTypeForVariant(originalMimeType, 'ORIGINAL', ext),
+        meta: originalMeta,
+      })
     }
-
-    variants.push({
-      file: fileId,
-      variant: 'ORIGINAL' as const,
-      extension: ext,
-      mimeType: this.getMimeTypeForVariant(originalMimeType, 'ORIGINAL', ext),
-      meta: originalMeta,
-    })
 
     // Compressed variants
     for (const fileExt of Object.keys(result.createdFiles.compressed || {})) {
@@ -481,8 +781,47 @@ export default class FileStorage {
       })
     }
 
-    // Insert variants into database
-    await FileActions._mCreateFileVariants(ctx, variants)
+    // Step 2: VERIFY all files exist before DB insert (atomicity check)
+    // This catches any edge cases where file move silently failed
+    console.log(
+      `[FileStorage] Verifying ${variants.length} moved files for ${fileId}`,
+    )
+    for (const variant of variants) {
+      const path = this.pathManager.getVariantPath(
+        fileId,
+        variant.variant,
+        variant.extension,
+      )
+      if (!fs.existsSync(path)) {
+        // Cleanup: Delete any successfully-moved files
+        console.error(
+          `[FileStorage] File move verification failed for ${variant.variant} at ${path}`,
+        )
+        await this.cleanupPartiallyMovedFiles(fileId, variants)
+        throw new Error(`File move verification failed for ${variant.variant}`)
+      }
+    }
+
+    // Step 3: Insert into DB (with cleanup on failure for atomicity)
+    console.log(
+      `[FileStorage] Inserting ${variants.length} variants for file ${fileId}:`,
+      variants.map((v) => `${v.variant}(${v.extension})`).join(', '),
+    )
+    try {
+      // UPSERT to handle race conditions (fixed in earlier commit)
+      await FileActions._mCreateFileVariants(ctx, variants)
+      console.log(
+        `[FileStorage] Successfully inserted variants for file ${fileId}`,
+      )
+    } catch (dbError) {
+      // DB insert failed - cleanup moved files to maintain atomicity
+      console.error(
+        `[FileStorage] DB insert failed for ${fileId}, cleaning up moved files`,
+        dbError,
+      )
+      await this.cleanupPartiallyMovedFiles(fileId, variants)
+      throw dbError
+    }
 
     // Update file sizes for each variant
     await this.updateVariantSizes(fileId, variants)
@@ -493,6 +832,40 @@ export default class FileStorage {
       processingProgress: 100,
       processingNotes: null,
     })
+  }
+
+  /**
+   * Cleans up partially-moved files in case of DB insert failure. This ensures
+   * atomicity: if DB fails, we don't leave orphaned files on disk.
+   *
+   * SIDE EFFECTS:
+   *
+   * - Deletes files from permanent storage
+   *
+   * ERROR HANDLING:
+   *
+   * - Logs but doesn't throw on file deletion failures
+   */
+  private async cleanupPartiallyMovedFiles(
+    fileId: string,
+    variants: Array<{ variant: string; extension: string }>,
+  ): Promise<void> {
+    console.log(`[FileStorage] Cleaning up partially-moved files for ${fileId}`)
+    for (const variant of variants) {
+      const path = this.pathManager.getVariantPath(
+        fileId,
+        variant.variant,
+        variant.extension,
+      )
+      try {
+        if (fs.existsSync(path)) {
+          await fs.promises.unlink(path)
+          console.log(`[FileStorage] Deleted ${path}`)
+        }
+      } catch (err) {
+        console.error(`[FileStorage] Failed to cleanup ${path}:`, err)
+      }
+    }
   }
 
   /**
@@ -531,6 +904,32 @@ export default class FileStorage {
   }
 
   /**
+   * Validates that a file type conversion is allowed
+   *
+   * @param {FileType} sourceType The source file type
+   * @param {string} targetType The target file type
+   * @returns {void}
+   */
+  private validateFileTypeConversion(
+    sourceType: FileType,
+    targetType: string,
+  ): void {
+    const allowedConversions: Record<FileType, string[]> = {
+      [FileType.VIDEO]: ['VIDEO', 'GIF', 'AUDIO'],
+      [FileType.GIF]: ['VIDEO', 'GIF'],
+      [FileType.IMAGE]: ['IMAGE'],
+      [FileType.AUDIO]: ['AUDIO'],
+    }
+
+    const allowed = allowedConversions[sourceType]
+    if (!allowed || !allowed.includes(targetType)) {
+      throw new InputError(
+        `Invalid file type conversion: ${sourceType} cannot be converted to ${targetType}`,
+      )
+    }
+  }
+
+  /**
    * Determines the file type enum from MIME type
    *
    * @param mimeType
@@ -548,6 +947,50 @@ export default class FileStorage {
     } else {
       return FileType.IMAGE
     }
+  }
+
+  /**
+   * Converts a string file type to FileType enum
+   *
+   * @param type - The file type as a string (e.g., 'VIDEO', 'AUDIO')
+   * @returns The corresponding FileType enum value
+   */
+  private fileTypeFromString(type: string): FileType {
+    if (type === 'VIDEO') return FileType.VIDEO
+    if (type === 'GIF') return FileType.GIF
+    if (type === 'AUDIO') return FileType.AUDIO
+    if (type === 'IMAGE') return FileType.IMAGE
+    throw new Error(`Unknown file type: ${type}`)
+  }
+
+  /**
+   * Removes modifications that are incompatible with the target file type. For
+   * example, audio files cannot be cropped, so crop is removed when converting
+   * VIDEO→AUDIO.
+   *
+   * @param modifications - The current modifications object
+   * @param fromType - The original file type
+   * @param toType - The target file type after conversion
+   * @returns The modified modifications object with incompatible modifications
+   *   removed
+   */
+  private removeIncompatibleModifications(
+    modifications: PersistentModifications,
+    fromType: string,
+    toType: string,
+  ): PersistentModifications {
+    const result = { ...modifications }
+
+    // VIDEO→AUDIO: Remove crop (audio can't be cropped)
+    if (fromType === 'VIDEO' && toType === 'AUDIO') {
+      delete result.crop
+    }
+
+    // VIDEO→GIF: Keep both crop and trim
+    // GIF→VIDEO: Keep both crop and trim
+    // (no changes needed for these conversions)
+
+    return result
   }
 
   /**
@@ -613,165 +1056,6 @@ export default class FileStorage {
   }
 
   /**
-   * Analyzes an uploaded file to determine its type and validates conversion if
-   * requested
-   *
-   * @param {Promise<FileUpload>} upload The file upload promise
-   * @param {string} [explicitType] Optional explicit type for conversion
-   * @returns {Promise<FileAnalysisResult>} The analysis result
-   */
-  async analyzeFileUpload(
-    upload: Promise<FileUpload>,
-    explicitType?: 'VIDEO' | 'IMAGE' | 'GIF' | 'AUDIO',
-  ): Promise<FileAnalysisResult> {
-    const { createReadStream } = await upload
-
-    // Read a small chunk to determine file type
-    const stream = createReadStream()
-    const chunks: Buffer[] = []
-    let totalSize = 0
-    const maxChunkSize = 4096 // 4KB should be enough for file type detection
-
-    for await (const chunk of stream) {
-      chunks.push(chunk)
-      totalSize += chunk.length
-      if (totalSize >= maxChunkSize) {
-        break
-      }
-    }
-
-    const buffer = Buffer.concat(chunks)
-    const fileTypeResult = await fileTypeFromBuffer(buffer)
-
-    if (!fileTypeResult) {
-      throw new InputError('File-Type not recognized')
-    }
-
-    const { mime } = fileTypeResult
-
-    // Determine the inferred type from MIME
-    let inferredType: 'VIDEO' | 'IMAGE' | 'GIF' | 'AUDIO'
-    if (mime === 'image/gif') {
-      inferredType = 'GIF'
-    } else if (mime.startsWith('image/')) {
-      inferredType = 'IMAGE'
-    } else if (mime.startsWith('video/')) {
-      inferredType = 'VIDEO'
-    } else if (mime.startsWith('audio/')) {
-      inferredType = 'AUDIO'
-    } else {
-      throw new InputError('File-Type is not supported')
-    }
-
-    // If explicit type is provided, validate the conversion
-    if (explicitType) {
-      const validConversions = new Set([
-        'VIDEO->GIF',
-        'GIF->VIDEO',
-        'VIDEO->AUDIO',
-      ])
-
-      const conversionKey = `${inferredType}->${explicitType}`
-      if (
-        inferredType !== explicitType &&
-        !validConversions.has(conversionKey)
-      ) {
-        throw new InputError(
-          `Invalid conversion: ${conversionKey}. Valid conversions are: Video to Gif, Gif to Video, Video to Audio`,
-        )
-      }
-
-      return { type: explicitType, mimeType: mime }
-    }
-
-    return { type: inferredType, mimeType: mime }
-  }
-
-  /**
-   * Analyzes and stores an uploaded file to the queue for processing
-   *
-   * @param {Context} _ctx The context object
-   * @param {Promise<FileUpload>} upload The file upload promise
-   * @param {string} fileId The file ID to associate with the upload
-   * @param {string} [explicitType] Optional explicit type for conversion
-   * @returns {Promise<FileAnalysisResult>} The analysis result
-   */
-  async analyzeAndStoreFile(
-    _ctx: Context,
-    upload: Promise<FileUpload>,
-    fileId: string,
-    explicitType?: 'VIDEO' | 'IMAGE' | 'GIF' | 'AUDIO',
-  ): Promise<FileAnalysisResult> {
-    const { createReadStream } = await upload
-
-    // Read the stream to a buffer to get file type and store the file
-    const chunks: Buffer[] = []
-    const stream = createReadStream()
-
-    for await (const chunk of stream) {
-      chunks.push(chunk)
-    }
-
-    const buffer = Buffer.concat(chunks)
-    const fileTypeResult = await fileTypeFromBuffer(buffer)
-
-    if (!fileTypeResult) {
-      throw new InputError('File-Type not recognized')
-    }
-
-    const { mime } = fileTypeResult
-
-    // Determine the inferred type from MIME
-    let inferredType: 'VIDEO' | 'IMAGE' | 'GIF' | 'AUDIO'
-    if (mime === 'image/gif') {
-      inferredType = 'GIF'
-    } else if (mime.startsWith('image/')) {
-      inferredType = 'IMAGE'
-    } else if (mime.startsWith('video/')) {
-      inferredType = 'VIDEO'
-    } else if (mime.startsWith('audio/')) {
-      inferredType = 'AUDIO'
-    } else {
-      throw new InputError('File-Type is not supported')
-    }
-
-    // If explicit type is provided, validate the conversion
-    if (explicitType) {
-      const validConversions = new Set([
-        'VIDEO->GIF',
-        'GIF->VIDEO',
-        'VIDEO->AUDIO',
-      ])
-
-      const conversionKey = `${inferredType}->${explicitType}`
-      if (
-        inferredType !== explicitType &&
-        !validConversions.has(conversionKey)
-      ) {
-        throw new InputError(
-          `Invalid conversion: ${conversionKey}. Valid conversions are: Video to Gif, Gif to Video, Video to Audio`,
-        )
-      }
-    }
-
-    // Validate file type
-    this.validateFileType(mime) // Throws if unsupported
-
-    const queuePath = this.pathManager.getQueuePath(fileId)
-
-    // Ensure directory exists
-    await fs.promises.mkdir(path.dirname(queuePath), { recursive: true })
-
-    // Write buffer to file
-    await fs.promises.writeFile(queuePath, buffer)
-
-    return {
-      type: explicitType || inferredType,
-      mimeType: mime,
-    }
-  }
-
-  /**
    * Updates file variant sizes in the database
    *
    * @param {string} fileId The file ID
@@ -809,6 +1093,163 @@ export default class FileStorage {
           variant.variant,
           fileSize,
         )
+      }
+    }
+  }
+
+  /**
+   * Checks if a file already has UNMODIFIED variants
+   *
+   * @param {Context} ctx The context
+   * @param {string} fileId The file ID
+   * @returns {Promise<boolean>} True if UNMODIFIED variants exist
+   */
+  private async hasUnmodifiedVariants(
+    ctx: Context,
+    fileId: string,
+  ): Promise<boolean> {
+    const variants = await FileActions._qFileVariantsInternal(ctx, fileId)
+    return variants.some((v) => VariantRegistry.isUnmodifiedVariant(v.variant))
+  }
+
+  /**
+   * Checks if a file has any modifications (crop, trim, or file type
+   * conversion)
+   *
+   * @param {FileInternal} file The file to check
+   * @returns {boolean} True if file has modifications
+   */
+  private fileHasModifications(file: FileInternal): boolean {
+    if (!file?.processingMeta) return false
+
+    // Extract persistent modifications (crop, trim) from processingMeta
+    const persistent = getPersistentModifications(
+      file.processingMeta as ModificationActionData,
+    )
+    const hasPersistentMods = Object.keys(persistent).length > 0
+
+    // Check for file type conversion in processingMeta
+    const hasFileTypeConversion = !!(
+      file.processingMeta as ModificationActionData
+    ).fileType
+
+    return hasPersistentMods || hasFileTypeConversion
+  }
+
+  /**
+   * Renames a variant in both database and filesystem
+   *
+   * @param {Context} ctx The context
+   * @param {string} fileId The file ID
+   * @param {string} fromVariant The current variant name
+   * @param {string} toVariant The new variant name
+   * @returns {Promise<void>}
+   */
+  private async renameVariant(
+    ctx: Context,
+    fileId: string,
+    fromVariant: string,
+    toVariant: string,
+  ): Promise<void> {
+    // Get the variant record
+    const variants = await FileActions._qFileVariantsInternal(ctx, fileId)
+    const variant = variants.find((v) => v.variant === fromVariant)
+
+    if (!variant) {
+      console.warn(`Variant ${fromVariant} not found for file ${fileId}`)
+      return
+    }
+
+    // Update database record - use sql`` to bypass type checking for dynamic variant values
+    await ctx.db
+      .update(fileVariantTable)
+      .set({ variant: toVariant as typeof variant.variant })
+      .where(
+        and(
+          eq(fileVariantTable.file, fileId),
+          eq(fileVariantTable.variant, fromVariant as typeof variant.variant),
+        ),
+      )
+
+    // Rename physical file
+    const oldPath = this.pathManager.getVariantPath(
+      fileId,
+      fromVariant,
+      variant.extension,
+    )
+    const newPath = this.pathManager.getVariantPath(
+      fileId,
+      toVariant,
+      variant.extension,
+    )
+
+    if (fs.existsSync(oldPath)) {
+      await fs.promises.rename(oldPath, newPath)
+    }
+  }
+
+  /**
+   * Deletes a variant from both database and filesystem
+   *
+   * @param {Context} ctx The context
+   * @param {string} fileId The file ID
+   * @param {string} variantName The variant to delete
+   * @returns {Promise<void>}
+   */
+  async deleteVariant(
+    ctx: Context,
+    fileId: string,
+    variantName: string,
+  ): Promise<void> {
+    // CRITICAL FIX: Query directly from database, bypassing dataloader
+    // This ensures we see the current state, even if cache is stale after renameVariant()
+    const variants = await ctx.db
+      .select()
+      .from(fileVariantTable)
+      .where(eq(fileVariantTable.file, fileId))
+
+    console.log(
+      `[FileStorage] deleteVariant(${variantName}) for file ${fileId}: found ${variants.length} variants:`,
+      variants.map((v) => v.variant).join(', '),
+    )
+
+    const variant = variants.find((v) => v.variant === variantName)
+
+    if (!variant) {
+      console.log(
+        `[FileStorage] Variant ${variantName} not found for file ${fileId}, skipping deletion`,
+      )
+      return
+    }
+
+    console.log(
+      `[FileStorage] Deleting variant ${variantName} for file ${fileId}`,
+    )
+    // Delete from database
+    await ctx.db
+      .delete(fileVariantTable)
+      .where(
+        and(
+          eq(fileVariantTable.file, fileId),
+          eq(fileVariantTable.variant, variantName as typeof variant.variant),
+        ),
+      )
+    console.log(
+      `[FileStorage] Successfully deleted variant ${variantName} from database for file ${fileId}`,
+    )
+
+    // Delete physical file
+    const filePath = this.pathManager.getVariantPath(
+      fileId,
+      variantName,
+      variant.extension,
+    )
+
+    if (fs.existsSync(filePath)) {
+      try {
+        await fs.promises.unlink(filePath)
+      } catch (error) {
+        console.warn(`Failed to delete variant file ${filePath}:`, error)
       }
     }
   }

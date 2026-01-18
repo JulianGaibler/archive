@@ -1,25 +1,52 @@
 <script lang="ts">
-  import UserPicture from '@src/components/UserPicture.svelte'
-  import Button from 'tint/components/Button.svelte'
   import TextField from 'tint/components/TextField.svelte'
-  import ItemMedia from '@src/components/ItemMedia.svelte'
-  import ProcessingMediaStatus from '@src/components/ProcessingMediaStatus.svelte'
-  import Menu, { type ContextClickHandler } from 'tint/components/Menu.svelte'
-  import IconMore from 'tint/icons/20-more.svg?raw'
-  import { formatDate } from '@src/utils'
-  import { FileProcessingStatus, FileType } from '@src/generated/graphql'
+  import Modal from 'tint/components/Modal.svelte'
+  import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
+  import ItemMediaDisplay from '@src/components/ItemMediaDisplay.svelte'
+  import UploadItemDisplay from '@src/components/UploadItemDisplay.svelte'
+  import Menu, {
+    MENU_SEPARATOR,
+    type ContextClickHandler,
+  } from 'tint/components/Menu.svelte'
+  import { FileType } from '@src/generated/graphql'
   import type { PostUpdate, EditableItem } from '@src/utils/edit-manager'
-  import { getResourceUrl } from '@src/utils/resource-urls'
-  import type { MediaItemData } from '@src/components/ItemMedia.svelte'
+  import {
+    getAvailableItemOperations,
+    canShowOperations,
+  } from '@src/utils/item-state-machine'
+  import type { CropInput, TrimInput } from '@src/generated/graphql'
 
   type Props = {
     loading: boolean
     item: EditableItem
     editData?: PostUpdate
     onMoveItem?: (itemId: string) => void
+    onDuplicateItem?: (itemId: string) => void
     onDeleteItem?: (itemId: string) => void
     removeUploadItem?: (itemId: string) => void
     cancelUploadItem?: (itemId: string) => void
+    onConvertItem?: (itemId: string, targetType: FileType) => Promise<boolean>
+    onCropItem?: (
+      itemId: string,
+      crop: { left: number; top: number; right: number; bottom: number },
+    ) => Promise<boolean>
+    onTrimItem?: (
+      itemId: string,
+      trim: { startTime: number; endTime: number },
+    ) => Promise<boolean>
+    onModifyItem?: (
+      itemId: string,
+      params: {
+        crop?: { left: number; top: number; right: number; bottom: number }
+        trim?: { startTime: number; endTime: number }
+      },
+    ) => Promise<boolean>
+    onRemoveModifications?: (
+      itemId: string,
+      modifications: string[],
+      clearAllModifications: boolean,
+    ) => Promise<boolean>
+    onResetAndReprocessFile?: (itemId: string) => Promise<boolean>
   }
 
   let {
@@ -27,9 +54,16 @@
     item,
     editData = $bindable(),
     onMoveItem,
+    onDuplicateItem,
     onDeleteItem,
     removeUploadItem,
     cancelUploadItem,
+    onConvertItem,
+    onCropItem,
+    onTrimItem,
+    onModifyItem,
+    onRemoveModifications,
+    onResetAndReprocessFile,
   }: Props = $props()
 
   function forceUpdateEditData() {
@@ -49,28 +83,173 @@
 
   let buttonClick: ContextClickHandler | undefined = $state(undefined)
 
-  const itemActions = $derived([
-    ...(onMoveItem &&
-    item.type === 'existing' &&
-    !(
-      'file' in item.data &&
-      item.data.file &&
-      (item.data.file.processingStatus === FileProcessingStatus.Queued ||
-        item.data.file.processingStatus === FileProcessingStatus.Processing)
-    )
-      ? [{ label: 'Move to another post', onClick: () => onMoveItem(item.id) }]
-      : []),
-    ...(onDeleteItem &&
-    item.type === 'existing' &&
-    !(
-      'file' in item.data &&
-      item.data.file &&
-      (item.data.file.processingStatus === FileProcessingStatus.Queued ||
-        item.data.file.processingStatus === FileProcessingStatus.Processing)
-    )
-      ? [{ label: 'Delete item', onClick: () => onDeleteItem(item.id) }]
-      : []),
-  ])
+  // Transform modal state
+  let showTransformModal = $state(false)
+  let transformLoading = $state(false)
+
+  // Lazy-loaded FileTransformModal component
+  type FileTransformModalType =
+    typeof import('@src/components/FileTransformModal.svelte').default
+  let FileTransformModal = $state<FileTransformModalType | null>(null)
+  let loadingModal = $state(false)
+
+  // Conversion and cropping functions
+  async function handleConvertToVideo() {
+    if (item.type === 'existing' && onConvertItem) {
+      await onConvertItem(item.id, FileType.Video)
+    }
+  }
+
+  async function handleConvertToGif() {
+    if (item.type === 'existing' && onConvertItem) {
+      await onConvertItem(item.id, FileType.Gif)
+    }
+  }
+
+  async function handleConvertToAudio() {
+    if (item.type === 'existing' && onConvertItem) {
+      await onConvertItem(item.id, FileType.Audio)
+    }
+  }
+
+  // Open transform modal (with lazy loading)
+  async function handleTransformItem() {
+    if (item.type === 'existing') {
+      loadingModal = true
+
+      // Lazy load the modal component only when needed
+      if (!FileTransformModal) {
+        try {
+          const module =
+            await import('@src/components/FileTransformModal.svelte')
+          FileTransformModal = module.default
+        } catch (error) {
+          console.error('Failed to load FileTransformModal:', error)
+          loadingModal = false
+          return
+        }
+      }
+
+      loadingModal = false
+      showTransformModal = true
+    }
+  }
+
+  // Handle transform submission from modal
+  async function handleTransformSubmit(params: {
+    crop?: CropInput
+    trim?: TrimInput
+  }) {
+    if (item.type !== 'existing') return
+
+    transformLoading = true
+    try {
+      let success = false
+
+      // Prefer combined modifyItem mutation if both crop and trim are provided
+      if (params.crop && params.trim && onModifyItem) {
+        success = await onModifyItem(item.id, params)
+      } else {
+        // Fall back to individual mutations
+        success = true
+
+        // Apply crop if provided
+        if (params.crop && onCropItem) {
+          success = success && (await onCropItem(item.id, params.crop))
+        }
+
+        // Apply trim if provided
+        if (params.trim && onTrimItem) {
+          success = success && (await onTrimItem(item.id, params.trim))
+        }
+      }
+
+      if (success) {
+        showTransformModal = false
+      }
+    } catch (error) {
+      console.error('Transform failed:', error)
+    } finally {
+      transformLoading = false
+    }
+  }
+
+  // Cancel transform modal
+  function handleTransformCancel() {
+    showTransformModal = false
+    transformLoading = false
+  }
+
+  // Remove a specific modification
+  async function handleRemoveModification(modType: string) {
+    if (item.type === 'existing' && onRemoveModifications) {
+      await onRemoveModifications(item.id, [modType], false)
+    }
+  }
+
+  // Revert to original file (clear all modifications)
+  async function handleRevertToOriginal() {
+    if (item.type === 'existing' && onRemoveModifications) {
+      await onRemoveModifications(item.id, [], true)
+    }
+  }
+
+  async function handleResetAndReprocess() {
+    if (item.type === 'existing' && onResetAndReprocessFile) {
+      await onResetAndReprocessFile(item.id)
+    }
+  }
+
+  // Helper function to get current file type from __typename
+
+  const itemActions = $derived.by(() => {
+    const actions = []
+    const hasOperations = canShowOperations(item)
+
+    // Add operations (move, duplicate, delete)
+    if (onMoveItem && hasOperations) {
+      actions.push({
+        label: 'Move to another post',
+        onClick: () => onMoveItem(item.id),
+      })
+    }
+    if (onDuplicateItem && hasOperations) {
+      actions.push({
+        label: 'Duplicate item',
+        onClick: () => onDuplicateItem(item.id),
+      })
+    }
+    if (onDeleteItem && hasOperations) {
+      actions.push({
+        label: 'Delete item',
+        onClick: () => onDeleteItem(item.id),
+      })
+    }
+
+    // Get file conversion and transformation operations using utility
+    const conversions = getAvailableItemOperations(item, {
+      onConvert: (type) => {
+        if (type === FileType.Audio) handleConvertToAudio()
+        else if (type === FileType.Video) handleConvertToVideo()
+        else if (type === FileType.Gif) handleConvertToGif()
+      },
+      onEdit: handleTransformItem,
+      onReprocess: handleResetAndReprocess,
+      onRemoveModifications: (modifications) =>
+        handleRemoveModification(modifications[0]),
+      onRevertToOriginal: handleRevertToOriginal,
+    })
+
+    // Add separator between operations and transformations if both exist
+    if (actions.length > 0 && conversions.length > 0) {
+      actions.push(MENU_SEPARATOR)
+    }
+
+    // Add transformation options
+    actions.push(...conversions)
+
+    return actions
+  })
 
   function handleRemoveUploadItem() {
     if (item.type === 'upload') {
@@ -86,109 +265,10 @@
 </script>
 
 <article>
-  <!-- <pre>{JSON.stringify(item, null, 2)}</pre> -->
   {#if item.type === 'existing'}
-    {#if 'file' in item.data && item.data.file && (item.data.file.processingStatus === FileProcessingStatus.Queued || item.data.file.processingStatus === FileProcessingStatus.Processing)}
-      <ProcessingMediaStatus file={item.data.file} />
-    {:else}
-      <ItemMedia item={item.data} />
-    {/if}
-    <div class="info">
-      <ul class="origin pipelist">
-        <li>
-          <UserPicture user={item.data.creator} size="16" showUsername={true} />
-        </li>
-        <li>{formatDate(new Date(item.data.createdAt))}</li>
-      </ul>
-      <div class="actions">
-        {#if 'file' in item.data && item.data.file && 'originalPath' in item.data.file}
-          <Button
-            small={true}
-            download={`archive-${item.id}`}
-            href={getResourceUrl(item.data.file.originalPath)}>Original</Button
-          >
-        {/if}
-        {#if 'file' in item.data && item.data.file && 'compressedPath' in item.data.file}
-          <Button
-            small={true}
-            download={`archive-${item.id}-original`}
-            href={getResourceUrl(
-              'compressedGifPath' in item.data.file
-                ? item.data.file.compressedGifPath
-                : item.data.file.compressedPath,
-            )}>Compressed</Button
-          >
-        {/if}
-        {#if itemActions.length > 0}
-          <Button
-            small={true}
-            icon={true}
-            title="Edit item"
-            onclick={buttonClick}
-            onmousedown={buttonClick}>{@html IconMore}</Button
-          >
-        {/if}
-      </div>
-    </div>
+    <ItemMediaDisplay {item} {loading} {itemActions} {buttonClick} />
   {:else if item.type === 'upload'}
-    {#if item.isQueued}
-      <ProcessingMediaStatus
-        uploadItem={{
-          isUploading: false,
-          uploadError: undefined,
-          isQueued: true,
-        }}
-        onCancel={handleRemoveUploadItem}
-      />
-    {:else if item.isUploading}
-      <ProcessingMediaStatus
-        uploadItem={{
-          isUploading: true,
-          uploadError: undefined,
-          uploadController: item.uploadController,
-        }}
-        onCancel={handleRemoveUploadItem}
-      />
-    {:else if item.uploadError}
-      <ProcessingMediaStatus
-        uploadItem={{ isUploading: false, uploadError: item.uploadError }}
-        onCancel={handleRemoveUploadItem}
-      />
-    {:else if item.processingStatus === FileProcessingStatus.Done && item.processedFile}
-      <!-- File is done processing, show the actual media -->
-      <ItemMedia
-        item={{
-          __typename:
-            item.fileType === FileType.Image
-              ? 'ImageItem'
-              : item.fileType === FileType.Video
-                ? 'VideoItem'
-                : item.fileType === FileType.Gif
-                  ? 'GifItem'
-                  : 'AudioItem',
-          file: item.processedFile,
-        } as MediaItemData}
-      />
-    {:else if item.processingStatus && (item.processingStatus === FileProcessingStatus.Queued || item.processingStatus === FileProcessingStatus.Processing)}
-      <ProcessingMediaStatus
-        file={{
-          id: item.fileId || '',
-          processingStatus: item.processingStatus,
-          processingProgress: item.processingProgress,
-          processingNotes: item.processingNotes,
-        }}
-      />
-    {:else}
-      <!-- File is uploaded and not currently processing, show processing complete status -->
-      <ProcessingMediaStatus
-        uploadItem={{ isUploading: false, uploadError: undefined }}
-      />
-    {/if}
-    <div class="info">
-      <div class="actions standalone">
-        <Button small={true} onclick={handleRemoveUploadItem}>Remove</Button>
-      </div>
-    </div>
+    <UploadItemDisplay {item} onRemove={handleRemoveUploadItem} />
   {/if}
   <div class="content">
     {#if editItem}
@@ -231,6 +311,37 @@
   <Menu variant="button" bind:contextClick={buttonClick} items={itemActions} />
 {/if}
 
+<!-- Show loading state while modal loads -->
+{#if loadingModal}
+  <Modal open={true}>
+    <div style="padding: 2rem; text-align: center;">
+      <LoadingIndicator />
+      <p>Loading editor...</p>
+    </div>
+  </Modal>
+{/if}
+
+<!-- Render modal only after it's loaded -->
+{#if FileTransformModal && item.type === 'existing'}
+  <svelte:component
+    this={FileTransformModal}
+    open={showTransformModal}
+    loading={transformLoading}
+    {item}
+    itemId={item.id}
+    onCancel={handleTransformCancel}
+    onSubmit={handleTransformSubmit}
+    {onRemoveModifications}
+    waveform={'file' in item.data && 'waveform' in item.data.file
+      ? item.data.file.waveform
+      : undefined}
+    waveformThumbnail={'file' in item.data &&
+    'waveformThumbnail' in item.data.file
+      ? item.data.file.waveformThumbnail
+      : undefined}
+  />
+{/if}
+
 <style lang="sass">
   article
     display: flex
@@ -238,19 +349,6 @@
     gap: tint.$size-12
     &:not(:last-child)
       margin-block-end: tint.$size-32
-  .info
-    display: flex
-    align-items: center
-    gap: tint.$size-8
-    flex-wrap: wrap
-    ul
-      flex: 1
-    .actions
-      display: flex
-      justify-content: flex-end
-      gap: tint.$size-8
-      &.standalone
-        flex: 1
 
   .content
     display: grid

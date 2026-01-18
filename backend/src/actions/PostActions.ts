@@ -1210,6 +1210,82 @@ const PostActions = {
       return sourcePostDeleted
     })
   },
+
+  /**
+   * Duplicates an item within the same post. Creates an independent copy of the
+   * item with its own file copy. The duplicate appears right after the original
+   * item (position + 1).
+   *
+   * @param ctx - The request context
+   * @param fields - Object containing itemId
+   * @returns The ID of the new duplicated item
+   */
+  async mDuplicateItem(
+    ctx: Context,
+    fields: {
+      itemId: ItemExternal['id']
+    },
+  ): Promise<ItemExternal['id']> {
+    const userId = ctx.isAuthenticated()
+
+    return await ctx.db.transaction(async (tx) => {
+      const itemId = ItemModel.decodeId(fields.itemId)
+
+      // Get the original item
+      const items = await tx
+        .select()
+        .from(itemTable)
+        .where(eq(itemTable.id, itemId))
+        .limit(1)
+
+      if (items.length === 0) {
+        throw new NotFoundError('Item not found')
+      }
+
+      const originalItem = items[0]
+
+      // Check authorization
+      if (originalItem.creatorId !== userId) {
+        throw new AuthorizationError('You can only duplicate your own items')
+      }
+
+      if (!originalItem.fileId) {
+        throw new InputError('Cannot duplicate item without a file')
+      }
+
+      // Duplicate the file (creates new file with new UUID)
+      const newFileId = await FileActions._mDuplicateFile(
+        ctx,
+        originalItem.fileId,
+      )
+
+      // Shift down all items after the original item
+      await tx
+        .update(itemTable)
+        .set({ position: sql`${itemTable.position} + 1` })
+        .where(
+          and(
+            eq(itemTable.postId, originalItem.postId),
+            gt(itemTable.position, originalItem.position),
+          ),
+        )
+
+      // Create the duplicate item right after the original
+      const [newItem] = await tx
+        .insert(itemTable)
+        .values({
+          caption: originalItem.caption,
+          description: originalItem.description,
+          postId: originalItem.postId,
+          creatorId: userId,
+          position: originalItem.position + 1,
+          fileId: newFileId,
+        })
+        .returning()
+
+      return ItemModel.encodeId(newItem.id)
+    })
+  },
 }
 
 export default PostActions

@@ -138,5 +138,10 @@ subscription fileProcessingUpdates($ids: [String!]!) {
         waveformThumbnail
       }
     }
+    affectedItems {
+      id
+      typename
+      position
+    }
   }
 }
