@@ -17,6 +17,7 @@ export const ENV_VERSION = '2.0.0';
  * - category: Grouping for better UX
  * - devDefault: Default value for development
  * - prodDefault: Default value for production
+ * - ciDefault: Default value for CI/testing (safe to commit, no secrets)
  * - required: Boolean or { dev: boolean, prod: boolean }
  * - validation: Function to validate the value
  * - prompt: Custom prompt configuration (for select types)
@@ -35,6 +36,7 @@ export const ENV_VARIABLES = [
     category: 'Shared',
     devDefault: 'development',
     prodDefault: 'production',
+    ciDefault: 'development',
     required: true,
     scope: 'shared',
     prompt: {
@@ -58,6 +60,7 @@ export const ENV_VARIABLES = [
     category: 'Shared',
     devDefault: 'http://localhost:4321',
     prodDefault: null,
+    ciDefault: 'http://localhost:4321',
     required: true,
     scope: 'shared',
     validation: (value) => {
@@ -80,6 +83,7 @@ export const ENV_VARIABLES = [
     category: 'Path Configuration',
     devDefault: '/graphql',
     prodDefault: '/graphql',
+    ciDefault: '/graphql',
     required: false,
     scope: 'shared',
     optional: true,
@@ -98,6 +102,7 @@ export const ENV_VARIABLES = [
     category: 'Path Configuration',
     devDefault: '/websocket',
     prodDefault: '/websocket',
+    ciDefault: '/websocket',
     required: false,
     scope: 'shared',
     optional: true,
@@ -116,6 +121,7 @@ export const ENV_VARIABLES = [
     category: 'Shared',
     devDefault: 'http://localhost:3000',
     prodDefault: null,
+    ciDefault: 'http://localhost:4321',
     required: { dev: false, prod: true },
     scope: 'shared',
     smartDefault: (collectedValues, mode) => {
@@ -145,6 +151,7 @@ export const ENV_VARIABLES = [
     category: 'Database',
     devDefault: 'archive',
     prodDefault: 'archive_prod',
+    ciDefault: 'archive_test',
     required: true,
     scope: 'backend',
     validation: (value) => {
@@ -165,6 +172,7 @@ export const ENV_VARIABLES = [
     category: 'Database',
     devDefault: 'archive',
     prodDefault: 'archive',
+    ciDefault: 'archive_test',
     required: true,
     scope: 'backend',
     validation: (value) => {
@@ -182,6 +190,7 @@ export const ENV_VARIABLES = [
     category: 'Database',
     devDefault: 'archive',
     prodDefault: null,
+    ciDefault: 'test_password_not_for_production',
     required: true,
     scope: 'backend',
     smartDefault: (collectedValues, mode) => {
@@ -209,6 +218,7 @@ export const ENV_VARIABLES = [
     category: 'Database',
     devDefault: 'localhost',
     prodDefault: 'database',
+    ciDefault: 'localhost',
     required: false,
     scope: 'backend',
     optional: true,
@@ -224,6 +234,7 @@ export const ENV_VARIABLES = [
     category: 'Database',
     devDefault: '5432',
     prodDefault: '5432',
+    ciDefault: '5432',
     required: false,
     scope: 'backend',
     optional: true,
@@ -247,6 +258,7 @@ export const ENV_VARIABLES = [
     category: 'Backend',
     devDefault: '4000',
     prodDefault: '4000',
+    ciDefault: '4000',
     required: false,
     scope: 'backend',
     optional: true,
@@ -268,6 +280,7 @@ export const ENV_VARIABLES = [
     category: 'Backend',
     devDefault: './public',
     prodDefault: '/app/files',
+    ciDefault: './test-files',
     required: false,
     scope: 'backend',
     optional: true,
@@ -283,6 +296,7 @@ export const ENV_VARIABLES = [
     category: 'Backend',
     devDefault: '52428800',
     prodDefault: '2147483648',
+    ciDefault: '52428800',
     required: false,
     scope: 'backend',
     optional: true,
@@ -304,6 +318,7 @@ export const ENV_VARIABLES = [
     category: 'Backend',
     devDefault: '10',
     prodDefault: '10',
+    ciDefault: '10',
     required: false,
     scope: 'backend',
     optional: true,
@@ -325,6 +340,7 @@ export const ENV_VARIABLES = [
     category: 'Backend',
     devDefault: '"1=dev-session-secret-change-in-production"',
     prodDefault: null,
+    ciDefault: '"1=ci-test-secret-not-for-production"',
     required: true,
     scope: 'backend',
     smartDefault: (collectedValues, mode) => {
@@ -358,6 +374,7 @@ export const ENV_VARIABLES = [
     category: 'Backend',
     devDefault: '',
     prodDefault: '',
+    ciDefault: '',
     required: false,
     scope: 'backend',
     optional: true,
@@ -373,6 +390,7 @@ export const ENV_VARIABLES = [
     category: 'Backend',
     devDefault: 'allowed',
     prodDefault: 'disallowed',
+    ciDefault: 'allowed',
     required: false,
     scope: 'backend',
     optional: true,
@@ -399,6 +417,7 @@ export const ENV_VARIABLES = [
     category: 'Frontend',
     devDefault: '4321',
     prodDefault: '4321',
+    ciDefault: '4321',
     required: false,
     scope: 'frontend',
     optional: true,
@@ -420,6 +439,7 @@ export const ENV_VARIABLES = [
     category: 'Frontend',
     devDefault: 'http://localhost:4000',
     prodDefault: null,
+    ciDefault: 'http://localhost:4000',
     required: { dev: false, prod: true },
     scope: 'frontend',
     smartDefault: (collectedValues, mode) => {
@@ -449,6 +469,7 @@ export const ENV_VARIABLES = [
     category: 'Frontend',
     devDefault: 'http://localhost:4000',
     prodDefault: null,
+    ciDefault: 'http://localhost:4000',
     required: { dev: false, prod: true },
     scope: 'frontend',
     smartDefault: (collectedValues, mode) => {
@@ -478,6 +499,7 @@ export const ENV_VARIABLES = [
     category: 'Frontend',
     devDefault: null,
     prodDefault: '/files',
+    ciDefault: 'http://localhost:4000/files',
     required: { dev: false, prod: true },
     scope: 'frontend',
     smartDefault: (collectedValues, mode) => {
@@ -504,6 +526,7 @@ export const ENV_VARIABLES = [
     category: 'Frontend',
     devDefault: 'Legal',
     prodDefault: 'Legal',
+    ciDefault: 'Legal',
     required: false,
     scope: 'frontend',
     optional: true,
@@ -519,6 +542,7 @@ export const ENV_VARIABLES = [
     category: 'Frontend',
     devDefault: '//example.com/',
     prodDefault: '//example.com/',
+    ciDefault: '/legal',
     required: false,
     scope: 'frontend',
     optional: true,
@@ -540,12 +564,14 @@ export function getVariablesForMode(mode) {
 /**
  * Get the appropriate default value for a variable based on mode
  * @param {Object} variable - Variable definition
- * @param {'development' | 'production'} mode
+ * @param {'development' | 'production' | 'ci'} mode
  * @returns {string|null} Default value
  */
 export function getDefault(variable, mode) {
   if (mode === 'production') {
     return variable.prodDefault;
+  } else if (mode === 'ci') {
+    return variable.ciDefault;
   }
   return variable.devDefault;
 }
