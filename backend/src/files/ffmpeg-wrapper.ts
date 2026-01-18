@@ -282,48 +282,91 @@ export class FFmpegWrapper {
       : enhanced
   }
 
-  static async ffprobe(inputPath: string): Promise<FFProbeMetadata> {
+  /**
+   * Shared process executor for FFmpeg/FFprobe commands.
+   * Handles process spawning, output collection, and error handling.
+   */
+  private static async executeFFmpeg(
+    command: 'ffmpeg' | 'ffprobe',
+    args: string[],
+    options: {
+      parseStdout?: (data: string) => void
+      parseStderr?: (data: string) => void
+      onProgress?: (progress: FFmpegProgress) => void
+      duration?: number
+    } = {},
+  ): Promise<{ stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {
-      const args = [
-        '-v',
-        'quiet',
-        '-print_format',
-        'json',
-        '-show_format',
-        '-show_streams',
-        inputPath,
-      ]
-
-      const process = spawn('ffprobe', args)
+      const process = spawn(command, args)
       let stdout = ''
       let stderr = ''
 
       process.stdout.on('data', (data) => {
-        stdout += data.toString()
+        const chunk = data.toString()
+        stdout += chunk
+        if (options.parseStdout) {
+          options.parseStdout(chunk)
+        }
       })
 
       process.stderr.on('data', (data) => {
-        stderr += data.toString()
+        const chunk = data.toString()
+        stderr += chunk
+
+        if (options.parseStderr) {
+          options.parseStderr(chunk)
+        }
+
+        // Parse progress if handler provided
+        if (options.onProgress) {
+          const lines = chunk.split('\n')
+          for (const line of lines) {
+            const progress = this.parseProgress(line)
+            if (Object.keys(progress).length > 0) {
+              const percent = options.duration
+                ? this.calculatePercent(progress, options.duration)
+                : undefined
+              options.onProgress({ ...progress, percent })
+            }
+          }
+        }
       })
 
       process.on('close', (code) => {
         if (code !== 0) {
-          reject(new Error(`ffprobe failed with code ${code}: ${stderr}`))
+          reject(
+            new Error(`${command} failed with code ${code}: ${stderr}`),
+          )
           return
         }
-
-        try {
-          const metadata = JSON.parse(stdout)
-          resolve(metadata)
-        } catch (error) {
-          reject(new Error(`Failed to parse ffprobe output: ${error}`))
-        }
+        resolve({ stdout, stderr })
       })
 
       process.on('error', (error) => {
-        reject(new Error(`Failed to spawn ffprobe: ${error.message}`))
+        reject(new Error(`Failed to spawn ${command}: ${error.message}`))
       })
     })
+  }
+
+  static async ffprobe(inputPath: string): Promise<FFProbeMetadata> {
+    const args = [
+      '-v',
+      'quiet',
+      '-print_format',
+      'json',
+      '-show_format',
+      '-show_streams',
+      inputPath,
+    ]
+
+    const { stdout } = await this.executeFFmpeg('ffprobe', args)
+
+    try {
+      const metadata = JSON.parse(stdout)
+      return metadata
+    } catch (error) {
+      throw new Error(`Failed to parse ffprobe output: ${error}`)
+    }
   }
 
   static async generateWaveform(
@@ -346,142 +389,93 @@ export class FFmpegWrapper {
     const rawSamples = Math.max(samples * 4, 2000) // Get more raw data for better averaging
     const samplesPerChunk = Math.floor((44100 * duration) / rawSamples)
 
-    return new Promise((resolve, reject) => {
-      // Build the filter string based on channel selection
-      let filterString = 'aresample=44100'
-      if (channel === 'mono') {
-        filterString += ',pan=mono|c0=0.5*c0+0.5*c1'
-      } else if (channel === 'left') {
-        filterString += ',pan=mono|c0=c0'
-      } else if (channel === 'right') {
-        filterString += ',pan=mono|c0=c1'
+    // Build the filter string based on channel selection
+    let filterString = 'aresample=44100'
+    if (channel === 'mono') {
+      filterString += ',pan=mono|c0=0.5*c0+0.5*c1'
+    } else if (channel === 'left') {
+      filterString += ',pan=mono|c0=c0'
+    } else if (channel === 'right') {
+      filterString += ',pan=mono|c0=c1'
+    }
+
+    filterString += `,asetnsamples=${samplesPerChunk},astats=metadata=1:reset=1`
+
+    const args = [
+      '-v',
+      'error',
+      '-f',
+      'lavfi',
+      '-i',
+      `amovie=${inputPath},${filterString}`,
+      '-show_entries',
+      'frame_tags=lavfi.astats.Overall.Peak_level',
+      '-of',
+      'json',
+    ]
+
+    const { stdout } = await this.executeFFmpeg('ffprobe', args)
+
+    try {
+      const output = JSON.parse(stdout)
+      const frames = output.frames || []
+
+      // Extract peak levels and convert to normalized values
+      const rawPeaks: number[] = []
+
+      for (const frame of frames) {
+        const tags = frame.tags || {}
+        const peakLevel = tags['lavfi.astats.Overall.Peak_level']
+
+        if (peakLevel !== undefined) {
+          const dbValue = parseFloat(peakLevel)
+          if (!isNaN(dbValue)) {
+            rawPeaks.push(FFmpegWrapper.normalizeDbToPeakLevel(dbValue))
+          }
+        }
       }
 
-      filterString += `,asetnsamples=${samplesPerChunk},astats=metadata=1:reset=1`
+      if (rawPeaks.length === 0) {
+        throw new Error('No peak data found in audio file')
+      }
 
-      const args = [
-        '-v',
-        'error',
-        '-f',
-        'lavfi',
-        '-i',
-        `amovie=${inputPath},${filterString}`,
-        '-show_entries',
-        'frame_tags=lavfi.astats.Overall.Peak_level',
-        '-of',
-        'json',
-      ]
+      // Average the raw peaks down to the target number of samples
+      let peaks = FFmpegWrapper.averageArray(rawPeaks, samples)
 
-      const process = spawn('ffprobe', args)
-      let stdout = ''
-      let stderr = ''
+      // Enhance dynamic range if the waveform is too compressed
+      peaks = FFmpegWrapper.enhanceDynamicRange(peaks)
 
-      process.stdout.on('data', (data) => {
-        stdout += data.toString()
-      })
+      const waveformData: WaveformData = {
+        peaks,
+        duration,
+        sampleRate: peaks.length / duration,
+      }
 
-      process.stderr.on('data', (data) => {
-        stderr += data.toString()
-      })
-
-      process.on('close', (code) => {
-        if (code !== 0) {
-          reject(
-            new Error(
-              `ffprobe waveform generation failed with code ${code}: ${stderr}`,
-            ),
-          )
-          return
-        }
-
-        try {
-          const output = JSON.parse(stdout)
-          const frames = output.frames || []
-
-          // Extract peak levels and convert to normalized values
-          const rawPeaks: number[] = []
-
-          for (const frame of frames) {
-            const tags = frame.tags || {}
-            const peakLevel = tags['lavfi.astats.Overall.Peak_level']
-
-            if (peakLevel !== undefined) {
-              const dbValue = parseFloat(peakLevel)
-              if (!isNaN(dbValue)) {
-                rawPeaks.push(FFmpegWrapper.normalizeDbToPeakLevel(dbValue))
-              }
-            }
-          }
-
-          if (rawPeaks.length === 0) {
-            reject(new Error('No peak data found in audio file'))
-            return
-          }
-
-          // Average the raw peaks down to the target number of samples
-          let peaks = FFmpegWrapper.averageArray(rawPeaks, samples)
-
-          // Enhance dynamic range if the waveform is too compressed
-          peaks = FFmpegWrapper.enhanceDynamicRange(peaks)
-
-          const waveformData: WaveformData = {
-            peaks,
-            duration,
-            sampleRate: peaks.length / duration,
-          }
-
-          resolve(waveformData)
-        } catch (error) {
-          reject(new Error(`Failed to parse waveform output: ${error}`))
-        }
-      })
-
-      process.on('error', (error) => {
-        reject(new Error(`Failed to spawn ffprobe: ${error.message}`))
-      })
-    })
+      return waveformData
+    } catch (error) {
+      throw new Error(`Failed to parse waveform output: ${error}`)
+    }
   }
 
   static async screenshots(
     inputPath: string,
     options: ScreenshotOptions,
   ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const timestamp = options.timestamps[0] || 1
-      const outputPath = path.join(options.folder, options.filename)
+    const timestamp = options.timestamps[0] || 1
+    const outputPath = path.join(options.folder, options.filename)
 
-      const args = [
-        '-i',
-        inputPath,
-        '-ss',
-        timestamp.toString(),
-        '-vframes',
-        '1',
-        '-y', // Overwrite output file
-        outputPath,
-      ]
+    const args = [
+      '-i',
+      inputPath,
+      '-ss',
+      timestamp.toString(),
+      '-vframes',
+      '1',
+      '-y', // Overwrite output file
+      outputPath,
+    ]
 
-      const process = spawn('ffmpeg', args)
-      let stderr = ''
-
-      process.stderr.on('data', (data) => {
-        stderr += data.toString()
-      })
-
-      process.on('close', (code) => {
-        if (code !== 0) {
-          reject(
-            new Error(`ffmpeg screenshots failed with code ${code}: ${stderr}`),
-          )
-          return
-        }
-        resolve()
-      })
-
-      process.on('error', (error) => {
-        reject(new Error(`Failed to spawn ffmpeg: ${error.message}`))
-      })
-    })
+    await this.executeFFmpeg('ffmpeg', args)
   }
 
   /**
@@ -503,56 +497,32 @@ export class FFmpegWrapper {
       inputOptions,
     } = options
 
-    return new Promise((resolve, reject) => {
-      const args = ['-hide_banner', '-nostats']
+    const args = ['-hide_banner', '-nostats']
 
-      // Add input options before -i flag
-      if (inputOptions) {
-        args.push(...inputOptions)
-      }
+    // Add input options before -i flag
+    if (inputOptions) {
+      args.push(...inputOptions)
+    }
 
-      args.push(
-        '-i',
-        inputPath,
-        '-af',
-        `loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}:print_format=json:linear=${linear ? 'true' : 'false'}`,
-        '-f',
-        'null',
-        '-',
-      )
+    args.push(
+      '-i',
+      inputPath,
+      '-af',
+      `loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}:print_format=json:linear=${linear ? 'true' : 'false'}`,
+      '-f',
+      'null',
+      '-',
+    )
 
-      const process = spawn('ffmpeg', args)
-      let stderr = ''
+    const { stderr } = await this.executeFFmpeg('ffmpeg', args)
 
-      process.stderr.on('data', (data) => {
-        stderr += data.toString()
-      })
-
-      process.on('close', (code) => {
-        if (code !== 0) {
-          reject(
-            new Error(`Audio analysis failed with code ${code}: ${stderr}`),
-          )
-          return
-        }
-
-        try {
-          // Parse loudnorm measurements from stderr
-          const measurements = FFmpegWrapper.parseLoudnormMeasurements(stderr)
-          resolve(measurements)
-        } catch (error) {
-          reject(new Error(`Failed to parse loudnorm measurements: ${error}`))
-        }
-      })
-
-      process.on('error', (error) => {
-        reject(
-          new Error(
-            `Failed to spawn ffmpeg for audio analysis: ${error.message}`,
-          ),
-        )
-      })
-    })
+    try {
+      // Parse loudnorm measurements from stderr
+      const measurements = FFmpegWrapper.parseLoudnormMeasurements(stderr)
+      return measurements
+    } catch (error) {
+      throw new Error(`Failed to parse loudnorm measurements: ${error}`)
+    }
   }
 
   /**
@@ -729,89 +699,53 @@ export class FFmpegWrapper {
       console.warn('Could not get duration for progress calculation:', error)
     }
 
-    return new Promise((resolve, reject) => {
-      const args: string[] = []
+    const args: string[] = []
 
-      // Add input options before -i flag
-      if (options.inputOptions) {
-        args.push(...options.inputOptions)
+    // Add input options before -i flag
+    if (options.inputOptions) {
+      args.push(...options.inputOptions)
+    }
+
+    args.push('-i', inputPath)
+
+    // Add filter complex if provided
+    if (options.filterComplex) {
+      args.push('-filter_complex', options.filterComplex)
+    } else if (options.size) {
+      // Only add -vf if no filter_complex is used (they conflict)
+      if (options.size.startsWith('?x')) {
+        // Height-based scaling
+        const height = options.size.substring(2)
+        args.push('-vf', `scale=-2:${height}`)
+      } else if (options.size.includes('x')) {
+        // Width x Height
+        args.push('-s', options.size)
       }
+    }
 
-      args.push('-i', inputPath)
+    // Add output options
+    if (options.outputOptions) {
+      args.push(...options.outputOptions)
+    }
 
-      // Add filter complex if provided
-      if (options.filterComplex) {
-        args.push('-filter_complex', options.filterComplex)
-      } else if (options.size) {
-        // Only add -vf if no filter_complex is used (they conflict)
-        if (options.size.startsWith('?x')) {
-          // Height-based scaling
-          const height = options.size.substring(2)
-          args.push('-vf', `scale=-2:${height}`)
-        } else if (options.size.includes('x')) {
-          // Width x Height
-          args.push('-s', options.size)
-        }
-      }
+    // Add progress reporting - use pipe:2 instead of pipe:1 to avoid conflicts
+    args.push('-progress', 'pipe:2')
 
-      // Add output options
-      if (options.outputOptions) {
-        args.push(...options.outputOptions)
-      }
+    // Add output path and overwrite flag
+    args.push('-y', outputPath)
 
-      // Add progress reporting - use pipe:2 instead of pipe:1 to avoid conflicts
-      args.push('-progress', 'pipe:2')
-
-      // Add output path and overwrite flag
-      args.push('-y', outputPath)
-
-      const process = spawn('ffmpeg', args)
-      let stderr = ''
-
-      // Progress reporting comes through stderr when using pipe:2
-      process.stderr.on('data', (data) => {
-        const output = data.toString()
-        stderr += output
-
-        // Parse progress information
-        if (options.onProgress) {
-          const lines = output.split('\n')
-          for (const line of lines) {
-            if (line.trim() && line.includes('=')) {
-              const progress = FFmpegWrapper.parseProgress(line)
-              if (duration && progress.out_time) {
-                progress.percent = FFmpegWrapper.calculatePercent(
-                  progress,
-                  duration,
-                )
-              }
-              options.onProgress(progress as FFmpegProgress)
-            }
-          }
-        }
-      })
-
-      process.on('close', (code) => {
-        if (code !== 0) {
-          reject(
-            new Error(`ffmpeg conversion failed with code ${code}: ${stderr}`),
-          )
-          return
-        }
-        // Send final progress update
-        if (options.onProgress) {
-          options.onProgress({
-            percent: 100,
-            progress: 'end',
-          } as FFmpegProgress)
-        }
-        resolve()
-      })
-
-      process.on('error', (error) => {
-        reject(new Error(`Failed to spawn ffmpeg: ${error.message}`))
-      })
+    await this.executeFFmpeg('ffmpeg', args, {
+      onProgress: options.onProgress,
+      duration,
     })
+
+    // Send final progress update
+    if (options.onProgress) {
+      options.onProgress({
+        percent: 100,
+        progress: 'end',
+      } as FFmpegProgress)
+    }
   }
 }
 

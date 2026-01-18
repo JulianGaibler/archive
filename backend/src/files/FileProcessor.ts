@@ -19,6 +19,7 @@ import {
   StreamFactory,
 } from './types.js'
 import { ModificationActionData } from './processing-metadata.js'
+import { ModificationProcessor } from './ModificationProcessor.js'
 import {
   profilePictureOptions,
   itemTypes,
@@ -53,33 +54,30 @@ export default class FileProcessor {
       let transform = sharp().rotate().removeAlpha()
 
       // Apply crop modification if present
-      if (modifications && modifications.length > 0) {
-        const mod = modifications[0] // For now, just handle the first modification
-        if (mod.crop) {
-          const crop = mod.crop
-          // Calculate crop region for Sharp: extract(left, top, width, height)
-          let metadata
-          try {
-            metadata = await sharp(filePath).metadata()
-          } catch (err) {
-            throw new FileProcessingError(
-              'Failed to read image metadata for cropping',
-              'metadata extraction for crop',
-              err as Error,
-            )
-          }
+      const crop = ModificationProcessor.extractCrop(modifications)
+      if (crop) {
+        // Calculate crop region for Sharp: extract(left, top, width, height)
+        let metadata
+        try {
+          metadata = await sharp(filePath).metadata()
+        } catch (err) {
+          throw new FileProcessingError(
+            'Failed to read image metadata for cropping',
+            'metadata extraction for crop',
+            err as Error,
+          )
+        }
 
-          const { height: imgHeight, width: imgWidth } = metadata
-          if (imgHeight && imgWidth) {
-            const cropWidth = imgWidth - crop.left - crop.right
-            const cropHeight = imgHeight - crop.top - crop.bottom
-            transform = transform.extract({
-              left: crop.left,
-              top: crop.top,
-              width: cropWidth,
-              height: cropHeight,
-            })
-          }
+        const { height: imgHeight, width: imgWidth } = metadata
+        if (imgHeight && imgWidth) {
+          const cropWidth = imgWidth - crop.left - crop.right
+          const cropHeight = imgHeight - crop.top - crop.bottom
+          transform = transform.extract({
+            left: crop.left,
+            top: crop.top,
+            width: cropWidth,
+            height: cropHeight,
+          })
         }
       }
 
@@ -266,32 +264,20 @@ export default class FileProcessor {
         trimDuration?: number
       } => {
         const videoFilters: string[] = []
-        let needsTrim = false
-        let trimStart: number | undefined
-        let trimDuration: number | undefined
 
-        if (modifications && modifications.length > 0) {
-          modifications.forEach((mod) => {
-            // Handle crop modification
-            if (mod.crop) {
-              const crop = mod.crop
-              // Convert crop boundaries to FFmpeg crop filter: crop=width:height:x:y
-              // We need to calculate width/height from the boundaries
-              const cropWidth = width! - crop.left - crop.right
-              const cropHeight = height! - crop.top - crop.bottom
-              const cropFilter = `crop=${cropWidth}:${cropHeight}:${crop.left}:${crop.top}`
-              videoFilters.push(cropFilter)
-            }
-
-            // Handle trim modification
-            if (mod.trim) {
-              const trim = mod.trim
-              needsTrim = true
-              trimStart = trim.startTime
-              trimDuration = trim.endTime - trim.startTime
-            }
+        // Extract crop and build filter
+        const crop = ModificationProcessor.extractCrop(modifications)
+        if (crop && width && height) {
+          const cropFilter = ModificationProcessor.buildCropFilter(crop, {
+            width,
+            height,
           })
+          videoFilters.push(cropFilter)
         }
+
+        // Extract trim metadata
+        const { needsTrim, trimStart, trimDuration } =
+          ModificationProcessor.extractTrim(modifications)
 
         return { videoFilters, needsTrim, trimStart, trimDuration }
       }
@@ -312,13 +298,12 @@ export default class FileProcessor {
       ): Promise<void> => {
         return new Promise((resolve, reject) => {
           // Build input options array for trim
-          const inputOpts: string[] = []
-          if (needsTrim && trimStart !== undefined) {
-            inputOpts.push('-ss', trimStart.toString())
-            if (trimDuration !== undefined) {
-              inputOpts.push('-t', trimDuration.toString())
-            }
-          }
+          const inputOpts = needsTrim
+            ? ModificationProcessor.buildTrimInputOptions({
+                trimStart,
+                trimDuration,
+              })
+            : []
 
           // Create ffmpeg command with input options
           const f = ffmpeg(inputPath)
@@ -571,17 +556,12 @@ export default class FileProcessor {
       const tmpFilename2 = 'thumb-compressed.png'
 
       // Adjust screenshot time if video was trimmed
+      const trimInfo = ModificationProcessor.extractTrim(modifications)
       let finalScreenshotTime = screenshotTime
-      if (modifications && modifications.length > 0) {
-        const mod = modifications[0]
-        if (mod.trim) {
-          const trimStart = mod.trim.startTime
-          const trimEnd = mod.trim.endTime
-          const trimmedDuration = trimEnd - trimStart
-
-          // Take screenshot at 1s or half of trimmed duration if shorter
-          finalScreenshotTime = trimmedDuration < 1 ? trimmedDuration / 2 : 1
-        }
+      if (trimInfo.needsTrim && trimInfo.trimDuration !== undefined) {
+        // Take screenshot at 1s or half of trimmed duration if shorter
+        finalScreenshotTime =
+          trimInfo.trimDuration < 1 ? trimInfo.trimDuration / 2 : 1
       }
 
       // Extract screenshot from the COMPRESSED MP4 (with modifications)
@@ -730,34 +710,19 @@ export default class FileProcessor {
         )
       }
 
-      // Extract trim parameters
-      let trimStart: number | undefined
-      let trimDuration: number | undefined
-      if (modifications && modifications.length > 0) {
-        const mod = modifications[0]
-        if (mod.trim) {
-          trimStart = mod.trim.startTime
-          const trimEnd = mod.trim.endTime
-          trimDuration = trimEnd - trimStart
+      // Extract and validate trim parameters
+      const { needsTrim, trimStart, trimDuration } =
+        ModificationProcessor.extractTrim(modifications)
 
-          // Validate trim parameters
-          if (trimStart < 0 || trimStart >= duration) {
-            throw new InputError(
-              `Trim start time ${trimStart}s is out of range [0, ${duration}s]`,
-            )
-          }
-          if (trimEnd > duration) {
-            throw new InputError(
-              `Trim end time ${trimEnd}s exceeds audio duration ${duration}s`,
-            )
-          }
-          if (trimDuration <= 0) {
-            throw new InputError('Trim duration must be positive')
-          }
+      if (needsTrim && trimStart !== undefined && trimDuration !== undefined) {
+        // Validate trim parameters
+        ModificationProcessor.validateTrim(
+          { trimStart, trimDuration },
+          duration,
+        )
 
-          // Update duration for waveform calculation
-          duration = trimDuration
-        }
+        // Update duration for waveform calculation
+        duration = trimDuration
       }
 
       // Generate waveform data (10% of processing time)
