@@ -40,34 +40,6 @@ export default class FileProcessor {
     this.updateCallback = updateCallback
   }
 
-  /**
-   * Wraps file processing operations with consistent error handling. Re-throws
-   * FileProcessingError and InputError as-is, wraps other errors.
-   *
-   * @param operation The async operation to wrap
-   * @param step Description of the processing step (e.g., "image processing")
-   * @returns Promise resolving to the operation result
-   */
-  private async wrapProcessingError<T>(
-    operation: () => Promise<T>,
-    step: string,
-  ): Promise<T> {
-    try {
-      return await operation()
-    } catch (err) {
-      // Re-throw known error types as-is
-      if (err instanceof FileProcessingError || err instanceof InputError) {
-        throw err
-      }
-      // Wrap unexpected errors
-      throw new FileProcessingError(
-        `Unexpected error during ${step}`,
-        step,
-        err as Error,
-      )
-    }
-  }
-
   async processImage(
     filePath: string,
     directory: string,
