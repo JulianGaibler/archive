@@ -34,7 +34,7 @@
     "lint": "cd backend && npm run lint && cd ../frontend && npm run lint"
   },
   "devDependencies": {
-    "@inquirer/prompts": "^8.2.1",
+    "@inquirer/prompts": "^8.3.0",
     "chalk": "^5.6.2",
     "concurrently": "^9.2.1",
     "dotenv-cli": "^11.0.0",
