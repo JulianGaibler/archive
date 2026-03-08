@@ -521,7 +521,9 @@ export class FFmpegWrapper {
       const metadata = JSON.parse(stdout)
       return metadata
     } catch (error) {
-      throw new Error(`Failed to parse ffprobe output: ${error}`)
+      throw new Error(`Failed to parse ffprobe output: ${error}`, {
+        cause: error,
+      })
     }
   }
 
@@ -609,7 +611,9 @@ export class FFmpegWrapper {
 
       return waveformData
     } catch (error) {
-      throw new Error(`Failed to parse waveform output: ${error}`)
+      throw new Error(`Failed to parse waveform output: ${error}`, {
+        cause: error,
+      })
     }
   }
 
@@ -698,7 +702,9 @@ export class FFmpegWrapper {
       const measurements = FFmpegWrapper.parseLoudnormMeasurements(stderr)
       return measurements
     } catch (error) {
-      throw new Error(`Failed to parse loudnorm measurements: ${error}`)
+      throw new Error(`Failed to parse loudnorm measurements: ${error}`, {
+        cause: error,
+      })
     }
   }
 
@@ -865,7 +871,9 @@ export class FFmpegWrapper {
         target_offset: parseFloat(jsonData.target_offset),
       }
     } catch (error) {
-      throw new Error(`Failed to parse loudnorm JSON: ${error}`)
+      throw new Error(`Failed to parse loudnorm JSON: ${error}`, {
+        cause: error,
+      })
     }
   }
 

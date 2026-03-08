@@ -608,7 +608,7 @@ function convertToInlineQueryResult(items: ItemWithPost[]) {
  * @param root0.hash
  */
 export function validateAuth(apiResponse: string) {
-  let dataObj: { [key: string]: string | number } = {}
+  let dataObj: { [key: string]: string | number }
   try {
     dataObj = JSON.parse(apiResponse)
   } catch (_error) {

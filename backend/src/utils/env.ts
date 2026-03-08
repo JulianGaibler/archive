@@ -225,7 +225,9 @@ function processEnvVariables(): EnvConfig {
           currentVar.name,
         )
       } catch (error) {
-        throw new Error(`Failed to parse environment variable: ${error}`)
+        throw new Error(`Failed to parse environment variable: ${error}`, {
+          cause: error,
+        })
       }
     }
   }

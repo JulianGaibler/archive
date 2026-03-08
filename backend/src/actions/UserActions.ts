@@ -75,8 +75,8 @@ const UserActions = {
     ctx.isAuthenticated()
     const paginationInfo = PaginationUtils.parsePaginationArgs(fields)
     const { limit, offset } = paginationInfo
-    let users: UserInternal[] = []
-    let totalCount = 0
+    let users: UserInternal[]
+    let totalCount: number
     const whereClauses = []
     if (fields.search) {
       const search = `%${fields.search}%`

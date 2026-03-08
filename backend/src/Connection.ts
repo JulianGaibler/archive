@@ -83,6 +83,7 @@ export default class Connection {
       Connection.db = null
       throw new Error(
         `Database connection failed: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
       )
     }
   }
@@ -135,6 +136,7 @@ export default class Connection {
       }
       throw new Error(
         `PubSub connection failed: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
       )
     }
   }

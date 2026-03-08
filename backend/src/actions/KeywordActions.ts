@@ -70,8 +70,8 @@ const KeywordActions = {
     const paginationInfo = PaginationUtils.parsePaginationArgs(fields)
     const { limit, offset } = paginationInfo
 
-    let keywordsResult: KeywordInternal[] = []
-    let totalCount = 0
+    let keywordsResult: KeywordInternal[]
+    let totalCount: number
     const whereClauses = []
 
     // Handle postId filter

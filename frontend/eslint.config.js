@@ -50,6 +50,20 @@ export default ts.config(
     },
   },
   ...eslintPluginAstro.configs.recommended,
+  {
+    files: ['**/*.astro'],
+    rules: {
+      // Astro frontmatter variable initialization triggers false positives
+      'no-useless-assignment': 'off',
+    },
+  },
+  {
+    files: ['**/*.svelte'],
+    rules: {
+      // Svelte $bindable() props trigger false positives
+      'no-useless-assignment': 'off',
+    },
+  },
   prettierConfig,
   {
     languageOptions: {

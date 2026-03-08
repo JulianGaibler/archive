@@ -286,9 +286,9 @@ const SessionActions = {
         .delete(sessionTable)
         .where(eq(sessionTable.id, session.id))
       return !!result.rowCount
-    } catch (error) {
-      if (error instanceof RequestError) {
-        throw error
+    } catch (_error) {
+      if (_error instanceof RequestError) {
+        throw _error
       }
       throw new NotFoundError(
         'Session not found or you do not have permission to revoke it.',
