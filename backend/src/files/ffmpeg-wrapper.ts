@@ -768,8 +768,10 @@ export class FFmpegWrapper {
     const applyApad = !isAudioOnly // Only use apad when video stream is present
     const audioPadFilter = applyApad ? ',apad' : ''
 
-    // Audio filter chain: aresample (sync) -> loudnorm (normalize) -> asetpts (reset timestamps) -> [apad (pad silence)]
-    const audioFilter = `aresample=async=1:first_pts=0,loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}:linear=${linear ? 'true' : 'false'}:measured_I=${measurements.input_i}:measured_LRA=${measurements.input_lra}:measured_TP=${measurements.input_tp}:measured_thresh=${measurements.input_thresh}:offset=${measurements.target_offset}:dual_mono=${dualMono ? 'true' : 'false'},asetpts=PTS-STARTPTS${audioPadFilter}`
+    // Audio filter chain: loudnorm (normalize) -> aresample (resample + sync cleanup) -> asetpts (reset timestamps) -> [apad (pad silence)]
+    // aresample runs AFTER loudnorm to clean up timestamp discontinuities from loudnorm's internal 192kHz upsampling.
+    // Placing it before loudnorm (previous order) left post-loudnorm gaps unfixed, causing Firefox audio skips.
+    const audioFilter = `loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}:linear=${linear ? 'true' : 'false'}:measured_I=${measurements.input_i}:measured_LRA=${measurements.input_lra}:measured_TP=${measurements.input_tp}:measured_thresh=${measurements.input_thresh}:offset=${measurements.target_offset}:dual_mono=${dualMono ? 'true' : 'false'},aresample=async=1:first_pts=0,asetpts=PTS-STARTPTS${audioPadFilter}`
 
     // Build filter complex if video filters are provided
     let filterComplex: string | undefined

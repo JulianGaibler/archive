@@ -317,9 +317,14 @@ const FileActions = {
         )
 
         // Update the file record with the correct type
+        const processingMeta =
+          type === 'VIDEO' || type === 'AUDIO'
+            ? { normalize: { enabled: true } }
+            : null
+
         await tx
           .update(fileTable)
-          .set({ type, originalType: type })
+          .set({ type, originalType: type, processingMeta })
           .where(eq(fileTable.id, newFile.id))
       } catch (error) {
         // If file operations fail, clean up the database record
