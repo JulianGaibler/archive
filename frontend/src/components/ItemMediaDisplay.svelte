@@ -123,15 +123,15 @@
   display: flex
   align-items: center
   justify-content: space-between
-  padding-inline: 10px
-  padding-block: 10px
-  gap: 10px
+  padding-inline: tint.$size-8
+  padding-block: tint.$size-8
+  gap: tint.$size-8
   flex-wrap: wrap
 
 .origin
   display: flex
   align-items: center
-  gap: 8px
+  gap: tint.$size-8
   flex: 1 1 auto
   min-width: 0
 
@@ -140,7 +140,7 @@
   padding: 0
   margin: 0
   display: flex
-  gap: 8px
+  gap: tint.$size-8
   flex-wrap: wrap
 
   li
@@ -150,20 +150,18 @@
 
     &:not(:last-child)::after
       content: '|'
-      margin-left: 8px
-      opacity: 0.5
-
+        margin-inline-start: tint.$size-8
 .actions
   display: flex
-  gap: 8px
+  gap: tint.$size-8
   flex-wrap: wrap
 
 .status-icon
   display: flex
   align-items: center
   justify-content: center
-  width: 32px
-  height: 32px
+  width: tint.$size-32
+  height: tint.$size-32
   background: var(--tint-input-bg)
   border-radius: 50%
   box-sizing: border-box

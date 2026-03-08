@@ -119,7 +119,8 @@
     list-style: none
 
   .keyword-chip
-    padding: tint.$size-8 tint.$size-12
+    padding-block: tint.$size-8
+    padding-inline: tint.$size-12
     background: var(--tint-bg)
     border: 1px solid
     border-radius: tint.$size-24
@@ -150,7 +151,8 @@
   .keyword-count
     background: var(--tint-text-secondary)
     color: var(--tint-bg)
-    padding: tint.$size-2 tint.$size-8
+    padding-block: tint.$size-2
+    padding-inline: tint.$size-8
     border-radius: tint.$size-12
     min-width: 20px
     text-align: center

@@ -893,14 +893,14 @@
   .trim-wrapper
     display: flex
     flex-direction: column
-    gap: 12px
-    margin-top: 16px
+    gap: tint.$size-12
+    margin-block-start: tint.$size-16
 
   .trim-timeline
     position: relative
-    height: 48px
+    height: tint.$size-48
     background: transparent
-    border-radius: 8px
+    border-radius: tint.$size-8
     user-select: none
     touch-action: none
 
@@ -910,7 +910,7 @@
     left: 0
     width: 100%
     height: 100%
-    border-radius: 8px
+    border-radius: tint.$size-8
     touch-action: none
     z-index: 4
     pointer-events: auto
@@ -918,7 +918,7 @@
   .trim-info
     display: flex
     justify-content: space-between
-    gap: 8px
+    gap: tint.$size-8
     font-size: 12px
     color: var(--tint-text-secondary)
 

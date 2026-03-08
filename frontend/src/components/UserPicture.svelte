@@ -61,14 +61,14 @@
     background-color: var(--tint-input-bg)
     flex-shrink: 0
     &.x16
-      width: 16px
-      height: 16px
+      width: tint.$size-16
+      height: tint.$size-16
     &.x32
-      width: 32px
-      height: 32px
+      width: tint.$size-32
+      height: tint.$size-32
     &.x64
-      width: 64px
-      height: 64px
+      width: tint.$size-64
+      height: tint.$size-64
     &.x128
       width: 128px
       height: 128px

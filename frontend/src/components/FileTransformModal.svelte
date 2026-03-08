@@ -941,9 +941,10 @@
   .video-wrapper,
   .image-wrapper
     position: relative
-    margin: 0 auto
+    margin-block: 0
+    margin-inline: auto
     max-width: 100%
-    padding: 16px
+    padding: tint.$size-16
 
     video,
     img
@@ -979,8 +980,9 @@
     align-items: center
     > span
       border: 1px solid
-      padding: 2px 6px
-      border-radius: 32px
+      padding-block: 2px
+      padding-inline: tint.$size-8
+      border-radius: tint.$size-32
 
   .playback-controls-wrapper
     // Hide the scrubber/progress bar as requested
@@ -994,9 +996,9 @@
 
   .timeline
     position: relative
-    height: 48px
+    height: tint.$size-48
     background: var(--tint-input-bg)
-    border-radius: 4px
+    border-radius: tint.$size-4
     cursor: pointer
     user-select: none
 
@@ -1014,18 +1016,18 @@
     top: 0
     bottom: 0
     background: rgba(212, 33, 58, 0.2)
-    border-left: 2px solid var(--tint-action-primary)
-    border-right: 2px solid var(--tint-action-primary)
+    border-inline-start: 2px solid var(--tint-action-primary)
+    border-inline-end: 2px solid var(--tint-action-primary)
     pointer-events: none
 
   .trim-handle
     position: absolute
     top: 50%
     transform: translate(-50%, -50%)
-    width: 16px
-    height: 32px
+    width: tint.$size-16
+    height: tint.$size-32
     background: var(--tint-action-primary)
-    border-radius: 4px
+    border-radius: tint.$size-4
     cursor: ew-resize
     z-index: 2
 
@@ -1045,8 +1047,8 @@
     gap: tint.$size-12
     justify-content: space-between
     align-items: center
-    padding-top: tint.$size-16
-    border-top: 1px solid var(--tint-border)
+    padding-block-start: tint.$size-16
+    border-block-start: 1px solid var(--tint-border)
     flex-wrap: wrap
 
   .action-buttons-left,

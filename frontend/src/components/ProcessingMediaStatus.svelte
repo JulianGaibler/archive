@@ -118,7 +118,8 @@
   padding: tint.$size-16
   background: var(--tint-bg)
 .inner
-  margin: 0 auto
+  margin-block: 0
+  margin-inline: auto
   display: flex
   flex-direction: column
   align-items: center
@@ -133,7 +134,7 @@
     fill: currentColor
 
 details
-  margin-top: 1em
+  margin-block-start: 1em
   width: 100%
 
 code
@@ -141,6 +142,6 @@ code
   white-space: pre-wrap
   background: #2222
   padding: 0.5em
-  border-radius: 4px
-  margin-top: 0.5em
+  border-radius: tint.$size-4
+  margin-block-start: 0.5em
 </style>

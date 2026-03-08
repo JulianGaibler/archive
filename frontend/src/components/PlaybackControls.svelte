@@ -233,7 +233,7 @@
     position: relative
 
   .progress-container
-    margin-bottom: tint.$size-12
+    margin-block-end: tint.$size-12
 
   .progress-bar
     width: 100%
@@ -288,7 +288,7 @@
     gap: tint.$size-4
 
   .volume-slider
-    width: 80px
+    width: tint.$size-80
     height: tint.$size-4
     background: color-mix(in srgb, var(--tint-action-secondary) 20%, transparent)
     border-radius: tint.$size-2

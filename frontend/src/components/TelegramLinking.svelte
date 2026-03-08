@@ -234,18 +234,20 @@
     padding: tint.$size-24
     border-radius: tint.$card-radius
     background: var(--tint-bg)
-    text-align: left
+    text-align: start
     .profile-photo
-      width: 64px
-      height: 64px
+      width: tint.$size-64
+      height: tint.$size-64
       border-radius: 50%
       object-fit: cover
     .user-details
       h4
-        margin: 0 0 tint.$size-4 0
+        margin: 0
+        margin-block-end: tint.$size-4
         font-weight: 600
       .username
-        margin: 0 0 tint.$size-4 0
+        margin: 0
+        margin-block-end: tint.$size-4
         color: var(--tint-text-secondary)
         font-size: 0.9em
 
@@ -257,11 +259,12 @@
 
   .info
     border: 1px solid var(--tint-card-border)
-    text-align: left
+    text-align: start
     padding: tint.$size-32
     border-radius: tint.$card-radius
     max-width: 600px
-    margin: 0 auto
+    margin-block: 0
+    margin-inline: auto
     margin-block-start: tint.$size-32
     h3
       margin-block-end: tint.$size-8

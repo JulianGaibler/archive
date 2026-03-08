@@ -76,22 +76,20 @@
   </div>
 </div>
 
-<style>
-  .info {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 0;
-    gap: 10px;
-  }
+<style lang="sass">
+  .info
+    display: flex
+    align-items: center
+    justify-content: space-between
+    padding-block: tint.$size-8
+    padding-inline: 0
+    gap: tint.$size-8
 
-  .actions {
-    display: flex;
-    gap: 8px;
-  }
+  .actions
+    display: flex
+    gap: tint.$size-8
 
-  .actions.standalone {
-    width: 100%;
-    justify-content: flex-end;
-  }
+  .actions.standalone
+    width: 100%
+    justify-content: flex-end
 </style>

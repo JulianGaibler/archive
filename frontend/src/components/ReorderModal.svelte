@@ -145,7 +145,7 @@
   transition: all 0.2s ease
   cursor: grab
   &:not(:last-of-type)
-    border-bottom: 1px solid var(--tint-card-border)
+    border-block-end: 1px solid var(--tint-card-border)
   &:hover
     background: var(--tint-bg-hover)
   &:active
@@ -208,6 +208,6 @@
   display: flex
   gap: tint.$size-12
   justify-content: flex-end
-  padding-top: tint.$size-16
-  border-top: 1px solid var(--tint-border)
+  padding-block-start: tint.$size-16
+  border-block-start: 1px solid var(--tint-border)
 </style>

@@ -113,7 +113,7 @@ li
   gap: tint.$size-8
   padding: tint.$size-16
   &:not(:last-child)
-    border-bottom: 1px solid var(--tint-input-bg)
+    border-block-end: 1px solid var(--tint-input-bg)
 
 .label
   color: var(--tint-text-secondary)

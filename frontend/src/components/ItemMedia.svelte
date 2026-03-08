@@ -154,6 +154,7 @@
   text-align: center
   
   p
-    margin: 0.5rem 0
+    margin-block: 0.5rem
+    margin-inline: 0
     line-height: 1.4
 </style>

@@ -203,7 +203,7 @@
           <a
             class="tint--tinted post"
             href={`/${postNode?.id}`}
-            style="padding-bottom: {relativeHeight}%"
+            style="padding-block-end: {relativeHeight}%"
           >
             {#if thumbnailPath}
               <img
@@ -278,11 +278,11 @@
 
   .columns
     display: flex
-    gap: 16px
-    margin-block-start: 16px
+    gap: tint.$size-16
+    margin-block-start: tint.$size-16
 
   .column
-    gap: 16px
+    gap: tint.$size-16
     display: flex
     flex-grow: 1
     width: 100%
