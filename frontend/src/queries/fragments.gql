@@ -1,6 +1,7 @@
 fragment ItemData on Item {
   __typename
   createdAt
+  updatedAt
   description
   position
   id
@@ -45,6 +46,7 @@ fragment ItemData on Item {
       relativeHeight
     }
     caption
+    hasCaptions
     position
   }
   ... on ImageItem {

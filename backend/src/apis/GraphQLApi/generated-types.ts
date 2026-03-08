@@ -945,6 +945,7 @@ export type VideoItem = Item &
     creator: User
     description: Scalars['String']['output']
     file: VideoFile
+    hasCaptions: Scalars['Boolean']['output']
     /** The ID of an object */
     id: Scalars['ID']['output']
     position: Scalars['Int']['output']
@@ -2202,6 +2203,7 @@ export type VideoItemResolvers<
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
   description?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   file?: Resolver<ResolversTypes['VideoFile'], ParentType, ContextType>
+  hasCaptions?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
   position?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
   post?: Resolver<ResolversTypes['Post'], ParentType, ContextType>

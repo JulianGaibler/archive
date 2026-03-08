@@ -391,6 +391,7 @@
           bind:editData={$editData}
           loading={$loading}
           {item}
+          language={$postObject?.language}
           onMoveItem={openMoveModal}
           onDuplicateItem={handleDuplicateItem}
           onDeleteItem={handleDeleteItem}

@@ -49,6 +49,7 @@ type VideoItem implements Item & Node {
   updatedAt: DateTime!
   createdAt: DateTime!
   caption: String!
+  hasCaptions: Boolean!
   file: VideoFile!
 }
 

@@ -15,6 +15,7 @@
     src: string
     label: string
     language: string
+    kind: 'subtitles' | 'captions'
   }
 
   interface Props {
@@ -61,6 +62,14 @@
   // Captions state
   let activeCaptionTrack = $state<number>(-1) // -1 means off, 0+ are track indices
   let captionsClickHandler: ((e: Event) => void) | undefined = $state()
+
+  // Enforce track state — prevents Chrome from auto-enabling tracks
+  function applyTrackState() {
+    if (!videoElement?.textTracks) return
+    Array.from(videoElement.textTracks).forEach((track, index) => {
+      track.mode = index === activeCaptionTrack ? 'showing' : 'disabled'
+    })
+  }
 
   onMount(async () => {
     await new Promise((resolve) => setTimeout(resolve, 100))
@@ -580,30 +589,22 @@
       }
     }
 
-    // Load saved caption preference from localStorage
+    // Load saved caption preference
     const savedCaptions = localStorage.getItem('videoPlayerCaptions')
     if (savedCaptions) {
-      const captionTrack = JSON.parse(savedCaptions)
-      activeCaptionTrack = captionTrack
-      // Apply the saved caption setting when tracks are available
-      if (videoElement.textTracks && videoElement.textTracks.length > 0) {
-        Array.from(videoElement.textTracks).forEach((track) => {
-          track.mode = 'disabled'
-        })
-        if (
-          captionTrack >= 0 &&
-          captionTrack < videoElement.textTracks.length
-        ) {
-          videoElement.textTracks[captionTrack].mode = 'showing'
-        }
-      }
+      activeCaptionTrack = JSON.parse(savedCaptions)
     }
+
+    // Apply initial track state
+    applyTrackState()
+    videoElement.textTracks.addEventListener('change', applyTrackState)
 
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     document.addEventListener('enterpictureinpicture', handlePiPEnter)
     document.addEventListener('leavepictureinpicture', handlePiPLeave)
 
     return () => {
+      videoElement.textTracks.removeEventListener('change', applyTrackState)
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
       document.removeEventListener('enterpictureinpicture', handlePiPEnter)
       document.removeEventListener('leavepictureinpicture', handlePiPLeave)
@@ -682,13 +683,16 @@
             poster={posterUrl}
             preload="metadata"
             controls
+            crossorigin={captions && captions.length > 0
+              ? 'use-credentials'
+              : undefined}
           >
             <source src={getResourceUrl(src, fileUpdatedAt)} type="video/mp4" />
             {#if captions}
               {#each captions as caption (caption.src)}
                 <track
                   kind="captions"
-                  src={getResourceUrl(caption.src)}
+                  src={caption.src}
                   label={caption.label}
                   srclang={caption.language}
                 />
@@ -710,13 +714,16 @@
         onwaiting={handleWaiting}
         oncanplay={handleCanPlay}
         preload="metadata"
+        crossorigin={captions && captions.length > 0
+          ? 'use-credentials'
+          : undefined}
       >
         <source src={getResourceUrl(src, fileUpdatedAt)} type="video/mp4" />
         {#if captions}
           {#each captions as caption (caption.src)}
             <track
-              kind="captions"
-              src={getResourceUrl(caption.src)}
+              kind={caption.kind}
+              src={caption.src}
               label={caption.label}
               srclang={caption.language}
             />
@@ -834,6 +841,11 @@ video, .static-player
   height: auto
   display: block
   max-height: 80vh
+
+video::cue
+  background-color: rgba(0, 0, 0, 0.7)
+  font-size: 1rem
+  line-height: 1.4
 
 .static-player
   position: relative

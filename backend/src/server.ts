@@ -5,6 +5,7 @@ import { createServer, Server as HttpServer } from 'http'
 import logger from 'morgan'
 import path from 'path'
 import GraphQLApi from './apis/GraphQLApi/index.js'
+import captionsRouter from './apis/CaptionsApi/index.js'
 import env from './utils/env.js'
 import Context from './Context.js'
 import Connection from './Connection.js'
@@ -66,6 +67,9 @@ export default class {
         express.static(path.resolve(OPTIONS.fileStorageDir)),
       )
     }
+
+    // Captions API
+    this.app.use('/captions', captionsRouter)
 
     // Health check endpoint
     this.app.get('/health', async (_req, res) => {

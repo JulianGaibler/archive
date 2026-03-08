@@ -3,6 +3,7 @@
   import { getResourceUrl } from '@src/utils/resource-urls'
   import CustomVideoPlayer from './CustomVideoPlayer.svelte'
   import CustomAudioPlayer from './CustomAudioPlayer.svelte'
+  import { getCaptionUrl } from '@src/utils/caption-urls'
 
   // Create a minimal type that only includes what ItemMedia needs from the generated types
   export type MediaItemData =
@@ -18,20 +19,61 @@
         Extract<ItemDataFragment, { __typename: 'ImageItem' }>,
         '__typename' | 'file'
       >
-    | Pick<
+    | (Pick<
         Extract<ItemDataFragment, { __typename: 'VideoItem' }>,
         '__typename' | 'file'
-      >
+      > & { hasCaptions?: boolean })
     | Pick<
         Extract<ItemDataFragment, { __typename: 'ProcessingItem' }>,
         '__typename'
       >
 
-  interface Props {
-    item?: MediaItemData
+  interface CaptionInfo {
+    itemId: string
+    language: string
+    languageLabel: string
+    updatedAt?: string | number
   }
 
-  let { item }: Props = $props()
+  interface Caption {
+    src: string
+    label: string
+    language: string
+    kind: 'subtitles' | 'captions'
+  }
+
+  interface Props {
+    item?: MediaItemData
+    captionInfo?: CaptionInfo
+  }
+
+  let { item, captionInfo }: Props = $props()
+
+  let captionTracks = $derived.by((): Caption[] => {
+    if (!captionInfo) return []
+    return [
+      {
+        src: getCaptionUrl(
+          captionInfo.itemId,
+          'subtitles',
+          captionInfo.updatedAt,
+        ),
+        label: captionInfo.languageLabel,
+        language: captionInfo.language,
+        kind: 'subtitles',
+      },
+      {
+        src: getCaptionUrl(
+          captionInfo.itemId,
+          'captions',
+          captionInfo.updatedAt,
+        ),
+        label: `${captionInfo.languageLabel} CC`,
+        language: captionInfo.language,
+        kind: 'captions',
+      },
+    ]
+  })
 
   // Determine what we're rendering
   let mediaType = $derived(
@@ -107,6 +149,7 @@
         fileUpdatedAt={file?.updatedAt}
         {thumbnailPath}
         {posterThumbnailPath}
+        captions={captionTracks}
       />
     {/if}
   {:else if isGif}

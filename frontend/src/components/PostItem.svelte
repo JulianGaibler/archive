@@ -19,6 +19,7 @@
   type Props = {
     loading: boolean
     item: EditableItem
+    language?: string
     editData?: PostUpdate
     onMoveItem?: (itemId: string) => void
     onDuplicateItem?: (itemId: string) => void
@@ -53,6 +54,7 @@
   let {
     loading,
     item,
+    language,
     editData = $bindable(),
     onMoveItem,
     onDuplicateItem,
@@ -268,7 +270,7 @@
 
 <article>
   {#if item.type === 'existing'}
-    <ItemMediaDisplay {item} {loading} {itemActions} {buttonClick} />
+    <ItemMediaDisplay {item} {loading} {itemActions} {buttonClick} {language} />
   {:else if item.type === 'upload'}
     <UploadItemDisplay {item} onRemove={handleRemoveUploadItem} />
   {/if}

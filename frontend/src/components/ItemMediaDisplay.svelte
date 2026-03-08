@@ -15,15 +15,42 @@
   import type { ContextClickHandler } from 'tint/components/Menu.svelte'
   import { tooltip } from 'tint/actions/tooltip'
   import type { MenuItem } from '@src/utils/item-state-machine'
+  import { getLanguageInfo } from '@src/utils/language-utils'
+
+  interface CaptionInfo {
+    itemId: string
+    language: string
+    languageLabel: string
+    updatedAt?: string | number
+  }
 
   interface Props {
     item: ExistingItem
     loading: boolean
     itemActions: MenuItem[]
     buttonClick: ContextClickHandler | undefined
+    language?: string
   }
 
-  let { item, loading: _, itemActions, buttonClick }: Props = $props()
+  let { item, loading: _, itemActions, buttonClick, language }: Props = $props()
+
+  let captionInfo = $derived.by((): CaptionInfo | undefined => {
+    if (
+      item.data.__typename === 'VideoItem' &&
+      'hasCaptions' in item.data &&
+      item.data.hasCaptions &&
+      language
+    ) {
+      const langInfo = getLanguageInfo(language)
+      return {
+        itemId: item.data.id,
+        language: langInfo.bcp47,
+        languageLabel: langInfo.label,
+        updatedAt: item.data.updatedAt,
+      }
+    }
+    return undefined
+  })
 </script>
 
 <!-- Media Display -->
@@ -41,7 +68,7 @@
   <!-- File exists and is processing (shouldn't happen with ProcessingItem, but keep as fallback) -->
   <ProcessingMediaStatus file={item.data.file} />
 {:else}
-  <ItemMedia item={item.data} />
+  <ItemMedia item={item.data} {captionInfo} />
 {/if}
 
 <!-- Info Section -->
