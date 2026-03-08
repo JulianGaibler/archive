@@ -28,7 +28,6 @@ import {
   audioEncodingOptions,
   audioNormalizationOptions,
   processingConfig,
-  ENABLE_AUDIO_NORMALIZATION,
 } from './config.js'
 
 const pipeline = util.promisify(stream.pipeline)
@@ -292,6 +291,10 @@ export default class FileProcessor {
         trimDuration,
       } = buildFilters(modifications)
 
+      // Extract normalize flag from modifications
+      const { shouldNormalize } =
+        ModificationProcessor.extractNormalize(modifications)
+
       // Flag to prevent duplicate filter_complex when callback handles filters
       let filtersHandledByCallback = false
 
@@ -319,9 +322,8 @@ export default class FileProcessor {
           optionsCallback,
         } = options
 
-        // Determine if we should use normalization
-        const useNormalization =
-          enableNormalization && hasAudio && ENABLE_AUDIO_NORMALIZATION
+        // Determine if we should use normalization (per-file opt-in)
+        const useNormalization = enableNormalization && hasAudio
 
         // If normalization is enabled and needed, use FFmpegWrapper.normalizeAudio
         if (useNormalization) {
@@ -518,7 +520,7 @@ export default class FileProcessor {
               ? [...mp4AudioOptions, '-b:a', '192k']
               : [],
           hasAudio: fileType === FileType.VIDEO,
-          enableNormalization: true,
+          enableNormalization: shouldNormalize,
         })
         promises.push(renderA)
       } catch (err) {
@@ -850,11 +852,15 @@ export default class FileProcessor {
 
       this.updateCallback({ processingProgress: 21 })
 
-      // Compress to MP3 (with or without normalization based on flag)
+      // Extract normalize flag from modifications
+      const { shouldNormalize } =
+        ModificationProcessor.extractNormalize(modifications)
+
+      // Compress to MP3 (with or without normalization based on per-file flag)
       const mp3AudioOptions = audioEncodingOptions.mp3.audio
 
       try {
-        if (ENABLE_AUDIO_NORMALIZATION) {
+        if (shouldNormalize) {
           // Use audio normalization (2-pass EBU R128)
           await FFmpegWrapper.normalizeAudio(filePath, filePaths.mp3!, {
             inputOptions:

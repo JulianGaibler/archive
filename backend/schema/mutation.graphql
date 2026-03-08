@@ -399,6 +399,28 @@ type Mutation {
     Optional trim parameters to apply.
     """
     trim: TrimInput
+
+    """
+    Optional audio normalization parameters to apply.
+    """
+    normalize: NormalizeInput
+  ): String!
+
+  """
+  Normalize an item's audio.
+  Creates new variants with normalization applied while preserving the original.
+  Returns the new file ID for subscription.
+  """
+  normalizeItem(
+    """
+    The ID of the item to normalize.
+    """
+    itemId: ID!
+
+    """
+    The normalization parameters.
+    """
+    normalize: NormalizeInput!
   ): String!
 
   """

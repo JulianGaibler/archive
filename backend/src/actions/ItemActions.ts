@@ -23,6 +23,7 @@ import { UserExternal, UserInternal } from '@src/models/UserModel.js'
 import {
   CropMetadata,
   TrimMetadata,
+  NormalizeMetadata,
   ModificationActions,
 } from '@src/files/processing-metadata.js'
 import FileActions from './FileActions.js'
@@ -318,6 +319,13 @@ const ItemActions = {
         }
       }
 
+      // Validate normalize operation
+      if (fields.addModifications.normalize) {
+        if (!['VIDEO', 'AUDIO'].includes(file.type)) {
+          throw new InputError(`Cannot normalize ${file.type} files`)
+        }
+      }
+
       // Validate file type conversion
       if (fields.addModifications.fileType) {
         const targetType = fields.addModifications.fileType
@@ -375,6 +383,22 @@ const ItemActions = {
       itemId: fields.itemId,
       addModifications: {
         trim: fields.trim,
+      },
+    })
+  },
+
+  /** Normalizes an item's audio. */
+  async mNormalizeItem(
+    ctx: Context,
+    fields: {
+      itemId: ItemExternal['id']
+      normalize: NormalizeMetadata
+    },
+  ): Promise<string> {
+    return await ItemActions._mModifyItem(ctx, {
+      itemId: fields.itemId,
+      addModifications: {
+        normalize: fields.normalize,
       },
     })
   },

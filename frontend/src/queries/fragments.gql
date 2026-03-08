@@ -37,6 +37,9 @@ fragment ItemData on Item {
           startTime
           endTime
         }
+        normalize {
+          enabled
+        }
         fileType
       }
       relativeHeight
@@ -125,6 +128,9 @@ fragment ItemData on Item {
         trim {
           startTime
           endTime
+        }
+        normalize {
+          enabled
         }
         fileType
       }

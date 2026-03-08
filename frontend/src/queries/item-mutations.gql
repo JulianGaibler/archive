@@ -10,8 +10,17 @@ mutation trimItem($itemId: ID!, $trim: TrimInput!) {
   trimItem(itemId: $itemId, trim: $trim)
 }
 
-mutation modifyItem($itemId: ID!, $crop: CropInput, $trim: TrimInput) {
-  modifyItem(itemId: $itemId, crop: $crop, trim: $trim)
+mutation modifyItem(
+  $itemId: ID!
+  $crop: CropInput
+  $trim: TrimInput
+  $normalize: NormalizeInput
+) {
+  modifyItem(itemId: $itemId, crop: $crop, trim: $trim, normalize: $normalize)
+}
+
+mutation normalizeItem($itemId: ID!, $normalize: NormalizeInput!) {
+  normalizeItem(itemId: $itemId, normalize: $normalize)
 }
 
 mutation removeModifications(

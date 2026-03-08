@@ -22,9 +22,15 @@ export interface TrimMetadata {
   endTime: number
 }
 
+export interface NormalizeMetadata {
+  /** Whether audio normalization is enabled */
+  enabled: boolean
+}
+
 const PERSISTENT_MODIFICATIONS: (keyof PersistentModifications)[] = [
   'crop',
   'trim',
+  'normalize',
 ]
 export type PersistentModifications = {
   crop?: {
@@ -36,6 +42,9 @@ export type PersistentModifications = {
   trim?: {
     startTime: number
     endTime: number
+  }
+  normalize?: {
+    enabled: boolean
   }
 }
 
@@ -55,6 +64,8 @@ export function getPersistentModifications(
         persistent.crop = modifications.crop
       } else if (key === 'trim' && modifications.trim) {
         persistent.trim = modifications.trim
+      } else if (key === 'normalize' && modifications.normalize) {
+        persistent.normalize = modifications.normalize
       }
     }
   }

@@ -13,12 +13,6 @@ import Context from '@src/Context.js'
 import FileActions from '@src/actions/FileActions.js'
 
 export const itemResolvers: ItemResolvers = {
-  creator: async (parent, _args, ctx) =>
-    UserActions.qUser(ctx, { userId: parent.creatorId }),
-
-  post: async (parent, _args, ctx) =>
-    PostActions.qPost(ctx, { postId: parent.postId }),
-
   __resolveType: (obj) => getItemSubtype(obj),
 }
 

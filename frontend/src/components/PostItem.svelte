@@ -39,6 +39,7 @@
       params: {
         crop?: { left: number; top: number; right: number; bottom: number }
         trim?: { startTime: number; endTime: number }
+        normalize?: { enabled: boolean }
       },
     ) => Promise<boolean>
     onRemoveModifications?: (
@@ -139,6 +140,7 @@
   async function handleTransformSubmit(params: {
     crop?: CropInput
     trim?: TrimInput
+    normalize?: { enabled: boolean }
   }) {
     if (item.type !== 'existing') return
 
@@ -146,8 +148,8 @@
     try {
       let success = false
 
-      // Prefer combined modifyItem mutation if both crop and trim are provided
-      if (params.crop && params.trim && onModifyItem) {
+      // Prefer combined modifyItem mutation if multiple modifications or normalize
+      if (((params.crop && params.trim) || params.normalize) && onModifyItem) {
         success = await onModifyItem(item.id, params)
       } else {
         // Fall back to individual mutations

@@ -1,24 +1,6 @@
 import { StorageOptions, ProfilePictureSize, ItemTypeConfig } from './types.js'
 import env from '../utils/env.js'
 
-// Feature flag: Enable/disable audio normalization
-//
-// Problem: FFmpeg's loudnorm filter causes audio gaps/pauses in Firefox (but not Chrome/Safari/Edge).
-// The loudnorm filter with linear=true alters audio duration and timing, creating discontinuities
-// that Firefox strictly enforces while other browsers ignore.
-//
-// Failed attempts to fix while keeping normalization:
-// 1. apad + -shortest flag (muxer-level, applied too late)
-// 2. atrim filter (bypassed by AAC encoder priming)
-// 3. -t output flag (AAC/H.264 encoder delays create start_time mismatches)
-// 4. negative_cts_offsets movflag (eliminated edit lists but gap remained)
-// 5. asetpts=PTS-STARTPTS filter (explicit PTS reset, gap still present)
-// 6. linear=false in loudnorm (reduced but didn't eliminate gap)
-//
-// Set to false: No normalization, no Firefox gaps (current state)
-// Set to true: EBU R128 loudness normalization, Firefox gapss
-export const ENABLE_AUDIO_NORMALIZATION = false
-
 export const storageOptions: StorageOptions = {
   dist: env.BACKEND_FILE_STORAGE_DIR,
   directories: {
@@ -101,7 +83,7 @@ export const audioEncodingOptions = {
 }
 
 // A/V Synchronization options
-// Used when audio normalization is enabled (see ENABLE_AUDIO_NORMALIZATION above)
+// Used when audio normalization is enabled (per-file opt-in via normalize modification)
 export const avSyncOptions = {
   // Input options (applied before -i flag)
   input: [
@@ -115,7 +97,7 @@ export const avSyncOptions = {
   output: ['-shortest'],
 }
 
-// Audio normalization options (only used when ENABLE_AUDIO_NORMALIZATION = true)
+// Audio normalization options (used when normalize modification is enabled per-file)
 export const audioNormalizationOptions = {
   ebuR128: {
     // EBU R128 loudness normalization standards

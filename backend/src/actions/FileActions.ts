@@ -1579,12 +1579,21 @@ const FileActions = {
     let waveform: number[] = []
     let waveformThumbnail: number[] = []
 
-    // Extract metadata from original variant first
+    // Extract relative height from compressed variant first (reflects crop/trim modifications)
+    if (compressed && compressed.meta && typeof compressed.meta === 'object') {
+      const meta = compressed.meta as Record<string, unknown>
+
+      if (typeof meta.relative_height === 'number') {
+        relativeHeight = meta.relative_height
+      }
+    }
+
+    // Extract metadata from original variant
     if (original && original.meta && typeof original.meta === 'object') {
       const meta = original.meta as Record<string, unknown>
 
-      // Relative height for visual media
-      if (typeof meta.relative_height === 'number') {
+      // Fallback relative height if compressed didn't have it
+      if (!relativeHeight && typeof meta.relative_height === 'number') {
         relativeHeight = meta.relative_height
       }
 
@@ -1597,16 +1606,10 @@ const FileActions = {
       }
     }
 
-    // Fallback to compressed variant for missing data
+    // Audio metadata fallback from compressed variant
     if (compressed && compressed.meta && typeof compressed.meta === 'object') {
       const meta = compressed.meta as Record<string, unknown>
 
-      // Relative height fallback
-      if (!relativeHeight && typeof meta.relative_height === 'number') {
-        relativeHeight = meta.relative_height
-      }
-
-      // Audio metadata fallbacks
       if (waveform.length === 0 && Array.isArray(meta.waveform)) {
         waveform = meta.waveform as number[]
       }

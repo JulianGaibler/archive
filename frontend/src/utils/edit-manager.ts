@@ -1429,6 +1429,7 @@ export function createEditManager(
     params: {
       crop?: { left: number; top: number; right: number; bottom: number }
       trim?: { startTime: number; endTime: number }
+      normalize?: { enabled: boolean }
     },
   ) => {
     try {
@@ -1437,6 +1438,7 @@ export function createEditManager(
         itemId,
         crop: params.crop || null,
         trim: params.trim || null,
+        normalize: params.normalize || null,
       })
 
       const error = getOperationResultError(result)
@@ -1445,6 +1447,7 @@ export function createEditManager(
         const operations = []
         if (params.crop) operations.push('cropping')
         if (params.trim) operations.push('trimming')
+        if (params.normalize) operations.push('normalizing')
         openDialog?.({
           heading: 'Modification Error',
           children: `Failed to start ${operations.join(' and ')}: ${error.message}`,

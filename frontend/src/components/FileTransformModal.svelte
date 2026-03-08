@@ -2,6 +2,7 @@
   import Button from 'tint/components/Button.svelte'
   import Modal from 'tint/components/Modal.svelte'
   import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
+  import LabeledToggleable from 'tint/components/LabeledToggleable.svelte'
   import CropController from '@src/components/FileTransformModal/CropController.svelte'
   import TrimController from '@src/components/FileTransformModal/TrimController.svelte'
   import type { EditableItem } from '@src/utils/edit-manager'
@@ -20,6 +21,7 @@
     modifications?: {
       crop?: CropInput
       trim?: TrimInput
+      normalize?: { enabled: boolean }
     }
   }
 
@@ -28,7 +30,11 @@
     loading?: boolean
     item: EditableItem
     onCancel: () => void
-    onSubmit: (params: { crop?: CropInput; trim?: TrimInput }) => Promise<void>
+    onSubmit: (params: {
+      crop?: CropInput
+      trim?: TrimInput
+      normalize?: { enabled: boolean }
+    }) => Promise<void>
     onRemoveModifications?: (
       itemId: string,
       modifications: string[],
@@ -119,6 +125,12 @@
         item.data.__typename === 'AudioItem'),
   )
 
+  const canNormalize = $derived(
+    item.type === 'existing' &&
+      (item.data.__typename === 'VideoItem' ||
+        item.data.__typename === 'AudioItem'),
+  )
+
   const mediaType = $derived.by(() => {
     if (item.type !== 'existing') return 'image'
     return item.data.__typename === 'AudioItem'
@@ -146,6 +158,16 @@
       ? (originalFile as FileWithModifications).modifications?.trim
       : undefined,
   )
+
+  // Helper to get initial normalize from modifications
+  const initialNormalize = $derived(
+    originalFile && 'modifications' in originalFile
+      ? (originalFile as FileWithModifications).modifications?.normalize
+      : undefined,
+  )
+
+  // Normalize audio state
+  let normalizeAudio = $state(false)
 
   // Check if INITIAL crop (from DB) is significant (outside margin threshold)
   const hasSignificantCrop = $derived(
@@ -232,8 +254,10 @@
     const hasCrop = cropArea && cropPixelOffsets
     const hasTrim =
       trimStart !== null && trimEnd !== null && trimDuration >= 0.1
+    const hasNormalize =
+      canNormalize && (normalizeAudio || initialNormalize?.enabled)
 
-    if (!hasCrop && !hasTrim) return false
+    if (!hasCrop && !hasTrim && !hasNormalize) return false
 
     // Validate crop if present
     if (hasCrop && cropArea) {
@@ -521,7 +545,11 @@
   async function handleSubmit() {
     if (!isValid) return
 
-    const params: { crop?: CropInput; trim?: TrimInput } = {}
+    const params: {
+      crop?: CropInput
+      trim?: TrimInput
+      normalize?: { enabled: boolean }
+    } = {}
     const modificationsToRemove: string[] = []
 
     // === CROP VALIDATION WITH MARGIN ===
@@ -597,6 +625,16 @@
       }
     }
 
+    // === NORMALIZE HANDLING ===
+    if (canNormalize) {
+      if (normalizeAudio) {
+        params.normalize = { enabled: true }
+      } else if (initialNormalize?.enabled) {
+        // Was enabled, now toggled off → queue for removal
+        modificationsToRemove.push('normalize')
+      }
+    }
+
     // If we need to remove modifications, call onRemoveModifications
     if (modificationsToRemove.length > 0 && onRemoveModifications && itemId) {
       await onRemoveModifications(itemId, modificationsToRemove, false)
@@ -669,6 +707,13 @@
     }
   })
 
+  // Initialize normalizeAudio from existing modifications when modal opens
+  $effect(() => {
+    if (open) {
+      normalizeAudio = initialNormalize?.enabled ?? false
+    }
+  })
+
   // Reset when modal closes
   $effect(() => {
     if (!open) {
@@ -678,6 +723,7 @@
       cropArea = undefined
       trimStart = 0
       trimEnd = 0
+      normalizeAudio = false
       originalCropArea = null
       originalTrimStart = null
 
@@ -809,6 +855,19 @@
             bind:isPlaying
             bind:trimDragging
           />
+        {/if}
+
+        <!-- Normalize toggle -->
+        {#if canNormalize && mediaLoaded}
+          <div class="normalize-toggle">
+            <LabeledToggleable
+              id="normalize-audio"
+              type="checkbox"
+              bind:checked={normalizeAudio}
+              label="Normalize audio"
+              description="Apply EBU R128 loudness normalization. May cause audio artifacts in Firefox."
+            />
+          </div>
         {/if}
 
         <!-- Actions -->
@@ -977,6 +1036,9 @@
     display: flex
     justify-content: space-between
     color: var(--tint-text-secondary)
+
+  .normalize-toggle
+    padding-block: tint.$size-8
 
   .actions
     display: flex

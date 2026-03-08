@@ -161,6 +161,11 @@ type FileModifications {
   trim: TrimMetadata
 
   """
+  Audio normalization applied to the file.
+  """
+  normalize: NormalizeMetadata
+
+  """
   File type conversion applied.
   """
   fileType: FileType
@@ -204,4 +209,14 @@ type TrimMetadata {
   End time of the trim in seconds.
   """
   endTime: Float!
+}
+
+"""
+Metadata about an audio normalization modification.
+"""
+type NormalizeMetadata {
+  """
+  Whether audio normalization is applied.
+  """
+  enabled: Boolean!
 }

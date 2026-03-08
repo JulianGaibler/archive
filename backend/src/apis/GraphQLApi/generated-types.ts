@@ -163,6 +163,8 @@ export type FileModifications = {
   crop?: Maybe<CropMetadata>
   /** File type conversion applied. */
   fileType?: Maybe<FileType>
+  /** Audio normalization applied to the file. */
+  normalize?: Maybe<NormalizeMetadata>
   /** Trim modification applied to the file. */
   trim?: Maybe<TrimMetadata>
 }
@@ -430,6 +432,11 @@ export type Mutation = {
    */
   moveItem: Scalars['Boolean']['output']
   /**
+   * Normalize an item's audio. Creates new variants with normalization applied
+   * while preserving the original. Returns the new file ID for subscription.
+   */
+  normalizeItem: Scalars['String']['output']
+  /**
    * Remove specific modifications from an item or revert to original. Creates a
    * new file without the specified modifications. Returns the new file ID for
    * subscription.
@@ -549,6 +556,7 @@ export type MutationMergePostArgs = {
 export type MutationModifyItemArgs = {
   crop?: InputMaybe<CropInput>
   itemId: Scalars['ID']['input']
+  normalize?: InputMaybe<NormalizeInput>
   trim?: InputMaybe<TrimInput>
 }
 
@@ -556,6 +564,11 @@ export type MutationMoveItemArgs = {
   itemId: Scalars['ID']['input']
   keepEmptyPost?: InputMaybe<Scalars['Boolean']['input']>
   targetPostId: Scalars['ID']['input']
+}
+
+export type MutationNormalizeItemArgs = {
+  itemId: Scalars['ID']['input']
+  normalize: NormalizeInput
 }
 
 export type MutationRemoveModificationsArgs = {
@@ -613,6 +626,19 @@ export type NewItemInput = {
 export type Node = {
   /** The id of the object. */
   id: Scalars['ID']['output']
+}
+
+/** Input type for audio normalization parameters. */
+export type NormalizeInput = {
+  /** Whether audio normalization should be applied. */
+  enabled: Scalars['Boolean']['input']
+}
+
+/** Metadata about an audio normalization modification. */
+export type NormalizeMetadata = {
+  __typename?: 'NormalizeMetadata'
+  /** Whether audio normalization is applied. */
+  enabled: Scalars['Boolean']['output']
 }
 
 /** A photo file. */
@@ -934,7 +960,12 @@ export type ResolverTypeWrapper<T> = Promise<T> | T
 export type ResolverWithResolve<TResult, TParent, TContext, TArgs> = {
   resolve: ResolverFn<TResult, TParent, TContext, TArgs>
 }
-export type Resolver<TResult, TParent = {}, TContext = {}, TArgs = {}> =
+export type Resolver<
+  TResult,
+  TParent = Record<PropertyKey, never>,
+  TContext = Record<PropertyKey, never>,
+  TArgs = Record<PropertyKey, never>,
+> =
   | ResolverFn<TResult, TParent, TContext, TArgs>
   | ResolverWithResolve<TResult, TParent, TContext, TArgs>
 
@@ -998,22 +1029,29 @@ export type SubscriptionObject<
 export type SubscriptionResolver<
   TResult,
   TKey extends string,
-  TParent = {},
-  TContext = {},
-  TArgs = {},
+  TParent = Record<PropertyKey, never>,
+  TContext = Record<PropertyKey, never>,
+  TArgs = Record<PropertyKey, never>,
 > =
   | ((
       ...args: any[]
     ) => SubscriptionObject<TResult, TKey, TParent, TContext, TArgs>)
   | SubscriptionObject<TResult, TKey, TParent, TContext, TArgs>
 
-export type TypeResolveFn<TTypes, TParent = {}, TContext = {}> = (
+export type TypeResolveFn<
+  TTypes,
+  TParent = Record<PropertyKey, never>,
+  TContext = Record<PropertyKey, never>,
+> = (
   parent: TParent,
   context: TContext,
   info: GraphQLResolveInfo,
 ) => Maybe<TTypes> | Promise<Maybe<TTypes>>
 
-export type IsTypeOfResolverFn<T = {}, TContext = {}> = (
+export type IsTypeOfResolverFn<
+  T = Record<PropertyKey, never>,
+  TContext = Record<PropertyKey, never>,
+> = (
   obj: T,
   context: TContext,
   info: GraphQLResolveInfo,
@@ -1022,10 +1060,10 @@ export type IsTypeOfResolverFn<T = {}, TContext = {}> = (
 export type NextResolverFn<T> = () => Promise<T>
 
 export type DirectiveResolverFn<
-  TResult = {},
-  TParent = {},
-  TContext = {},
-  TArgs = {},
+  TResult = Record<PropertyKey, never>,
+  TParent = Record<PropertyKey, never>,
+  TContext = Record<PropertyKey, never>,
+  TArgs = Record<PropertyKey, never>,
 > = (
   next: NextResolverFn<TResult>,
   parent: TParent,
@@ -1156,9 +1194,11 @@ export type ResolversTypes = ResolversObject<{
     }
   >
   Language: Language
-  Mutation: ResolverTypeWrapper<{}>
+  Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>
   NewItemInput: NewItemInput
   Node: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Node']>
+  NormalizeInput: NormalizeInput
+  NormalizeMetadata: ResolverTypeWrapper<NormalizeMetadata>
   PhotoFile: ResolverTypeWrapper<
     Omit<PhotoFile, 'creator'> & { creator: ResolversTypes['User'] }
   >
@@ -1175,10 +1215,10 @@ export type ResolversTypes = ResolversObject<{
   ProfilePictureFile: ResolverTypeWrapper<
     Omit<ProfilePictureFile, 'creator'> & { creator: ResolversTypes['User'] }
   >
-  Query: ResolverTypeWrapper<{}>
+  Query: ResolverTypeWrapper<Record<PropertyKey, never>>
   Session: ResolverTypeWrapper<SessionExternal>
   String: ResolverTypeWrapper<Scalars['String']['output']>
-  Subscription: ResolverTypeWrapper<{}>
+  Subscription: ResolverTypeWrapper<Record<PropertyKey, never>>
   TrimInput: TrimInput
   TrimMetadata: ResolverTypeWrapper<TrimMetadata>
   UpdateKind: UpdateKind
@@ -1242,9 +1282,11 @@ export type ResolversParentTypes = ResolversObject<{
   KeywordConnection: Omit<KeywordConnection, 'nodes'> & {
     nodes: Array<ResolversParentTypes['Keyword']>
   }
-  Mutation: {}
+  Mutation: Record<PropertyKey, never>
   NewItemInput: NewItemInput
   Node: ResolversInterfaceTypes<ResolversParentTypes>['Node']
+  NormalizeInput: NormalizeInput
+  NormalizeMetadata: NormalizeMetadata
   PhotoFile: Omit<PhotoFile, 'creator'> & {
     creator: ResolversParentTypes['User']
   }
@@ -1259,10 +1301,10 @@ export type ResolversParentTypes = ResolversObject<{
   ProfilePictureFile: Omit<ProfilePictureFile, 'creator'> & {
     creator: ResolversParentTypes['User']
   }
-  Query: {}
+  Query: Record<PropertyKey, never>
   Session: SessionExternal
   String: Scalars['String']['output']
-  Subscription: {}
+  Subscription: Record<PropertyKey, never>
   TrimInput: TrimInput
   TrimMetadata: TrimMetadata
   Upload: Scalars['Upload']['output']
@@ -1288,7 +1330,6 @@ export type AffectedItemResolvers<
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
   position?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>
   typename?: Resolver<ResolversTypes['String'], ParentType, ContextType>
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
 export type AudioFileResolvers<
@@ -1363,7 +1404,6 @@ export type CropMetadataResolvers<
   left?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
   right?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
   top?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
 export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<
@@ -1383,36 +1423,6 @@ export type FileResolvers<
     ParentType,
     ContextType
   >
-  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
-  creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
-  id?: Resolver<ResolversTypes['String'], ParentType, ContextType>
-  modifications?: Resolver<
-    Maybe<ResolversTypes['FileModifications']>,
-    ParentType,
-    ContextType
-  >
-  originalType?: Resolver<ResolversTypes['FileType'], ParentType, ContextType>
-  processingNotes?: Resolver<
-    Maybe<ResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >
-  processingProgress?: Resolver<
-    Maybe<ResolversTypes['Int']>,
-    ParentType,
-    ContextType
-  >
-  processingStatus?: Resolver<
-    ResolversTypes['FileProcessingStatus'],
-    ParentType,
-    ContextType
-  >
-  unmodifiedCompressedPath?: Resolver<
-    Maybe<ResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >
-  updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
 }>
 
 export type FileModificationsResolvers<
@@ -1430,12 +1440,16 @@ export type FileModificationsResolvers<
     ParentType,
     ContextType
   >
+  normalize?: Resolver<
+    Maybe<ResolversTypes['NormalizeMetadata']>,
+    ParentType,
+    ContextType
+  >
   trim?: Resolver<
     Maybe<ResolversTypes['TrimMetadata']>,
     ParentType,
     ContextType
   >
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
 export type FileProcessingUpdateResolvers<
@@ -1451,7 +1465,6 @@ export type FileProcessingUpdateResolvers<
   file?: Resolver<ResolversTypes['File'], ParentType, ContextType>
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
   kind?: Resolver<ResolversTypes['UpdateKind'], ParentType, ContextType>
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
 export type GifFileResolvers<
@@ -1549,13 +1562,6 @@ export type ItemResolvers<
     ParentType,
     ContextType
   >
-  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
-  creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
-  description?: Resolver<ResolversTypes['String'], ParentType, ContextType>
-  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
-  position?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
-  post?: Resolver<ResolversTypes['Post'], ParentType, ContextType>
-  updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
 }>
 
 export type ItemConnectionResolvers<
@@ -1573,7 +1579,6 @@ export type ItemConnectionResolvers<
     ContextType
   >
   totalCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
 export type KeywordResolvers<
@@ -1608,7 +1613,6 @@ export type KeywordConnectionResolvers<
     ContextType
   >
   totalCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
 export type MutationResolvers<
@@ -1733,6 +1737,12 @@ export type MutationResolvers<
       'itemId' | 'keepEmptyPost' | 'targetPostId'
     >
   >
+  normalizeItem?: Resolver<
+    ResolversTypes['String'],
+    ParentType,
+    ContextType,
+    RequireFields<MutationNormalizeItemArgs, 'itemId' | 'normalize'>
+  >
   removeModifications?: Resolver<
     ResolversTypes['String'],
     ParentType,
@@ -1811,7 +1821,14 @@ export type NodeResolvers<
     ParentType,
     ContextType
   >
-  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>
+}>
+
+export type NormalizeMetadataResolvers<
+  ContextType = Context,
+  ParentType extends ResolversParentTypes['NormalizeMetadata'] =
+    ResolversParentTypes['NormalizeMetadata'],
+> = ResolversObject<{
+  enabled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>
 }>
 
 export type PhotoFileResolvers<
@@ -1896,7 +1913,6 @@ export type PostConnectionResolvers<
     ContextType
   >
   totalCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
 export type ProcessingItemResolvers<
@@ -2066,7 +2082,6 @@ export type TrimMetadataResolvers<
 > = ResolversObject<{
   endTime?: Resolver<ResolversTypes['Float'], ParentType, ContextType>
   startTime?: Resolver<ResolversTypes['Float'], ParentType, ContextType>
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
 export interface UploadScalarConfig extends GraphQLScalarTypeConfig<
@@ -2119,7 +2134,6 @@ export type UserConnectionResolvers<
     ContextType
   >
   totalCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>
 }>
 
 export type VideoFileResolvers<
@@ -2213,6 +2227,7 @@ export type Resolvers<ContextType = Context> = ResolversObject<{
   KeywordConnection?: KeywordConnectionResolvers<ContextType>
   Mutation?: MutationResolvers<ContextType>
   Node?: NodeResolvers<ContextType>
+  NormalizeMetadata?: NormalizeMetadataResolvers<ContextType>
   PhotoFile?: PhotoFileResolvers<ContextType>
   Post?: PostResolvers<ContextType>
   PostConnection?: PostConnectionResolvers<ContextType>

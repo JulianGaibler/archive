@@ -90,16 +90,22 @@ export const mutationResolvers: MutationResolvers = {
   trimItem: async (_, args, ctx) => ItemActions.mTrimItem(ctx, args),
 
   modifyItem: async (_, args, ctx) => {
-    const modifications: { crop?: typeof args.crop; trim?: typeof args.trim } =
-      {}
+    const modifications: {
+      crop?: typeof args.crop
+      trim?: typeof args.trim
+      normalize?: typeof args.normalize
+    } = {}
     if (args.crop) modifications.crop = args.crop
     if (args.trim) modifications.trim = args.trim
+    if (args.normalize) modifications.normalize = args.normalize
 
     return ItemActions._mModifyItem(ctx, {
       itemId: args.itemId,
       addModifications: modifications as Record<string, unknown>,
     })
   },
+
+  normalizeItem: async (_, args, ctx) => ItemActions.mNormalizeItem(ctx, args),
 
   removeModifications: async (_, args, ctx) =>
     ItemActions.mRemoveModifications(ctx, {

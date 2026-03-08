@@ -6,6 +6,7 @@
   import IconMore from 'tint/icons/20-more.svg?raw'
   import ItemCrop from 'tint/icons/20-crop.svg?raw'
   import IconCut from 'tint/icons/20-cut.svg?raw'
+  import IconTune from 'tint/icons/20-tune.svg?raw'
   import IconTransform from 'tint/icons/20-transform.svg?raw'
   import { formatDate } from '@src/utils'
   import { FileProcessingStatus } from '@src/generated/graphql'
@@ -65,6 +66,11 @@
           {@html IconCut}
         </span>
       {/if}
+      {#if mods?.normalize?.enabled}
+        <span class="status-icon" use:tooltip={'Normalized'}>
+          {@html IconTune}
+        </span>
+      {/if}
       {#if mods?.fileType && 'originalType' in item.data.file && item.data.file.originalType}
         {@const originalType =
           item.data.file.originalType.charAt(0) +
@@ -117,14 +123,16 @@
   display: flex
   align-items: center
   justify-content: space-between
-  padding: 10px 0
+  padding-inline: 10px
+  padding-block: 10px
   gap: 10px
+  flex-wrap: wrap
 
 .origin
   display: flex
   align-items: center
   gap: 8px
-  flex: 1
+  flex: 1 1 auto
   min-width: 0
 
 .pipelist
@@ -133,10 +141,12 @@
   margin: 0
   display: flex
   gap: 8px
+  flex-wrap: wrap
 
   li
     display: flex
     align-items: center
+    white-space: nowrap
 
     &:not(:last-child)::after
       content: '|'
@@ -146,6 +156,7 @@
 .actions
   display: flex
   gap: 8px
+  flex-wrap: wrap
 
 .status-icon
   display: flex

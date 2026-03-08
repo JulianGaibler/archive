@@ -85,6 +85,25 @@ export class ModificationProcessor {
   }
 
   /**
+   * Extracts normalize metadata from modifications array. Returns whether audio
+   * normalization should be applied.
+   */
+  static extractNormalize(modifications?: ModificationActionData[]): {
+    shouldNormalize: boolean
+  } {
+    if (!modifications || modifications.length === 0) {
+      return { shouldNormalize: false }
+    }
+
+    const mod = modifications[0]
+    if (!mod.normalize || !mod.normalize.enabled) {
+      return { shouldNormalize: false }
+    }
+
+    return { shouldNormalize: true }
+  }
+
+  /**
    * Validates trim parameters against file duration. Throws error if trim times
    * are invalid.
    */

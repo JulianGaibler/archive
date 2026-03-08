@@ -209,3 +209,13 @@ input TrimInput {
   """
   endTime: Float!
 }
+
+"""
+Input type for audio normalization parameters.
+"""
+input NormalizeInput {
+  """
+  Whether audio normalization should be applied.
+  """
+  enabled: Boolean!
+}
