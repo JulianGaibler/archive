@@ -43,7 +43,14 @@
   </Button>
 
   <div class="nav-group">
-    <Button variant="ghost" small icon onclick={onPrevCue} tooltip="Previous cue (⌥←)" aria-label="Previous cue (Alt+Left)">
+    <Button
+      variant="ghost"
+      small
+      icon
+      onclick={onPrevCue}
+      tooltip="Previous cue (⌥←)"
+      aria-label="Previous cue (Alt+Left)"
+    >
       {@html IconPrev}
     </Button>
     <div class="middle-group">
@@ -57,7 +64,14 @@
       >
         {@html IconTrash}
       </Button>
-      <Button variant="primary" small icon onclick={onAddCue} tooltip="Add cue (⌥N)" aria-label="Add cue (Alt+N)">
+      <Button
+        variant="primary"
+        small
+        icon
+        onclick={onAddCue}
+        tooltip="Add cue (⌥N)"
+        aria-label="Add cue (Alt+N)"
+      >
         {@html IconAdd}
       </Button>
       <Button
@@ -71,7 +85,14 @@
         {@html IconCut}
       </Button>
     </div>
-    <Button variant="ghost" small icon onclick={onNextCue} tooltip="Next cue (⌥→)" aria-label="Next cue (Alt+Right)">
+    <Button
+      variant="ghost"
+      small
+      icon
+      onclick={onNextCue}
+      tooltip="Next cue (⌥→)"
+      aria-label="Next cue (Alt+Right)"
+    >
       {@html IconNext}
     </Button>
   </div>

@@ -430,13 +430,7 @@
       if (cue.endMs != null) {
         ctx.fillStyle = '#ffffff'
         ctx.beginPath()
-        ctx.arc(
-          x2 - handleInset,
-          handleCenterY,
-          handleRadius,
-          0,
-          Math.PI * 2,
-        )
+        ctx.arc(x2 - handleInset, handleCenterY, handleRadius, 0, Math.PI * 2)
         ctx.fill()
       }
     }

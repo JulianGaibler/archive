@@ -60,7 +60,5 @@ export async function copyToClipboard(
     }, 'image/png')
   })
 
-  await navigator.clipboard.write([
-    new ClipboardItem({ 'image/png': blob }),
-  ])
+  await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
 }

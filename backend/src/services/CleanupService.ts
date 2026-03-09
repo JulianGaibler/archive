@@ -157,9 +157,7 @@ export default class CleanupService {
     try {
       const count = await FileActions.mQueueNormalizationBackfill(ctx, 3)
       if (count > 0) {
-        console.log(
-          `🔊 Queued ${count} files for normalization backfill`,
-        )
+        console.log(`🔊 Queued ${count} files for normalization backfill`)
       }
       return count
     } catch (error) {

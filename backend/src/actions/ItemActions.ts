@@ -500,8 +500,8 @@ const ItemActions = {
   },
 
   /**
-   * Sets or clears the template configuration on an item's file.
-   * Updates processingMeta directly without triggering reprocessing.
+   * Sets or clears the template configuration on an item's file. Updates
+   * processingMeta directly without triggering reprocessing.
    */
   async mSetItemTemplate(
     ctx: Context,

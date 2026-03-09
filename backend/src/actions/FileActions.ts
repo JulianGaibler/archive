@@ -1658,13 +1658,10 @@ const FileActions = {
   // =============================================================================
 
   /**
-   * Queue a batch of un-normalized VIDEO/AUDIO files for reprocessing.
-   * Targets files uploaded before normalization was added (March 8, 2026).
+   * Queue a batch of un-normalized VIDEO/AUDIO files for reprocessing. Targets
+   * files uploaded before normalization was added (March 8, 2026).
    */
-  async mQueueNormalizationBackfill(
-    ctx: Context,
-    n: number,
-  ): Promise<number> {
+  async mQueueNormalizationBackfill(ctx: Context, n: number): Promise<number> {
     ctx.isPrivileged()
 
     const NORMALIZATION_CUTOFF = 1741392000000 // March 8, 2026 00:00 UTC

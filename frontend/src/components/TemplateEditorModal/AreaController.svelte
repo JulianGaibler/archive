@@ -90,15 +90,7 @@
     ctx.drawImage(img, PADDING, PADDING, displayWidth, displayHeight)
 
     // Draw template areas
-    drawTemplateAreas(
-      ctx,
-      areas,
-      selectedId,
-      scaleX,
-      scaleY,
-      PADDING,
-      PADDING,
-    )
+    drawTemplateAreas(ctx, areas, selectedId, scaleX, scaleY, PADDING, PADDING)
   }
 
   function handleMouseDown(e: MouseEvent) {
@@ -119,10 +111,8 @@
     if (hit) {
       onSelect(hit.areaId)
       const area = areas.find((a) => a.id === hit.areaId)!
-      const cx =
-        area.x * scaleX + PADDING + (area.width * scaleX) / 2
-      const cy =
-        area.y * scaleY + PADDING + (area.height * scaleY) / 2
+      const cx = area.x * scaleX + PADDING + (area.width * scaleX) / 2
+      const cy = area.y * scaleY + PADDING + (area.height * scaleY) / 2
       const dir = hit.mode.replace('resize-', '')
       const fixedCorner = {
         x: dir.includes('w') ? area.x + area.width : area.x,

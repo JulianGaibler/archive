@@ -127,7 +127,14 @@ export function getAreaHandleHit(
   scaleY: number,
   offsetX: number,
   offsetY: number,
-): 'move' | 'resize-nw' | 'resize-ne' | 'resize-sw' | 'resize-se' | 'rotate' | null {
+):
+  | 'move'
+  | 'resize-nw'
+  | 'resize-ne'
+  | 'resize-sw'
+  | 'resize-se'
+  | 'rotate'
+  | null {
   const cx = area.x * scaleX + offsetX + (area.width * scaleX) / 2
   const cy = area.y * scaleY + offsetY + (area.height * scaleY) / 2
   const w = area.width * scaleX
@@ -167,12 +174,7 @@ export function getAreaHandleHit(
   }
 
   // Inside area = move
-  if (
-    lx >= -w / 2 &&
-    lx <= w / 2 &&
-    ly >= -h / 2 &&
-    ly <= h / 2
-  ) {
+  if (lx >= -w / 2 && lx <= w / 2 && ly >= -h / 2 && ly <= h / 2) {
     return 'move'
   }
 

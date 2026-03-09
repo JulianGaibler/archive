@@ -92,9 +92,7 @@ export function renderPlaceholderInArea(
 
   // Override font to italic normal-weight for placeholder appearance
   const fontFamily =
-    area.font === 'Serif'
-      ? 'Merriweather, serif'
-      : 'HK Grotesk, sans-serif'
+    area.font === 'Serif' ? 'Merriweather, serif' : 'HK Grotesk, sans-serif'
   ctx.font = `italic ${layout.fontSize}px ${fontFamily}`
 
   const textAlign =

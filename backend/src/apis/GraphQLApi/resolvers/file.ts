@@ -68,9 +68,7 @@ async function getFileModifications(
       ? (meta.normalize as NormalizeMetadata)
       : undefined,
     fileType: meta.fileType ? (meta.fileType as FileType) : undefined,
-    template: meta.template
-      ? (meta.template as TemplateConfig)
-      : undefined,
+    template: meta.template ? (meta.template as TemplateConfig) : undefined,
   }
 }
 

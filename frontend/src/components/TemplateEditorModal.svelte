@@ -1,5 +1,8 @@
 <script lang="ts">
-  import type { TemplateArea, TemplateConfig } from 'archive-shared/src/templates'
+  import type {
+    TemplateArea,
+    TemplateConfig,
+  } from 'archive-shared/src/templates'
   import Button from 'tint/components/Button.svelte'
   import Select from 'tint/components/Select.svelte'
   import Modal from 'tint/components/Modal.svelte'
@@ -36,9 +39,7 @@
   let displayWidth = $state(0)
   let displayHeight = $state(0)
 
-  const selectedArea = $derived(
-    areas.find((a) => a.id === selectedId) ?? null,
-  )
+  const selectedArea = $derived(areas.find((a) => a.id === selectedId) ?? null)
 
   const mediaUrl = $derived.by(() => {
     if (item.type !== 'existing' || !('file' in item.data) || !item.data.file)
@@ -138,9 +139,7 @@
   }
 
   function updateArea(id: string, changes: Partial<TemplateArea>) {
-    areas = areas.map((a) =>
-      a.id === id ? { ...a, ...changes } : a,
-    )
+    areas = areas.map((a) => (a.id === id ? { ...a, ...changes } : a))
   }
 
   function updateSelectedField<K extends keyof TemplateArea>(
@@ -207,47 +206,50 @@
           <div class="control-grid">
             <!-- Row 1 -->
             <SegmentedControl
-            small
+              small
               id="alignH"
               label="Horizontal alignment"
               value={selectedArea.alignH}
               onchange={(v) =>
-                updateSelectedField(
-                  'alignH',
-                  v as 'start' | 'center' | 'end',
-                )}
+                updateSelectedField('alignH', v as 'start' | 'center' | 'end')}
               items={[
-                { value: 'start', icon: IconAlignStart, 'tooltip': 'Align left' },
-                { value: 'center', icon: IconAlignCenter, 'tooltip': 'Align center' },
-                { value: 'end', icon: IconAlignEnd, 'tooltip': 'Align right' },
+                { value: 'start', icon: IconAlignStart, tooltip: 'Align left' },
+                {
+                  value: 'center',
+                  icon: IconAlignCenter,
+                  tooltip: 'Align center',
+                },
+                { value: 'end', icon: IconAlignEnd, tooltip: 'Align right' },
               ]}
             />
             <SegmentedControl
-            small
+              small
               id="alignV"
               label="Vertical alignment"
               value={selectedArea.alignV}
               onchange={(v) =>
-                updateSelectedField(
-                  'alignV',
-                  v as 'start' | 'center' | 'end',
-                )}
+                updateSelectedField('alignV', v as 'start' | 'center' | 'end')}
               items={[
-                { value: 'start', icon: IconAlignTop, 'tooltip': 'Align top' },
-                { value: 'center', icon: IconAlignMiddle, 'tooltip': 'Align middle' },
-                { value: 'end', icon: IconAlignBottom, 'tooltip': 'Align bottom' },
+                { value: 'start', icon: IconAlignTop, tooltip: 'Align top' },
+                {
+                  value: 'center',
+                  icon: IconAlignMiddle,
+                  tooltip: 'Align middle',
+                },
+                {
+                  value: 'end',
+                  icon: IconAlignBottom,
+                  tooltip: 'Align bottom',
+                },
               ]}
             />
             <SegmentedControl
-            small
+              small
               id="overflow"
               label="Overflow mode"
               value={selectedArea.overflow}
               onchange={(v) =>
-                updateSelectedField(
-                  'overflow',
-                  v as 'compress' | 'shrink',
-                )}
+                updateSelectedField('overflow', v as 'compress' | 'shrink')}
               items={[
                 { value: 'compress', label: 'Compress' },
                 { value: 'shrink', label: 'Shrink' },
@@ -345,11 +347,7 @@
                   { value: 128, label: '128' },
                 ]}
               />
-              <Button
-                icon
-                title="Delete area"
-                onclick={deleteSelectedArea}
-              >
+              <Button icon title="Delete area" onclick={deleteSelectedArea}>
                 {@html IconTrash}
               </Button>
               <Button
@@ -365,9 +363,7 @@
           </div>
         {:else}
           <div class="empty-controls">
-            <p class="hint">
-              Select an area to edit, or add a new one.
-            </p>
+            <p class="hint">Select an area to edit, or add a new one.</p>
             <Button
               variant="primary"
               icon

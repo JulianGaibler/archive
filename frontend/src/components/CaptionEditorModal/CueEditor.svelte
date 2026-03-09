@@ -131,10 +131,7 @@
         onchange={(e) => {
           const val = (e.target as HTMLSelectElement).value
           onUpdate({
-            placement:
-              val === 'bottom'
-                ? undefined
-                : (val as Placement),
+            placement: val === 'bottom' ? undefined : (val as Placement),
           })
         }}
       />
@@ -191,9 +188,9 @@
             : 'Manually set cue end time'}
         >
           {#if isLocked}
-          {@html IconUnlock}
+            {@html IconUnlock}
           {:else}
-          {@html IconLock}
+            {@html IconLock}
           {/if}
         </Button>
       </div>

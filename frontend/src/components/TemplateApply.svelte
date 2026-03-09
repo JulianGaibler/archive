@@ -136,9 +136,7 @@
   let scaleY = $derived(img ? displayHeight / img.naturalHeight : 1)
 
   function areaFontFamily(font: string): string {
-    return font === 'Serif'
-      ? 'Merriweather, serif'
-      : 'HK Grotesk, sans-serif'
+    return font === 'Serif' ? 'Merriweather, serif' : 'HK Grotesk, sans-serif'
   }
 
   function areaTextAlign(alignH: string): string {
@@ -183,7 +181,9 @@
             text-align: {areaTextAlign(area.alignH)};
             line-height: 1.2;
             padding: {padding}px;
-            background: {isEditing && bgAlpha > 0 ? area.backplateColor : 'transparent'};
+            background: {isEditing && bgAlpha > 0
+            ? area.backplateColor
+            : 'transparent'};
             opacity: {isEditing ? (bgAlpha > 0 ? bgAlpha : 1) : 0.001};
           "
           bind:this={textareaEls[i]}
@@ -195,14 +195,26 @@
     </div>
 
     {#if texts.some((t) => t.length > 0)}
-    <div class="export-actions" transition:fly={{ y: 20, duration: 200 }}>
-      <Button icon small onclick={handleDownload} disabled={exporting} tooltip="Download image">
-        {@html IconDownload}
-      </Button>
-      <Button icon small onclick={handleCopy} disabled={exporting} tooltip="Copy to clipboard">
-        {@html IconCopy}
-      </Button>
-    </div>
+      <div class="export-actions" transition:fly={{ y: 20, duration: 200 }}>
+        <Button
+          icon
+          small
+          onclick={handleDownload}
+          disabled={exporting}
+          tooltip="Download image"
+        >
+          {@html IconDownload}
+        </Button>
+        <Button
+          icon
+          small
+          onclick={handleCopy}
+          disabled={exporting}
+          tooltip="Copy to clipboard"
+        >
+          {@html IconCopy}
+        </Button>
+      </div>
     {/if}
   </div>
 </div>

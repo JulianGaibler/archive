@@ -268,11 +268,7 @@
     } else {
       // Unlocked: move next cue's start instead (or do nothing if last cue)
       if (selectedCueIndex < cues.length - 1) {
-        cues = updateCueStart(
-          cues,
-          selectedCueIndex + 1,
-          currentTime * 1000,
-        )
+        cues = updateCueStart(cues, selectedCueIndex + 1, currentTime * 1000)
       }
     }
   }

@@ -804,11 +804,7 @@
         {/if}
       </video>
 
-      <CaptionOverlay
-        cue={activeCue}
-        raised={showControls}
-        {controlsHeight}
-      />
+      <CaptionOverlay cue={activeCue} raised={showControls} {controlsHeight} />
 
       <div
         class="controls-wrapper"
@@ -845,11 +841,11 @@
                 disabled={import.meta.env.SSR}
                 toggled={activeCaptionTrack !== -1}
               >
-              {#if activeCaptionTrack !== -1}
-                {@html IconSubtitlesActive}
-              {:else}
-                {@html IconSubtitles}
-              {/if}
+                {#if activeCaptionTrack !== -1}
+                  {@html IconSubtitlesActive}
+                {:else}
+                  {@html IconSubtitles}
+                {/if}
               </Button>
             {/if}
             {#if !import.meta.env.SSR && document?.pictureInPictureEnabled}

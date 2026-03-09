@@ -141,8 +141,13 @@
             tabindex={i === focusedIndex ? 0 : -1}
             onclick={() => seek(cue)}
           >
-            <span class="cue-time tint--type-action">{formatTimestamp(cue.startMs)}</span>
-            <span class="cue-text">{#if cue.voice}<span class="cue-voice">{cue.voice}</span> {/if}{cue.text}</span>
+            <span class="cue-time tint--type-action"
+              >{formatTimestamp(cue.startMs)}</span
+            >
+            <span class="cue-text"
+              >{#if cue.voice}<span class="cue-voice">{cue.voice}</span>
+              {/if}{cue.text}</span
+            >
           </button>
         </li>
       {/each}

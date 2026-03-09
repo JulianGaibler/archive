@@ -19,8 +19,7 @@
   import type { TemplateConfig } from 'archive-shared/src/templates'
 
   // Lazy-loaded TemplateApply component
-  type TemplateApplyType =
-    typeof import('./TemplateApply.svelte').default
+  type TemplateApplyType = typeof import('./TemplateApply.svelte').default
   let TemplateApply = $state<TemplateApplyType | null>(null)
 
   let templateConfig = $derived.by((): TemplateConfig | null => {

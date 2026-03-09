@@ -44,15 +44,7 @@ export function hitTestAreas(
   // Test all areas (reverse order = top-first)
   for (let i = areas.length - 1; i >= 0; i--) {
     const area = areas[i]
-    const hit = getAreaHandleHit(
-      area,
-      px,
-      py,
-      scaleX,
-      scaleY,
-      offsetX,
-      offsetY,
-    )
+    const hit = getAreaHandleHit(area, px, py, scaleX, scaleY, offsetX, offsetY)
     if (hit === 'move') {
       return { areaId: area.id, mode: 'move' }
     }
@@ -86,13 +78,10 @@ export function applyDrag(
   if (ctx.mode === 'rotate') {
     const cx = area.x * scaleX + offsetX + (area.width * scaleX) / 2
     const cy = area.y * scaleY + offsetY + (area.height * scaleY) / 2
-    const angle =
-      Math.atan2(py - cy, px - cx) * (180 / Math.PI) + 90
+    const angle = Math.atan2(py - cy, px - cx) * (180 / Math.PI) + 90
     const nearest45 = Math.round(angle / 45) * 45
     const snapped =
-      Math.abs(angle - nearest45) <= 3
-        ? nearest45
-        : Math.round(angle)
+      Math.abs(angle - nearest45) <= 3 ? nearest45 : Math.round(angle)
     return { rotation: snapped }
   }
 

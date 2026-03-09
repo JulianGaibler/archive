@@ -27,7 +27,9 @@
     >
       {#each lines as line, i (i)}
         <span class="caption-line">
-          {#if i === 0 && cue?.voice}<strong class="caption-voice">{cue.voice}:</strong>{/if}
+          {#if i === 0 && cue?.voice}<strong class="caption-voice"
+              >{cue.voice}:</strong
+            >{/if}
           {line}
         </span>
       {/each}

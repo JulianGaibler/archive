@@ -150,8 +150,7 @@
       // Lazy load the modal component only when needed
       if (!FileAdjustModal) {
         try {
-          const module =
-            await import('@src/components/FileAdjustModal.svelte')
+          const module = await import('@src/components/FileAdjustModal.svelte')
           FileAdjustModal = module.default
         } catch (error) {
           console.error('Failed to load FileAdjustModal:', error)
@@ -438,12 +437,17 @@
             error={editItem.caption.error}
             oninput={forceUpdateEditData}
           />
-                    {#if item.type === 'existing' && (item.data.__typename === 'VideoItem' || item.data.__typename === 'AudioItem') && item.data.file.processingStatus !== 'QUEUED' && item.data.file.processingStatus !== 'PROCESSING'}
-        <div class="caption-actions">
-            <Button small variant="ghost" onclick={handleEditCaptions} disabled={loading}>
-              Edit timed captions
-            </Button>
-          </div>
+          {#if item.type === 'existing' && (item.data.__typename === 'VideoItem' || item.data.__typename === 'AudioItem') && item.data.file.processingStatus !== 'QUEUED' && item.data.file.processingStatus !== 'PROCESSING'}
+            <div class="caption-actions">
+              <Button
+                small
+                variant="ghost"
+                onclick={handleEditCaptions}
+                disabled={loading}
+              >
+                Edit timed captions
+              </Button>
+            </div>
           {/if}
         </div>
       {/if}

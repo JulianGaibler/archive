@@ -53,9 +53,7 @@ export function layoutText(
   h: number,
 ): TextLayout {
   const fontFamily =
-    area.font === 'Serif'
-      ? 'Merriweather, serif'
-      : 'HK Grotesk, sans-serif'
+    area.font === 'Serif' ? 'Merriweather, serif' : 'HK Grotesk, sans-serif'
 
   const padding = Math.min(w, h) * 0.05
   const availW = w - padding * 2

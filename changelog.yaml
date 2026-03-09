@@ -1,6 +1,22 @@
 # Changelog
 # Labels: [Added], [Fixed], [Improved], [Removed], [Deprecated], [Security]
 
+2.4.0:
+  date: '2026-03-08'
+  notes: |
+    Archive 2.4 introduces **timed captions for video and audio** files using a custom caption text format. A built-in editor makes it easy to write and time captions without having to write the timestamps manually. Regular (non-timed) captions continue to work as before.
+
+    Images now support **text templates**: designated text areas can be defined in the template editor, filled in, and the result saved or copied as a new image with the text rendered on top.
+
+    The long-standing **audio normalization bug in Firefox** has been resolved. Audio normalization has also been reworked into a dedicated processing step — similar to cropping and trimming — that is applied by default but can be removed per file if it causes issues.
+  changes:
+    - '[Added] Added support for video and audio captions'
+    - '[Added] Added support for text templates that can be applied to images'
+    - '[Added] Audio normalization is now a separate processing step that is enabled by default for new files'
+    - '[Fixed] Audio normalization does not cause artifacts in Firefox anymore'
+    - '[Fixed] Fixed bug where cropped videos would create gaps on the masonry main page view'
+    - '[Fixed] Fixed various minor UI bugs, especially on mobile devices'
+    - '[Fixed] Menu item hover state no longer gets stuck on prior items'
 2.3.1:
   date: '2026-01-18'
   changes:
