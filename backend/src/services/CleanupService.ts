@@ -80,6 +80,9 @@ export default class CleanupService {
         this.cleanupOrphanedQueueFiles(ctx),
       ])
 
+      // Run backfill after cleanup (sequential — needs stuck files cleared first)
+      const backfilledCount = await this.backfillNormalization(ctx)
+
       const duration = Date.now() - startTime
       console.log(
         `✅ Daily cleanup completed in ${duration}ms:`,
@@ -87,6 +90,7 @@ export default class CleanupService {
         `- Removed ${expiredSessionsCount} expired sessions`,
         `- Marked ${stuckFilesCount} stuck files as failed`,
         `- Removed ${orphanedFilesCount} orphaned queue files`,
+        `- Queued ${backfilledCount} files for normalization backfill`,
       )
     } catch (error) {
       console.error('❌ Daily cleanup failed:', error)
@@ -140,6 +144,26 @@ export default class CleanupService {
       return stuckFileIds.length
     } catch (error) {
       console.error('Error cleaning up stuck files:', error)
+      return 0
+    }
+  }
+
+  /** Queue un-normalized VIDEO/AUDIO files for normalization backfill */
+  private async backfillNormalization(ctx: Context): Promise<number> {
+    if (env.NODE_ENV === 'development') {
+      return 0
+    }
+
+    try {
+      const count = await FileActions.mQueueNormalizationBackfill(ctx, 3)
+      if (count > 0) {
+        console.log(
+          `🔊 Queued ${count} files for normalization backfill`,
+        )
+      }
+      return count
+    } catch (error) {
+      console.error('Error backfilling normalization:', error)
       return 0
     }
   }

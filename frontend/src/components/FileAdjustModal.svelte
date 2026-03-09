@@ -3,17 +3,17 @@
   import Modal from 'tint/components/Modal.svelte'
   import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
   import LabeledToggleable from 'tint/components/LabeledToggleable.svelte'
-  import CropController from '@src/components/FileTransformModal/CropController.svelte'
-  import TrimController from '@src/components/FileTransformModal/TrimController.svelte'
+  import CropController from '@src/components/FileAdjustModal/CropController.svelte'
+  import TrimController from '@src/components/FileAdjustModal/TrimController.svelte'
   import type { EditableItem } from '@src/utils/edit-manager'
   import type { CropInput, TrimInput } from '@src/generated/graphql'
   import { getResourceUrl } from '@src/utils/resource-urls'
   import {
     CROP_CONSTANTS,
     TRIM_CONSTANTS,
-  } from '@src/components/FileTransformModal/utils/constants'
-  import { getSourceDimensions } from '@src/components/FileTransformModal/utils/media-dimensions'
-  import { getMediaElement as getMediaElementUtil } from '@src/components/FileTransformModal/utils/media-element'
+  } from '@src/components/FileAdjustModal/utils/constants'
+  import { getSourceDimensions } from '@src/components/FileAdjustModal/utils/media-dimensions'
+  import { getMediaElement as getMediaElementUtil } from '@src/components/FileAdjustModal/utils/media-element'
 
   // Type for file with modifications
   interface FileWithModifications {
@@ -421,12 +421,6 @@
     })
 
     img = image
-    console.log('[FileTransformModal] Image loaded:', {
-      width: image.width,
-      height: image.height,
-      naturalWidth: image.naturalWidth,
-      naturalHeight: image.naturalHeight,
-    })
     mediaLoaded = true
   }
 
@@ -505,7 +499,7 @@
     try {
       // Lazy load the letterbox detector only when Auto Crop is clicked
       const { detectLetterboxInImage, detectLetterboxInVideo } =
-        await import('./FileTransformModal/utils/letterbox-detector')
+        await import('./FileAdjustModal/utils/letterbox-detector')
 
       let detectedBounds = null
 
@@ -656,19 +650,6 @@
     onCancel()
   }
 
-  // Debug: Track img state for image wrapper sizing
-  $effect(() => {
-    console.log('[FileTransformModal] img state changed:', {
-      hasImg: !!img,
-      mediaType,
-      mediaLoaded,
-      canCrop,
-      imgSrc: img?.src,
-      imgWidth: img?.width,
-      imgHeight: img?.height,
-    })
-  })
-
   // Update playing state
   $effect(() => {
     const element = getMediaElement()
@@ -737,9 +718,9 @@
 </script>
 
 <Modal {open} onclose={handleCancel} notClosable={loading}>
-  <div class="transform-modal">
+  <div class="adjust-modal">
     <h2 class="tint--type-title-serif-3">
-      Edit {getMediaTypeDisplayName(mediaType)}
+      Adjust {getMediaTypeDisplayName(mediaType)}
     </h2>
 
     <div class="video-area">
@@ -921,7 +902,7 @@
 </Modal>
 
 <style lang="sass">
-  .transform-modal
+  .adjust-modal
     box-sizing: border-box
     width: min(900px, calc(100vw - tint.$size-32))
     display: flex

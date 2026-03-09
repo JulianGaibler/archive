@@ -1588,6 +1588,69 @@ export function createEditManager(
     }
   }
 
+  const setItemTemplate = async (
+    itemId: string,
+    template: import('archive-shared/src/templates').TemplateConfig | null,
+  ): Promise<boolean> => {
+    loading.set(true)
+    try {
+      const result = await sdk.setItemTemplate({
+        itemId,
+        template: template
+          ? {
+              areas: template.areas.map((a) => ({
+                id: a.id,
+                x: a.x,
+                y: a.y,
+                width: a.width,
+                height: a.height,
+                rotation: a.rotation,
+                alignH: a.alignH,
+                alignV: a.alignV,
+                overflow: a.overflow,
+                font: a.font,
+                fontSize: Math.round(a.fontSize),
+                textColor: a.textColor,
+
+                backplateOpacity: Math.round(a.backplateOpacity),
+                backplateColor: a.backplateColor,
+              })),
+            }
+          : null,
+      })
+
+      const error = getOperationResultError(result)
+      if (error) {
+        openDialog?.({
+          heading: 'Template Error',
+          children: error.message,
+        })
+        return false
+      }
+
+      // Refetch post data
+      const postObject = get(post)
+      if (postObject) {
+        const postResult = await sdk.Post({ id: postObject.id })
+        const postError = getOperationResultError(postResult)
+        if (!postError && postResult.data?.node) {
+          post.set(postResult.data.node as PostItemType)
+        }
+      }
+
+      return true
+    } catch (err) {
+      console.error(err)
+      openDialog?.({
+        heading: 'Template Error',
+        children: 'Failed to save template. Please try again.',
+      })
+      return false
+    } finally {
+      loading.set(false)
+    }
+  }
+
   const removeUploadItem = (itemId: string) => {
     data.update((current) => {
       if (!current) return current
@@ -1635,6 +1698,7 @@ export function createEditManager(
     modifyItem,
     removeModifications,
     resetAndReprocessFile,
+    setItemTemplate,
   }
 }
 

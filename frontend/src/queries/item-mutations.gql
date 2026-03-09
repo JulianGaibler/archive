@@ -42,3 +42,7 @@ mutation resetAndReprocessFile($itemId: ID!) {
 mutation duplicateItem($itemId: ID!) {
   duplicateItem(itemId: $itemId)
 }
+
+mutation setItemTemplate($itemId: ID!, $template: TemplateInput) {
+  setItemTemplate(itemId: $itemId, template: $template)
+}

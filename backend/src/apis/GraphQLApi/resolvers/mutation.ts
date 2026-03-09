@@ -119,4 +119,21 @@ export const mutationResolvers: MutationResolvers = {
 
   resetAndReprocessFile: async (_, args, ctx) =>
     ItemActions.mResetAndReprocessFile(ctx, args),
+
+  setItemTemplate: async (_, args, ctx) => {
+    const template = args.template
+      ? {
+          areas: args.template.areas.map((a) => ({
+            ...a,
+            alignH: a.alignH as 'start' | 'center' | 'end',
+            alignV: a.alignV as 'start' | 'center' | 'end',
+            overflow: a.overflow as 'compress' | 'shrink',
+          })),
+        }
+      : null
+    return ItemActions.mSetItemTemplate(ctx, {
+      itemId: args.itemId,
+      template,
+    })
+  },
 }

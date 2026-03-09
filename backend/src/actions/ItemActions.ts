@@ -27,7 +27,10 @@ import {
   ModificationActions,
 } from '@src/files/processing-metadata.js'
 import FileActions from './FileActions.js'
+import FileModel from '@src/models/FileModel.js'
+import type { TemplateConfig } from 'archive-shared/src/templates.js'
 const itemTable = ItemModel.table
+const fileTable = FileModel.table
 const itemSearchView = ItemModel.itemSearchView
 
 const ItemActions = {
@@ -494,6 +497,51 @@ const ItemActions = {
     await FileActions._mResetAndReprocessFile(ctx, item.fileId)
 
     return fields.itemId
+  },
+
+  /**
+   * Sets or clears the template configuration on an item's file.
+   * Updates processingMeta directly without triggering reprocessing.
+   */
+  async mSetItemTemplate(
+    ctx: Context,
+    fields: {
+      itemId: ItemExternal['id']
+      template: TemplateConfig | null
+    },
+  ): Promise<boolean> {
+    const userId = ctx.isAuthenticated()
+
+    const itemId = ItemModel.decodeId(fields.itemId)
+    const item = await ctx.dataLoaders.item.getById.load(itemId)
+    if (!item) throw new NotFoundError('Item not found')
+    if (item.creatorId !== userId) {
+      throw new AuthorizationError('You can only modify your own items')
+    }
+    if (!item.fileId) {
+      throw new InputError('Item does not have an associated file')
+    }
+
+    const file = await FileActions._qFileInternal(ctx, item.fileId)
+    if (!file) throw new NotFoundError('File not found')
+
+    const meta = (file.processingMeta as Record<string, unknown>) || {}
+
+    if (fields.template) {
+      meta.template = fields.template
+    } else {
+      delete meta.template
+    }
+
+    await ctx.db
+      .update(fileTable)
+      .set({
+        processingMeta: Object.keys(meta).length > 0 ? meta : null,
+        updatedAt: Date.now(),
+      })
+      .where(eq(fileTable.id, item.fileId))
+
+    return true
   },
 
   /**

@@ -1,4 +1,4 @@
-// Shared constants for FileTransformModal system
+// Shared constants for FileAdjustModal system
 
 export const CROP_CONSTANTS = {
   // Validation margins (in pixels for crop offsets)

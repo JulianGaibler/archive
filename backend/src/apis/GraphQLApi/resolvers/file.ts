@@ -10,7 +10,12 @@ import {
   FileType,
   FileModifications,
 } from '../generated-types.js'
-import { CropMetadata, TrimMetadata } from '@src/files/processing-metadata.js'
+import {
+  CropMetadata,
+  TrimMetadata,
+  NormalizeMetadata,
+} from '@src/files/processing-metadata.js'
+import type { TemplateConfig } from 'archive-shared/src/templates.js'
 import Context from '@src/Context.js'
 
 // Helper type for the actual parent objects from the database (FileExternal)
@@ -50,7 +55,8 @@ async function getFileModifications(
   const meta = file.processingMeta as Record<string, unknown>
 
   // Check if any modifications exist
-  const hasModifications = meta.crop || meta.trim || meta.fileType
+  const hasModifications =
+    meta.crop || meta.trim || meta.normalize || meta.fileType || meta.template
   if (!hasModifications) {
     return null
   }
@@ -58,7 +64,13 @@ async function getFileModifications(
   return {
     crop: meta.crop ? (meta.crop as CropMetadata) : undefined,
     trim: meta.trim ? (meta.trim as TrimMetadata) : undefined,
+    normalize: meta.normalize
+      ? (meta.normalize as NormalizeMetadata)
+      : undefined,
     fileType: meta.fileType ? (meta.fileType as FileType) : undefined,
+    template: meta.template
+      ? (meta.template as TemplateConfig)
+      : undefined,
   }
 }
 

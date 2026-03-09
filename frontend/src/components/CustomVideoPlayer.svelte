@@ -2,11 +2,14 @@
   import Button from 'tint/components/Button.svelte'
   import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
   import PlaybackControls from './PlaybackControls.svelte'
+  import CaptionOverlay from './CaptionOverlay.svelte'
   import { getResourceUrl } from '@src/utils/resource-urls'
+  import type { Cue, Placement } from 'archive-shared/src/captions'
 
   import IconFullscreen from 'tint/icons/20-fullscreen.svg?raw'
   import IconFullscreenExit from 'tint/icons/20-fullscreen-exit.svg?raw'
   import IconSubtitles from 'tint/icons/20-subtitles.svg?raw'
+  import IconSubtitlesActive from 'tint/icons/20-subtitles-active.svg?raw'
   import IconPictureInPicture from 'tint/icons/20-picture-in-picture.svg?raw'
   import { onMount } from 'svelte'
   import Menu, { type MenuItem } from 'tint/components/Menu.svelte'
@@ -26,6 +29,7 @@
     poster?: string
     relativeHeight?: number
     captions?: Caption[]
+    onMediaReady?: (el: HTMLMediaElement) => void
   }
 
   let {
@@ -36,9 +40,15 @@
     poster,
     relativeHeight,
     captions,
+    onMediaReady,
   }: Props = $props()
 
   let videoElement: HTMLVideoElement = $state()!
+
+  $effect(() => {
+    if (videoElement && onMediaReady) onMediaReady(videoElement)
+  })
+
   let isPlaying = $state(false)
   let currentTime = $state(0)
   let duration = $state(0)
@@ -62,12 +72,14 @@
   // Captions state
   let activeCaptionTrack = $state<number>(-1) // -1 means off, 0+ are track indices
   let captionsClickHandler: ((e: Event) => void) | undefined = $state()
+  let activeCue = $state<Cue | null>(null)
+  let controlsHeight = $state(0)
 
   // Enforce track state — prevents Chrome from auto-enabling tracks
   function applyTrackState() {
     if (!videoElement?.textTracks) return
     Array.from(videoElement.textTracks).forEach((track, index) => {
-      track.mode = index === activeCaptionTrack ? 'showing' : 'disabled'
+      track.mode = index === activeCaptionTrack ? 'hidden' : 'disabled'
     })
   }
 
@@ -444,9 +456,9 @@
       track.mode = 'disabled'
     })
 
-    // Enable selected track
+    // Enable selected track (hidden = fires cuechange but no native rendering)
     if (trackIndex >= 0 && trackIndex < videoElement.textTracks.length) {
-      videoElement.textTracks[trackIndex].mode = 'showing'
+      videoElement.textTracks[trackIndex].mode = 'hidden'
       activeCaptionTrack = trackIndex
     } else {
       activeCaptionTrack = -1
@@ -621,6 +633,67 @@
     }
   })
 
+  // Convert a browser VTTCue to our Cue type
+  function vttCueToOurCue(vttCue: VTTCue): Cue {
+    let text = vttCue.text
+    let voice: string | undefined
+
+    // Extract <v Name>text</v> voice tags
+    const voiceMatch = text.match(/^<v\s+([^>]+)>([\s\S]*)<\/v>$/)
+    if (voiceMatch) {
+      voice = voiceMatch[1]
+      text = voiceMatch[2]
+    }
+
+    // Infer placement from VTTCue positioning
+    let placement: Placement | undefined
+    if (vttCue.line === 10) {
+      placement = 'top'
+    } else if (vttCue.position === 5 && vttCue.size === 40) {
+      placement = 'left'
+    } else if (vttCue.position === 55 && vttCue.size === 40) {
+      placement = 'right'
+    }
+
+    return {
+      startMs: vttCue.startTime * 1000,
+      endMs: vttCue.endTime * 1000,
+      text,
+      voice,
+      placement,
+    }
+  }
+
+  // Track active cues for custom caption overlay
+  $effect(() => {
+    if (import.meta.env.SSR || !videoElement?.textTracks) return
+
+    const trackIndex = activeCaptionTrack
+    if (trackIndex < 0 || trackIndex >= videoElement.textTracks.length) {
+      activeCue = null
+      return
+    }
+
+    const track = videoElement.textTracks[trackIndex]
+
+    function onCueChange() {
+      if (!track.activeCues || track.activeCues.length === 0) {
+        activeCue = null
+        return
+      }
+      activeCue = vttCueToOurCue(track.activeCues[0] as VTTCue)
+    }
+
+    track.addEventListener('cuechange', onCueChange)
+    // Read initial state
+    onCueChange()
+
+    return () => {
+      track.removeEventListener('cuechange', onCueChange)
+      activeCue = null
+    }
+  })
+
   // Use poster thumbnail (poster size), thumbnail, or explicit poster in that order
   let posterUrl = $derived(
     poster
@@ -731,9 +804,16 @@
         {/if}
       </video>
 
+      <CaptionOverlay
+        cue={activeCue}
+        raised={showControls}
+        {controlsHeight}
+      />
+
       <div
         class="controls-wrapper"
         class:visible={showControls}
+        bind:clientHeight={controlsHeight}
         onclick={(e) => e.stopPropagation()}
         onpointerdown={(e) => e.stopPropagation()}
       >
@@ -763,21 +843,26 @@
                 onclick={captionsClickHandler}
                 title="Subtitles / Closed Captions"
                 disabled={import.meta.env.SSR}
+                toggled={activeCaptionTrack !== -1}
               >
+              {#if activeCaptionTrack !== -1}
+                {@html IconSubtitlesActive}
+              {:else}
                 {@html IconSubtitles}
+              {/if}
               </Button>
             {/if}
-            <Button
-              small
-              icon
-              variant="ghost"
-              onclick={togglePiP}
-              title="Picture in Picture"
-              disabled={import.meta.env.SSR ||
-                !document?.pictureInPictureEnabled}
-            >
-              {@html IconPictureInPicture}
-            </Button>
+            {#if !import.meta.env.SSR && document?.pictureInPictureEnabled}
+              <Button
+                small
+                icon
+                variant="ghost"
+                onclick={togglePiP}
+                title="Picture in Picture"
+              >
+                {@html IconPictureInPicture}
+              </Button>
+            {/if}
 
             <Button
               small
@@ -841,11 +926,6 @@ video, .static-player
   height: auto
   display: block
   max-height: 80vh
-
-video::cue
-  background-color: rgba(0, 0, 0, 0.7)
-  font-size: 1rem
-  line-height: 1.4
 
 .static-player
   position: relative

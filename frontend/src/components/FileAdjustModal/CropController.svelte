@@ -186,32 +186,6 @@
     const wrapper = canvasContainer.parentElement
     if (!wrapper) return
 
-    console.log('[CropController] Setup - Initial dimensions:', {
-      wrapper: {
-        clientWidth: wrapper.clientWidth,
-        clientHeight: wrapper.clientHeight,
-        offsetWidth: wrapper.offsetWidth,
-        offsetHeight: wrapper.offsetHeight,
-        className: wrapper.className,
-      },
-      canvasContainer: {
-        clientWidth: canvasContainer.clientWidth,
-        clientHeight: canvasContainer.clientHeight,
-        offsetWidth: canvasContainer.offsetWidth,
-        offsetHeight: canvasContainer.offsetHeight,
-      },
-      canvas: {
-        width: canvas.width,
-        height: canvas.height,
-        clientWidth: canvas.clientWidth,
-        clientHeight: canvas.clientHeight,
-        styleWidth: canvas.style.width,
-        styleHeight: canvas.style.height,
-      },
-      displayWidth,
-      displayHeight,
-    })
-
     // Observer to watch wrapper size and update canvas buffer
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -221,47 +195,12 @@
         const width = borderBoxSize?.inlineSize || entry.target.clientWidth
         const height = borderBoxSize?.blockSize || entry.target.clientHeight
 
-        console.log('[CropController] ResizeObserver fired:', {
-          contentRect: entry.contentRect,
-          borderBoxSize: { width, height },
-          wrapper: {
-            clientWidth: wrapper.clientWidth,
-            clientHeight: wrapper.clientHeight,
-          },
-          canvasContainer: {
-            clientWidth: canvasContainer.clientWidth,
-            clientHeight: canvasContainer.clientHeight,
-          },
-          canvasBefore: {
-            width: canvas.width,
-            height: canvas.height,
-            clientWidth: canvas.clientWidth,
-            clientHeight: canvas.clientHeight,
-          },
-          mediaType,
-          displayWidth,
-          displayHeight,
-        })
-
         const logicalWidth = Math.floor(width)
         const logicalHeight = Math.floor(height)
 
         // Setup canvas buffer for high DPI rendering
         // Container and canvas CSS handle display size (inset: 0 and width/height: 100%)
         ctx = setupCanvas(canvas, logicalWidth, logicalHeight)
-
-        console.log('[CropController] After setupCanvas:', {
-          canvasBuffer: { width: canvas.width, height: canvas.height },
-          canvasDisplay: {
-            width: canvas.clientWidth,
-            height: canvas.clientHeight,
-          },
-          canvasStyle: {
-            width: canvas.style.width,
-            height: canvas.style.height,
-          },
-          dpr: window.devicePixelRatio,
-        })
 
         // Create renderer if not exists
         if (!renderer) {

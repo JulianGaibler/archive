@@ -9,8 +9,11 @@ export type MenuItem =
 
 /** Callbacks for item operations. */
 export interface ItemOperationCallbacks {
+  onEnterEditMode?: () => void
+  onAdjust?: () => void
+  onEditTemplate?: () => void
+  onRemoveTemplate?: () => void
   onConvert?: (type: FileType) => void
-  onEdit?: () => void
   onReprocess?: () => void
   onRemoveModifications?: (modifications: string[]) => void
   onRevertToOriginal?: () => void
@@ -78,6 +81,36 @@ export function getAvailableItemOperations(
   // Get current type (after any conversions)
   const currentType = getCurrentType(item.data.__typename)
 
+  // Add "Edit" to enter edit mode (hidden when already in edit mode)
+  if (callbacks.onEnterEditMode) {
+    conversions.push({ label: 'Edit', onClick: callbacks.onEnterEditMode })
+  }
+
+  // Add "Adjust..." option for crop/trim (only if not processing)
+  if (
+    callbacks.onAdjust &&
+    !isProcessing &&
+    currentType &&
+    (currentType === FileType.Video ||
+      currentType === FileType.Audio ||
+      currentType === FileType.Image ||
+      currentType === FileType.Gif)
+  ) {
+    conversions.push({ label: 'Adjust...', onClick: callbacks.onAdjust })
+  }
+
+  // Add "Edit template..." option for image items (only if not processing)
+  if (
+    callbacks.onEditTemplate &&
+    !isProcessing &&
+    currentType === FileType.Image
+  ) {
+    conversions.push({
+      label: 'Edit template...',
+      onClick: callbacks.onEditTemplate,
+    })
+  }
+
   // Add conversion options based on ORIGINAL file type
   // Only show if target type is different from current type
   if (callbacks.onConvert) {
@@ -104,27 +137,18 @@ export function getAvailableItemOperations(
     }
   }
 
-  // Add single "Edit..." option for crop/trim (only if not processing)
-  if (
-    callbacks.onEdit &&
-    !isProcessing &&
-    currentType &&
-    (currentType === FileType.Video ||
-      currentType === FileType.Audio ||
-      currentType === FileType.Image ||
-      currentType === FileType.Gif)
-  ) {
-    conversions.push({ label: 'Edit...', onClick: callbacks.onEdit })
-  }
-
   // Add modification reversal options if modifications exist
   const modifications = item.data.file.modifications
   if (modifications && callbacks.onRemoveModifications) {
     const hasCrop = !!modifications.crop
     const hasTrim = !!modifications.trim
     const hasFileType = !!modifications.fileType
+    const hasTemplate = !!modifications.template
     const modCount =
-      (hasCrop ? 1 : 0) + (hasTrim ? 1 : 0) + (hasFileType ? 1 : 0)
+      (hasCrop ? 1 : 0) +
+      (hasTrim ? 1 : 0) +
+      (hasFileType ? 1 : 0) +
+      (hasTemplate ? 1 : 0)
 
     if (modCount > 0) {
       conversions.push(MENU_SEPARATOR)
@@ -146,6 +170,12 @@ export function getAvailableItemOperations(
         conversions.push({
           label: 'Restore original format',
           onClick: () => callbacks.onRemoveModifications!(['fileType']),
+        })
+      }
+      if (hasTemplate && callbacks.onRemoveTemplate) {
+        conversions.push({
+          label: 'Remove template',
+          onClick: callbacks.onRemoveTemplate,
         })
       }
 

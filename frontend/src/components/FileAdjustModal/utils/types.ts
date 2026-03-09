@@ -1,4 +1,4 @@
-// Shared types for FileTransformModal canvas utilities
+// Shared types for FileAdjustModal canvas utilities
 
 export type DragMode =
   | 'move'

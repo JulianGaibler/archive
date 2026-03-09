@@ -11,7 +11,7 @@ import {
 import PostActions from '@src/actions/PostActions.js'
 import Context from '@src/Context.js'
 import FileActions from '@src/actions/FileActions.js'
-import { detectArchiveTT } from '@src/captions/index.js'
+import { detectArchiveTT } from 'archive-shared/src/captions.js'
 
 export const itemResolvers: ItemResolvers = {
   __resolveType: (obj) => getItemSubtype(obj),

@@ -22,7 +22,9 @@ export function drawHandle(
   color: string,
 ): void {
   ctx.fillStyle = color
-  ctx.fillRect(x - size / 2, y - size / 2, size, size)
+  ctx.beginPath()
+  ctx.arc(x, y, size / 2, 0, Math.PI * 2)
+  ctx.fill()
 }
 
 /** Draw vertical marker line */

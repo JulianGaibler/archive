@@ -25,6 +25,20 @@ body
   max-width: 1080px
   padding-inline: utils.$size-24
 
+.sticky-header
+  display: flex
+  align-items: center
+  position: sticky
+  top: 0
+  padding: utils.$size-12
+  min-height: utils.$size-24
+  background: var(--tint-input-bg)
+  border-bottom: 1px solid var(--tint-card-border)
+  margin-block-end: utils.$size-8
+  z-index: 1
+  h3
+    color: var(--tint-text-secondary)
+
 ul.pipelist
   list-style: none
   display: flex

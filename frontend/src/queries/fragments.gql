@@ -70,6 +70,24 @@ fragment ItemData on Item {
           bottom
         }
         fileType
+        template {
+          areas {
+            id
+            x
+            y
+            width
+            height
+            rotation
+            alignH
+            alignV
+            overflow
+            font
+            fontSize
+            textColor
+            backplateOpacity
+            backplateColor
+          }
+        }
       }
       relativeHeight
     }

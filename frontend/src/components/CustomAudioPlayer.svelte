@@ -7,11 +7,17 @@
     fileUpdatedAt?: string | number
     waveform?: number[]
     waveformThumbnail?: number[]
+    onMediaReady?: (el: HTMLMediaElement) => void
   }
 
-  let { src, fileUpdatedAt, waveform, waveformThumbnail }: Props = $props()
+  let { src, fileUpdatedAt, waveform, waveformThumbnail, onMediaReady }: Props =
+    $props()
 
   let audioElement: HTMLAudioElement | undefined = $state()
+
+  $effect(() => {
+    if (audioElement && onMediaReady) onMediaReady(audioElement)
+  })
   let isPlaying = $state(false)
   let currentTime = $state(0)
   let duration = $state(0)

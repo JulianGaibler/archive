@@ -8,7 +8,7 @@ import {
   detectArchiveTT,
   parseArchiveTT,
   serializeToWebVTT,
-} from '@src/captions/index.js'
+} from 'archive-shared/src/captions.js'
 import AuthCookieUtils from '@src/apis/GraphQLApi/AuthCookieUtils.js'
 import SessionActions from '@src/actions/SessionActions.js'
 

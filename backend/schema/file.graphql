@@ -169,6 +169,11 @@ type FileModifications {
   File type conversion applied.
   """
   fileType: FileType
+
+  """
+  Template configuration for text overlay areas.
+  """
+  template: TemplateConfig
 }
 
 """
@@ -219,4 +224,31 @@ type NormalizeMetadata {
   Whether audio normalization is applied.
   """
   enabled: Boolean!
+}
+
+"""
+A text overlay area within a template.
+"""
+type TemplateArea {
+  id: String!
+  x: Float!
+  y: Float!
+  width: Float!
+  height: Float!
+  rotation: Float!
+  alignH: String!
+  alignV: String!
+  overflow: String!
+  font: String!
+  fontSize: Int!
+  textColor: String!
+  backplateOpacity: Int!
+  backplateColor: String!
+}
+
+"""
+Template configuration for text overlay areas on an image.
+"""
+type TemplateConfig {
+  areas: [TemplateArea!]!
 }

@@ -6,7 +6,7 @@
   import IconMore from 'tint/icons/20-more.svg?raw'
   import ItemCrop from 'tint/icons/20-crop.svg?raw'
   import IconCut from 'tint/icons/20-cut.svg?raw'
-  import IconTune from 'tint/icons/20-tune.svg?raw'
+  import IconSoundwave from 'tint/icons/20-soundwave.svg?raw'
   import IconTransform from 'tint/icons/20-transform.svg?raw'
   import { formatDate } from '@src/utils'
   import { FileProcessingStatus } from '@src/generated/graphql'
@@ -15,7 +15,51 @@
   import type { ContextClickHandler } from 'tint/components/Menu.svelte'
   import { tooltip } from 'tint/actions/tooltip'
   import type { MenuItem } from '@src/utils/item-state-machine'
-  import { getLanguageInfo } from '@src/utils/language-utils'
+  import { getLanguageInfo } from 'archive-shared/src/language-utils'
+  import type { TemplateConfig } from 'archive-shared/src/templates'
+
+  // Lazy-loaded TemplateApply component
+  type TemplateApplyType =
+    typeof import('./TemplateApply.svelte').default
+  let TemplateApply = $state<TemplateApplyType | null>(null)
+
+  let templateConfig = $derived.by((): TemplateConfig | null => {
+    if (
+      item.data.__typename === 'ImageItem' &&
+      'file' in item.data &&
+      item.data.file &&
+      'modifications' in item.data.file &&
+      item.data.file.modifications?.template
+    ) {
+      return item.data.file.modifications.template as TemplateConfig
+    }
+    return null
+  })
+
+  let templateImageSrc = $derived.by((): string | null => {
+    if (!templateConfig) return null
+    if (
+      item.data.__typename === 'ImageItem' &&
+      'file' in item.data &&
+      item.data.file &&
+      'compressedPath' in item.data.file
+    ) {
+      return getResourceUrl(
+        item.data.file.compressedPath,
+        item.data.file.updatedAt,
+      )
+    }
+    return null
+  })
+
+  // Lazy-load TemplateApply when template exists
+  $effect(() => {
+    if (templateConfig && !TemplateApply) {
+      import('./TemplateApply.svelte').then((m) => {
+        TemplateApply = m.default
+      })
+    }
+  })
 
   interface CaptionInfo {
     itemId: string
@@ -30,9 +74,17 @@
     itemActions: MenuItem[]
     buttonClick: ContextClickHandler | undefined
     language?: string
+    onMediaReady?: (el: HTMLMediaElement) => void
   }
 
-  let { item, loading: _, itemActions, buttonClick, language }: Props = $props()
+  let {
+    item,
+    loading: _,
+    itemActions,
+    buttonClick,
+    language,
+    onMediaReady,
+  }: Props = $props()
 
   let captionInfo = $derived.by((): CaptionInfo | undefined => {
     if (
@@ -68,7 +120,16 @@
   <!-- File exists and is processing (shouldn't happen with ProcessingItem, but keep as fallback) -->
   <ProcessingMediaStatus file={item.data.file} />
 {:else}
-  <ItemMedia item={item.data} {captionInfo} />
+  <div class="media-with-template">
+    <ItemMedia item={item.data} {captionInfo} {onMediaReady} />
+    {#if TemplateApply && templateConfig && templateImageSrc}
+      <TemplateApply
+        template={templateConfig}
+        imageSrc={templateImageSrc}
+        filename={`archive-${item.data.id}`}
+      />
+    {/if}
+  </div>
 {/if}
 
 <!-- Info Section -->
@@ -95,7 +156,7 @@
       {/if}
       {#if mods?.normalize?.enabled}
         <span class="status-icon" use:tooltip={'Normalized'}>
-          {@html IconTune}
+          {@html IconSoundwave}
         </span>
       {/if}
       {#if mods?.fileType && 'originalType' in item.data.file && item.data.file.originalType}
@@ -146,6 +207,9 @@
 </div>
 
 <style lang="sass">
+.media-with-template
+  position: relative
+
 .info
   display: flex
   align-items: center

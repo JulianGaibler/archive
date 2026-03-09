@@ -402,6 +402,8 @@
           onModifyItem={editManager.modifyItem}
           onRemoveModifications={editManager.removeModifications}
           onResetAndReprocessFile={editManager.resetAndReprocessFile}
+          onSetItemTemplate={editManager.setItemTemplate}
+          onEnterEditMode={editManager.startEdit}
         />
       {/each}
       {#if $editData !== undefined}

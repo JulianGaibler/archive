@@ -45,9 +45,10 @@
   interface Props {
     item?: MediaItemData
     captionInfo?: CaptionInfo
+    onMediaReady?: (el: HTMLMediaElement) => void
   }
 
-  let { item, captionInfo }: Props = $props()
+  let { item, captionInfo, onMediaReady }: Props = $props()
 
   let captionTracks = $derived.by((): Caption[] => {
     if (!captionInfo) return []
@@ -150,6 +151,7 @@
         {thumbnailPath}
         {posterThumbnailPath}
         captions={captionTracks}
+        {onMediaReady}
       />
     {/if}
   {:else if isGif}
@@ -167,6 +169,7 @@
         src={itemSrc}
         fileUpdatedAt={file?.updatedAt}
         waveform={waveformData}
+        {onMediaReady}
       />
     {/if}
   {:else}

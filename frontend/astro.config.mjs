@@ -1,8 +1,13 @@
+import { createRequire } from 'module'
+import path from 'path'
 import nodejs from '@astrojs/node'
 import svelte from '@astrojs/svelte'
 import { defineConfig } from 'astro/config'
 import graphqlLoader from 'vite-plugin-graphql-loader'
 import envVarsIntegration from './integrations/env-vars.js'
+
+const require = createRequire(import.meta.url)
+const tintDist = path.dirname(require.resolve('tint'))
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -29,7 +34,7 @@ export default defineConfig({
     }),
     resolve: {
       alias: {
-        '~tint': '/node_modules/tint/dist',
+        '~tint': tintDist,
         '@src': '/src',
       },
     },

@@ -1,3 +1,24 @@
+input TemplateAreaInput {
+  id: String!
+  x: Float!
+  y: Float!
+  width: Float!
+  height: Float!
+  rotation: Float!
+  alignH: String!
+  alignV: String!
+  overflow: String!
+  font: String!
+  fontSize: Int!
+  textColor: String!
+  backplateOpacity: Int!
+  backplateColor: String!
+}
+
+input TemplateInput {
+  areas: [TemplateAreaInput!]!
+}
+
 input EditItemInput {
   """
   The ID of the item to edit.
@@ -445,6 +466,22 @@ type Mutation {
     """
     clearAllModifications: Boolean
   ): String!
+
+  """
+  Sets or clears the template configuration for an item's file.
+  Pass null to clear the template. Does not trigger reprocessing.
+  """
+  setItemTemplate(
+    """
+    The ID of the item to set the template on.
+    """
+    itemId: ID!
+
+    """
+    The template configuration. Pass null to clear.
+    """
+    template: TemplateInput
+  ): Boolean!
 
   """
   Reset and reprocess a file: removes all modifications, deletes all processed variants,

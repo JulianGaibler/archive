@@ -1,5 +1,6 @@
 <script lang="ts">
   import TextField from 'tint/components/TextField.svelte'
+  import Button from 'tint/components/Button.svelte'
   import Modal from 'tint/components/Modal.svelte'
   import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
   import ItemMediaDisplay from '@src/components/ItemMediaDisplay.svelte'
@@ -15,6 +16,8 @@
     canShowOperations,
   } from '@src/utils/item-state-machine'
   import type { CropInput, TrimInput } from '@src/generated/graphql'
+  import { getResourceUrl } from '@src/utils/resource-urls'
+  import CaptionDisplay from './CaptionDisplay.svelte'
 
   type Props = {
     loading: boolean
@@ -26,6 +29,10 @@
     onDeleteItem?: (itemId: string) => void
     removeUploadItem?: (itemId: string) => void
     cancelUploadItem?: (itemId: string) => void
+    onSetItemTemplate?: (
+      itemId: string,
+      template: import('archive-shared/src/templates').TemplateConfig | null,
+    ) => Promise<boolean>
     onConvertItem?: (itemId: string, targetType: FileType) => Promise<boolean>
     onCropItem?: (
       itemId: string,
@@ -49,6 +56,7 @@
       clearAllModifications: boolean,
     ) => Promise<boolean>
     onResetAndReprocessFile?: (itemId: string) => Promise<boolean>
+    onEnterEditMode?: () => void
   }
 
   let {
@@ -61,13 +69,17 @@
     onDeleteItem,
     removeUploadItem,
     cancelUploadItem,
+    onSetItemTemplate,
     onConvertItem,
     onCropItem,
     onTrimItem,
     onModifyItem,
     onRemoveModifications,
     onResetAndReprocessFile,
+    onEnterEditMode,
   }: Props = $props()
+
+  let mediaElement: HTMLMediaElement | undefined = $state()
 
   function forceUpdateEditData() {
     if (editData) {
@@ -86,15 +98,30 @@
 
   let buttonClick: ContextClickHandler | undefined = $state(undefined)
 
-  // Transform modal state
-  let showTransformModal = $state(false)
-  let transformLoading = $state(false)
+  // Adjust modal state
+  let showAdjustModal = $state(false)
+  let adjustLoading = $state(false)
 
-  // Lazy-loaded FileTransformModal component
-  type FileTransformModalType =
-    typeof import('@src/components/FileTransformModal.svelte').default
-  let FileTransformModal = $state<FileTransformModalType | null>(null)
+  // Lazy-loaded FileAdjustModal component
+  type FileAdjustModalType =
+    typeof import('@src/components/FileAdjustModal.svelte').default
+  let FileAdjustModal = $state<FileAdjustModalType | null>(null)
   let loadingModal = $state(false)
+
+  // Caption editor state
+  let showCaptionEditor = $state(false)
+  type CaptionEditorModalType =
+    typeof import('./CaptionEditorModal.svelte').default
+  let CaptionEditorModal = $state<CaptionEditorModalType | null>(null)
+  let loadingCaptionEditor = $state(false)
+
+  // Template editor state
+  let showTemplateEditor = $state(false)
+  let templateLoading = $state(false)
+  type TemplateEditorModalType =
+    typeof import('./TemplateEditorModal.svelte').default
+  let TemplateEditorModal = $state<TemplateEditorModalType | null>(null)
+  let loadingTemplateEditor = $state(false)
 
   // Conversion and cropping functions
   async function handleConvertToVideo() {
@@ -115,38 +142,38 @@
     }
   }
 
-  // Open transform modal (with lazy loading)
-  async function handleTransformItem() {
+  // Open adjust modal (with lazy loading)
+  async function handleAdjustItem() {
     if (item.type === 'existing') {
       loadingModal = true
 
       // Lazy load the modal component only when needed
-      if (!FileTransformModal) {
+      if (!FileAdjustModal) {
         try {
           const module =
-            await import('@src/components/FileTransformModal.svelte')
-          FileTransformModal = module.default
+            await import('@src/components/FileAdjustModal.svelte')
+          FileAdjustModal = module.default
         } catch (error) {
-          console.error('Failed to load FileTransformModal:', error)
+          console.error('Failed to load FileAdjustModal:', error)
           loadingModal = false
           return
         }
       }
 
       loadingModal = false
-      showTransformModal = true
+      showAdjustModal = true
     }
   }
 
-  // Handle transform submission from modal
-  async function handleTransformSubmit(params: {
+  // Handle adjust submission from modal
+  async function handleAdjustSubmit(params: {
     crop?: CropInput
     trim?: TrimInput
     normalize?: { enabled: boolean }
   }) {
     if (item.type !== 'existing') return
 
-    transformLoading = true
+    adjustLoading = true
     try {
       let success = false
 
@@ -169,19 +196,117 @@
       }
 
       if (success) {
-        showTransformModal = false
+        showAdjustModal = false
       }
     } catch (error) {
-      console.error('Transform failed:', error)
+      console.error('Adjust failed:', error)
     } finally {
-      transformLoading = false
+      adjustLoading = false
     }
   }
 
-  // Cancel transform modal
-  function handleTransformCancel() {
-    showTransformModal = false
-    transformLoading = false
+  // Cancel adjust modal
+  function handleAdjustCancel() {
+    showAdjustModal = false
+    adjustLoading = false
+  }
+
+  // Open caption editor (with lazy loading)
+  async function handleEditCaptions() {
+    if (item.type !== 'existing') return
+    if (item.caption === undefined) return
+
+    loadingCaptionEditor = true
+
+    if (!CaptionEditorModal) {
+      try {
+        const module = await import('./CaptionEditorModal.svelte')
+        CaptionEditorModal = module.default
+      } catch (error) {
+        console.error('Failed to load CaptionEditorModal:', error)
+        loadingCaptionEditor = false
+        return
+      }
+    }
+
+    loadingCaptionEditor = false
+    showCaptionEditor = true
+  }
+
+  // Open template editor (with lazy loading)
+  async function handleEditTemplate() {
+    if (item.type !== 'existing') return
+
+    loadingTemplateEditor = true
+
+    if (!TemplateEditorModal) {
+      try {
+        const module = await import('./TemplateEditorModal.svelte')
+        TemplateEditorModal = module.default
+      } catch (error) {
+        console.error('Failed to load TemplateEditorModal:', error)
+        loadingTemplateEditor = false
+        return
+      }
+    }
+
+    loadingTemplateEditor = false
+    showTemplateEditor = true
+  }
+
+  async function handleTemplateSubmit(
+    template: import('archive-shared/src/templates').TemplateConfig | null,
+  ) {
+    if (item.type !== 'existing' || !onSetItemTemplate) return
+    templateLoading = true
+    try {
+      const success = await onSetItemTemplate(item.id, template)
+      if (success) {
+        showTemplateEditor = false
+      }
+    } catch (error) {
+      console.error('Template save failed:', error)
+    } finally {
+      templateLoading = false
+    }
+  }
+
+  function handleTemplateCancel() {
+    showTemplateEditor = false
+    templateLoading = false
+  }
+
+  function handleCaptionEditorSave(text: string) {
+    if (editData && editData.items[item.id]) {
+      editData.items[item.id].caption = { value: text, error: undefined }
+      editData = { ...editData }
+    }
+    showCaptionEditor = false
+  }
+
+  function handleCaptionEditorCancel() {
+    showCaptionEditor = false
+  }
+
+  // Helper to get media URL for caption editor
+  function getCaptionEditorMediaUrl(): string | null {
+    if (item.type !== 'existing' || !('file' in item.data) || !item.data.file) {
+      return null
+    }
+    const file = item.data.file
+
+    if (
+      'unmodifiedCompressedPath' in file &&
+      typeof file.unmodifiedCompressedPath === 'string'
+    ) {
+      return getResourceUrl(file.unmodifiedCompressedPath)
+    }
+
+    if ('compressedPath' in file && typeof file.compressedPath === 'string') {
+      return getResourceUrl(file.compressedPath)
+    }
+
+    return null
   }
 
   // Remove a specific modification
@@ -232,12 +357,22 @@
 
     // Get file conversion and transformation operations using utility
     const conversions = getAvailableItemOperations(item, {
+      onEnterEditMode:
+        !editData && onEnterEditMode ? onEnterEditMode : undefined,
       onConvert: (type) => {
         if (type === FileType.Audio) handleConvertToAudio()
         else if (type === FileType.Video) handleConvertToVideo()
         else if (type === FileType.Gif) handleConvertToGif()
       },
-      onEdit: handleTransformItem,
+      onAdjust: handleAdjustItem,
+      onEditTemplate: onSetItemTemplate ? handleEditTemplate : undefined,
+      onRemoveTemplate: onSetItemTemplate
+        ? async () => {
+            if (item.type === 'existing' && onSetItemTemplate) {
+              await onSetItemTemplate(item.id, null)
+            }
+          }
+        : undefined,
       onReprocess: handleResetAndReprocess,
       onRemoveModifications: (modifications) =>
         handleRemoveModification(modifications[0]),
@@ -270,11 +405,18 @@
 
 <article>
   {#if item.type === 'existing'}
-    <ItemMediaDisplay {item} {loading} {itemActions} {buttonClick} {language} />
+    <ItemMediaDisplay
+      {item}
+      {loading}
+      {itemActions}
+      {buttonClick}
+      {language}
+      onMediaReady={(el) => (mediaElement = el)}
+    />
   {:else if item.type === 'upload'}
     <UploadItemDisplay {item} onRemove={handleRemoveUploadItem} />
   {/if}
-  <div class="content">
+  <div class="content" class:view-mode={!editItem}>
     {#if editItem}
       <TextField
         id="description"
@@ -286,25 +428,35 @@
         oninput={forceUpdateEditData}
       />
       {#if editItem.caption !== undefined}
-        <TextField
-          id="caption"
-          label="Caption"
-          variant="textarea"
-          disabled={loading}
-          bind:value={editItem.caption.value}
-          error={editItem.caption.error}
-          oninput={forceUpdateEditData}
-        />
+        <div>
+          <TextField
+            id="caption"
+            label="Caption"
+            variant="textarea"
+            disabled={loading}
+            bind:value={editItem.caption.value}
+            error={editItem.caption.error}
+            oninput={forceUpdateEditData}
+          />
+                    {#if item.type === 'existing' && (item.data.__typename === 'VideoItem' || item.data.__typename === 'AudioItem') && item.data.file.processingStatus !== 'QUEUED' && item.data.file.processingStatus !== 'PROCESSING'}
+        <div class="caption-actions">
+            <Button small variant="ghost" onclick={handleEditCaptions} disabled={loading}>
+              Edit timed captions
+            </Button>
+          </div>
+          {/if}
+        </div>
       {/if}
     {:else}
       <div>
-        <h3 class="tint--type-ui-small">Description</h3>
+        <div class="sticky-header">
+          <h3 class="tint--type-ui">Description</h3>
+        </div>
         <q>{item.description.value}</q>
       </div>
       {#if item.caption !== undefined}
         <div>
-          <h3 class="tint--type-ui-small">Caption</h3>
-          <q><pre>{item.caption.value}</pre></q>
+          <CaptionDisplay captionText={item.caption.value} {mediaElement} />
         </div>
       {/if}
     {/if}
@@ -315,8 +467,19 @@
   <Menu variant="button" bind:contextClick={buttonClick} items={itemActions} />
 {/if}
 
+<!-- Render template editor only after it's loaded -->
+{#if TemplateEditorModal && item.type === 'existing'}
+  <TemplateEditorModal
+    open={showTemplateEditor}
+    loading={templateLoading}
+    {item}
+    onCancel={handleTemplateCancel}
+    onSubmit={handleTemplateSubmit}
+  />
+{/if}
+
 <!-- Show loading state while modal loads -->
-{#if loadingModal}
+{#if loadingModal || loadingCaptionEditor || loadingTemplateEditor}
   <Modal open={true}>
     <div style="padding: 2rem; text-align: center;">
       <LoadingIndicator />
@@ -326,15 +489,14 @@
 {/if}
 
 <!-- Render modal only after it's loaded -->
-{#if FileTransformModal && item.type === 'existing'}
-  <svelte:component
-    this={FileTransformModal}
-    open={showTransformModal}
-    loading={transformLoading}
+{#if FileAdjustModal && item.type === 'existing'}
+  <FileAdjustModal
+    open={showAdjustModal}
+    loading={adjustLoading}
     {item}
     itemId={item.id}
-    onCancel={handleTransformCancel}
-    onSubmit={handleTransformSubmit}
+    onCancel={handleAdjustCancel}
+    onSubmit={handleAdjustSubmit}
     {onRemoveModifications}
     waveform={'file' in item.data && 'waveform' in item.data.file
       ? item.data.file.waveform
@@ -344,6 +506,31 @@
       ? item.data.file.waveformThumbnail
       : undefined}
   />
+{/if}
+
+<!-- Render caption editor only after it's loaded -->
+{#if CaptionEditorModal && item.type === 'existing' && item.caption !== undefined}
+  {@const captionMediaUrl = getCaptionEditorMediaUrl()}
+  {@const captionMediaType =
+    item.data.__typename === 'AudioItem' ? 'audio' : 'video'}
+  {#if captionMediaUrl}
+    <CaptionEditorModal
+      open={showCaptionEditor}
+      mediaType={captionMediaType}
+      mediaUrl={captionMediaUrl}
+      captionText={editData?.items[item.id]?.caption?.value ??
+        item.caption.value}
+      waveform={'file' in item.data && 'waveform' in item.data.file
+        ? item.data.file.waveform
+        : undefined}
+      waveformThumbnail={'file' in item.data &&
+      'waveformThumbnail' in item.data.file
+        ? item.data.file.waveformThumbnail
+        : undefined}
+      onSave={handleCaptionEditorSave}
+      onCancel={handleCaptionEditorCancel}
+    />
+  {/if}
 {/if}
 
 <style lang="sass">
@@ -360,17 +547,22 @@
     gap: tint.$size-12
     @media (max-width: tint.$breakpoint-sm)
       grid-template-columns: 1fr
-    > div
+    &.view-mode > div
       background: var(--tint-input-bg)
-      padding: tint.$size-12
       border-radius: tint.$card-radius
-      h3
-        margin-block-end: tint.$size-2
-      pre
-        white-space: pre-wrap
-    h3
-      color: var(--tint-text-secondary)
+      max-height: 200px
+      overflow-y: auto
+      padding-block-end: tint.$size-8
+      > q
+        display: block
+        padding: 0 tint.$size-12
+    :global(textarea)
+      max-height: 200px
     q
       quotes: none
+
+  .caption-actions
+    margin-block-start: tint.$size-8
+    padding: 0 tint.$size-8
 
 </style>

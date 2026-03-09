@@ -12,6 +12,7 @@ import Context from '@src/Context.js'
 import env from '@src/utils/env.js'
 import UserModel from '@src/models/UserModel.js'
 import PostModel, { PostExternal } from '@src/models/PostModel.js'
+import { toPlainText } from 'archive-shared/src/captions.js'
 
 const BOT_TOKEN = env.BACKEND_TELEGRAM_BOT_TOKEN
 const SECRET = BOT_TOKEN ? createHash('sha256').update(BOT_TOKEN).digest() : ''
@@ -394,6 +395,7 @@ async function inlineQuery(ctx: Context | null, msgCtx: any) {
         is_personal: true,
         next_offset: '',
       })
+      return
     }
 
     const first = 10
@@ -432,7 +434,7 @@ async function inlineQuery(ctx: Context | null, msgCtx: any) {
       }
     })
 
-    const filePathsResults = await Promise.all(filePathsPromises)
+    const filePathsResults = await Promise.allSettled(filePathsPromises)
     const filePathsMap = new Map<
       string,
       {
@@ -443,8 +445,8 @@ async function inlineQuery(ctx: Context | null, msgCtx: any) {
       }
     >()
     filePathsResults.forEach((result) => {
-      if (result) {
-        filePathsMap.set(result.itemId, result.paths)
+      if (result.status === 'fulfilled' && result.value) {
+        filePathsMap.set(result.value.itemId, result.value.paths)
       }
     })
 
@@ -457,13 +459,6 @@ async function inlineQuery(ctx: Context | null, msgCtx: any) {
         filePaths,
       }
     })
-
-    console.debug('filePathsResults', filePathsResults)
-    console.debug('nodesWithPosts', nodesWithPosts)
-    console.debug(
-      'convertToInlineQueryResult(nodesWithPosts),',
-      convertToInlineQueryResult(nodesWithPosts),
-    )
 
     await msgCtx.telegram.answerInlineQuery(
       id,
@@ -516,7 +511,7 @@ function convertToInlineQueryResult(items: ItemWithPost[]) {
     }
 
     // Build lines from description and caption
-    const cap = item.caption || ''
+    const cap = toPlainText(item.caption || '')
     const desc = item.description || ''
 
     let description: string | undefined
@@ -542,64 +537,61 @@ function convertToInlineQueryResult(items: ItemWithPost[]) {
     // Get file paths if available
     const paths = item.filePaths
 
+    const articleFallback = {
+      ...base,
+      type: 'article',
+      input_message_content: {
+        message_text: `${title}${description ? '\n\n' + description : ''}`,
+      },
+    }
+
     if (item.type === 'IMAGE') {
+      if (!paths?.compressedPath || !paths?.thumbnailPath) {
+        return articleFallback
+      }
       return {
         ...base,
         type: 'photo',
-        photo_url: paths?.compressedPath
-          ? `${ORIGIN}${paths.compressedPath}`
-          : undefined,
-        thumb_url: paths?.thumbnailPath
-          ? `${ORIGIN}${paths.thumbnailPath}`
-          : undefined,
+        photo_url: `${ORIGIN}${paths.compressedPath}`,
+        thumb_url: `${ORIGIN}${paths.thumbnailPath}`,
       }
     }
     if (item.type === 'VIDEO') {
+      const thumbPath = paths?.posterThumbnailPath || paths?.thumbnailPath
+      if (!paths?.compressedPath || !thumbPath) {
+        return articleFallback
+      }
       return {
         ...base,
         type: 'video',
-        video_url: paths?.compressedPath
-          ? `${ORIGIN}${paths.compressedPath}`
-          : undefined,
-        video_file_id: item.id,
-        thumb_url:
-          paths?.posterThumbnailPath || paths?.thumbnailPath
-            ? `${ORIGIN}${paths.posterThumbnailPath || paths.thumbnailPath}`
-            : undefined,
+        video_url: `${ORIGIN}${paths.compressedPath}`,
+        thumb_url: `${ORIGIN}${thumbPath}`,
         mime_type: 'video/mp4',
       }
     }
     if (item.type === 'GIF') {
+      if (!paths?.compressedPath || !paths?.thumbnailPath) {
+        return articleFallback
+      }
       return {
         ...base,
         type: 'mpeg4_gif',
-        mpeg4_url: paths?.compressedPath
-          ? `${ORIGIN}${paths.compressedPath}`
-          : undefined,
-        mpeg4_file_id: item.id,
-        thumb_url: paths?.thumbnailPath
-          ? `${ORIGIN}${paths.thumbnailPath}`
-          : undefined,
+        mpeg4_url: `${ORIGIN}${paths.compressedPath}`,
+        thumb_url: `${ORIGIN}${paths.thumbnailPath}`,
       }
     }
     if (item.type === 'AUDIO') {
+      if (!paths?.compressedPath) {
+        return articleFallback
+      }
       return {
         ...base,
         type: 'audio',
-        audio_url: paths?.compressedPath
-          ? `${ORIGIN}${paths.compressedPath}`
-          : undefined,
+        audio_url: `${ORIGIN}${paths.compressedPath}`,
       }
     }
 
-    // Fallback for unknown types
-    return {
-      ...base,
-      type: 'article',
-      input_message_content: {
-        message_text: `${title}\n\n${description}`,
-      },
-    }
+    return articleFallback
   })
 }
 

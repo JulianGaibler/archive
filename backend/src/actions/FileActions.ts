@@ -4,6 +4,7 @@ import {
   lt,
   inArray,
   isNotNull,
+  isNull,
   count,
   asc,
   desc,
@@ -418,6 +419,10 @@ const FileActions = {
     // modifications is derived from processingMeta for reprocessing efficiency (persistent only)
     let newModifications: ModificationActionData = {}
 
+    // Preserve template through reprocessing (template is client-side only)
+    const existingMeta = (file.processingMeta as Record<string, unknown>) || {}
+    const existingTemplate = existingMeta.template
+
     if (!fields.clearAllModifications) {
       // Start with existing modifications from processingMeta (source of truth)
       // Start with existing modifications from processingMeta
@@ -434,6 +439,11 @@ const FileActions = {
 
     if (fields.addModifications) {
       Object.assign(newModifications, fields.addModifications)
+    }
+
+    // Re-attach template if it existed
+    if (existingTemplate) {
+      ;(newModifications as Record<string, unknown>).template = existingTemplate
     }
 
     // Prepare database update fields
@@ -736,11 +746,15 @@ const FileActions = {
       }
     }
 
-    // Clear modifications in file record
+    // Clear modifications in file record (preserve template)
+    const revertMeta = (file.processingMeta as Record<string, unknown>) || {}
+    const revertTemplate = revertMeta.template
+    const preservedMeta = revertTemplate ? { template: revertTemplate } : null
+
     await ctx.db
       .update(fileTable)
       .set({
-        processingMeta: null,
+        processingMeta: preservedMeta,
         type: file.originalType, // Revert to original file type
         processingStatus: 'DONE',
         updatedAt: Date.now(),
@@ -763,11 +777,17 @@ const FileActions = {
       throw new NotFoundError('File not found')
     }
 
-    // Step 1: Clear all modifications in database
+    // Step 1: Clear all modifications in database (preserve template)
+    const resetMeta = (file.processingMeta as Record<string, unknown>) || {}
+    const resetTemplate = resetMeta.template
+    const resetPreservedMeta = resetTemplate
+      ? { template: resetTemplate }
+      : null
+
     await ctx.db
       .update(fileTable)
       .set({
-        processingMeta: null,
+        processingMeta: resetPreservedMeta,
         type: file.originalType, // Revert to original type
         processingStatus: 'QUEUED',
         processingProgress: null,
@@ -1631,6 +1651,74 @@ const FileActions = {
       waveform,
       waveformThumbnail,
     }
+  },
+
+  // =============================================================================
+  // Backfill Operations
+  // =============================================================================
+
+  /**
+   * Queue a batch of un-normalized VIDEO/AUDIO files for reprocessing.
+   * Targets files uploaded before normalization was added (March 8, 2026).
+   */
+  async mQueueNormalizationBackfill(
+    ctx: Context,
+    n: number,
+  ): Promise<number> {
+    ctx.isPrivileged()
+
+    const NORMALIZATION_CUTOFF = 1741392000000 // March 8, 2026 00:00 UTC
+
+    // Find eligible files: VIDEO/AUDIO, done processing, before cutoff,
+    // attached to a post (not temporary), and not yet normalized
+    const eligibleFiles = await ctx.db
+      .select({
+        id: fileTable.id,
+        processingMeta: fileTable.processingMeta,
+      })
+      .from(fileTable)
+      .where(
+        and(
+          inArray(fileTable.type, ['VIDEO', 'AUDIO']),
+          eq(fileTable.processingStatus, 'DONE'),
+          lt(fileTable.createdAt, NORMALIZATION_CUTOFF),
+          isNull(fileTable.expireBy),
+          sql`${fileTable.processingMeta} IS NULL OR NOT (${fileTable.processingMeta}::jsonb ? 'normalize')`,
+        ),
+      )
+      .orderBy(sql`random()`)
+      .limit(n)
+
+    if (eligibleFiles.length === 0) {
+      return 0
+    }
+
+    // Update each file and queue for reprocessing
+    for (const file of eligibleFiles) {
+      const existingMeta =
+        (file.processingMeta as Record<string, unknown>) ?? {}
+      const newMeta = {
+        ...existingMeta,
+        normalize: { enabled: true },
+      }
+
+      await ctx.db
+        .update(fileTable)
+        .set({
+          processingMeta: newMeta,
+          processingStatus: 'QUEUED',
+          processingProgress: 0,
+          updatedAt: Date.now(),
+        })
+        .where(eq(fileTable.id, file.id))
+
+      await Context.fileStorage.queueFileForReprocessing(ctx, file.id)
+    }
+
+    // Kick off queue processing
+    Context.fileStorage.checkQueue()
+
+    return eligibleFiles.length
   },
 }
 

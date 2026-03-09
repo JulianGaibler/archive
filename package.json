@@ -3,6 +3,11 @@
   "version": "2.3.1",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "backend",
+    "frontend",
+    "shared"
+  ],
   "scripts": {
     "setup-env": "node scripts/setup-env.js",
     "setup-env:dev": "node scripts/setup-env.js --mode=development",
@@ -29,7 +34,7 @@
     "docker:logs:backend": "dotenv -e .env.prod -- docker compose -f docker-compose.prod.yml logs -f backend",
     "docker:logs:frontend": "dotenv -e .env.prod -- docker compose -f docker-compose.prod.yml logs -f frontend",
     "docker:logs:postgres": "dotenv -e .env.prod -- docker compose -f docker-compose.prod.yml logs -f postgres",
-    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "install:all": "npm install",
     "prettier": "cd backend && npm run prettier && cd ../frontend && npm run prettier",
     "lint": "cd backend && npm run lint && cd ../frontend && npm run lint"
   },

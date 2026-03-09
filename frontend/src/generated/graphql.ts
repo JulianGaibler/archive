@@ -136,6 +136,8 @@ export type FileModifications = {
   fileType?: Maybe<FileType>;
   /** Audio normalization applied to the file. */
   normalize?: Maybe<NormalizeMetadata>;
+  /** Template configuration for text overlay areas. */
+  template?: Maybe<TemplateConfig>;
   /** Trim modification applied to the file. */
   trim?: Maybe<TrimMetadata>;
 };
@@ -433,6 +435,11 @@ export type Mutation = {
   resetAndReprocessFile: Scalars['String']['output'];
   /** Revokes the session of a user. */
   revokeSession: Scalars['Boolean']['output'];
+  /**
+   * Sets or clears the template configuration for an item's file.
+   * Pass null to clear the template. Does not trigger reprocessing.
+   */
+  setItemTemplate: Scalars['Boolean']['output'];
   /** Creates a new user and performs a login. */
   signup: Scalars['Boolean']['output'];
   /**
@@ -589,6 +596,12 @@ export type MutationResetAndReprocessFileArgs = {
 
 export type MutationRevokeSessionArgs = {
   sessionId: Scalars['ID']['input'];
+};
+
+
+export type MutationSetItemTemplateArgs = {
+  itemId: Scalars['ID']['input'];
+  template?: InputMaybe<TemplateInput>;
 };
 
 
@@ -844,6 +857,52 @@ export type SubscriptionFileProcessingUpdatesArgs = {
   ids: Array<Scalars['String']['input']>;
 };
 
+/** A text overlay area within a template. */
+export type TemplateArea = {
+  __typename?: 'TemplateArea';
+  alignH: Scalars['String']['output'];
+  alignV: Scalars['String']['output'];
+  backplateColor: Scalars['String']['output'];
+  backplateOpacity: Scalars['Int']['output'];
+  font: Scalars['String']['output'];
+  fontSize: Scalars['Int']['output'];
+  height: Scalars['Float']['output'];
+  id: Scalars['String']['output'];
+  overflow: Scalars['String']['output'];
+  rotation: Scalars['Float']['output'];
+  textColor: Scalars['String']['output'];
+  width: Scalars['Float']['output'];
+  x: Scalars['Float']['output'];
+  y: Scalars['Float']['output'];
+};
+
+export type TemplateAreaInput = {
+  alignH: Scalars['String']['input'];
+  alignV: Scalars['String']['input'];
+  backplateColor: Scalars['String']['input'];
+  backplateOpacity: Scalars['Int']['input'];
+  font: Scalars['String']['input'];
+  fontSize: Scalars['Int']['input'];
+  height: Scalars['Float']['input'];
+  id: Scalars['String']['input'];
+  overflow: Scalars['String']['input'];
+  rotation: Scalars['Float']['input'];
+  textColor: Scalars['String']['input'];
+  width: Scalars['Float']['input'];
+  x: Scalars['Float']['input'];
+  y: Scalars['Float']['input'];
+};
+
+/** Template configuration for text overlay areas on an image. */
+export type TemplateConfig = {
+  __typename?: 'TemplateConfig';
+  areas: Array<TemplateArea>;
+};
+
+export type TemplateInput = {
+  areas: Array<TemplateAreaInput>;
+};
+
 /**
  * Input type for trimming parameters.
  * Defines a time range to trim from video/audio files.
@@ -980,7 +1039,7 @@ type ItemData_AudioItem_Fragment = { __typename: 'AudioItem', caption: string, p
 
 type ItemData_GifItem_Fragment = { __typename: 'GifItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'GifFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, compressedGifPath: string, thumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, trim?: { __typename?: 'TrimMetadata', startTime: number, endTime: number } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } };
 
-type ItemData_ImageItem_Fragment = { __typename: 'ImageItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'PhotoFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, thumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } };
+type ItemData_ImageItem_Fragment = { __typename: 'ImageItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'PhotoFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, thumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, template?: { __typename?: 'TemplateConfig', areas: Array<{ __typename?: 'TemplateArea', id: string, x: number, y: number, width: number, height: number, rotation: number, alignH: string, alignV: string, overflow: string, font: string, fontSize: number, textColor: string, backplateOpacity: number, backplateColor: string }> } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } };
 
 type ItemData_ProcessingItem_Fragment = { __typename: 'ProcessingItem', position: number, fileId: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, createdAt: any, updatedAt: any, description: string, id: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } };
 
@@ -997,7 +1056,7 @@ export type ItemDataFragment =
 export type PostDataFragment = { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', nodes: Array<
       | { __typename: 'AudioItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'AudioFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, unmodifiedCompressedPath?: string | null, waveform: Array<number>, waveformThumbnail: Array<number>, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, trim?: { __typename?: 'TrimMetadata', startTime: number, endTime: number } | null, normalize?: { __typename?: 'NormalizeMetadata', enabled: boolean } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
       | { __typename: 'GifItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'GifFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, compressedGifPath: string, thumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, trim?: { __typename?: 'TrimMetadata', startTime: number, endTime: number } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
-      | { __typename: 'ImageItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'PhotoFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, thumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
+      | { __typename: 'ImageItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'PhotoFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, thumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, template?: { __typename?: 'TemplateConfig', areas: Array<{ __typename?: 'TemplateArea', id: string, x: number, y: number, width: number, height: number, rotation: number, alignH: string, alignV: string, overflow: string, font: string, fontSize: number, textColor: string, backplateOpacity: number, backplateColor: string }> } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
       | { __typename: 'ProcessingItem', position: number, fileId: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, createdAt: any, updatedAt: any, description: string, id: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
       | { __typename: 'VideoItem', caption: string, hasCaptions: boolean, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'VideoFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, thumbnailPath?: string | null, posterThumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, unmodifiedThumbnailPosterPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, trim?: { __typename?: 'TrimMetadata', startTime: number, endTime: number } | null, normalize?: { __typename?: 'NormalizeMetadata', enabled: boolean } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
     > } };
@@ -1076,6 +1135,14 @@ export type DuplicateItemMutationVariables = Exact<{
 
 export type DuplicateItemMutation = { __typename?: 'Mutation', duplicateItem: string };
 
+export type SetItemTemplateMutationVariables = Exact<{
+  itemId: Scalars['ID']['input'];
+  template?: InputMaybe<TemplateInput>;
+}>;
+
+
+export type SetItemTemplateMutation = { __typename?: 'Mutation', setItemTemplate: boolean };
+
 export type KeywordsQueryVariables = Exact<{
   after?: InputMaybe<Scalars['String']['input']>;
   byName?: InputMaybe<Scalars['String']['input']>;
@@ -1136,7 +1203,7 @@ export type PostQuery = { __typename?: 'Query', node:
     | { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', nodes: Array<
           | { __typename: 'AudioItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'AudioFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, unmodifiedCompressedPath?: string | null, waveform: Array<number>, waveformThumbnail: Array<number>, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, trim?: { __typename?: 'TrimMetadata', startTime: number, endTime: number } | null, normalize?: { __typename?: 'NormalizeMetadata', enabled: boolean } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
           | { __typename: 'GifItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'GifFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, compressedGifPath: string, thumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, trim?: { __typename?: 'TrimMetadata', startTime: number, endTime: number } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
-          | { __typename: 'ImageItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'PhotoFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, thumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
+          | { __typename: 'ImageItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'PhotoFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, thumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, template?: { __typename?: 'TemplateConfig', areas: Array<{ __typename?: 'TemplateArea', id: string, x: number, y: number, width: number, height: number, rotation: number, alignH: string, alignV: string, overflow: string, font: string, fontSize: number, textColor: string, backplateOpacity: number, backplateColor: string }> } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
           | { __typename: 'ProcessingItem', position: number, fileId: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, createdAt: any, updatedAt: any, description: string, id: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
           | { __typename: 'VideoItem', caption: string, hasCaptions: boolean, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'VideoFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, thumbnailPath?: string | null, posterThumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, unmodifiedThumbnailPosterPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, trim?: { __typename?: 'TrimMetadata', startTime: number, endTime: number } | null, normalize?: { __typename?: 'NormalizeMetadata', enabled: boolean } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
         > } }
@@ -1180,7 +1247,7 @@ export type CreatePostMutationVariables = Exact<{
 export type CreatePostMutation = { __typename?: 'Mutation', createPost: { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', nodes: Array<
         | { __typename: 'AudioItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'AudioFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, unmodifiedCompressedPath?: string | null, waveform: Array<number>, waveformThumbnail: Array<number>, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, trim?: { __typename?: 'TrimMetadata', startTime: number, endTime: number } | null, normalize?: { __typename?: 'NormalizeMetadata', enabled: boolean } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
         | { __typename: 'GifItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'GifFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, compressedGifPath: string, thumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, trim?: { __typename?: 'TrimMetadata', startTime: number, endTime: number } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
-        | { __typename: 'ImageItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'PhotoFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, thumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
+        | { __typename: 'ImageItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'PhotoFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, thumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, template?: { __typename?: 'TemplateConfig', areas: Array<{ __typename?: 'TemplateArea', id: string, x: number, y: number, width: number, height: number, rotation: number, alignH: string, alignV: string, overflow: string, font: string, fontSize: number, textColor: string, backplateOpacity: number, backplateColor: string }> } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
         | { __typename: 'ProcessingItem', position: number, fileId: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, createdAt: any, updatedAt: any, description: string, id: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
         | { __typename: 'VideoItem', caption: string, hasCaptions: boolean, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'VideoFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, thumbnailPath?: string | null, posterThumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, unmodifiedThumbnailPosterPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, trim?: { __typename?: 'TrimMetadata', startTime: number, endTime: number } | null, normalize?: { __typename?: 'NormalizeMetadata', enabled: boolean } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
       > } } };
@@ -1206,7 +1273,7 @@ export type EditPostMutationVariables = Exact<{
 export type EditPostMutation = { __typename?: 'Mutation', editPost: { __typename?: 'Post', id: string, title: string, language: Language, updatedAt: any, createdAt: any, creator: { __typename?: 'User', name: string, username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }, keywords: Array<{ __typename?: 'Keyword', name: string, id: string }>, items: { __typename?: 'ItemConnection', nodes: Array<
         | { __typename: 'AudioItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'AudioFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, unmodifiedCompressedPath?: string | null, waveform: Array<number>, waveformThumbnail: Array<number>, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, trim?: { __typename?: 'TrimMetadata', startTime: number, endTime: number } | null, normalize?: { __typename?: 'NormalizeMetadata', enabled: boolean } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
         | { __typename: 'GifItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'GifFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, compressedGifPath: string, thumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, trim?: { __typename?: 'TrimMetadata', startTime: number, endTime: number } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
-        | { __typename: 'ImageItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'PhotoFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, thumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
+        | { __typename: 'ImageItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'PhotoFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, thumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, template?: { __typename?: 'TemplateConfig', areas: Array<{ __typename?: 'TemplateArea', id: string, x: number, y: number, width: number, height: number, rotation: number, alignH: string, alignV: string, overflow: string, font: string, fontSize: number, textColor: string, backplateOpacity: number, backplateColor: string }> } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
         | { __typename: 'ProcessingItem', position: number, fileId: string, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, createdAt: any, updatedAt: any, description: string, id: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
         | { __typename: 'VideoItem', caption: string, hasCaptions: boolean, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'VideoFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, thumbnailPath?: string | null, posterThumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, unmodifiedThumbnailPosterPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, trim?: { __typename?: 'TrimMetadata', startTime: number, endTime: number } | null, normalize?: { __typename?: 'NormalizeMetadata', enabled: boolean } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } }
       > } } };
@@ -1425,6 +1492,24 @@ export const ItemDataFragmentDoc = gql`
           bottom
         }
         fileType
+        template {
+          areas {
+            id
+            x
+            y
+            width
+            height
+            rotation
+            alignH
+            alignV
+            overflow
+            font
+            fontSize
+            textColor
+            backplateOpacity
+            backplateColor
+          }
+        }
       }
       relativeHeight
     }
@@ -1662,6 +1747,11 @@ export const ResetAndReprocessFileDocument = gql`
 export const DuplicateItemDocument = gql`
     mutation duplicateItem($itemId: ID!) {
   duplicateItem(itemId: $itemId)
+}
+    `;
+export const SetItemTemplateDocument = gql`
+    mutation setItemTemplate($itemId: ID!, $template: TemplateInput) {
+  setItemTemplate(itemId: $itemId, template: $template)
 }
     `;
 export const KeywordsDocument = gql`
@@ -1967,6 +2057,7 @@ const NormalizeItemDocumentString = print(NormalizeItemDocument);
 const RemoveModificationsDocumentString = print(RemoveModificationsDocument);
 const ResetAndReprocessFileDocumentString = print(ResetAndReprocessFileDocument);
 const DuplicateItemDocumentString = print(DuplicateItemDocument);
+const SetItemTemplateDocumentString = print(SetItemTemplateDocument);
 const KeywordsDocumentString = print(KeywordsDocument);
 const KeywordSearchDocumentString = print(KeywordSearchDocument);
 const KeywordWithPostsDocumentString = print(KeywordWithPostsDocument);
@@ -2029,6 +2120,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     duplicateItem(variables: DuplicateItemMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: DuplicateItemMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<DuplicateItemMutation>(DuplicateItemDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'duplicateItem', 'mutation', variables);
+    },
+    setItemTemplate(variables: SetItemTemplateMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: SetItemTemplateMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<SetItemTemplateMutation>(SetItemTemplateDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'setItemTemplate', 'mutation', variables);
     },
     Keywords(variables?: KeywordsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: KeywordsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<KeywordsQuery>(KeywordsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Keywords', 'query', variables);
