@@ -41,6 +41,9 @@ ENV FRONTEND_PRIVATE_API_BASE_URL=${FRONTEND_PRIVATE_API_BASE_URL}
 ENV FRONTEND_LEGAL_LINK_LABEL=${FRONTEND_LEGAL_LINK_LABEL}
 ENV FRONTEND_LEGAL_LINK_URL=${FRONTEND_LEGAL_LINK_URL}
 
+# Build shared package (compiles .ts to .js in-place for runtime resolution)
+RUN npm run build --workspace=shared
+
 # Build the frontend
 RUN npm run build --workspace=frontend
 
@@ -52,9 +55,9 @@ RUN apk add --no-cache wget
 
 WORKDIR /app
 
-# Copy root workspace files + shared package + frontend package.json
+# Copy root workspace files + shared package (with compiled .js from builder) + frontend package.json
 COPY package.json package-lock.json ./
-COPY shared/ shared/
+COPY --from=builder /app/shared/ shared/
 COPY frontend/package.json frontend/
 
 # Install only production dependencies

@@ -4,6 +4,10 @@ backend/public/
 
 node_modules/
 
+# Shared package compiled output (compiled in-place by tsc)
+shared/src/**/*.js
+shared/src/**/*.d.ts
+
 # Environment files
 .env
 .env.dev

@@ -11,6 +11,9 @@ COPY backend/ backend/
 # Install dependencies using workspace
 RUN npm ci --workspace=backend
 
+# Build shared package (compiles .ts to .js in-place for runtime resolution)
+RUN npm run build --workspace=shared
+
 # Build the backend
 RUN npm run build --workspace=backend
 
@@ -22,9 +25,9 @@ RUN apk add --no-cache wget ffmpeg postgresql-client su-exec
 
 WORKDIR /app
 
-# Copy root workspace files + shared package + backend package.json
+# Copy root workspace files + shared package (with compiled .js from builder) + backend package.json
 COPY package.json package-lock.json ./
-COPY shared/ shared/
+COPY --from=builder /app/shared/ shared/
 COPY backend/package.json backend/
 
 # Install only production dependencies + migration dependencies
