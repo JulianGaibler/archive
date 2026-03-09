@@ -15,7 +15,7 @@
   "dependencies": {
     "@astrojs/node": "^9.5.4",
     "@astrojs/svelte": "^7.2.5",
-    "@types/cookie": "^0.6.0",
+    "@types/cookie": "^1.0.0",
     "archive-shared": "*",
     "astro": "^5.18.0",
     "cookie": "^1.1.1",
