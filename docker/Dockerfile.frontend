@@ -3,17 +3,19 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy frontend package files
-COPY frontend/package*.json ./
+# Copy root workspace files + shared package + frontend package.json (for cached install)
+COPY package.json package-lock.json ./
+COPY shared/ shared/
+COPY frontend/package.json frontend/
 
 # Install all dependencies (including dev dependencies for build)
-RUN npm ci
+RUN npm ci --workspace=frontend
 
 # Copy frontend source
-COPY frontend/ ./
+COPY frontend/ frontend/
 
 # Copy changelog.yaml to parent directory structure expected by the app
-COPY changelog.yaml ../changelog.yaml
+COPY changelog.yaml ./changelog.yaml
 
 # Build arguments for environment variables needed during build
 # These are required because Astro processes environment variables at build time
@@ -40,7 +42,7 @@ ENV FRONTEND_LEGAL_LINK_LABEL=${FRONTEND_LEGAL_LINK_LABEL}
 ENV FRONTEND_LEGAL_LINK_URL=${FRONTEND_LEGAL_LINK_URL}
 
 # Build the frontend
-RUN npm run build
+RUN npm run build --workspace=frontend
 
 # Production stage
 FROM node:22-alpine AS production
@@ -50,17 +52,19 @@ RUN apk add --no-cache wget
 
 WORKDIR /app
 
-# Copy frontend package files
-COPY frontend/package*.json ./
+# Copy root workspace files + shared package + frontend package.json
+COPY package.json package-lock.json ./
+COPY shared/ shared/
+COPY frontend/package.json frontend/
 
 # Install only production dependencies
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci --omit=dev --workspace=frontend && npm cache clean --force
 
 # Copy built application from builder stage
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/frontend/dist ./dist
 
 # Copy changelog.yaml for runtime server-side rendering
-COPY --from=builder /changelog.yaml ../changelog.yaml
+COPY --from=builder /app/changelog.yaml ../changelog.yaml
 
 # Copy startup script
 COPY frontend/docker-scripts/start-frontend.sh /app/start.sh
