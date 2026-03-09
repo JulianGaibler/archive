@@ -36,8 +36,8 @@
     small
     onclick={onSetStart}
     disabled={!hasSelectedCue}
-    tooltip="Set start to playhead (⌥I)"
-    aria-label="Set cue start to playhead (Alt+I)"
+    tooltip="Set start to playhead (⌥U)"
+    aria-label="Set cue start to playhead (Alt+U)"
   >
     Set Start
   </Button>
@@ -79,8 +79,8 @@
         icon
         onclick={onSplitCue}
         disabled={!canSplit}
-        tooltip="Split at playhead (⌥S)"
-        aria-label="Split cue at playhead (Alt+S)"
+        tooltip="Split at playhead (⌥I)"
+        aria-label="Split cue at playhead (Alt+I)"
       >
         {@html IconCut}
       </Button>
@@ -112,6 +112,8 @@
 .action-bar
   display: flex
   align-items: center
+  flex-wrap: wrap
+  gap: tint.$size-12
 
 .nav-group
   margin-inline: auto

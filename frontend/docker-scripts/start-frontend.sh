@@ -15,4 +15,5 @@ fi
 export HOST=0.0.0.0
 export PORT=${FRONTEND_PORT:-4321}
 echo "Starting Astro server on ${HOST}:${PORT}"
+
 exec node dist/server/entry.mjs

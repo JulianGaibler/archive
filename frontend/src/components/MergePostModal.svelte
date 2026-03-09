@@ -153,7 +153,7 @@
   }
 </script>
 
-<Modal {open} onclose={handleCancel}>
+<Modal {open} onclose={handleCancel} fullscreen>
   <div class="merge-post-modal">
     <h2 class="tint--type-title-serif-3">{modalTitle}</h2>
     <p class="tint--type-body">
@@ -194,7 +194,8 @@
 <style lang="sass">
 .merge-post-modal
   box-sizing: border-box
-  width: min(500px, calc(100vw - tint.$size-32))
+  max-width: 500px
+  margin-inline: auto
   display: flex
   flex-direction: column
   padding: tint.$size-32

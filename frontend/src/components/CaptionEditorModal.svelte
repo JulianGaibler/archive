@@ -1,8 +1,8 @@
 <script lang="ts">
-  import Button from 'tint/components/Button.svelte'
   import LabeledToggleable from 'tint/components/LabeledToggleable.svelte'
   import Modal from 'tint/components/Modal.svelte'
   import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
+  import ModalHeader from '@src/components/ModalHeader.svelte'
   import CaptionOverlay from '@src/components/CaptionOverlay.svelte'
   import ActionBar from '@src/components/CaptionEditorModal/ActionBar.svelte'
   import CueEditor from '@src/components/CaptionEditorModal/CueEditor.svelte'
@@ -233,7 +233,19 @@
 
   function handleSplitCue() {
     if (!canSplit) return
-    const result = splitCue(cues, selectedCueIndex, currentTime * 1000)
+    const textarea = document.getElementById(
+      'cue-text',
+    ) as HTMLTextAreaElement | null
+    const textSelection =
+      textarea && textarea.selectionStart !== textarea.selectionEnd
+        ? { start: textarea.selectionStart, end: textarea.selectionEnd }
+        : undefined
+    const result = splitCue(
+      cues,
+      selectedCueIndex,
+      currentTime * 1000,
+      textSelection,
+    )
     cues = result.cues
     selectedCueIndex = result.newIndex
   }
@@ -337,73 +349,48 @@
   }
 
   // Keyboard shortcuts (Alt/Option+key, global while modal is open)
+  // Spatial layout:
+  //   Alt + U   I   O  → Set Start, Split, Set End
+  //   Alt + J   K   L  → Seek -5s, Play/Pause, Seek +10s
+  // Uses capture phase + stopImmediatePropagation to prevent
+  // browser menus and plugins from intercepting Alt+key combos.
   function handleKeydown(e: KeyboardEvent) {
     if (!e.altKey) return
 
     switch (e.code) {
       case 'KeyN':
         e.preventDefault()
-        e.stopPropagation()
+        e.stopImmediatePropagation()
         handleAddCue()
-        break
-      case 'KeyS':
-        e.preventDefault()
-        e.stopPropagation()
-        handleSplitCue()
         break
       case 'KeyI':
         e.preventDefault()
-        e.stopPropagation()
+        e.stopImmediatePropagation()
+        handleSplitCue()
+        break
+      case 'KeyU':
+        e.preventDefault()
+        e.stopImmediatePropagation()
         handleSetStart()
         break
       case 'KeyO':
         e.preventDefault()
-        e.stopPropagation()
+        e.stopImmediatePropagation()
         handleSetEnd()
         break
-    }
-
-    // Seek shortcuts (Alt+Shift+Arrow)
-    if (e.shiftKey) {
-      const element = mediaType === 'video' ? videoElement : audioElement
-      if (!element) return
-      switch (e.key) {
-        case 'ArrowLeft':
-          e.preventDefault()
-          e.stopPropagation()
-          element.currentTime = Math.max(0, element.currentTime - 5)
-          return
-        case 'ArrowRight':
-          e.preventDefault()
-          e.stopPropagation()
-          element.currentTime = Math.min(
-            element.duration,
-            element.currentTime + 10,
-          )
-          return
-      }
-    }
-
-    switch (e.key) {
-      case 'Delete':
-      case 'Backspace':
+      case 'KeyJ':
         e.preventDefault()
-        e.stopPropagation()
-        handleDeleteCue()
+        e.stopImmediatePropagation()
+        {
+          const element = mediaType === 'video' ? videoElement : audioElement
+          if (element) {
+            element.currentTime = Math.max(0, element.currentTime - 5)
+          }
+        }
         break
-      case 'ArrowLeft':
+      case 'KeyK':
         e.preventDefault()
-        e.stopPropagation()
-        handlePrevCue()
-        break
-      case 'ArrowRight':
-        e.preventDefault()
-        e.stopPropagation()
-        handleNextCue()
-        break
-      case ' ':
-        e.preventDefault()
-        e.stopPropagation()
+        e.stopImmediatePropagation()
         {
           const element = mediaType === 'video' ? videoElement : audioElement
           if (element) {
@@ -415,127 +402,187 @@
           }
         }
         break
+      case 'KeyL':
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        {
+          const element = mediaType === 'video' ? videoElement : audioElement
+          if (element) {
+            element.currentTime = Math.min(
+              element.duration,
+              element.currentTime + 10,
+            )
+          }
+        }
+        break
+    }
+
+    switch (e.key) {
+      case 'Delete':
+      case 'Backspace':
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        handleDeleteCue()
+        break
+      case 'ArrowLeft':
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        handlePrevCue()
+        break
+      case 'ArrowRight':
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        handleNextCue()
+        break
     }
   }
 
   $effect(() => {
     if (!open) return
-    window.addEventListener('keydown', handleKeydown)
-    return () => window.removeEventListener('keydown', handleKeydown)
+    window.addEventListener('keydown', handleKeydown, true)
+    return () => window.removeEventListener('keydown', handleKeydown, true)
   })
 </script>
 
-<Modal {open} onclose={handleCancel}>
+<Modal {open} onclose={handleCancel} fullscreen>
   <div class="caption-editor" role="application">
-    <h2 class="tint--type-title-serif-3">Edit Captions</h2>
+    <div class="section">
+      <div class="container">
+        <ModalHeader
+          title="Edit Captions"
+          submitDisabled={!mediaLoaded}
+          oncancel={handleCancel}
+          onsubmit={handleSave}
+        />
+      </div>
+    </div>
 
-    <div class="preview-area">
-      {#if mediaError}
-        <div class="error-state">
-          <p>{mediaError}</p>
-        </div>
-      {:else if !mediaLoaded}
-        <div class="loading-state">
-          <LoadingIndicator />
-          <p>Loading media...</p>
-        </div>
-      {/if}
+    <div class="section tint--tinted" style="background: var(--tint-bg)">
+      <div class="container">
+        <div class="preview-area">
+          {#if mediaError}
+            <div class="error-state">
+              <p>{mediaError}</p>
+            </div>
+          {:else if !mediaLoaded}
+            <div class="loading-state">
+              <LoadingIndicator />
+              <p>Loading media...</p>
+            </div>
+          {/if}
 
-      {#if mediaType === 'video'}
-        <div class="video-wrapper">
-          <div class="video-inner">
-            <video
-              bind:this={videoElement}
+          {#if mediaType === 'video'}
+            <div class="video-wrapper">
+              <div class="video-inner">
+                <video
+                  bind:this={videoElement}
+                  src={mediaUrl}
+                  crossorigin="anonymous"
+                  onloadedmetadata={handleMediaLoaded}
+                  onerror={handleMediaError}
+                  ontimeupdate={handleTimeUpdate}
+                  controls={false}
+                  preload="none"
+                  style={!mediaLoaded ? 'opacity: 0;' : ''}
+                />
+                {#if mediaLoaded}
+                  <CaptionOverlay
+                    cue={currentCue}
+                    raised={false}
+                    controlsHeight={0}
+                  />
+                {/if}
+              </div>
+            </div>
+          {:else}
+            <audio
+              bind:this={audioElement}
               src={mediaUrl}
-              crossorigin="anonymous"
               onloadedmetadata={handleMediaLoaded}
               onerror={handleMediaError}
               ontimeupdate={handleTimeUpdate}
-              controls={false}
               preload="none"
-              style={!mediaLoaded ? 'opacity: 0;' : ''}
-            />
-            {#if mediaLoaded}
-              <CaptionOverlay
-                cue={currentCue}
-                raised={false}
-                controlsHeight={0}
-              />
+              style="display: none;"
+            ></audio>
+            {#if mediaLoaded && currentCue}
+              <div class="audio-caption-preview">
+                <p>{currentCue.text}</p>
+              </div>
             {/if}
-          </div>
+          {/if}
         </div>
-      {:else}
-        <audio
-          bind:this={audioElement}
-          src={mediaUrl}
-          onloadedmetadata={handleMediaLoaded}
-          onerror={handleMediaError}
-          ontimeupdate={handleTimeUpdate}
-          preload="none"
-          style="display: none;"
-        ></audio>
-        {#if mediaLoaded && currentCue}
-          <div class="audio-caption-preview">
-            <p>{currentCue.text}</p>
-          </div>
-        {/if}
-      {/if}
+      </div>
     </div>
 
-    {#if mediaLoaded}
-      <div class="editor-controls">
-        <ActionBar
-          hasSelectedCue={selectedCue !== null}
-          {canSplit}
-          onAddCue={handleAddCue}
-          onDeleteCue={handleDeleteCue}
-          onSplitCue={handleSplitCue}
-          onPrevCue={handlePrevCue}
-          onNextCue={handleNextCue}
-          onSetStart={handleSetStart}
-          onSetEnd={handleSetEnd}
-        />
+    <div class="section">
+      <div class="container">
+        {#if mediaLoaded}
+          <div class="editor-controls">
+            <ActionBar
+              hasSelectedCue={selectedCue !== null}
+              {canSplit}
+              onAddCue={handleAddCue}
+              onDeleteCue={handleDeleteCue}
+              onSplitCue={handleSplitCue}
+              onPrevCue={handlePrevCue}
+              onNextCue={handleNextCue}
+              onSetStart={handleSetStart}
+              onSetEnd={handleSetEnd}
+            />
 
-        <CueEditor
-          cue={selectedCue}
-          {computedEndMs}
-          {allVoices}
-          {isLocked}
-          onUpdate={handleCueUpdate}
-          onToggleLock={handleToggleLock}
-        />
+            <CueEditor
+              cue={selectedCue}
+              {computedEndMs}
+              {allVoices}
+              {isLocked}
+              onUpdate={handleCueUpdate}
+              onToggleLock={handleToggleLock}
+            />
 
-        <CaptionTimeline
-          {mediaType}
-          {videoElement}
-          {audioElement}
-          {duration}
-          {cues}
-          {selectedCueIndex}
-          bind:currentTime
-          bind:isPlaying
-          {waveform}
-          {waveformThumbnail}
-          onCueSelect={handleCueSelect}
-          onCueDrag={handleCueDrag}
-        />
-      </div>
-    {/if}
+            <CaptionTimeline
+              {mediaType}
+              {videoElement}
+              {audioElement}
+              {duration}
+              {cues}
+              {selectedCueIndex}
+              bind:currentTime
+              bind:isPlaying
+              {waveform}
+              {waveformThumbnail}
+              onCueSelect={handleCueSelect}
+              onCueDrag={handleCueDrag}
+            />
+          </div>
+        {/if}
 
-    <div class="actions">
-      <LabeledToggleable
-        id="sync-selection"
-        type="switch"
-        checked={syncSelection}
-        onchange={() => (syncSelection = !syncSelection)}
-      >
-        Sync
-      </LabeledToggleable>
-      <div class="action-buttons">
-        <Button onclick={handleCancel}>Cancel</Button>
-        <Button variant="primary" onclick={handleSave} disabled={!mediaLoaded}>
-          Save
-        </Button>
+        <div class="options tint--type-ui-small">
+          <LabeledToggleable
+            id="sync-selection"
+            type="switch"
+            checked={syncSelection}
+            onchange={() => (syncSelection = !syncSelection)}
+          >
+            Sync selection to playhead
+          </LabeledToggleable>
+        </div>
+
+        <div class="keymap tint--type-ui-small">
+          <span class="keymap-label">Shortcuts</span>
+          <span><kbd>⌥</kbd><kbd>J</kbd> Seek back</span>
+          <span><kbd>⌥</kbd><kbd>K</kbd> Play / Pause</span>
+          <span><kbd>⌥</kbd><kbd>L</kbd> Seek forward</span>
+          <span><kbd>⌥</kbd><kbd>←</kbd> Previous cue</span>
+          <span><kbd>⌥</kbd><kbd>→</kbd> Next cue</span>
+          <span><kbd>⌥</kbd><kbd>U</kbd> Set start</span>
+          <span><kbd>⌥</kbd><kbd>I</kbd> Split cue</span>
+          <span><kbd>⌥</kbd><kbd>O</kbd> Set end</span>
+          <span><kbd>⌥</kbd><kbd>N</kbd> Add cue</span>
+          <span><kbd>⌥</kbd><kbd>⌫</kbd> Delete cue</span>
+          <p class="keymap-tip">
+            Select text before splitting to move it to the new cue
+          </p>
+        </div>
       </div>
     </div>
   </div>
@@ -543,18 +590,26 @@
 
 <style lang="sass">
 .caption-editor
-  box-sizing: border-box
-  width: min(900px, calc(100vw - tint.$size-32))
   display: flex
   flex-direction: column
-  padding-block: tint.$size-32
-  gap: tint.$size-16
 
-  h2
-    margin-inline: tint.$size-32
+.section
+  width: 100%
+  padding-block: tint.$size-16
+
+  &:last-child
+    padding-block-end: tint.$size-32
+
+.container
+  box-sizing: border-box
+  max-width: 900px
+  margin-inline: auto
+  padding-inline: tint.$size-32
 
 .preview-area
   width: 100%
+  min-width: 0
+  overflow: hidden
   display: flex
   flex-direction: column
   align-items: center
@@ -562,6 +617,7 @@
   min-height: 100px
 
 .video-wrapper
+  box-sizing: border-box
   margin-inline: auto
   max-width: 100%
   padding: tint.$size-16
@@ -570,6 +626,7 @@
   position: relative
   overflow: hidden
   display: inline-block
+  max-width: 100%
 
   video
     max-width: 100%
@@ -597,18 +654,37 @@
   display: flex
   flex-direction: column
   gap: tint.$size-16
-  margin-inline: tint.$size-32
 
-.actions
-  display: flex
-  align-items: center
-  gap: tint.$size-8
-  justify-content: space-between
-  margin-inline: tint.$size-32
-  padding-block-start: tint.$size-16
-  border-block-start: 1px solid var(--tint-border)
+.options
+  margin-block-start: tint.$size-32
 
-.action-buttons
-  display: flex
-  gap: tint.$size-8
+.keymap
+  margin-block-start: tint.$size-32
+  display: grid
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr))
+  gap: tint.$size-4 tint.$size-16
+  color: var(--tint-text-secondary)
+
+  kbd
+    display: inline-block
+    padding: tint.$size-2 tint.$size-4
+    background: var(--tint-input-bg)
+    border-radius: 4px
+    font-family: inherit
+    font-size: inherit
+    line-height: 1.6
+    &:not(:last-child)
+      margin-inline-end: 1ch
+
+.keymap-label
+  font-weight: 600
+  grid-column: 1 / -1
+
+.keymap-tip
+  grid-column: 1 / -1
+  margin: 0
+  font-style: italic
+  text-align: center
+  padding-block-start: tint.$size-8
+
 </style>

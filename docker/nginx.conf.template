@@ -4,6 +4,12 @@ map $http_upgrade $connection_upgrade {
     '' close;
 }
 
+# Forwarded protocol: prefer upstream proxy's value, fall back to connection scheme
+map $http_x_forwarded_proto $forwarded_proto {
+    default $http_x_forwarded_proto;
+    ''      $scheme;
+}
+
 server {
     listen 80;
     server_name _;
@@ -172,11 +178,11 @@ server {
         proxy_pass http://frontend:${FRONTEND_PORT};
 
         # Forward headers
-        proxy_set_header Host $host;
-        proxy_set_header Origin $http_origin;  # This is correct
+        proxy_set_header Host $http_host;
+        proxy_set_header Origin $http_origin;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
-        proxy_set_header X-Forwarded-Host $http_x_forwarded_host;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        proxy_set_header X-Forwarded-Host $http_host;
         proxy_redirect off;
 
         # WebSocket support for Astro dev features

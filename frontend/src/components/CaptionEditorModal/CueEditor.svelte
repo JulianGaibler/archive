@@ -79,11 +79,15 @@
   let voiceItems = $derived(allVoices.map((v) => ({ value: v, label: v })))
 
   // === Speaker (Autocomplete) — needs bind:value ===
-  // eslint-disable-next-line svelte/prefer-writable-derived
   let voiceValue = $state<string | undefined>(undefined)
+  let speakerElement = $state<HTMLInputElement | undefined>()
 
   // Sync: cue → voiceValue
   $effect(() => {
+    // Blur the speaker field so the Autocomplete accepts the new value
+    if (speakerElement && speakerElement === document.activeElement) {
+      speakerElement.blur()
+    }
     voiceValue = cue?.voice ?? undefined
   })
 
@@ -119,6 +123,7 @@
         id="cue-speaker"
         label="Speaker"
         bind:value={voiceValue}
+        bind:element={speakerElement}
         items={voiceItems}
         allowFreeText
         disabled={!cue}

@@ -42,13 +42,13 @@ fi
 export $(grep -v '^#' .env.prod | sed 's/#.*//' | grep -v '^$' | xargs)
 
 print_status "Building and starting all services..."
-docker compose -f docker-compose.prod.yml up -d --build
+docker-compose -f docker-compose.prod.yml up -d --build
 
 print_status "Waiting for services to be ready..."
 
 # Wait for database
 print_status "Waiting for PostgreSQL..."
-until docker compose -f docker-compose.prod.yml exec -T database pg_isready -U $POSTGRES_USER -d $POSTGRES_DB 2>/dev/null; do
+until docker-compose -f docker-compose.prod.yml exec -T database pg_isready -U $POSTGRES_USER -d $POSTGRES_DB 2>/dev/null; do
   echo "   PostgreSQL not ready yet..."
   sleep 2
 done
@@ -56,7 +56,7 @@ print_success "PostgreSQL is ready"
 
 # Wait for nginx
 print_status "Waiting for nginx..."
-until docker compose -f docker-compose.prod.yml exec -T nginx nginx -t 2>/dev/null; do
+until docker-compose -f docker-compose.prod.yml exec -T nginx nginx -t 2>/dev/null; do
   echo "   Nginx not ready yet..."
   sleep 2
 done
@@ -66,7 +66,7 @@ echo ""
 print_success "Archive production environment is ready!"
 echo ""
 echo "🔍 Service status:"
-docker compose -f docker-compose.prod.yml ps
+docker-compose -f docker-compose.prod.yml ps
 echo ""
 print_success "Application is available at: http://localhost:8080"
 echo "You can manage the container with the following npm commands:"

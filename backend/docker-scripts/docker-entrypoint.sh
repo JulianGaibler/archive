@@ -45,7 +45,7 @@ wait_for_db() {
 run_migrations() {
     echo "🔄 Running database migrations as nodejs user..."
 
-    if su-exec nodejs npx tsx ./node_modules/.bin/node-pg-migrate up --migrations-dir backend/migrations --tsconfig backend/tsconfig.json; then
+    if su-exec nodejs npx tsx ./node_modules/.bin/node-pg-migrate up --migrations-dir backend/migrations; then
         echo "✅ Migrations completed successfully!"
     else
         echo "❌ Migration failed!"
@@ -57,8 +57,9 @@ run_migrations() {
 # Function to start server
 start_server() {
     echo "🚀 Starting server as nodejs user..."
-    # Switch to nodejs user and start server
-    exec su-exec nodejs node backend/dist/src/index.js
+    # Run from backend/ so process.cwd() resolves schema/ and other paths correctly
+    cd /app/backend
+    exec su-exec nodejs node dist/src/index.js
 }
 
 # Main execution

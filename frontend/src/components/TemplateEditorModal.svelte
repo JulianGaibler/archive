@@ -6,6 +6,7 @@
   import Button from 'tint/components/Button.svelte'
   import Select from 'tint/components/Select.svelte'
   import Modal from 'tint/components/Modal.svelte'
+  import ModalHeader from '@src/components/ModalHeader.svelte'
   import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
   import SegmentedControl from 'tint/components/SegmentedControl.svelte'
 
@@ -38,6 +39,7 @@
   let mediaLoaded = $state(false)
   let displayWidth = $state(0)
   let displayHeight = $state(0)
+  let previewAreaEl: HTMLDivElement | undefined = $state(undefined)
 
   const selectedArea = $derived(areas.find((a) => a.id === selectedId) ?? null)
 
@@ -88,27 +90,45 @@
     image.src = mediaUrl
   })
 
-  // Calculate display dimensions
+  // Calculate display dimensions responsively
   $effect(() => {
     if (!img || !mediaLoaded) return
 
-    const maxHeight = 500
-    const maxWidth = 800
-    const aspect = img.naturalWidth / img.naturalHeight
-    let w = img.naturalWidth
-    let h = img.naturalHeight
+    const WRAPPER_PADDING = 32 // 16px on each side
 
-    if (h > maxHeight) {
-      h = maxHeight
-      w = h * aspect
-    }
-    if (w > maxWidth) {
-      w = maxWidth
-      h = w / aspect
+    const updateDimensions = () => {
+      if (!img) return
+
+      const maxHeight = 500
+      const containerWidth = previewAreaEl?.clientWidth ?? 900
+      const maxWidth = containerWidth - WRAPPER_PADDING
+      const aspect = img.naturalWidth / img.naturalHeight
+      let w = img.naturalWidth
+      let h = img.naturalHeight
+
+      if (h > maxHeight) {
+        h = maxHeight
+        w = h * aspect
+      }
+      if (w > maxWidth) {
+        w = maxWidth
+        h = w / aspect
+      }
+
+      displayWidth = Math.floor(w)
+      displayHeight = Math.floor(h)
     }
 
-    displayWidth = Math.floor(w)
-    displayHeight = Math.floor(h)
+    const observer = new ResizeObserver(() => {
+      updateDimensions()
+    })
+
+    if (previewAreaEl) {
+      observer.observe(previewAreaEl)
+    }
+    updateDimensions()
+
+    return () => observer.disconnect()
   })
 
   function addArea() {
@@ -169,248 +189,288 @@
   })
 </script>
 
-<Modal {open} onclose={onCancel} notClosable={loading}>
+<Modal {open} onclose={onCancel} notClosable={loading} fullscreen>
   <div class="template-modal">
-    <div class="preview-area">
-      {#if !mediaLoaded}
-        <div class="loading-state">
-          <LoadingIndicator />
-          <p>Loading image...</p>
+    <div class="section">
+      <div class="container">
+        <ModalHeader
+          title="Edit Template"
+          {loading}
+          submitDisabled={!mediaLoaded}
+          oncancel={onCancel}
+          onsubmit={handleSubmit}
+        />
+      </div>
+    </div>
+
+    <div class="section tint--tinted" style="background: var(--tint-bg)">
+      <div class="container">
+        <div class="preview-area" bind:this={previewAreaEl}>
+          {#if !mediaLoaded}
+            <div class="loading-state">
+              <LoadingIndicator />
+              <p>Loading image...</p>
+            </div>
+          {:else if img}
+            <div
+              class="image-wrapper"
+              style="width: {displayWidth + 32}px; height: {displayHeight +
+                32}px;"
+            >
+              <img
+                src={img.src}
+                alt="Template preview"
+                style="width: {displayWidth}px; height: {displayHeight}px;"
+              />
+              <AreaController
+                {areas}
+                {selectedId}
+                {img}
+                {displayWidth}
+                {displayHeight}
+                onSelect={(id) => (selectedId = id)}
+                onUpdateArea={updateArea}
+              />
+            </div>
+          {/if}
         </div>
-      {:else if img}
-        <div
-          class="image-wrapper"
-          style="width: {displayWidth + 32}px; height: {displayHeight + 32}px;"
-        >
-          <img
-            src={img.src}
-            alt="Template preview"
-            style="width: {displayWidth}px; height: {displayHeight}px;"
-          />
-          <AreaController
-            {areas}
-            {selectedId}
-            {img}
-            {displayWidth}
-            {displayHeight}
-            onSelect={(id) => (selectedId = id)}
-            onUpdateArea={updateArea}
-          />
-        </div>
-      {/if}
+      </div>
     </div>
 
     {#if mediaLoaded}
-      <div class="controls">
-        {#if selectedArea}
-          <div class="control-grid">
-            <!-- Row 1 -->
-            <SegmentedControl
-              small
-              id="alignH"
-              label="Horizontal alignment"
-              value={selectedArea.alignH}
-              onchange={(v) =>
-                updateSelectedField('alignH', v as 'start' | 'center' | 'end')}
-              items={[
-                { value: 'start', icon: IconAlignStart, tooltip: 'Align left' },
-                {
-                  value: 'center',
-                  icon: IconAlignCenter,
-                  tooltip: 'Align center',
-                },
-                { value: 'end', icon: IconAlignEnd, tooltip: 'Align right' },
-              ]}
-            />
-            <SegmentedControl
-              small
-              id="alignV"
-              label="Vertical alignment"
-              value={selectedArea.alignV}
-              onchange={(v) =>
-                updateSelectedField('alignV', v as 'start' | 'center' | 'end')}
-              items={[
-                { value: 'start', icon: IconAlignTop, tooltip: 'Align top' },
-                {
-                  value: 'center',
-                  icon: IconAlignMiddle,
-                  tooltip: 'Align middle',
-                },
-                {
-                  value: 'end',
-                  icon: IconAlignBottom,
-                  tooltip: 'Align bottom',
-                },
-              ]}
-            />
-            <SegmentedControl
-              small
-              id="overflow"
-              label="Overflow mode"
-              value={selectedArea.overflow}
-              onchange={(v) =>
-                updateSelectedField('overflow', v as 'compress' | 'shrink')}
-              items={[
-                { value: 'compress', label: 'Compress' },
-                { value: 'shrink', label: 'Shrink' },
-              ]}
-            />
+      <div class="section">
+        <div class="container">
+          <div class="controls">
+            {#if selectedArea}
+              <div class="control-grid">
+                <!-- Row 1 -->
+                <SegmentedControl
+                  small
+                  id="alignH"
+                  label="Horizontal alignment"
+                  value={selectedArea.alignH}
+                  onchange={(v) =>
+                    updateSelectedField(
+                      'alignH',
+                      v as 'start' | 'center' | 'end',
+                    )}
+                  items={[
+                    {
+                      value: 'start',
+                      icon: IconAlignStart,
+                      tooltip: 'Align left',
+                    },
+                    {
+                      value: 'center',
+                      icon: IconAlignCenter,
+                      tooltip: 'Align center',
+                    },
+                    {
+                      value: 'end',
+                      icon: IconAlignEnd,
+                      tooltip: 'Align right',
+                    },
+                  ]}
+                />
+                <SegmentedControl
+                  small
+                  id="alignV"
+                  label="Vertical alignment"
+                  value={selectedArea.alignV}
+                  onchange={(v) =>
+                    updateSelectedField(
+                      'alignV',
+                      v as 'start' | 'center' | 'end',
+                    )}
+                  items={[
+                    {
+                      value: 'start',
+                      icon: IconAlignTop,
+                      tooltip: 'Align top',
+                    },
+                    {
+                      value: 'center',
+                      icon: IconAlignMiddle,
+                      tooltip: 'Align middle',
+                    },
+                    {
+                      value: 'end',
+                      icon: IconAlignBottom,
+                      tooltip: 'Align bottom',
+                    },
+                  ]}
+                />
+                <SegmentedControl
+                  small
+                  id="overflow"
+                  label="Overflow mode"
+                  value={selectedArea.overflow}
+                  onchange={(v) =>
+                    updateSelectedField('overflow', v as 'compress' | 'shrink')}
+                  items={[
+                    { value: 'compress', label: 'Compress' },
+                    { value: 'shrink', label: 'Shrink' },
+                  ]}
+                />
 
-            <!-- Row 2 -->
-            <div class="grid-group">
-              <Select
-                id="font"
-                label="Font"
-                value={selectedArea.font}
-                onchange={(e) =>
-                  updateSelectedField(
-                    'font',
-                    (e.target as HTMLSelectElement).value,
-                  )}
-                items={[
-                  { value: 'Sans-serif', label: 'Sans-serif' },
-                  { value: 'Serif', label: 'Serif' },
-                ]}
-              />
-              <label class="color-button" title="Text color">
-                <span
-                  class="color-circle"
-                  style="background: {selectedArea.textColor}"
-                ></span>
-                <input
-                  type="color"
-                  value={selectedArea.textColor}
-                  oninput={(e) =>
-                    updateSelectedField(
-                      'textColor',
-                      (e.target as HTMLInputElement).value,
-                    )}
-                />
-              </label>
-            </div>
-            <div class="grid-group">
-              <Select
-                id="backplateOpacity"
-                label="Backplating"
-                value={selectedArea.backplateOpacity}
-                onchange={(e) =>
-                  updateSelectedField(
-                    'backplateOpacity',
-                    Number((e.target as HTMLSelectElement).value),
-                  )}
-                items={[
-                  { value: 0, label: 'Disabled' },
-                  { value: 50, label: '50%' },
-                  { value: 75, label: '75%' },
-                  { value: 100, label: '100%' },
-                ]}
-              />
-              <label
-                class="color-button"
-                class:disabled={selectedArea.backplateOpacity === 0}
-                title="Backplate color"
-              >
-                <span
-                  class="color-circle"
-                  style="background: {selectedArea.backplateColor}"
-                ></span>
-                <input
-                  type="color"
-                  value={selectedArea.backplateColor}
-                  oninput={(e) =>
-                    updateSelectedField(
-                      'backplateColor',
-                      (e.target as HTMLInputElement).value,
-                    )}
-                />
-              </label>
-            </div>
-            <div class="grid-group">
-              <Select
-                id="fontSize"
-                label="Size"
-                value={selectedArea.fontSize}
-                onchange={(e) =>
-                  updateSelectedField(
-                    'fontSize',
-                    Number((e.target as HTMLSelectElement).value),
-                  )}
-                items={[
-                  { value: 8, label: '8' },
-                  { value: 12, label: '12' },
-                  { value: 16, label: '16' },
-                  { value: 24, label: '24' },
-                  { value: 32, label: '32' },
-                  { value: 48, label: '48' },
-                  { value: 64, label: '64' },
-                  { value: 96, label: '96' },
-                  { value: 128, label: '128' },
-                ]}
-              />
-              <Button icon title="Delete area" onclick={deleteSelectedArea}>
-                {@html IconTrash}
-              </Button>
-              <Button
-                variant="primary"
-                icon
-                title="Add area"
-                onclick={addArea}
-                disabled={loading}
-              >
-                {@html IconAdd}
-              </Button>
-            </div>
+                <!-- Row 2 -->
+                <div class="grid-group">
+                  <Select
+                    id="font"
+                    label="Font"
+                    value={selectedArea.font}
+                    onchange={(e) =>
+                      updateSelectedField(
+                        'font',
+                        (e.target as HTMLSelectElement).value,
+                      )}
+                    items={[
+                      { value: 'Sans-serif', label: 'Sans-serif' },
+                      { value: 'Serif', label: 'Serif' },
+                    ]}
+                  />
+                  <label class="color-button" title="Text color">
+                    <span
+                      class="color-circle"
+                      style="background: {selectedArea.textColor}"
+                    ></span>
+                    <input
+                      type="color"
+                      value={selectedArea.textColor}
+                      oninput={(e) =>
+                        updateSelectedField(
+                          'textColor',
+                          (e.target as HTMLInputElement).value,
+                        )}
+                    />
+                  </label>
+                </div>
+                <div class="grid-group">
+                  <Select
+                    id="backplateOpacity"
+                    label="Backplating"
+                    value={selectedArea.backplateOpacity}
+                    onchange={(e) =>
+                      updateSelectedField(
+                        'backplateOpacity',
+                        Number((e.target as HTMLSelectElement).value),
+                      )}
+                    items={[
+                      { value: 0, label: 'Disabled' },
+                      { value: 50, label: '50%' },
+                      { value: 75, label: '75%' },
+                      { value: 100, label: '100%' },
+                    ]}
+                  />
+                  <label
+                    class="color-button"
+                    class:disabled={selectedArea.backplateOpacity === 0}
+                    title="Backplate color"
+                  >
+                    <span
+                      class="color-circle"
+                      style="background: {selectedArea.backplateColor}"
+                    ></span>
+                    <input
+                      type="color"
+                      value={selectedArea.backplateColor}
+                      oninput={(e) =>
+                        updateSelectedField(
+                          'backplateColor',
+                          (e.target as HTMLInputElement).value,
+                        )}
+                    />
+                  </label>
+                </div>
+                <div class="grid-group">
+                  <Select
+                    id="fontSize"
+                    label="Size"
+                    value={selectedArea.fontSize}
+                    onchange={(e) =>
+                      updateSelectedField(
+                        'fontSize',
+                        Number((e.target as HTMLSelectElement).value),
+                      )}
+                    items={[
+                      { value: 8, label: '8' },
+                      { value: 12, label: '12' },
+                      { value: 16, label: '16' },
+                      { value: 24, label: '24' },
+                      { value: 32, label: '32' },
+                      { value: 48, label: '48' },
+                      { value: 64, label: '64' },
+                      { value: 96, label: '96' },
+                      { value: 128, label: '128' },
+                    ]}
+                  />
+                  <Button icon title="Delete area" onclick={deleteSelectedArea}>
+                    {@html IconTrash}
+                  </Button>
+                  <Button
+                    variant="primary"
+                    icon
+                    title="Add area"
+                    onclick={addArea}
+                    disabled={loading}
+                  >
+                    {@html IconAdd}
+                  </Button>
+                </div>
+              </div>
+            {:else}
+              <div class="empty-controls">
+                <p class="hint">Select an area to edit, or add a new one.</p>
+                <Button
+                  variant="primary"
+                  icon
+                  title="Add area"
+                  onclick={addArea}
+                  disabled={loading}
+                >
+                  {@html IconAdd}
+                </Button>
+              </div>
+            {/if}
           </div>
-        {:else}
-          <div class="empty-controls">
-            <p class="hint">Select an area to edit, or add a new one.</p>
-            <Button
-              variant="primary"
-              icon
-              title="Add area"
-              onclick={addArea}
-              disabled={loading}
-            >
-              {@html IconAdd}
-            </Button>
-          </div>
-        {/if}
+        </div>
       </div>
     {/if}
-
-    <!-- Row 3: Cancel + Save -->
-    <div class="actions">
-      <Button onclick={onCancel} disabled={loading}>Cancel</Button>
-      <Button
-        variant="primary"
-        onclick={handleSubmit}
-        {loading}
-        disabled={loading || !mediaLoaded}
-      >
-        Save
-      </Button>
-    </div>
   </div>
 </Modal>
 
 <style lang="sass">
   .template-modal
-    box-sizing: border-box
-    width: min(900px, calc(100vw - tint.$size-32))
     display: flex
     flex-direction: column
-    padding-block: tint.$size-32
+
+  .section
+    width: 100%
+    padding-block: tint.$size-16
+
+    &:last-child
+      padding-block-end: tint.$size-32
+
+  .container
+    box-sizing: border-box
+    max-width: 900px
+    margin-inline: auto
+    padding-inline: tint.$size-32
 
   .preview-area
     display: flex
     justify-content: center
     align-items: center
     min-height: 300px
+    min-width: 0
+    overflow: hidden
 
   .image-wrapper
+    box-sizing: border-box
     position: relative
     margin-inline: auto
     padding: tint.$size-16
+    max-width: 100%
 
     img
       display: block
@@ -423,7 +483,6 @@
     color: var(--tint-text-secondary)
 
   .controls
-    margin-inline: tint.$size-32
     padding-block: tint.$size-12
 
   .control-grid
@@ -485,12 +544,4 @@
     color: var(--tint-text-secondary)
     margin: 0
 
-  .actions
-    display: flex
-    gap: tint.$size-8
-    justify-content: flex-end
-    align-items: center
-    padding-block-start: tint.$size-16
-    border-block-start: 1px solid var(--tint-border)
-    margin-inline: tint.$size-32
 </style>

@@ -15,6 +15,11 @@ const isDev = process.env.NODE_ENV === 'development'
 export default defineConfig({
   site: process.env.CORS_ORIGIN || undefined,
   output: 'server',
+  security: {
+    allowedDomains: process.env.CORS_ORIGIN
+      ? [{ hostname: new URL(process.env.CORS_ORIGIN).hostname }]
+      : [],
+  },
   adapter: nodejs({
     mode: 'standalone',
   }),

@@ -20,7 +20,8 @@ RUN mkdir -p /var/www/archive/files \
     && chown -R nginx:nginx /var/log/nginx
 
 # Fix permissions for nginx.pid location
-RUN touch /tmp/nginx.pid && chown nginx:nginx /tmp/nginx.pid
+# Use /run/nginx.pid instead of /tmp to avoid permission issues with entrypoint scripts
+RUN mkdir -p /run && chown -R nginx:nginx /run
 
 EXPOSE 80
 

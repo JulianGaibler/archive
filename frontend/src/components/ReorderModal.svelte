@@ -1,6 +1,6 @@
 <script lang="ts">
-  import Button from 'tint/components/Button.svelte'
   import Modal from 'tint/components/Modal.svelte'
+  import ModalHeader from '@src/components/ModalHeader.svelte'
   import { reorderable, type ReorderableOptions } from 'tint/actions'
   import { getResourceUrl } from '@src/utils/resource-urls'
 
@@ -68,68 +68,83 @@
   }
 </script>
 
-<Modal {open} onclose={handleCancel}>
+<Modal {open} onclose={handleCancel} fullscreen>
   <div class="reorder-modal">
-    <h2 class="tint--type-title-serif-3">Reorder Items</h2>
-    <p class="tint--type-body">Drag and drop items to change their order:</p>
+    <div class="section">
+      <div class="container">
+        <ModalHeader
+          title="Reorder Items"
+          submitLabel="Save Order"
+          {loading}
+          oncancel={handleCancel}
+          onsubmit={handleSubmit}
+        />
+      </div>
+      <div class="container">
+        <p class="tint--type-body">
+          Drag and drop items to change their order:
+        </p>
+      </div>
+    </div>
 
-    <ul class="reorder-list" use:reorderable={reorderableOptions}>
-      {#each reorderedItems as item (item.id)}
-        <li class="reorder-item">
-          <div class="item-content">
-            {#if item.thumbnail}
-              <div class="thumbnail" aria-hidden="true">
-                <img src={getResourceUrl(item.thumbnail)} alt="" />
+    <div class="section tint--tinted" style="background: var(--tint-bg)">
+      <div class="container">
+        <ul class="reorder-list" use:reorderable={reorderableOptions}>
+          {#each reorderedItems as item (item.id)}
+            <li class="reorder-item">
+              <div class="item-content">
+                {#if item.thumbnail}
+                  <div class="thumbnail" aria-hidden="true">
+                    <img src={getResourceUrl(item.thumbnail)} alt="" />
+                  </div>
+                {:else if item.typename === 'AudioItem'}
+                  <div class="thumbnail audio tint--tinted" aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                {:else}
+                  <div class="thumbnail placeholder" aria-hidden="true">
+                    <span>No Thumbnail</span>
+                  </div>
+                {/if}
+                <div class="meta">
+                  <p>{item.description}</p>
+                  {#if item.caption}<p class="caption">{item.caption}</p>{/if}
+                </div>
               </div>
-            {:else if item.typename === 'AudioItem'}
-              <div class="thumbnail audio tint--tinted" aria-hidden="true">
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            {:else}
-              <div class="thumbnail placeholder" aria-hidden="true">
-                <span>No Thumbnail</span>
-              </div>
-            {/if}
-            <div class="meta">
-              <p>{item.description}</p>
-              {#if item.caption}<p class="caption">{item.caption}</p>{/if}
-            </div>
-          </div>
-        </li>
-      {/each}
-    </ul>
-
-    <div class="actions">
-      <Button onclick={handleCancel} disabled={loading}>Cancel</Button>
-      <Button
-        onclick={handleSubmit}
-        variant="primary"
-        {loading}
-        disabled={loading}
-      >
-        Save Order
-      </Button>
+            </li>
+          {/each}
+        </ul>
+      </div>
     </div>
   </div>
 </Modal>
 
 <style lang="sass">
 .reorder-modal
-  box-sizing: border-box
-  width: min(600px, calc(100vw - tint.$size-32))
   display: flex
   flex-direction: column
-  padding: tint.$size-32
-  max-height: 80vh
   h2
     margin: 0
 
+.section
+  width: 100%
+  padding-block: tint.$size-16
+
+  &:last-child
+    padding-block-end: tint.$size-32
+
+.container
+  box-sizing: border-box
+  max-width: 600px
+  margin-inline: auto
+  padding-inline: tint.$size-32
+
 .reorder-list
   list-style: none
-  margin-block: tint.$size-24
+  margin-block: 0
   padding-block: tint.$size-2
   border: 1px solid var(--tint-card-border)
   display: flex
@@ -204,10 +219,4 @@
     &.caption
       color: var(--tint-text-secondary)
 
-.actions
-  display: flex
-  gap: tint.$size-12
-  justify-content: flex-end
-  padding-block-start: tint.$size-16
-  border-block-start: 1px solid var(--tint-border)
 </style>

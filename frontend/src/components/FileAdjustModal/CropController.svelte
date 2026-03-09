@@ -96,8 +96,8 @@
         width: sourceDims.width - initialCrop.left - initialCrop.right,
         height: sourceDims.height - initialCrop.top - initialCrop.bottom,
       }
-    } else if (initialCrop === undefined) {
-      // No crop in DB - start with full frame in source coordinates
+    } else {
+      // No crop in DB (undefined or null) - start with full frame in source coordinates
       sourceCropArea = {
         x: 0,
         y: 0,
@@ -105,7 +105,6 @@
         height: sourceDims.height,
       }
     }
-    // If initialCrop is null (explicitly no crop), don't set sourceCropArea
   })
 
   // Derive display coordinates from source coordinates (reactive)

@@ -66,13 +66,15 @@ export function deleteCue(
 
 /**
  * Split the cue at the given index at `atMs`. First half keeps original text,
- * second half gets empty text. Returns a new array and the index of the second
- * (new) cue.
+ * second half gets empty text. If `textSelection` is provided with a non-empty
+ * range, the selected text is moved to the new cue. Returns a new array and the
+ * index of the second (new) cue.
  */
 export function splitCue(
   cues: Cue[],
   index: number,
   atMs: number,
+  textSelection?: { start: number; end: number },
 ): { cues: Cue[]; newIndex: number } {
   if (index < 0 || index >= cues.length) {
     return { cues: [...cues], newIndex: -1 }
@@ -83,15 +85,27 @@ export function splitCue(
     return { cues: [...cues], newIndex: index }
   }
 
+  const hasSelection =
+    textSelection && textSelection.start !== textSelection.end
+
   const firstHalf: Cue = {
     ...original,
     endMs: original.endMs != null ? atMs : null,
+    ...(hasSelection
+      ? {
+          text:
+            original.text.slice(0, textSelection.start) +
+            original.text.slice(textSelection.end),
+        }
+      : {}),
   }
 
   const secondHalf: Cue = {
     startMs: atMs,
     endMs: original.endMs,
-    text: '',
+    text: hasSelection
+      ? original.text.slice(textSelection.start, textSelection.end)
+      : '',
     ...(original.voice ? { voice: original.voice } : {}),
     ...(original.placement ? { placement: original.placement } : {}),
   }
