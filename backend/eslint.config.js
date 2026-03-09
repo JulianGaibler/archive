@@ -4,6 +4,9 @@ import ts from 'typescript-eslint'
 import globals from 'globals'
 
 export default ts.config(
+  {
+    ignores: ['src/apis/GraphQLApi/generated-types.ts'],
+  },
   // js
   js.configs.recommended,
   // ts
