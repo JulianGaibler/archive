@@ -36,12 +36,12 @@ RUN npm ci --omit=dev --workspace=backend && \
     npm cache clean --force
 
 # Copy built application from builder stage
-COPY --from=builder /app/backend/dist ./dist
+COPY --from=builder /app/backend/dist backend/dist
 
 # Copy database migrations and tsconfig for node-pg-migrate
-COPY backend/migrations ./migrations
-COPY backend/schema ./schema
-COPY backend/tsconfig.json ./tsconfig.json
+COPY backend/migrations backend/migrations
+COPY backend/schema backend/schema
+COPY backend/tsconfig.json backend/tsconfig.json
 
 # Copy entrypoint script
 COPY backend/docker-scripts/docker-entrypoint.sh ./
