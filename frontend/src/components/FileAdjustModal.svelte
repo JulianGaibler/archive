@@ -3,6 +3,7 @@
   import Modal from 'tint/components/Modal.svelte'
   import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
   import LabeledToggleable from 'tint/components/LabeledToggleable.svelte'
+  import ModalHeader from '@src/components/ModalHeader.svelte'
   import CropController from '@src/components/FileAdjustModal/CropController.svelte'
   import TrimController from '@src/components/FileAdjustModal/TrimController.svelte'
   import type { EditableItem } from '@src/utils/edit-manager'
@@ -717,184 +718,184 @@
   })
 </script>
 
-<Modal {open} onclose={handleCancel} notClosable={loading}>
+<Modal {open} onclose={handleCancel} notClosable={loading} fullscreen>
   <div class="adjust-modal">
-    <h2 class="tint--type-title-serif-3">
-      Adjust {getMediaTypeDisplayName(mediaType)}
-    </h2>
+    <div class="section">
+      <div class="container">
+        <ModalHeader
+          title="Adjust {getMediaTypeDisplayName(mediaType)}"
+          submitLabel="Apply"
+          {loading}
+          submitDisabled={!isValid || !mediaLoaded}
+          oncancel={handleCancel}
+          onsubmit={handleSubmit}
+        />
+      </div>
+    </div>
 
-    <div class="video-area">
-      <!-- Preview Area (hidden for audio with waveform) -->
-      {#if !(mediaType === 'audio' && waveform)}
-        <div class="preview-area">
-          {#if mediaError}
-            <div class="error-state">
-              <p>{mediaError}</p>
-            </div>
-          {:else if !mediaUrl}
-            <div class="error-state">
-              <p>No media available</p>
-            </div>
-          {:else if !mediaLoaded}
-            <div class="loading-state">
-              <LoadingIndicator />
-              <p>Loading media...</p>
-            </div>
-          {/if}
+    <div class="section tint--tinted" style="background: var(--tint-bg)">
+      <div class="container">
+        <!-- Preview Area (hidden for audio with waveform) -->
+        {#if !(mediaType === 'audio' && waveform)}
+          <div class="preview-area">
+            {#if mediaError}
+              <div class="error-state">
+                <p>{mediaError}</p>
+              </div>
+            {:else if !mediaUrl}
+              <div class="error-state">
+                <p>No media available</p>
+              </div>
+            {:else if !mediaLoaded}
+              <div class="loading-state">
+                <LoadingIndicator />
+                <p>Loading media...</p>
+              </div>
+            {/if}
 
-          {#if mediaUrl}
-            {#if mediaType === 'video'}
-              <div class="video-wrapper">
-                <video
-                  bind:this={videoElement}
+            {#if mediaUrl}
+              {#if mediaType === 'video'}
+                <div class="video-wrapper">
+                  <video
+                    bind:this={videoElement}
+                    src={mediaUrl}
+                    crossorigin="anonymous"
+                    onloadedmetadata={handleMediaLoaded}
+                    onerror={handleMediaError}
+                    ontimeupdate={handleTimeUpdate}
+                    controls={false}
+                    preload="none"
+                    style={!mediaLoaded ? 'opacity: 0;' : ''}
+                  />
+                  {#if canCrop && mediaLoaded}
+                    <CropController
+                      mediaType="video"
+                      {img}
+                      {videoElement}
+                      {displayWidth}
+                      {displayHeight}
+                      {initialCrop}
+                      bind:cropArea
+                      bind:sourceCrop
+                    />
+                  {/if}
+                </div>
+              {:else if mediaType === 'audio'}
+                <!-- Audio element (hidden, no preview needed) -->
+                <audio
+                  bind:this={audioElement}
                   src={mediaUrl}
-                  crossorigin="anonymous"
                   onloadedmetadata={handleMediaLoaded}
                   onerror={handleMediaError}
                   ontimeupdate={handleTimeUpdate}
-                  controls={false}
                   preload="none"
-                  style={!mediaLoaded ? 'opacity: 0;' : ''}
-                />
-                {#if canCrop && mediaLoaded}
-                  <CropController
-                    mediaType="video"
-                    {img}
-                    {videoElement}
-                    {displayWidth}
-                    {displayHeight}
-                    {initialCrop}
-                    bind:cropArea
-                    bind:sourceCrop
-                  />
-                {/if}
-              </div>
-            {:else if mediaType === 'audio'}
-              <!-- Audio element (hidden, no preview needed) -->
-              <audio
-                bind:this={audioElement}
-                src={mediaUrl}
-                onloadedmetadata={handleMediaLoaded}
-                onerror={handleMediaError}
-                ontimeupdate={handleTimeUpdate}
-                preload="none"
-                style="display: none;"
-              ></audio>
-            {:else}
-              <div class="image-wrapper">
-                {#if img}
-                  <img
-                    src={img.src}
-                    alt="Preview"
-                    style={!mediaLoaded ? 'opacity: 0;' : ''}
-                  />
-                {/if}
-                {#if canCrop && mediaLoaded}
-                  <CropController
-                    mediaType="image"
-                    {img}
-                    {videoElement}
-                    {displayWidth}
-                    {displayHeight}
-                    {initialCrop}
-                    bind:cropArea
-                    bind:sourceCrop
-                  />
-                {/if}
-              </div>
+                  style="display: none;"
+                ></audio>
+              {:else}
+                <div class="image-wrapper">
+                  {#if img}
+                    <img
+                      src={img.src}
+                      alt="Preview"
+                      style={!mediaLoaded ? 'opacity: 0;' : ''}
+                    />
+                  {/if}
+                  {#if canCrop && mediaLoaded}
+                    <CropController
+                      mediaType="image"
+                      {img}
+                      {videoElement}
+                      {displayWidth}
+                      {displayHeight}
+                      {initialCrop}
+                      bind:cropArea
+                      bind:sourceCrop
+                    />
+                  {/if}
+                </div>
+              {/if}
             {/if}
-          {/if}
-        </div>
-      {:else}
-        <!-- Audio element for audio with waveform -->
-        <audio
-          bind:this={audioElement}
-          src={mediaUrl}
-          onloadedmetadata={handleMediaLoaded}
-          onerror={handleMediaError}
-          ontimeupdate={handleTimeUpdate}
-          preload="none"
-          style="display: none;"
-        ></audio>
-      {/if}
-
-      <div class="other-controls">
-        <!-- Trim Controls and Timeline -->
-        {#if canTrim && mediaLoaded && (mediaType === 'video' || mediaType === 'audio')}
-          <!-- eslint-disable-next-line @typescript-eslint/no-explicit-any -->
-          <TrimController
-            {mediaType}
-            {videoElement}
-            {audioElement}
-            {duration}
-            {waveform}
-            {waveformThumbnail}
-            {initialTrim}
-            bind:trimStart
-            bind:trimEnd
-            bind:currentTime
-            bind:isPlaying
-            bind:trimDragging
-          />
+          </div>
+        {:else}
+          <!-- Audio element for audio with waveform -->
+          <audio
+            bind:this={audioElement}
+            src={mediaUrl}
+            onloadedmetadata={handleMediaLoaded}
+            onerror={handleMediaError}
+            ontimeupdate={handleTimeUpdate}
+            preload="none"
+            style="display: none;"
+          ></audio>
         {/if}
+      </div>
+    </div>
 
-        <!-- Normalize toggle -->
-        {#if canNormalize && mediaLoaded}
-          <div class="normalize-toggle">
-            <LabeledToggleable
-              id="normalize-audio"
-              type="checkbox"
-              bind:checked={normalizeAudio}
-              label="Normalize audio"
-              description="Apply EBU R128 loudness normalization. May cause audio artifacts in Firefox."
+    <div class="section">
+      <div class="container">
+        <div class="other-controls">
+          <!-- Trim Controls and Timeline -->
+          {#if canTrim && mediaLoaded && (mediaType === 'video' || mediaType === 'audio')}
+            <!-- eslint-disable-next-line @typescript-eslint/no-explicit-any -->
+            <TrimController
+              {mediaType}
+              {videoElement}
+              {audioElement}
+              {duration}
+              {waveform}
+              {waveformThumbnail}
+              {initialTrim}
+              bind:trimStart
+              bind:trimEnd
+              bind:currentTime
+              bind:isPlaying
+              bind:trimDragging
             />
-          </div>
-        {/if}
+          {/if}
 
-        <!-- Actions -->
-        <div class="actions">
-          <div class="action-buttons-left">
-            {#if canCrop && mediaLoaded}
-              <Button
-                small
-                onclick={handleAutoCrop}
-                disabled={loading || autoCropping}
-                loading={autoCropping}
-              >
-                Auto Crop
-              </Button>
-            {/if}
-            {#if hasSignificantCrop}
-              <Button
-                small
-                onclick={handleRemoveCropModification}
-                disabled={loading}
-              >
-                Remove Crop
-              </Button>
-            {/if}
-            {#if hasSignificantTrim}
-              <Button
-                small
-                onclick={handleRemoveTrimModification}
-                disabled={loading}
-              >
-                Remove Trim
-              </Button>
-            {/if}
-          </div>
-
-          <div class="action-buttons-right">
-            <Button onclick={handleCancel} disabled={loading}>Cancel</Button>
-            <Button
-              variant="primary"
-              onclick={handleSubmit}
-              {loading}
-              disabled={loading || !isValid || !mediaLoaded}
-            >
-              Apply
-            </Button>
-          </div>
+          <!-- Secondary Actions -->
+          {#if (canCrop && mediaLoaded) || hasSignificantCrop || hasSignificantTrim || (canNormalize && mediaLoaded)}
+            <div class="secondary-actions">
+              {#if canNormalize && mediaLoaded}
+                <LabeledToggleable
+                  id="normalize-audio"
+                  type="checkbox"
+                  bind:checked={normalizeAudio}
+                  label="Normalize audio"
+                  description="Balances volume levels to ensure loudness is consistent between clips"
+                />
+              {/if}
+              <span class="secondary-actions-spacer"></span>
+              {#if canCrop && mediaLoaded}
+                <Button
+                  small
+                  onclick={handleAutoCrop}
+                  disabled={loading || autoCropping}
+                  loading={autoCropping}
+                >
+                  Auto Crop
+                </Button>
+              {/if}
+              {#if hasSignificantCrop}
+                <Button
+                  small
+                  onclick={handleRemoveCropModification}
+                  disabled={loading}
+                >
+                  Remove Crop
+                </Button>
+              {/if}
+              {#if hasSignificantTrim}
+                <Button
+                  small
+                  onclick={handleRemoveTrimModification}
+                  disabled={loading}
+                >
+                  Remove Trim
+                </Button>
+              {/if}
+            </div>
+          {/if}
         </div>
       </div>
     </div>
@@ -903,17 +904,26 @@
 
 <style lang="sass">
   .adjust-modal
-    box-sizing: border-box
-    width: min(900px, calc(100vw - tint.$size-32))
     display: flex
     flex-direction: column
-    padding-block: tint.$size-32
 
-  .other-controls, h2
-    margin-inline: tint.$size-32
+  .section
+    width: 100%
+    padding-block: tint.$size-16
+
+    &:last-child
+      padding-block-end: tint.$size-32
+
+  .container
+    box-sizing: border-box
+    max-width: 900px
+    margin-inline: auto
+    padding-inline: tint.$size-32
 
   .preview-area
     width: 100%
+    min-width: 0
+    overflow: hidden
     display: flex
     flex-direction: column
     align-items: center
@@ -921,6 +931,7 @@
 
   .video-wrapper,
   .image-wrapper
+    box-sizing: border-box
     position: relative
     margin-block: 0
     margin-inline: auto
@@ -1020,22 +1031,14 @@
     justify-content: space-between
     color: var(--tint-text-secondary)
 
-  .normalize-toggle
-    padding-block: tint.$size-8
-
-  .actions
-    display: flex
-    gap: tint.$size-12
-    justify-content: space-between
-    align-items: center
-    padding-block-start: tint.$size-16
-    border-block-start: 1px solid var(--tint-border)
-    flex-wrap: wrap
-
-  .action-buttons-left,
-  .action-buttons-right
+  .secondary-actions
     display: flex
     gap: tint.$size-8
     align-items: center
     flex-wrap: wrap
+    padding-block-start: tint.$size-16
+    border-block-start: 1px solid var(--tint-border)
+
+  .secondary-actions-spacer
+    flex: 1
 </style>
