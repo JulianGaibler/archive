@@ -22,10 +22,10 @@ function parseSecretVersions(): Record<number, string> {
     secrets[version] = secret.trim()
   }
 
-  // Ensure we have at least one secret
   if (Object.keys(secrets).length === 0) {
-    secrets[1] = 'fallback-secret-change-in-production'
-    console.warn('No valid session secrets found, using fallback secret')
+    throw new Error(
+      'FATAL: No valid session secrets configured. Set BACKEND_SESSION_SECRETS.',
+    )
   }
 
   return secrets

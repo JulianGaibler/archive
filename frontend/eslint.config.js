@@ -29,16 +29,17 @@ export default ts.config(
   },
   {
     languageOptions: {
-      parserOptions: {},
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
   },
   // svelte
   ...svelte.configs['flat/recommended'],
   {
-    files: ['**/*.svelte'],
+    files: ['**/*.svelte', '**/*.svelte.ts'],
     languageOptions: {
       parserOptions: {
-        extraFileExtensions: ['.svelte'],
         parser: ts.parser,
         svelteConfig: svelteConfig,
       },

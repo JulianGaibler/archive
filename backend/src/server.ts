@@ -33,6 +33,21 @@ export { Context }
  *
  * @class Server
  */
+function parseTrustProxy(value: string): boolean | number | string {
+  if (value === 'true') return true
+  if (value === 'false') return false
+  const num = Number(value)
+  if (!isNaN(num) && value.trim() !== '') return num
+  // Warn about potentially dangerous values
+  if (value.includes('0.0.0.0') || value === '*') {
+    console.warn(
+      `⚠️  BACKEND_TRUST_PROXY="${value}" trusts ALL proxies. ` +
+        'Ensure this is intentional.',
+    )
+  }
+  return value
+}
+
 export default class {
   app: express.Application
   gqlApi: GraphQLApi
@@ -43,7 +58,7 @@ export default class {
     // Setup express
     this.app = express()
     this.combinedServer = createServer(this.app)
-    this.app.set('trust proxy', 'loopback')
+    this.app.set('trust proxy', parseTrustProxy(env.BACKEND_TRUST_PROXY))
     this.app.use(cookieParser())
     this.app.use(cors(corsOptions))
 
@@ -77,35 +92,17 @@ export default class {
         // Check if the existing database connection is still alive
         const { default: Connection } = await import('./Connection.js')
 
-        // Only check DB if connection exists (don't create new one)
         if (Connection.db) {
           await Connection.db.execute('SELECT 1')
         }
 
-        // Get cleanup service status
-        const cleanupStatus = this.cleanupService?.getStatus() || {
-          isRunning: false,
-          nextScheduled: null,
-        }
-
-        res.status(200).json({
-          status: 'healthy',
-          timestamp: new Date().toISOString(),
-          uptime: process.uptime(),
-          environment: env.NODE_ENV,
-          database: Connection.db ? 'connected' : 'not_initialized',
-          cleanup: {
-            serviceActive: !!this.cleanupService,
-            isRunning: cleanupStatus.isRunning,
-            nextScheduled: cleanupStatus.nextScheduled?.toISOString() || null,
-          },
-        })
+        res.status(200).json({ status: 'healthy' })
       } catch (error) {
-        res.status(503).json({
-          status: 'unhealthy',
-          timestamp: new Date().toISOString(),
-          error: error instanceof Error ? error.message : 'Unknown error',
-        })
+        console.error(
+          'Health check failed:',
+          error instanceof Error ? error.message : error,
+        )
+        res.status(503).json({ status: 'unhealthy' })
       }
     })
 

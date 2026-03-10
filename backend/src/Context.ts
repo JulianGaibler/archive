@@ -18,40 +18,25 @@ import AuthCookieUtils, {
   AUTH_COOKIE_NAME,
 } from '@src/apis/GraphQLApi/AuthCookieUtils.js'
 import SessionActions from '@src/actions/SessionActions.js'
+import env from '@src/utils/env.js'
 
 /**
- * Extracts the real client IP address from the request, handling reverse proxy
- * scenarios
- *
- * @param req Express request object
- * @returns The client IP address
+ * Extracts the client IP from a raw WebSocket request. Express's trust proxy
+ * doesn't apply to WS upgrade requests, so we gate XFF trust on the
+ * BACKEND_TRUST_PROXY setting.
  */
-function extractClientIp(req: express.Request): string {
-  // Check X-Forwarded-For header first (most common for reverse proxies)
-  const xForwardedFor = req.headers['x-forwarded-for']
-  if (xForwardedFor) {
-    // X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
-    // The first IP is typically the original client IP
-    const ips = Array.isArray(xForwardedFor) ? xForwardedFor[0] : xForwardedFor
-    const clientIp = ips.split(',')[0].trim()
-    if (clientIp) {
-      return clientIp
+function extractWsClientIp(request: {
+  headers: Record<string, string | string[] | undefined>
+  socket: { remoteAddress?: string }
+}): string {
+  if (env.BACKEND_TRUST_PROXY !== 'false') {
+    const xff = request.headers['x-forwarded-for']
+    if (xff) {
+      const first = (Array.isArray(xff) ? xff[0] : xff).split(',')[0].trim()
+      if (first) return first
     }
   }
-
-  // Fallback to other common headers
-  const xRealIp = req.headers['x-real-ip']
-  if (xRealIp && typeof xRealIp === 'string') {
-    return xRealIp.trim()
-  }
-
-  const xClientIp = req.headers['x-client-ip']
-  if (xClientIp && typeof xClientIp === 'string') {
-    return xClientIp.trim()
-  }
-
-  // Final fallback to req.ip (direct connection or when no proxy headers)
-  return req.ip || 'unknown'
+  return request.socket.remoteAddress || 'unknown'
 }
 
 const loaders = {
@@ -118,7 +103,7 @@ export default class Context {
       newContext.req = args.req
       newContext.res = args.res
 
-      const clientIp = extractClientIp(newContext.req)
+      const clientIp = newContext.req.ip || 'unknown'
       const cookies = AuthCookieUtils.getAuthCookies(newContext.req)
 
       if (cookies) {
@@ -155,7 +140,13 @@ export default class Context {
         throw new Error('Invalid websocket args: extra is required')
       }
 
-      const extraObj = args.extra as { request?: { rawHeaders?: string[] } }
+      const extraObj = args.extra as {
+        request?: {
+          rawHeaders?: string[]
+          headers: Record<string, string | string[] | undefined>
+          socket: { remoteAddress?: string }
+        }
+      }
       if (!extraObj.request || typeof extraObj.request !== 'object') {
         throw new Error('Invalid websocket args: extra.request is required')
       }
@@ -183,7 +174,7 @@ export default class Context {
               secureSessionId: cookies[SESSION_COOKIE_NAME],
               token: cookies[AUTH_COOKIE_NAME],
               userAgent,
-              latestIp: undefined,
+              latestIp: extractWsClientIp(extraObj.request),
             },
             Context.db,
           )

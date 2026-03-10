@@ -122,9 +122,31 @@ const migration_unversioned_to_v2 = {
 };
 
 /**
+ * Migration from v2.0.0 to v2.1.0
+ * Adds TOTP two-factor authentication environment variables
+ */
+const migration_v2_to_v2_1 = {
+  fromVersion: '2.0.0',
+  toVersion: '2.1.0',
+  description: 'Add TOTP two-factor authentication environment variables',
+
+  migrate: (vars, mode) => {
+    const migrated = { ...vars }
+    const changes = []
+
+    if (!migrated.BACKEND_TRUST_PROXY) {
+      migrated.BACKEND_TRUST_PROXY = mode === 'production' ? 'true' : 'loopback'
+      changes.push(`Added BACKEND_TRUST_PROXY = ${migrated.BACKEND_TRUST_PROXY}`)
+    }
+
+    return { migrated, changes }
+  }
+}
+
+/**
  * All available migrations (in order)
  */
-export const migrations = [migration_unversioned_to_v2];
+export const migrations = [migration_unversioned_to_v2, migration_v2_to_v2_1];
 
 /**
  * Detect the version of an environment file

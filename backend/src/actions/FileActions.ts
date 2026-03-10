@@ -28,6 +28,14 @@ import {
 } from '@src/errors/index.js'
 import { z } from 'zod/v4'
 import topics from '@src/pubsub/topics.js'
+
+/**
+ * Typed wrapper for file table insert().returning() — needed because
+ * db/schema.ts uses @ts-nocheck (circular FK inference issue).
+ */
+function fileReturning(rows: unknown): FileInternal[] {
+  return rows as FileInternal[]
+}
 import ActionUtils from './ActionUtils.js'
 import {
   ModificationActionData,
@@ -296,18 +304,20 @@ const FileActions = {
 
     const fileId = await ctx.db.transaction(async (tx) => {
       // Create the file record first to get the ID
-      const [newFile] = await tx
-        .insert(fileTable)
-        .values({
-          creatorId,
-          type: 'IMAGE', // Temporary type, will be updated after analysis
-          originalType: 'IMAGE', // Will be updated after analysis
-          processingStatus: 'QUEUED',
-          processingProgress: 0,
-          processingNotes: null,
-          expireBy,
-        })
-        .returning()
+      const [newFile] = fileReturning(
+        await tx
+          .insert(fileTable)
+          .values({
+            creatorId,
+            type: 'IMAGE', // Temporary type, will be updated after analysis
+            originalType: 'IMAGE', // Will be updated after analysis
+            processingStatus: 'QUEUED',
+            processingProgress: 0,
+            processingNotes: null,
+            expireBy,
+          })
+          .returning(),
+      )
 
       // Analyze and store the file
       try {
@@ -353,19 +363,21 @@ const FileActions = {
 
     return await ctx.db.transaction(async (tx) => {
       // Create the file record
-      const [newFile] = await tx
-        .insert(fileTable)
-        .values({
-          creatorId,
-          type: 'PROFILE_PICTURE',
-          originalType: 'PROFILE_PICTURE',
-          processingStatus: 'QUEUED',
-          processingProgress: 0,
-          processingNotes: null,
-          // Profile pictures don't expire
-          expireBy: null,
-        })
-        .returning()
+      const [newFile] = fileReturning(
+        await tx
+          .insert(fileTable)
+          .values({
+            creatorId,
+            type: 'PROFILE_PICTURE',
+            originalType: 'PROFILE_PICTURE',
+            processingStatus: 'QUEUED',
+            processingProgress: 0,
+            processingNotes: null,
+            // Profile pictures don't expire
+            expireBy: null,
+          })
+          .returning(),
+      )
 
       // Start file processing
       try {
@@ -936,19 +948,21 @@ const FileActions = {
 
     return await ctx.db.transaction(async (tx) => {
       // Create new file record with new UUID
-      const [newFile] = await tx
-        .insert(fileTable)
-        .values({
-          creatorId: userId,
-          type: sourceFile.type,
-          originalType: sourceFile.originalType,
-          processingStatus: 'DONE',
-          processingProgress: 100,
-          processingNotes: null,
-          processingMeta: sourceFile.processingMeta,
-          expireBy: null, // Duplicates don't expire (they're attached to items)
-        })
-        .returning()
+      const [newFile] = fileReturning(
+        await tx
+          .insert(fileTable)
+          .values({
+            creatorId: userId,
+            type: sourceFile.type,
+            originalType: sourceFile.originalType,
+            processingStatus: 'DONE',
+            processingProgress: 100,
+            processingNotes: null,
+            processingMeta: sourceFile.processingMeta,
+            expireBy: null, // Duplicates don't expire (they're attached to items)
+          })
+          .returning(),
+      )
 
       const newFileId = newFile.id
 
@@ -1164,7 +1178,7 @@ const FileActions = {
         return false
       }
 
-      const file = files[0]
+      const file = files[0] as FileInternal
 
       // Update the file to PROCESSING status
       await tx
@@ -1177,7 +1191,10 @@ const FileActions = {
 
       // Publish file processing update
       if (Context.pubSub) {
-        const updatedFile = { ...file, processingStatus: 'PROCESSING' as const }
+        const updatedFile: FileInternal = {
+          ...file,
+          processingStatus: 'PROCESSING',
+        }
         Context.pubSub.publish(topics.FILE_PROCESSING_UPDATES, {
           id: updatedFile.id,
           kind: 'CHANGED',
@@ -1190,7 +1207,6 @@ const FileActions = {
   },
 
   /** Clean up stuck processing files (mark as failed) */
-  /** Clean up stuck processing files */
   async mCleanupStuckFiles(
     ctx: Context,
     olderThan?: number,

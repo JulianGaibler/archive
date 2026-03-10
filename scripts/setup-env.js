@@ -338,6 +338,32 @@ async function main() {
       const variables = grouped[category];
 
       for (const variable of variables) {
+        // Skip if condition is not met
+        if (variable.condition && !variable.condition(values)) {
+          const fallback = getDefault(variable, mode) || ''
+          values[variable.name] = fallback
+          console.log(chalk.green(`✓ ${variable.name}: ${fallback || '(empty)'}`))
+          continue
+        }
+
+        // Feature gate — ask confirm before prompting
+        if (variable.featureGate) {
+          const existingValue = migratedVars[variable.name]
+          // Only show the gate if there's no existing non-empty value
+          if (!existingValue) {
+            const wantFeature = await confirm({
+              message: variable.featureGate.message,
+              default: variable.featureGate.default ?? false,
+            })
+            if (!wantFeature) {
+              values[variable.name] = getDefault(variable, mode) || ''
+              console.log(chalk.gray(`  ${variable.name}: ${values[variable.name] || '(empty)'}`))
+              continue
+            }
+          }
+          // If yes (or existing value), fall through to normal prompt
+        }
+
         const existingValue = migratedVars[variable.name];
 
         // If we have a migrated value, use it and show a checkmark

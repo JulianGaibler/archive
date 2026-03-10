@@ -15,7 +15,12 @@ import {
 export type UserInternal = typeof user.$inferSelect
 export type UserExternal = Omit<
   UserInternal,
-  'id' | 'password' | 'telegramId'
+  | 'id'
+  | 'password'
+  | 'telegramId'
+  | 'totpSecret'
+  | 'totpEnabled'
+  | 'totpRecoveryCodes'
 > & {
   id: string
   linkedTelegram: boolean
@@ -73,7 +78,13 @@ function encodeId(id: number): string {
   return HashId.encode(HashIdTypes.USER, id)
 }
 function makeExternal(user: UserInternal): UserExternal {
-  const { password, ...externalUser } = user
+  const {
+    password,
+    totpSecret,
+    totpEnabled,
+    totpRecoveryCodes,
+    ...externalUser
+  } = user
   return {
     ...externalUser,
     id: encodeId(user.id),

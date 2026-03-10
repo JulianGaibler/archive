@@ -2,13 +2,12 @@
 import Layout from '../layouts/Layout.astro'
 import {
   LoginDocument,
+  SignupAllowedDocument,
   type LoginMutation,
   type LoginMutationVariables,
+  type SignupAllowedQuery,
 } from '../generated/graphql'
-import TextField from 'tint/components/TextField.svelte'
-import Button from 'tint/components/Button.svelte'
-import MessageBox from 'tint/components/MessageBox.svelte'
-import IconWarning from 'tint/icons/20-warning.svg?raw'
+import LoginForm from './login/_login-form.svelte'
 
 const ssrClient = Astro.locals.gqlClient
 
@@ -60,7 +59,21 @@ if (Astro.request.method === 'POST') {
         password,
       })
 
-      if (result.login) {
+      if (result.login.requiresTotp) {
+        // Set pending token as a short-lived httpOnly cookie
+        const isProduction = import.meta.env.PROD
+        Astro.cookies.set('pending-totp', result.login.pendingToken!, {
+          httpOnly: true,
+          secure: isProduction,
+          maxAge: 300, // 5 minutes
+          sameSite: 'lax',
+          path: '/login',
+        })
+        const verifyUrl = `/login/verify${safeRedirect !== '/' ? `?redirect=${encodeURIComponent(safeRedirect)}` : ''}`
+        return Astro.redirect(verifyUrl)
+      }
+
+      if (result.login.success) {
         return Astro.redirect(safeRedirect)
       } else {
         error = 'Invalid username or password'
@@ -70,6 +83,16 @@ if (Astro.request.method === 'POST') {
     console.error('Login error:', err)
     error = 'Login failed. Please try again.'
   }
+}
+
+let signupAllowed = false
+try {
+  const result = await ssrClient.request<SignupAllowedQuery>(
+    SignupAllowedDocument,
+  )
+  signupAllowed = result.signupAllowed
+} catch {
+  // If query fails, just don't show signup link
 }
 
 const slogan = [
@@ -91,42 +114,12 @@ const slogan = [
       <p class="tint--type-title-serif-3">{slogan}</p>
     </div>
     <div class="card tint--card">
-      <h2 class="tint--type-title-serif-2">Login</h2>
-      <form method="POST">
-        {
-          error && (
-            <MessageBox class="error" icon={IconWarning}>
-              <h2>Error</h2>
-              <p>{error}</p>
-            </MessageBox>
-          )
-        }
-        <TextField
-          client:load
-          type="text"
-          id="username"
-          name="username"
-          label="Username"
-          required
-          autocomplete="username"
-        />
-
-        <TextField
-          client:load
-          type="password"
-          id="password"
-          name="password"
-          label="Password"
-          required
-          autocomplete="current-password"
-        />
-
-        <div class="form-actions">
-          <Button submit={true}>Login</Button>
-        </div>
-
-        <input type="hidden" name="redirect" value={redirectUrl} />
-      </form>
+      <LoginForm
+        client:load
+        {redirectUrl}
+        {signupAllowed}
+        initialError={error || undefined}
+      />
     </div>
   </div>
 </Layout>
@@ -154,14 +147,7 @@ const slogan = [
     width: 100%
     box-sizing: border-box
     max-width: 400px
-  .card, .card > form
     display: flex
     flex-direction: column
     gap: tint.$size-16
-  .card > form
-    gap: tint.$size-12
-    align-items: flex-end
-    :global(.error)
-      width: 100%
-      box-sizing: border-box
 </style>

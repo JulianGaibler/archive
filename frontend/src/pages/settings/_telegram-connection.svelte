@@ -109,6 +109,7 @@
   p.description
     color: var(--tint-text-secondary)
     margin: 0
+    margin-block-start: calc(-1 * tint.$size-8)
 
   .connected-status,
   .disconnected-status

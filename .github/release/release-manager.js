@@ -107,6 +107,15 @@ function formatReleaseNotes(version, entry) {
     body += '\n'
   }
 
+  // Add deployment notes (only shown in GitHub releases)
+  if (entry.deploy && entry.deploy.length > 0) {
+    body += `### Deployment Notes\n`
+    for (const note of entry.deploy) {
+      body += `- ${note}\n`
+    }
+    body += '\n'
+  }
+
   // Add footer
   body += `---\n`
   body += `**Release Date:** ${entry.date}\n`

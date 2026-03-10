@@ -115,6 +115,11 @@ type Query {
   userSessions: [Session!]!
 
   """
+  Returns whether new account signup is allowed on this server.
+  """
+  signupAllowed: Boolean!
+
+  """
   Returns the currently authenticated user.
   """
   me: User

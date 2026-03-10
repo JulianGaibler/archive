@@ -7,6 +7,10 @@ query settings {
       profilePicture64
     }
     linkedTelegram
+    totpStatus {
+      enabled
+      recoveryCodesRemaining
+    }
   }
   userSessions {
     createdAt

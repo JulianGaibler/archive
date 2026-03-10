@@ -19,6 +19,8 @@ import env from '@src/utils/env.js'
 import PaginationUtils, { PaginationArgs } from './PaginationUtils.js'
 import { validateAuth } from '@src/apis/TelegramBot/index.js'
 import FileActions from './FileActions.js'
+import PendingTotpStore from '@src/utils/PendingTotpStore.js'
+import { _verifyTotp } from '@src/actions/TotpActions.js'
 import z from 'zod/v4'
 
 const userTable = UserModel.table
@@ -95,6 +97,9 @@ const UserActions = {
           telegramId: userTable.telegramId,
           updatedAt: userTable.updatedAt,
           createdAt: userTable.createdAt,
+          totpSecret: userTable.totpSecret,
+          totpEnabled: userTable.totpEnabled,
+          totpRecoveryCodes: userTable.totpRecoveryCodes,
           postCount: sql`count(${postTable.id})::int`,
         })
         .from(userTable)
@@ -109,6 +114,9 @@ const UserActions = {
           userTable.updatedAt,
           userTable.createdAt,
           userTable.telegramId,
+          userTable.totpSecret,
+          userTable.totpEnabled,
+          userTable.totpRecoveryCodes,
         )
         .orderBy(sql`count(${postTable.id}) desc, ${userTable.createdAt} desc`)
         .limit(limit)
@@ -162,10 +170,8 @@ const UserActions = {
 
     const vFields = validateInput(signupSchema, fields)
 
-    const validation = UserModel.schema.safeParse(vFields)
-    if (!validation.success) {
-      throw new InputError('Invalid input')
-    }
+    const clientIP = ctx.req?.ip || 'unknown'
+    RateLimiter.checkLoginAttempt(`signup:${clientIP}`)
 
     const password = await hashPassword(vFields.password)
     // Use transaction for user creation
@@ -186,7 +192,14 @@ const UserActions = {
   async mLogin(
     ctx: Context,
     fields: { username: UserExternal['username']; password: string },
-  ) {
+  ): Promise<
+    | { requiresTotp: true; pendingToken: string }
+    | {
+        requiresTotp: false
+        secureSessionId: string
+        token: string
+      }
+  > {
     if (ctx.isAlreadyLoggedIn()) {
       throw new RequestError('You are already logged in.')
     }
@@ -222,6 +235,49 @@ const UserActions = {
 
     // Success - clear rate limiting for this identifier
     RateLimiter.recordSuccessfulLogin(rateLimitKey)
+
+    // Check if user has TOTP enabled
+    if (user.totpEnabled) {
+      const ip = ctx.req?.ip || ctx.req?.socket?.remoteAddress || 'unknown'
+      const pendingToken = PendingTotpStore.create(user.id, ip)
+      return { requiresTotp: true, pendingToken }
+    }
+
+    const session = await SessionActions._mCreate(ctx, { userId: user.id })
+    return { requiresTotp: false, ...session }
+  },
+
+  async mVerifyLoginTotp(
+    ctx: Context,
+    fields: { pendingToken: string; code: string },
+  ): Promise<{ secureSessionId: string; token: string }> {
+    const vFields = validateInput(verifyLoginTotpSchema, fields)
+
+    const clientIP = ctx.req?.ip || ctx.req?.socket?.remoteAddress || 'unknown'
+
+    RateLimiter.checkLoginAttempt(`totp-login:${clientIP}`)
+
+    const userId = PendingTotpStore.consume(vFields.pendingToken, clientIP)
+    if (userId == null) {
+      throw new AuthenticationError(
+        'Invalid or expired verification session. Please log in again.',
+      )
+    }
+
+    const [user] = await ctx.db
+      .select()
+      .from(userTable)
+      .where(eq(userTable.id, userId))
+    if (!user || !user.totpEnabled) {
+      throw new AuthenticationError('Invalid credentials')
+    }
+
+    const totpResult = await _verifyTotp(user, vFields.code, ctx.db)
+    if (!totpResult.valid) {
+      throw new AuthenticationError('Invalid verification code.')
+    }
+
+    RateLimiter.recordSuccessfulLogin(`totp-login:${clientIP}`)
 
     return SessionActions._mCreate(ctx, { userId: user.id })
   },
@@ -331,11 +387,13 @@ const UserActions = {
 
   async mChangePassword(
     ctx: Context,
-    fields: { oldPassword: string; newPassword: string },
+    fields: { oldPassword: string; newPassword: string; code?: string },
   ) {
     const userIId = ctx.isAuthenticated()
 
     const vFields = validateInput(changePasswordSchema, fields)
+
+    RateLimiter.checkLoginAttempt(`change-password:${userIId}`)
 
     const [user] = await ctx.db
       .select()
@@ -348,6 +406,17 @@ const UserActions = {
     if (!valid) {
       throw new AuthenticationError('Invalid password')
     }
+    if (user.totpEnabled) {
+      if (!vFields.code) {
+        throw new InputError('TOTP code is required when 2FA is enabled')
+      }
+      const totpResult = await _verifyTotp(user, vFields.code, ctx.db)
+      if (!totpResult.valid) {
+        throw new AuthenticationError('Invalid TOTP code')
+      }
+    }
+    RateLimiter.recordSuccessfulLogin(`change-password:${userIId}`)
+
     const password = await hashPassword(vFields.newPassword)
     await ctx.db
       .update(userTable)
@@ -430,4 +499,10 @@ const changeNameSchema = z.object({
 const changePasswordSchema = z.object({
   oldPassword: UserModel.passwordSchemaRough,
   newPassword: UserModel.passwordSchema,
+  code: z.string().min(1).max(32).optional(),
+})
+
+const verifyLoginTotpSchema = z.object({
+  pendingToken: z.string().min(1),
+  code: z.string().min(1).max(32),
 })

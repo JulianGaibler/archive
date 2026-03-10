@@ -1,0 +1,98 @@
+---
+import Layout from '../layouts/Layout.astro'
+import { getSdk } from '../generated/graphql'
+import { getOperationResultError } from '@src/graphql-errors'
+import SignupForm from './signup/_signup-form.svelte'
+
+const ssrClient = Astro.locals.gqlClient
+const sdk = getSdk(ssrClient)
+
+if (Astro.locals.me.signedIn) {
+  return Astro.redirect('/')
+}
+
+// Check if signup is allowed
+let signupAllowed = false
+try {
+  const result = await sdk.signupAllowed()
+  signupAllowed = result.data.signupAllowed
+} catch {
+  // If query fails, don't allow signup
+}
+if (!signupAllowed) {
+  return Astro.redirect('/login')
+}
+
+let error = ''
+
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData()
+    const username = formData.get('username')?.toString()
+    const name = formData.get('name')?.toString()
+    const password = formData.get('password')?.toString()
+    const confirmPassword = formData.get('confirmPassword')?.toString()
+
+    if (!username || !name || !password) {
+      error = 'All fields are required'
+    } else if (password !== confirmPassword) {
+      error = 'Passwords do not match'
+    } else if (password.length < 12) {
+      error = 'Password must be at least 12 characters long'
+    } else {
+      const result = await sdk.signup({ username, name, password })
+      const err = getOperationResultError(result)
+      if (err) {
+        error = err.message
+      } else {
+        return Astro.redirect('/')
+      }
+    }
+  } catch (err: unknown) {
+    console.error('Signup error:', err)
+    error =
+      getOperationResultError(err)?.message ||
+      'Signup failed. Please try again.'
+  }
+}
+---
+
+<Layout title="Sign Up" flexCenter>
+  <div class="background">
+    <div class="brand">
+      <h1 class="tint--type-display-sans-3">Archive</h1>
+      <p class="tint--type-title-serif-3">Create an account</p>
+    </div>
+    <div class="card tint--card">
+      <SignupForm client:load initialError={error || undefined} />
+    </div>
+  </div>
+</Layout>
+
+<style lang="sass">
+  .background
+    background: var(--tint-text-accent)
+    align-self: stretch
+    justify-self: stretch
+    display: flex
+    align-items: center
+    justify-content: center
+    flex: 1
+    gap: 80px
+    padding: tint.$size-16
+    @media (max-width: tint.$breakpoint-md)
+      flex-direction: column
+      justify-content: flex-start
+      gap: tint.$size-32
+  .brand
+    color: white
+    padding: tint.$size-32
+  .card
+    padding: tint.$size-32
+    width: 100%
+    box-sizing: border-box
+    max-width: 400px
+    display: flex
+    flex-direction: column
+    gap: tint.$size-16
+</style>

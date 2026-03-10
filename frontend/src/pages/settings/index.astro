@@ -5,6 +5,8 @@ import ChangeName from './_change-name.svelte'
 import ChangeProfilePicture from './_change-profile-picture.svelte'
 import ManageSessions from './_manage-sessions.svelte'
 import TelegramConnection from './_telegram-connection.svelte'
+import CaptionPreferences from './_caption-preferences.svelte'
+import TwoFactorAuth from './_two-factor-auth.svelte'
 import ErrorPage from '@src/components/ErrorPage.astro'
 
 import { getSdk } from '@src/generated/graphql'
@@ -39,7 +41,10 @@ try {
         <div class="shrinkwrap">
           <div class="cards">
             <section class="card tint--tinted">
-              <ChangePassword client:load />
+              <ChangePassword
+                client:load
+                totpEnabled={result!.data.me.totpStatus?.enabled ?? false}
+              />
             </section>
             <section class="card tint--tinted">
               <ChangeProfilePicture client:load user={result!.data.me} />
@@ -48,7 +53,16 @@ try {
               <ChangeName client:load user={result!.data.me} />
             </section>
             <section class="card tint--tinted">
+              <TwoFactorAuth
+                client:load
+                totpStatus={result!.data.me.totpStatus ?? null}
+              />
+            </section>
+            <section class="card tint--tinted">
               <TelegramConnection client:load user={result!.data.me} />
+            </section>
+            <section class="card tint--tinted">
+              <CaptionPreferences client:load />
             </section>
             <section class="card tint--tinted">
               <ManageSessions

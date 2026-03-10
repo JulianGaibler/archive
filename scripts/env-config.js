@@ -6,7 +6,7 @@
 
 import crypto from 'crypto';
 
-export const ENV_VERSION = '2.0.0';
+export const ENV_VERSION = '2.1.0';
 
 /**
  * Variable definition schema:
@@ -405,6 +405,62 @@ export const ENV_VARIABLES = [
         return 'Must be either "allowed" or "disallowed"';
       }
       return true;
+    }
+  },
+  {
+    name: 'BACKEND_TRUST_PROXY',
+    description: 'Express trust proxy setting',
+    longDescription: 'Controls which proxies Express trusts for X-Forwarded-For headers. Use "loopback" for development, "true" for Docker (backend only reachable via internal network).',
+    type: 'string',
+    category: 'Backend',
+    devDefault: 'loopback',
+    prodDefault: 'true',
+    ciDefault: 'loopback',
+    required: false,
+    scope: 'backend',
+    optional: true,
+  },
+  {
+    name: 'BACKEND_TOTP_ENCRYPTION_KEY',
+    description: 'AES-256 encryption key for TOTP secrets (empty = 2FA disabled)',
+    longDescription: '32-byte hex key for AES-256-GCM encryption of TOTP secrets at rest. Leave empty to disable two-factor authentication. Generate with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"',
+    type: 'string',
+    category: 'Backend',
+    devDefault: '',
+    prodDefault: null,
+    ciDefault: '',
+    required: false,
+    scope: 'backend',
+    optional: true,
+    featureGate: {
+      message: 'Enable TOTP two-factor authentication?',
+      default: false,
+    },
+    smartDefault: (collectedValues, mode) => {
+      return crypto.randomBytes(32).toString('hex')
+    },
+    validation: (value) => {
+      if (value && !value.match(/^[0-9a-fA-F]{64}$/)) {
+        return 'Must be a 64-character hex string (32 bytes) or empty to disable'
+      }
+      return true
+    }
+  },
+  {
+    name: 'BACKEND_TOTP_ISSUER',
+    description: 'TOTP issuer name shown in authenticator apps',
+    longDescription: 'The issuer name displayed in authenticator apps (e.g. Google Authenticator) when users set up 2FA. Only relevant if BACKEND_TOTP_ENCRYPTION_KEY is set.',
+    type: 'string',
+    category: 'Backend',
+    devDefault: 'Archive',
+    prodDefault: 'Archive',
+    ciDefault: 'Archive',
+    required: false,
+    scope: 'backend',
+    optional: true,
+    condition: (collectedValues) => !!collectedValues.BACKEND_TOTP_ENCRYPTION_KEY,
+    validation: (value) => {
+      return true
     }
   },
 

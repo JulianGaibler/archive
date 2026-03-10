@@ -18,8 +18,78 @@ import { join } from 'path'
 import { readFileSync } from 'fs'
 import { makeExecutableSchema } from '@graphql-tools/schema'
 import { resolvers } from './resolvers/index.js'
+import {
+  Kind,
+  GraphQLError,
+  type ASTVisitor,
+  type ValidationContext,
+} from 'graphql'
 import chalk from 'chalk'
 import util from 'util'
+
+function depthLimitRule(maxDepth: number) {
+  type SelectionSet = {
+    selections: readonly {
+      kind: string
+      name?: { value: string }
+      selectionSet?: SelectionSet
+    }[]
+  }
+
+  return (context: ValidationContext): ASTVisitor => ({
+    Document: {
+      enter(node) {
+        const fragments = new Map<string, SelectionSet>()
+        for (const def of node.definitions) {
+          if (def.kind === Kind.FRAGMENT_DEFINITION) {
+            fragments.set(def.name.value, def.selectionSet)
+          }
+        }
+
+        for (const def of node.definitions) {
+          if (def.kind === Kind.OPERATION_DEFINITION) {
+            const depth = measureDepth(def.selectionSet, fragments, new Set())
+            if (depth > maxDepth) {
+              context.reportError(
+                new GraphQLError(
+                  `Query depth of ${depth} exceeds maximum allowed depth of ${maxDepth}.`,
+                ),
+              )
+            }
+          }
+        }
+      },
+    },
+  })
+
+  function measureDepth(
+    selectionSet: SelectionSet | undefined,
+    fragments: Map<string, SelectionSet>,
+    visited: Set<string>,
+  ): number {
+    if (!selectionSet) return 0
+    let max = 0
+    for (const sel of selectionSet.selections) {
+      if (sel.kind === Kind.FIELD) {
+        const d = 1 + measureDepth(sel.selectionSet, fragments, visited)
+        if (d > max) max = d
+      } else if (sel.kind === Kind.INLINE_FRAGMENT) {
+        const d = measureDepth(sel.selectionSet, fragments, visited)
+        if (d > max) max = d
+      } else if (sel.kind === Kind.FRAGMENT_SPREAD) {
+        const name = sel.name?.value
+        if (name && !visited.has(name)) {
+          visited.add(name)
+          const frag = fragments.get(name)
+          const d = measureDepth(frag, fragments, visited)
+          if (d > max) max = d
+          visited.delete(name)
+        }
+      }
+    }
+    return max
+  }
+}
 
 // Path to schema files in root of project
 const schemaPath = join(process.cwd(), 'schema')
@@ -74,6 +144,8 @@ export default class {
 
     const apollo = new ApolloServer<Context>({
       schema,
+      introspection: env.NODE_ENV === 'development',
+      validationRules: [depthLimitRule(10)],
       formatError: (err) => {
         if (env.NODE_ENV !== 'development' && err.extensions) {
           delete err.extensions.stacktrace

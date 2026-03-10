@@ -1,3 +1,24 @@
+type LoginResult {
+  success: Boolean!
+  requiresTotp: Boolean!
+  pendingToken: String
+}
+
+type TotpSetupResult {
+  secret: String!
+  otpauthUrl: String!
+  qrCodeDataUrl: String!
+}
+
+type TotpConfirmResult {
+  recoveryCodes: [String!]!
+}
+
+type TotpStatus {
+  enabled: Boolean!
+  recoveryCodesRemaining: Int!
+}
+
 input TemplateAreaInput {
   id: String!
   x: Float!
@@ -269,7 +290,7 @@ type Mutation {
   ): Boolean!
 
   """
-  Creates a new session for the user.
+  Creates a new session for the user. Returns login result with optional TOTP challenge.
   """
   login(
     """
@@ -281,7 +302,7 @@ type Mutation {
     Password of the user.
     """
     password: String!
-  ): Boolean!
+  ): LoginResult!
 
   """
   Terminates the current users session.
@@ -341,7 +362,77 @@ type Mutation {
     New password of the user.
     """
     newPassword: String!
+
+    """
+    TOTP or recovery code. Required when 2FA is enabled.
+    """
+    code: String
   ): Boolean!
+
+  """
+  Verifies a TOTP code to complete login for users with 2FA enabled.
+  """
+  verifyLoginTotp(
+    """
+    The pending token received from the login mutation.
+    """
+    pendingToken: String!
+
+    """
+    The 6-digit TOTP code from the authenticator app, or a recovery code.
+    """
+    code: String!
+  ): Boolean!
+
+  """
+  Initiates TOTP two-factor authentication setup. Returns QR code and secret.
+  """
+  initTotp: TotpSetupResult!
+
+  """
+  Confirms TOTP setup by verifying a code. Enables 2FA and returns recovery codes.
+  """
+  confirmTotp(
+    """
+    The 6-digit TOTP code from the authenticator app.
+    """
+    code: String!
+  ): TotpConfirmResult!
+
+  """
+  Cancels an in-progress TOTP setup.
+  """
+  cancelTotpSetup: Boolean!
+
+  """
+  Disables two-factor authentication. Requires password and TOTP code.
+  """
+  disableTotp(
+    """
+    Current password of the user.
+    """
+    password: String!
+
+    """
+    A valid TOTP code or recovery code.
+    """
+    code: String!
+  ): Boolean!
+
+  """
+  Regenerates recovery codes. Requires password and TOTP code.
+  """
+  regenerateRecoveryCodes(
+    """
+    Current password of the user.
+    """
+    password: String!
+
+    """
+    A valid TOTP code.
+    """
+    code: String!
+  ): TotpConfirmResult!
 
   """
   Convert an item's file to a different format.

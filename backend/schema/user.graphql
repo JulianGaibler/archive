@@ -28,6 +28,11 @@ type User implements Node {
   linkedTelegram: Boolean
 
   """
+  Two-factor authentication status. Only available for the current user via `me` query.
+  """
+  totpStatus: TotpStatus
+
+  """
   The number of posts created by this user.
   """
   postCount: Int!

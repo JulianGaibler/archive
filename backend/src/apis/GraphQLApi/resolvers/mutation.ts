@@ -6,13 +6,17 @@ import PostActions from '@src/actions/PostActions.js'
 import SessionActions from '@src/actions/SessionActions.js'
 import FileActions from '@src/actions/FileActions.js'
 import ItemActions from '@src/actions/ItemActions.js'
+import TotpActions from '@src/actions/TotpActions.js'
 import AuthCookieUtils from '../AuthCookieUtils.js'
 
 export const mutationResolvers: MutationResolvers = {
   changeName: async (_, args, ctx) => UserActions.mChangeName(ctx, args),
 
   changePassword: async (_, args, ctx) =>
-    UserActions.mChangePassword(ctx, args),
+    UserActions.mChangePassword(ctx, {
+      ...args,
+      code: args.code ?? undefined,
+    }),
 
   clearProfilePicture: async (_, _args, ctx) =>
     UserActions.mClearProfilePicture(ctx),
@@ -58,10 +62,41 @@ export const mutationResolvers: MutationResolvers = {
     UserActions.mUploadProfilePicture(ctx, args),
 
   login: async (_, args, ctx) => {
-    const { secureSessionId, token } = await UserActions.mLogin(ctx, args)
+    const result = await UserActions.mLogin(ctx, args)
+    if (result.requiresTotp) {
+      return {
+        success: false,
+        requiresTotp: true,
+        pendingToken: result.pendingToken,
+      }
+    }
+    AuthCookieUtils.setAuthCookies(
+      ctx.res!,
+      result.secureSessionId,
+      result.token,
+    )
+    return { success: true, requiresTotp: false, pendingToken: null }
+  },
+
+  verifyLoginTotp: async (_, args, ctx) => {
+    const { secureSessionId, token } = await UserActions.mVerifyLoginTotp(
+      ctx,
+      args,
+    )
     AuthCookieUtils.setAuthCookies(ctx.res!, secureSessionId, token)
     return true
   },
+
+  initTotp: async (_, _args, ctx) => TotpActions.mInitTotp(ctx),
+
+  confirmTotp: async (_, args, ctx) => TotpActions.mConfirmTotp(ctx, args),
+
+  cancelTotpSetup: async (_, _args, ctx) => TotpActions.mCancelTotpSetup(ctx),
+
+  disableTotp: async (_, args, ctx) => TotpActions.mDisableTotp(ctx, args),
+
+  regenerateRecoveryCodes: async (_, args, ctx) =>
+    TotpActions.mRegenerateRecoveryCodes(ctx, args),
 
   signup: async (_, args, ctx) => {
     const { secureSessionId, token } = await UserActions.mSignup(ctx, args)

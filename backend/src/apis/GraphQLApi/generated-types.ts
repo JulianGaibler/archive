@@ -366,14 +366,28 @@ export enum Language {
   Turkish = 'TURKISH',
 }
 
+export type LoginResult = {
+  __typename?: 'LoginResult'
+  pendingToken?: Maybe<Scalars['String']['output']>
+  requiresTotp: Scalars['Boolean']['output']
+  success: Scalars['Boolean']['output']
+}
+
 export type Mutation = {
   __typename?: 'Mutation'
+  /** Cancels an in-progress TOTP setup. */
+  cancelTotpSetup: Scalars['Boolean']['output']
   /** Changes the name of the current user. */
   changeName: Scalars['Boolean']['output']
   /** Changes the password of the current user. */
   changePassword: Scalars['Boolean']['output']
   /** Deletes the profile picture of the current user. */
   clearProfilePicture: Scalars['Boolean']['output']
+  /**
+   * Confirms TOTP setup by verifying a code. Enables 2FA and returns recovery
+   * codes.
+   */
+  confirmTotp: TotpConfirmResult
   /**
    * Convert an item's file to a different format. Creates new variants while
    * preserving the original. Returns the new file ID for subscription.
@@ -402,6 +416,8 @@ export type Mutation = {
   deletePost: Scalars['ID']['output']
   /** Deletes a temporary file that has not been claimed by a resource. */
   deleteTemporaryFile: Scalars['Boolean']['output']
+  /** Disables two-factor authentication. Requires password and TOTP code. */
+  disableTotp: Scalars['Boolean']['output']
   /**
    * Duplicates an item within the same post. Creates an independent copy of the
    * item with its own file copy. The duplicate appears right after the original
@@ -410,10 +426,15 @@ export type Mutation = {
   duplicateItem: Scalars['ID']['output']
   /** Edits a post. */
   editPost: Post
+  /** Initiates TOTP two-factor authentication setup. Returns QR code and secret. */
+  initTotp: TotpSetupResult
   /** Associates the Telegram ID of a user with their Archive Profil. */
   linkTelegram: Scalars['Boolean']['output']
-  /** Creates a new session for the user. */
-  login: Scalars['Boolean']['output']
+  /**
+   * Creates a new session for the user. Returns login result with optional TOTP
+   * challenge.
+   */
+  login: LoginResult
   /** Terminates the current users session. */
   logout: Scalars['Boolean']['output']
   /**
@@ -438,6 +459,8 @@ export type Mutation = {
    * while preserving the original. Returns the new file ID for subscription.
    */
   normalizeItem: Scalars['String']['output']
+  /** Regenerates recovery codes. Requires password and TOTP code. */
+  regenerateRecoveryCodes: TotpConfirmResult
   /**
    * Remove specific modifications from an item or revert to original. Creates a
    * new file without the specified modifications. Returns the new file ID for
@@ -484,6 +507,8 @@ export type Mutation = {
   uploadItemFile: Scalars['ID']['output']
   /** Sets the profile picture of the current user. */
   uploadProfilePicture: Scalars['Boolean']['output']
+  /** Verifies a TOTP code to complete login for users with 2FA enabled. */
+  verifyLoginTotp: Scalars['Boolean']['output']
 }
 
 export type MutationChangeNameArgs = {
@@ -491,8 +516,13 @@ export type MutationChangeNameArgs = {
 }
 
 export type MutationChangePasswordArgs = {
+  code?: InputMaybe<Scalars['String']['input']>
   newPassword: Scalars['String']['input']
   oldPassword: Scalars['String']['input']
+}
+
+export type MutationConfirmTotpArgs = {
+  code: Scalars['String']['input']
 }
 
 export type MutationConvertItemArgs = {
@@ -530,6 +560,11 @@ export type MutationDeletePostArgs = {
 
 export type MutationDeleteTemporaryFileArgs = {
   fileId: Scalars['String']['input']
+}
+
+export type MutationDisableTotpArgs = {
+  code: Scalars['String']['input']
+  password: Scalars['String']['input']
 }
 
 export type MutationDuplicateItemArgs = {
@@ -576,6 +611,11 @@ export type MutationMoveItemArgs = {
 export type MutationNormalizeItemArgs = {
   itemId: Scalars['ID']['input']
   normalize: NormalizeInput
+}
+
+export type MutationRegenerateRecoveryCodesArgs = {
+  code: Scalars['String']['input']
+  password: Scalars['String']['input']
 }
 
 export type MutationRemoveModificationsArgs = {
@@ -625,6 +665,11 @@ export type MutationUploadItemFileArgs = {
 
 export type MutationUploadProfilePictureArgs = {
   file: Scalars['Upload']['input']
+}
+
+export type MutationVerifyLoginTotpArgs = {
+  code: Scalars['String']['input']
+  pendingToken: Scalars['String']['input']
 }
 
 export type NewItemInput = {
@@ -766,6 +811,8 @@ export type Query = {
   nodes: Array<Maybe<Node>>
   /** Returns a list of posts. */
   posts?: Maybe<PostConnection>
+  /** Returns whether new account signup is allowed on this server. */
+  signupAllowed: Scalars['Boolean']['output']
   /** Returns user based on username */
   user?: Maybe<User>
   /** Returns a list of sessions of the the currently authenticated user. */
@@ -894,6 +941,24 @@ export type TemplateInput = {
   areas: Array<TemplateAreaInput>
 }
 
+export type TotpConfirmResult = {
+  __typename?: 'TotpConfirmResult'
+  recoveryCodes: Array<Scalars['String']['output']>
+}
+
+export type TotpSetupResult = {
+  __typename?: 'TotpSetupResult'
+  otpauthUrl: Scalars['String']['output']
+  qrCodeDataUrl: Scalars['String']['output']
+  secret: Scalars['String']['output']
+}
+
+export type TotpStatus = {
+  __typename?: 'TotpStatus'
+  enabled: Scalars['Boolean']['output']
+  recoveryCodesRemaining: Scalars['Int']['output']
+}
+
 /**
  * Input type for trimming parameters. Defines a time range to trim from
  * video/audio files.
@@ -942,6 +1007,11 @@ export type User = Node & {
   posts?: Maybe<PostConnection>
   /** Profile picture file containing different sizes. */
   profilePicture?: Maybe<ProfilePictureFile>
+  /**
+   * Two-factor authentication status. Only available for the current user via
+   * `me` query.
+   */
+  totpStatus?: Maybe<TotpStatus>
   /** The username used to login. */
   username: Scalars['String']['output']
 }
@@ -1253,6 +1323,7 @@ export type ResolversTypes = ResolversObject<{
     }
   >
   Language: Language
+  LoginResult: ResolverTypeWrapper<LoginResult>
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>
   NewItemInput: NewItemInput
   Node: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Node']>
@@ -1282,6 +1353,9 @@ export type ResolversTypes = ResolversObject<{
   TemplateAreaInput: TemplateAreaInput
   TemplateConfig: ResolverTypeWrapper<TemplateConfig>
   TemplateInput: TemplateInput
+  TotpConfirmResult: ResolverTypeWrapper<TotpConfirmResult>
+  TotpSetupResult: ResolverTypeWrapper<TotpSetupResult>
+  TotpStatus: ResolverTypeWrapper<TotpStatus>
   TrimInput: TrimInput
   TrimMetadata: ResolverTypeWrapper<TrimMetadata>
   UpdateKind: UpdateKind
@@ -1345,6 +1419,7 @@ export type ResolversParentTypes = ResolversObject<{
   KeywordConnection: Omit<KeywordConnection, 'nodes'> & {
     nodes: Array<ResolversParentTypes['Keyword']>
   }
+  LoginResult: LoginResult
   Mutation: Record<PropertyKey, never>
   NewItemInput: NewItemInput
   Node: ResolversInterfaceTypes<ResolversParentTypes>['Node']
@@ -1372,6 +1447,9 @@ export type ResolversParentTypes = ResolversObject<{
   TemplateAreaInput: TemplateAreaInput
   TemplateConfig: TemplateConfig
   TemplateInput: TemplateInput
+  TotpConfirmResult: TotpConfirmResult
+  TotpSetupResult: TotpSetupResult
+  TotpStatus: TotpStatus
   TrimInput: TrimInput
   TrimMetadata: TrimMetadata
   Upload: Scalars['Upload']['output']
@@ -1687,11 +1765,26 @@ export type KeywordConnectionResolvers<
   totalCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
 }>
 
+export type LoginResultResolvers<
+  ContextType = Context,
+  ParentType extends ResolversParentTypes['LoginResult'] =
+    ResolversParentTypes['LoginResult'],
+> = ResolversObject<{
+  pendingToken?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >
+  requiresTotp?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>
+  success?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>
+}>
+
 export type MutationResolvers<
   ContextType = Context,
   ParentType extends ResolversParentTypes['Mutation'] =
     ResolversParentTypes['Mutation'],
 > = ResolversObject<{
+  cancelTotpSetup?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>
   changeName?: Resolver<
     ResolversTypes['Boolean'],
     ParentType,
@@ -1708,6 +1801,12 @@ export type MutationResolvers<
     ResolversTypes['Boolean'],
     ParentType,
     ContextType
+  >
+  confirmTotp?: Resolver<
+    ResolversTypes['TotpConfirmResult'],
+    ParentType,
+    ContextType,
+    RequireFields<MutationConfirmTotpArgs, 'code'>
   >
   convertItem?: Resolver<
     ResolversTypes['String'],
@@ -1757,6 +1856,12 @@ export type MutationResolvers<
     ContextType,
     RequireFields<MutationDeleteTemporaryFileArgs, 'fileId'>
   >
+  disableTotp?: Resolver<
+    ResolversTypes['Boolean'],
+    ParentType,
+    ContextType,
+    RequireFields<MutationDisableTotpArgs, 'code' | 'password'>
+  >
   duplicateItem?: Resolver<
     ResolversTypes['ID'],
     ParentType,
@@ -1772,6 +1877,11 @@ export type MutationResolvers<
       'keywords' | 'language' | 'postId' | 'title'
     >
   >
+  initTotp?: Resolver<
+    ResolversTypes['TotpSetupResult'],
+    ParentType,
+    ContextType
+  >
   linkTelegram?: Resolver<
     ResolversTypes['Boolean'],
     ParentType,
@@ -1779,7 +1889,7 @@ export type MutationResolvers<
     RequireFields<MutationLinkTelegramArgs, 'apiResponse'>
   >
   login?: Resolver<
-    ResolversTypes['Boolean'],
+    ResolversTypes['LoginResult'],
     ParentType,
     ContextType,
     RequireFields<MutationLoginArgs, 'password' | 'username'>
@@ -1814,6 +1924,12 @@ export type MutationResolvers<
     ParentType,
     ContextType,
     RequireFields<MutationNormalizeItemArgs, 'itemId' | 'normalize'>
+  >
+  regenerateRecoveryCodes?: Resolver<
+    ResolversTypes['TotpConfirmResult'],
+    ParentType,
+    ContextType,
+    RequireFields<MutationRegenerateRecoveryCodesArgs, 'code' | 'password'>
   >
   removeModifications?: Resolver<
     ResolversTypes['String'],
@@ -1878,6 +1994,12 @@ export type MutationResolvers<
     ParentType,
     ContextType,
     RequireFields<MutationUploadProfilePictureArgs, 'file'>
+  >
+  verifyLoginTotp?: Resolver<
+    ResolversTypes['Boolean'],
+    ParentType,
+    ContextType,
+    RequireFields<MutationVerifyLoginTotpArgs, 'code' | 'pendingToken'>
   >
 }>
 
@@ -2104,6 +2226,7 @@ export type QueryResolvers<
     ContextType,
     Partial<QueryPostsArgs>
   >
+  signupAllowed?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>
   user?: Resolver<
     Maybe<ResolversTypes['User']>,
     ParentType,
@@ -2186,6 +2309,41 @@ export type TemplateConfigResolvers<
   >
 }>
 
+export type TotpConfirmResultResolvers<
+  ContextType = Context,
+  ParentType extends ResolversParentTypes['TotpConfirmResult'] =
+    ResolversParentTypes['TotpConfirmResult'],
+> = ResolversObject<{
+  recoveryCodes?: Resolver<
+    Array<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >
+}>
+
+export type TotpSetupResultResolvers<
+  ContextType = Context,
+  ParentType extends ResolversParentTypes['TotpSetupResult'] =
+    ResolversParentTypes['TotpSetupResult'],
+> = ResolversObject<{
+  otpauthUrl?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  qrCodeDataUrl?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  secret?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+}>
+
+export type TotpStatusResolvers<
+  ContextType = Context,
+  ParentType extends ResolversParentTypes['TotpStatus'] =
+    ResolversParentTypes['TotpStatus'],
+> = ResolversObject<{
+  enabled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>
+  recoveryCodesRemaining?: Resolver<
+    ResolversTypes['Int'],
+    ParentType,
+    ContextType
+  >
+}>
+
 export type TrimMetadataResolvers<
   ContextType = Context,
   ParentType extends ResolversParentTypes['TrimMetadata'] =
@@ -2223,6 +2381,11 @@ export type UserResolvers<
   >
   profilePicture?: Resolver<
     Maybe<ResolversTypes['ProfilePictureFile']>,
+    ParentType,
+    ContextType
+  >
+  totpStatus?: Resolver<
+    Maybe<ResolversTypes['TotpStatus']>,
     ParentType,
     ContextType
   >
@@ -2337,6 +2500,7 @@ export type Resolvers<ContextType = Context> = ResolversObject<{
   ItemConnection?: ItemConnectionResolvers<ContextType>
   Keyword?: KeywordResolvers<ContextType>
   KeywordConnection?: KeywordConnectionResolvers<ContextType>
+  LoginResult?: LoginResultResolvers<ContextType>
   Mutation?: MutationResolvers<ContextType>
   Node?: NodeResolvers<ContextType>
   NormalizeMetadata?: NormalizeMetadataResolvers<ContextType>
@@ -2350,6 +2514,9 @@ export type Resolvers<ContextType = Context> = ResolversObject<{
   Subscription?: SubscriptionResolvers<ContextType>
   TemplateArea?: TemplateAreaResolvers<ContextType>
   TemplateConfig?: TemplateConfigResolvers<ContextType>
+  TotpConfirmResult?: TotpConfirmResultResolvers<ContextType>
+  TotpSetupResult?: TotpSetupResultResolvers<ContextType>
+  TotpStatus?: TotpStatusResolvers<ContextType>
   TrimMetadata?: TrimMetadataResolvers<ContextType>
   Upload?: GraphQLScalarType
   User?: UserResolvers<ContextType>

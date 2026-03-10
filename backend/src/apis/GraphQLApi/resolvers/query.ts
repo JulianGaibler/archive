@@ -7,8 +7,11 @@ import ItemActions from '@src/actions/ItemActions.js'
 import Context from '@src/Context.js'
 import HashId, { HashIdTypes } from '@src/models/HashId.js'
 import InputError from '@src/errors/InputError.js'
+import env from '@src/utils/env.js'
 
 export const queryResolvers: QueryResolvers = {
+  signupAllowed: () => env.BACKEND_CREATE_ACCOUNTS === 'allowed',
+
   me: async (_, _args, ctx) => UserActions.qMe(ctx),
 
   userSessions: async (_, _args, ctx) => SessionActions.qGetUserSessions(ctx),

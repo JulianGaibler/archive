@@ -14,6 +14,12 @@ server {
     listen 80;
     server_name _;
 
+    # Global security headers
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+
     # Increase client_max_body_size for this server if needed for larger uploads
     client_max_body_size 100M;
 
@@ -23,7 +29,7 @@ server {
         # Forward headers properly through the proxy chain
         proxy_set_header Host $http_host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
         proxy_set_header X-Forwarded-Host $http_host;
         proxy_set_header X-Forwarded-Port $server_port;
         proxy_redirect off;
@@ -47,13 +53,13 @@ server {
         # Use the uploads zone for potentially large GraphQL mutations with file uploads
         limit_req zone=uploads burst=5 nodelay;
         limit_req_status 429;
-        
+
         # Forward to backend (strip /api/ prefix by adding trailing slash)
         proxy_pass http://backend:${BACKEND_PORT}/;
         # Forward headers properly through the proxy chain
         proxy_set_header Host $http_host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
         proxy_set_header X-Forwarded-Host $http_host;
         proxy_set_header X-Forwarded-Port $server_port;
         proxy_redirect off;
@@ -72,18 +78,6 @@ server {
         proxy_request_buffering off;
         proxy_max_temp_file_size 0;
         
-        # CORS headers for API
-        add_header Access-Control-Allow-Origin "*" always;
-        add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
-        add_header Access-Control-Allow-Headers "Accept, Authorization, Cache-Control, Content-Type, DNT, If-Modified-Since, Keep-Alive, Origin, User-Agent, X-Requested-With" always;
-        
-        # Handle preflight requests
-        if ($request_method = 'OPTIONS') {
-            add_header Access-Control-Max-Age 86400;
-            add_header Content-Length 0;
-            add_header Content-Type text/plain;
-            return 204;
-        }
     }
 
     # Static media files - direct file serving with optimized caching
@@ -113,9 +107,6 @@ server {
         add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
         add_header Access-Control-Allow-Headers "Range" always;
         
-        # Security
-        add_header X-Content-Type-Options "nosniff" always;
-        
         # Try to serve files, return 404 if not found
         try_files $uri =404;
         
@@ -129,29 +120,26 @@ server {
         expires 1y;
         add_header Cache-Control "public, immutable";
         add_header Access-Control-Allow-Origin "*";
-        add_header X-Content-Type-Options "nosniff";
         add_header Vary "Accept-Encoding";
         try_files $uri =404;
     }
-    
+
     # Static assets (JS, CSS) with aggressive caching
     location ~* \.(js|css)$ {
         root /var/www/archive/static;
         expires 1y;
         add_header Cache-Control "public, immutable";
         add_header Access-Control-Allow-Origin "*";
-        add_header X-Content-Type-Options "nosniff";
         add_header Vary "Accept-Encoding";
         try_files $uri =404;
     }
-    
+
     # Images and fonts with moderate caching
     location ~* \.(png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|webp|avif)$ {
         root /var/www/archive/static;
         expires 30d;
         add_header Cache-Control "public";
         add_header Access-Control-Allow-Origin "*";
-        add_header X-Content-Type-Options "nosniff";
         add_header Vary "Accept-Encoding";
         try_files $uri =404;
     }

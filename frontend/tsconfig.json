@@ -10,7 +10,8 @@
     "baseUrl": ".",
     "paths": {
       "@src/*": ["./src/*"],
-      "tint/*": ["node_modules/tint/dist/*"]
+      "tint/*": ["../node_modules/tint/dist/*"],
+      "archive-shared/*": ["../shared/*"]
     }
   }
 }

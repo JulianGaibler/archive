@@ -6,6 +6,7 @@
     type Cue,
   } from 'archive-shared/src/captions'
   import { formatTimestamp } from './CaptionEditorModal/utils/timestamp-format'
+  import { captionFollowing } from '@src/utils/caption-preferences.svelte'
 
   interface Props {
     captionText: string
@@ -13,8 +14,6 @@
   }
 
   let { captionText, mediaElement }: Props = $props()
-
-  let following = $state(true)
   let currentCueIndex = $state(-1)
   let cueEls: HTMLElement[] = $state([])
   let focusedIndex = $state(0)
@@ -58,11 +57,17 @@
 
   // Auto-scroll
   $effect(() => {
-    if (following && currentCueIndex >= 0 && cueEls[currentCueIndex]) {
+    if (
+      captionFollowing.value &&
+      currentCueIndex >= 0 &&
+      cueEls[currentCueIndex]
+    ) {
       cueEls[currentCueIndex].scrollIntoView({
         block: 'nearest',
         behavior: 'smooth',
-      })
+        container: 'nearest',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any)
     }
   })
 
@@ -114,8 +119,8 @@
       <LabeledToggleable
         id="caption-follow"
         type="switch"
-        checked={following}
-        onchange={() => (following = !following)}
+        checked={captionFollowing.value}
+        onchange={() => (captionFollowing.value = !captionFollowing.value)}
       >
         Follow
       </LabeledToggleable>
@@ -132,12 +137,12 @@
       {#each cues as cue, i (cue.startMs)}
         <li
           bind:this={cueEls[i]}
-          class:active={following && i === currentCueIndex}
+          class:active={captionFollowing.value && i === currentCueIndex}
         >
           <button
             type="button"
             role="option"
-            aria-selected={following && i === currentCueIndex}
+            aria-selected={captionFollowing.value && i === currentCueIndex}
             tabindex={i === focusedIndex ? 0 : -1}
             onclick={() => seek(cue)}
           >

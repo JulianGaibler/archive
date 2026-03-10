@@ -1,7 +1,51 @@
+query signupAllowed {
+  signupAllowed
+}
+
+mutation signup($username: String!, $name: String!, $password: String!) {
+  signup(username: $username, name: $name, password: $password)
+}
+
 mutation login($username: String!, $password: String!) {
-  login(username: $username, password: $password)
+  login(username: $username, password: $password) {
+    success
+    requiresTotp
+    pendingToken
+  }
+}
+
+mutation verifyLoginTotp($pendingToken: String!, $code: String!) {
+  verifyLoginTotp(pendingToken: $pendingToken, code: $code)
 }
 
 mutation logout {
   logout
+}
+
+mutation initTotp {
+  initTotp {
+    secret
+    otpauthUrl
+    qrCodeDataUrl
+  }
+}
+
+mutation confirmTotp($code: String!) {
+  confirmTotp(code: $code) {
+    recoveryCodes
+  }
+}
+
+mutation cancelTotpSetup {
+  cancelTotpSetup
+}
+
+mutation disableTotp($password: String!, $code: String!) {
+  disableTotp(password: $password, code: $code)
+}
+
+mutation regenerateRecoveryCodes($password: String!, $code: String!) {
+  regenerateRecoveryCodes(password: $password, code: $code) {
+    recoveryCodes
+  }
 }

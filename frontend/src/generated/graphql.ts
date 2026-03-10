@@ -336,14 +336,25 @@ export enum Language {
   Turkish = 'TURKISH'
 }
 
+export type LoginResult = {
+  __typename?: 'LoginResult';
+  pendingToken?: Maybe<Scalars['String']['output']>;
+  requiresTotp: Scalars['Boolean']['output'];
+  success: Scalars['Boolean']['output'];
+};
+
 export type Mutation = {
   __typename?: 'Mutation';
+  /** Cancels an in-progress TOTP setup. */
+  cancelTotpSetup: Scalars['Boolean']['output'];
   /** Changes the name of the current user. */
   changeName: Scalars['Boolean']['output'];
   /** Changes the password of the current user. */
   changePassword: Scalars['Boolean']['output'];
   /** Deletes the profile picture of the current user. */
   clearProfilePicture: Scalars['Boolean']['output'];
+  /** Confirms TOTP setup by verifying a code. Enables 2FA and returns recovery codes. */
+  confirmTotp: TotpConfirmResult;
   /**
    * Convert an item's file to a different format.
    * Creates new variants while preserving the original.
@@ -374,6 +385,8 @@ export type Mutation = {
   deletePost: Scalars['ID']['output'];
   /** Deletes a temporary file that has not been claimed by a resource. */
   deleteTemporaryFile: Scalars['Boolean']['output'];
+  /** Disables two-factor authentication. Requires password and TOTP code. */
+  disableTotp: Scalars['Boolean']['output'];
   /**
    * Duplicates an item within the same post.
    * Creates an independent copy of the item with its own file copy.
@@ -383,10 +396,12 @@ export type Mutation = {
   duplicateItem: Scalars['ID']['output'];
   /** Edits a post. */
   editPost: Post;
+  /** Initiates TOTP two-factor authentication setup. Returns QR code and secret. */
+  initTotp: TotpSetupResult;
   /** Associates the Telegram ID of a user with their Archive Profil. */
   linkTelegram: Scalars['Boolean']['output'];
-  /** Creates a new session for the user. */
-  login: Scalars['Boolean']['output'];
+  /** Creates a new session for the user. Returns login result with optional TOTP challenge. */
+  login: LoginResult;
   /** Terminates the current users session. */
   logout: Scalars['Boolean']['output'];
   /**
@@ -412,6 +427,8 @@ export type Mutation = {
    * Returns the new file ID for subscription.
    */
   normalizeItem: Scalars['String']['output'];
+  /** Regenerates recovery codes. Requires password and TOTP code. */
+  regenerateRecoveryCodes: TotpConfirmResult;
   /**
    * Remove specific modifications from an item or revert to original.
    * Creates a new file without the specified modifications.
@@ -457,6 +474,8 @@ export type Mutation = {
   uploadItemFile: Scalars['ID']['output'];
   /** Sets the profile picture of the current user. */
   uploadProfilePicture: Scalars['Boolean']['output'];
+  /** Verifies a TOTP code to complete login for users with 2FA enabled. */
+  verifyLoginTotp: Scalars['Boolean']['output'];
 };
 
 
@@ -466,8 +485,14 @@ export type MutationChangeNameArgs = {
 
 
 export type MutationChangePasswordArgs = {
+  code?: InputMaybe<Scalars['String']['input']>;
   newPassword: Scalars['String']['input'];
   oldPassword: Scalars['String']['input'];
+};
+
+
+export type MutationConfirmTotpArgs = {
+  code: Scalars['String']['input'];
 };
 
 
@@ -513,6 +538,12 @@ export type MutationDeletePostArgs = {
 
 export type MutationDeleteTemporaryFileArgs = {
   fileId: Scalars['String']['input'];
+};
+
+
+export type MutationDisableTotpArgs = {
+  code: Scalars['String']['input'];
+  password: Scalars['String']['input'];
 };
 
 
@@ -567,6 +598,12 @@ export type MutationMoveItemArgs = {
 export type MutationNormalizeItemArgs = {
   itemId: Scalars['ID']['input'];
   normalize: NormalizeInput;
+};
+
+
+export type MutationRegenerateRecoveryCodesArgs = {
+  code: Scalars['String']['input'];
+  password: Scalars['String']['input'];
 };
 
 
@@ -626,6 +663,12 @@ export type MutationUploadItemFileArgs = {
 
 export type MutationUploadProfilePictureArgs = {
   file: Scalars['Upload']['input'];
+};
+
+
+export type MutationVerifyLoginTotpArgs = {
+  code: Scalars['String']['input'];
+  pendingToken: Scalars['String']['input'];
 };
 
 export type NewItemInput = {
@@ -767,6 +810,8 @@ export type Query = {
   nodes: Array<Maybe<Node>>;
   /** Returns a list of posts. */
   posts?: Maybe<PostConnection>;
+  /** Returns whether new account signup is allowed on this server. */
+  signupAllowed: Scalars['Boolean']['output'];
   /** Returns user based on username */
   user?: Maybe<User>;
   /** Returns a list of sessions of the the currently authenticated user. */
@@ -903,6 +948,24 @@ export type TemplateInput = {
   areas: Array<TemplateAreaInput>;
 };
 
+export type TotpConfirmResult = {
+  __typename?: 'TotpConfirmResult';
+  recoveryCodes: Array<Scalars['String']['output']>;
+};
+
+export type TotpSetupResult = {
+  __typename?: 'TotpSetupResult';
+  otpauthUrl: Scalars['String']['output'];
+  qrCodeDataUrl: Scalars['String']['output'];
+  secret: Scalars['String']['output'];
+};
+
+export type TotpStatus = {
+  __typename?: 'TotpStatus';
+  enabled: Scalars['Boolean']['output'];
+  recoveryCodesRemaining: Scalars['Int']['output'];
+};
+
 /**
  * Input type for trimming parameters.
  * Defines a time range to trim from video/audio files.
@@ -948,6 +1011,8 @@ export type User = Node & {
   posts?: Maybe<PostConnection>;
   /** Profile picture file containing different sizes. */
   profilePicture?: Maybe<ProfilePictureFile>;
+  /** Two-factor authentication status. Only available for the current user via `me` query. */
+  totpStatus?: Maybe<TotpStatus>;
   /** The username used to login. */
   username: Scalars['String']['output'];
 };
@@ -1020,7 +1085,21 @@ export type VideoItem = Item & Node & {
 export type SettingsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type SettingsQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, linkedTelegram?: boolean | null, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } | null, userSessions: Array<{ __typename?: 'Session', createdAt: any, firstIp: string, id: string, latestIp: string, current: boolean, userAgent: string, updatedAt: any }> };
+export type SettingsQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, linkedTelegram?: boolean | null, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null, totpStatus?: { __typename?: 'TotpStatus', enabled: boolean, recoveryCodesRemaining: number } | null } | null, userSessions: Array<{ __typename?: 'Session', createdAt: any, firstIp: string, id: string, latestIp: string, current: boolean, userAgent: string, updatedAt: any }> };
+
+export type SignupAllowedQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type SignupAllowedQuery = { __typename?: 'Query', signupAllowed: boolean };
+
+export type SignupMutationVariables = Exact<{
+  username: Scalars['String']['input'];
+  name: Scalars['String']['input'];
+  password: Scalars['String']['input'];
+}>;
+
+
+export type SignupMutation = { __typename?: 'Mutation', signup: boolean };
 
 export type LoginMutationVariables = Exact<{
   username: Scalars['String']['input'];
@@ -1028,12 +1107,53 @@ export type LoginMutationVariables = Exact<{
 }>;
 
 
-export type LoginMutation = { __typename?: 'Mutation', login: boolean };
+export type LoginMutation = { __typename?: 'Mutation', login: { __typename?: 'LoginResult', success: boolean, requiresTotp: boolean, pendingToken?: string | null } };
+
+export type VerifyLoginTotpMutationVariables = Exact<{
+  pendingToken: Scalars['String']['input'];
+  code: Scalars['String']['input'];
+}>;
+
+
+export type VerifyLoginTotpMutation = { __typename?: 'Mutation', verifyLoginTotp: boolean };
 
 export type LogoutMutationVariables = Exact<{ [key: string]: never; }>;
 
 
 export type LogoutMutation = { __typename?: 'Mutation', logout: boolean };
+
+export type InitTotpMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type InitTotpMutation = { __typename?: 'Mutation', initTotp: { __typename?: 'TotpSetupResult', secret: string, otpauthUrl: string, qrCodeDataUrl: string } };
+
+export type ConfirmTotpMutationVariables = Exact<{
+  code: Scalars['String']['input'];
+}>;
+
+
+export type ConfirmTotpMutation = { __typename?: 'Mutation', confirmTotp: { __typename?: 'TotpConfirmResult', recoveryCodes: Array<string> } };
+
+export type CancelTotpSetupMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type CancelTotpSetupMutation = { __typename?: 'Mutation', cancelTotpSetup: boolean };
+
+export type DisableTotpMutationVariables = Exact<{
+  password: Scalars['String']['input'];
+  code: Scalars['String']['input'];
+}>;
+
+
+export type DisableTotpMutation = { __typename?: 'Mutation', disableTotp: boolean };
+
+export type RegenerateRecoveryCodesMutationVariables = Exact<{
+  password: Scalars['String']['input'];
+  code: Scalars['String']['input'];
+}>;
+
+
+export type RegenerateRecoveryCodesMutation = { __typename?: 'Mutation', regenerateRecoveryCodes: { __typename?: 'TotpConfirmResult', recoveryCodes: Array<string> } };
 
 type ItemData_AudioItem_Fragment = { __typename: 'AudioItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'AudioFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, unmodifiedCompressedPath?: string | null, waveform: Array<number>, waveformThumbnail: Array<number>, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, trim?: { __typename?: 'TrimMetadata', startTime: number, endTime: number } | null, normalize?: { __typename?: 'NormalizeMetadata', enabled: boolean } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } };
 
@@ -1348,6 +1468,7 @@ export type ChangeNameMutation = { __typename?: 'Mutation', changeName: boolean 
 export type ChangePasswordMutationVariables = Exact<{
   oldPassword: Scalars['String']['input'];
   newPassword: Scalars['String']['input'];
+  code?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 
@@ -1683,6 +1804,10 @@ export const SettingsDocument = gql`
       profilePicture64
     }
     linkedTelegram
+    totpStatus {
+      enabled
+      recoveryCodesRemaining
+    }
   }
   userSessions {
     createdAt
@@ -1695,14 +1820,66 @@ export const SettingsDocument = gql`
   }
 }
     `;
+export const SignupAllowedDocument = gql`
+    query signupAllowed {
+  signupAllowed
+}
+    `;
+export const SignupDocument = gql`
+    mutation signup($username: String!, $name: String!, $password: String!) {
+  signup(username: $username, name: $name, password: $password)
+}
+    `;
 export const LoginDocument = gql`
     mutation login($username: String!, $password: String!) {
-  login(username: $username, password: $password)
+  login(username: $username, password: $password) {
+    success
+    requiresTotp
+    pendingToken
+  }
+}
+    `;
+export const VerifyLoginTotpDocument = gql`
+    mutation verifyLoginTotp($pendingToken: String!, $code: String!) {
+  verifyLoginTotp(pendingToken: $pendingToken, code: $code)
 }
     `;
 export const LogoutDocument = gql`
     mutation logout {
   logout
+}
+    `;
+export const InitTotpDocument = gql`
+    mutation initTotp {
+  initTotp {
+    secret
+    otpauthUrl
+    qrCodeDataUrl
+  }
+}
+    `;
+export const ConfirmTotpDocument = gql`
+    mutation confirmTotp($code: String!) {
+  confirmTotp(code: $code) {
+    recoveryCodes
+  }
+}
+    `;
+export const CancelTotpSetupDocument = gql`
+    mutation cancelTotpSetup {
+  cancelTotpSetup
+}
+    `;
+export const DisableTotpDocument = gql`
+    mutation disableTotp($password: String!, $code: String!) {
+  disableTotp(password: $password, code: $code)
+}
+    `;
+export const RegenerateRecoveryCodesDocument = gql`
+    mutation regenerateRecoveryCodes($password: String!, $code: String!) {
+  regenerateRecoveryCodes(password: $password, code: $code) {
+    recoveryCodes
+  }
 }
     `;
 export const ConvertItemDocument = gql`
@@ -1948,8 +2125,12 @@ export const ChangeNameDocument = gql`
 }
     `;
 export const ChangePasswordDocument = gql`
-    mutation changePassword($oldPassword: String!, $newPassword: String!) {
-  changePassword(oldPassword: $oldPassword, newPassword: $newPassword)
+    mutation changePassword($oldPassword: String!, $newPassword: String!, $code: String) {
+  changePassword(
+    oldPassword: $oldPassword
+    newPassword: $newPassword
+    code: $code
+  )
 }
     `;
 export const UploadPictureDocument = gql`
@@ -2047,8 +2228,16 @@ export type SdkFunctionWrapper = <T>(action: (requestHeaders?:Record<string, str
 
 const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) => action();
 const SettingsDocumentString = print(SettingsDocument);
+const SignupAllowedDocumentString = print(SignupAllowedDocument);
+const SignupDocumentString = print(SignupDocument);
 const LoginDocumentString = print(LoginDocument);
+const VerifyLoginTotpDocumentString = print(VerifyLoginTotpDocument);
 const LogoutDocumentString = print(LogoutDocument);
+const InitTotpDocumentString = print(InitTotpDocument);
+const ConfirmTotpDocumentString = print(ConfirmTotpDocument);
+const CancelTotpSetupDocumentString = print(CancelTotpSetupDocument);
+const DisableTotpDocumentString = print(DisableTotpDocument);
+const RegenerateRecoveryCodesDocumentString = print(RegenerateRecoveryCodesDocument);
 const ConvertItemDocumentString = print(ConvertItemDocument);
 const CropItemDocumentString = print(CropItemDocument);
 const TrimItemDocumentString = print(TrimItemDocument);
@@ -2091,11 +2280,35 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     settings(variables?: SettingsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: SettingsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<SettingsQuery>(SettingsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'settings', 'query', variables);
     },
+    signupAllowed(variables?: SignupAllowedQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: SignupAllowedQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<SignupAllowedQuery>(SignupAllowedDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'signupAllowed', 'query', variables);
+    },
+    signup(variables: SignupMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: SignupMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<SignupMutation>(SignupDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'signup', 'mutation', variables);
+    },
     login(variables: LoginMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: LoginMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<LoginMutation>(LoginDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'login', 'mutation', variables);
     },
+    verifyLoginTotp(variables: VerifyLoginTotpMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: VerifyLoginTotpMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<VerifyLoginTotpMutation>(VerifyLoginTotpDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'verifyLoginTotp', 'mutation', variables);
+    },
     logout(variables?: LogoutMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: LogoutMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<LogoutMutation>(LogoutDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'logout', 'mutation', variables);
+    },
+    initTotp(variables?: InitTotpMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: InitTotpMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<InitTotpMutation>(InitTotpDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'initTotp', 'mutation', variables);
+    },
+    confirmTotp(variables: ConfirmTotpMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ConfirmTotpMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ConfirmTotpMutation>(ConfirmTotpDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'confirmTotp', 'mutation', variables);
+    },
+    cancelTotpSetup(variables?: CancelTotpSetupMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: CancelTotpSetupMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<CancelTotpSetupMutation>(CancelTotpSetupDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'cancelTotpSetup', 'mutation', variables);
+    },
+    disableTotp(variables: DisableTotpMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: DisableTotpMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<DisableTotpMutation>(DisableTotpDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'disableTotp', 'mutation', variables);
+    },
+    regenerateRecoveryCodes(variables: RegenerateRecoveryCodesMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: RegenerateRecoveryCodesMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<RegenerateRecoveryCodesMutation>(RegenerateRecoveryCodesDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'regenerateRecoveryCodes', 'mutation', variables);
     },
     convertItem(variables: ConvertItemMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ConvertItemMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<ConvertItemMutation>(ConvertItemDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'convertItem', 'mutation', variables);

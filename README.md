@@ -18,195 +18,113 @@ Archive is structured as a monorepo containing:
   - GraphQL client with graphql-request
   - Type-safe development with generated types
 
-The intended development workflow is to run both services directly on your machine using npm scripts. There is a docker-compose setup for settign up the postgres database though. For production, Archive is designed to run in Docker containers with a full stack deployment using Docker Compose.
+For development, run both services directly on your machine using npm scripts — a docker-compose setup handles the postgres database. For production, Archive runs in Docker containers via `deploy.sh`.
 
-## Development Setup
+## Development
 
 ### Prerequisites
 
 - **Node.js** 18+ and npm
-- **(optional) Docker** and Docker Compose for database setup
-- **PostgreSQL** (if not using Docker)
+- **Docker** and Docker Compose (for the dev database)
+- Or a standalone **PostgreSQL** instance if not using Docker
 
-### Dev Environment Configuration
+### Getting Started
 
-1. **Copy Environment Template**
-   ```bash
-   cp .env.example .env.dev
-   ```
-
-2. **Configure Development Variables**
-   Edit `.env.dev` with your preferred settings. Key variables for development:
-   ```bash
-   # Database (required)
-   POSTGRES_USER=archive
-   POSTGRES_PASSWORD=archive
-   POSTGRES_DB=archive_dev
-   
-   # Session security (required - change from default!)
-   BACKEND_SESSION_SECRETS=1=your-dev-session-secret
-   
-   # Ports (optional - defaults shown)
-   BACKEND_PORT=4000
-   FRONTEND_PORT=4321
-   
-   # CORS (should match frontend port)
-   CORS_ORIGIN=http://localhost:4321
-   ```
-
-### Setup
-
-1. **Install Dependencies**
-   ```bash
-   npm run install:all
-   ```
-
-2. **Start Database**
-   ```bash
-   npm run dev:db:start
-   ```
-
-3. **Run Database Migrations**
-   ```bash
-   npm run dev:migrate
-   ```
-
-4. **Generate Frontend Types** (if backend schema changed)
-   ```bash
-   cd frontend && npm run generate
-   ```
-
-### Running
-
-**Start Both Services**
 ```bash
-npm run dev
+npm run setup-env:dev    # interactive env setup — writes .env.dev
+npm run install:all      # install all dependencies
+npm run dev:setup        # start dev database (Docker) and run migrations
+npm run dev              # start both backend and frontend with hot reload
 ```
 
-This runs both backend and frontend in parallel with hot reloading.
-
-**Individual Services**
+**Individual services:**
 ```bash
-# Backend only
-npm run dev:backend
-
-# Frontend only  
-npm run dev:frontend
+npm run dev:backend    # backend only
+npm run dev:frontend   # frontend only
 ```
 
-**Access Points**
+**Access points:**
 - Frontend: http://localhost:4321
 - Backend GraphQL: http://localhost:4000/graphql
 - Database: localhost:5432
 
-### Development Workflow
-
-1. **Database Changes**: Create migrations in `/backend/db/migrations/`
-2. **GraphQL Schema or Query Changes**: Update schema, then run `npm run generate` in frontend
-3. **Testing**: Use GraphQL Playground at `/graphql` for API testing
-
-### Stopping Development
-
+**Stop the database:**
 ```bash
-# Stop database
 npm run dev:db:stop
-
-# Or stop all Docker containers
-docker compose -f docker-compose.dev.yml down
 ```
 
-## Production Deployment
+### Database & Migrations
 
-### Environment Setup
+Migrations use **node-pg-migrate** and live in `backend/migrations/`.
 
-1. **Copy Production Template**
-   ```bash
-   cp .env.example .env.prod
-   ```
-
-2. **Configure Production Variables**
-   Edit `.env.prod` with production settings:
-   ```bash
-   # Environment
-   NODE_ENV=production
-   
-   # Database (use strong credentials!)
-   POSTGRES_USER=archive_prod
-   POSTGRES_PASSWORD=strong-random-password
-   POSTGRES_DB=archive_production
-   
-   # Security (CRITICAL - use strong, unique secrets!)
-   BACKEND_SESSION_SECRETS=1=strong-random-secret-key
-   
-   # URLs (adjust for your domain)
-   CORS_ORIGIN=https://your-domain.com
-   FRONTEND_FILES_BASE_URL=https://your-domain.com/files
-   FRONTEND_PUBLIC_API_BASE_URL=
-   
-   # Docker service configuration
-   BACKEND_POSTGRES_HOST=database
-   FRONTEND_PRIVATE_API_BASE_URL=http://backend:4000
-   DOCKER_FRONTEND_HOST=frontend
-   DOCKER_BACKEND_HOST=backend
-   ```
-
-### Build and Deploy
-
-**Build Docker Images**
 ```bash
-npm run docker:build
+# Create a new migration
+cd backend && npm run migrate -- create <name> --language ts
+
+# Apply pending migrations
+npm run dev:migrate
+# or: cd backend && npm run migrate -- up
+
+# Roll back the last migration
+cd backend && npm run migrate -- down
 ```
 
-**Deploy Stack**
+The **Drizzle ORM schema** (`backend/db/schema.ts`) is generated via introspection — don't edit it by hand:
+
 ```bash
-npm run docker:deploy
+cd backend && npm run drizzle -- introspect    # regenerate schema from database
+npm run drizzle:patch                           # adds @ts-nocheck (fixes circular FK type issues)
 ```
 
-This script:
-1. Builds all Docker images
-2. Starts the production stack
-3. Runs database migrations
-4. Validates service health
+### GraphQL Code Generation
 
-**Manual Control**
+Backend schema files live in `backend/schema/*.graphql`. Frontend queries live in `frontend/src/queries/*.gql`.
+
+After changing the **schema**:
 ```bash
-# Start services
-npm run docker:start
-
-# Stop services  
-npm run docker:stop
-
-# Restart services
-npm run docker:restart
-
-# View logs
-npm run docker:logs
-npm run docker:logs:backend
-npm run docker:logs:frontend
+cd backend && npm run generate     # regenerate resolver types
+cd frontend && npm run generate    # regenerate client types
 ```
 
-## Scripts Reference
+After changing **frontend queries only**:
+```bash
+cd frontend && npm run generate
+```
 
-**Development**
-- `npm run dev` - Start both services with hot reload
-- `npm run dev:setup` - Start database and run migrations
-- `npm run dev:backend` - Backend only
-- `npm run dev:frontend` - Frontend only
-- `npm run dev:db:start` - Start development database
-- `npm run dev:db:stop` - Stop development database
-- `npm run dev:migrate` - Run database migrations
+### Other Dev Scripts
 
-**Production**
-- `npm run docker:build` - Build Docker images
-- `npm run docker:deploy` - Full deployment with migrations
-- `npm run docker:start` - Start production stack
-- `npm run docker:stop` - Stop production stack
-- `npm run docker:restart` - Restart production stack
-- `npm run docker:logs` - View all logs
+```bash
+npm run lint                    # lint both services
+npm run prettier                # format code with Prettier
+npm run generate-env-examples   # regenerate .env.*.example files
+npm run generate-ci-env         # generate CI environment file
+```
 
-**Utilities**
-- `npm run install:all` - Install all dependencies
-- `npm run build` - Build both services for production
+## Deployment
+
+Archive deploys as a Docker Compose stack: PostgreSQL + Backend + Frontend + Nginx reverse proxy (port 8080).
+
+### Setup & Deploy
+
+```bash
+npm run setup-env:prod    # interactive env setup — writes .env.prod
+npm run docker:deploy     # build, start, migrate, and health-check
+```
+
+`docker:deploy` runs `deploy.sh`, which handles the full lifecycle: building images, starting containers, running migrations, and validating that services are healthy.
+
+### Management
+
+```bash
+npm run docker:build              # build Docker images
+npm run docker:start              # start production stack
+npm run docker:stop               # stop production stack
+npm run docker:restart            # restart production stack
+npm run docker:logs               # view all logs
+npm run docker:logs:backend       # backend logs only
+npm run docker:logs:frontend      # frontend logs only
+npm run docker:logs:postgres      # database logs only
+```
 
 ## Contribution and Commits
 

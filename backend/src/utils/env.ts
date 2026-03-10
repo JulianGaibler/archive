@@ -129,12 +129,35 @@ const ENV_VARIABLES = [
     fallback: 'disallowed',
   },
 
+  // Trust proxy
+  {
+    name: 'BACKEND_TRUST_PROXY',
+    description: 'Express trust proxy setting (loopback, true, or IP/CIDR)',
+    type: 'string',
+    fallback: 'loopback',
+  },
+
   // Telegram bot
   {
     name: 'BACKEND_TELEGRAM_BOT_TOKEN',
     description: 'Telegram bot token',
     type: 'string',
     fallback: '',
+  },
+
+  // TOTP Two-Factor Authentication
+  {
+    name: 'BACKEND_TOTP_ENCRYPTION_KEY',
+    description:
+      '32-byte hex key for AES-256-GCM encryption of TOTP secrets. Empty = 2FA feature disabled.',
+    type: 'string',
+    fallback: '',
+  },
+  {
+    name: 'BACKEND_TOTP_ISSUER',
+    description: 'Issuer name shown in authenticator apps',
+    type: 'string',
+    fallback: 'Archive',
   },
 ] as const
 

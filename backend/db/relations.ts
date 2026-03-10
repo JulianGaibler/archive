@@ -1,18 +1,18 @@
 import { relations } from "drizzle-orm/relations";
-import { user, item, post, file, session, keyword, keywordToPost, fileVariant } from "./schema";
+import { user, item, file, post, session, keyword, keywordToPost, fileVariant } from "./schema";
 
 export const itemRelations = relations(item, ({one}) => ({
 	user: one(user, {
 		fields: [item.creatorId],
 		references: [user.id]
 	}),
-	post: one(post, {
-		fields: [item.postId],
-		references: [post.id]
-	}),
 	file: one(file, {
 		fields: [item.fileId],
 		references: [file.id]
+	}),
+	post: one(post, {
+		fields: [item.postId],
+		references: [post.id]
 	}),
 }));
 
@@ -20,14 +20,27 @@ export const userRelations = relations(user, ({one, many}) => ({
 	items: many(item),
 	posts: many(post),
 	sessions: many(session),
-	files: many(file, {
-		relationName: "file_creatorId_user_id"
-	}),
 	file: one(file, {
 		fields: [user.profilePictureFileId],
 		references: [file.id],
 		relationName: "user_profilePictureFileId_file_id"
 	}),
+	files: many(file, {
+		relationName: "file_creatorId_user_id"
+	}),
+}));
+
+export const fileRelations = relations(file, ({one, many}) => ({
+	items: many(item),
+	users: many(user, {
+		relationName: "user_profilePictureFileId_file_id"
+	}),
+	user: one(user, {
+		fields: [file.creatorId],
+		references: [user.id],
+		relationName: "file_creatorId_user_id"
+	}),
+	fileVariants: many(fileVariant),
 }));
 
 export const postRelations = relations(post, ({one, many}) => ({
@@ -37,27 +50,6 @@ export const postRelations = relations(post, ({one, many}) => ({
 		references: [user.id]
 	}),
 	keywordToPosts: many(keywordToPost),
-}));
-
-export const fileRelations = relations(file, ({one, many}) => ({
-	items: many(item),
-	user: one(user, {
-		fields: [file.creatorId],
-		references: [user.id],
-		relationName: "file_creatorId_user_id"
-	}),
-	file: one(file, {
-		fields: [file.originalFileId],
-		references: [file.id],
-		relationName: "file_originalFileId_file_id"
-	}),
-	files: many(file, {
-		relationName: "file_originalFileId_file_id"
-	}),
-	users: many(user, {
-		relationName: "user_profilePictureFileId_file_id"
-	}),
-	fileVariants: many(fileVariant),
 }));
 
 export const sessionRelations = relations(session, ({one}) => ({

@@ -3,7 +3,7 @@ import env from './src/utils/env.js'
 
 export default defineConfig({
   out: './db',
-  schema: './src/db/schema.ts',
+  schema: './db/schema.ts',
   dialect: 'postgresql',
   dbCredentials: {
     host: env.BACKEND_POSTGRES_HOST,

@@ -1,0 +1,191 @@
+---
+import Layout from '@src/layouts/Layout.astro'
+import {
+  VerifyLoginTotpDocument,
+  type VerifyLoginTotpMutation,
+  type VerifyLoginTotpMutationVariables,
+} from '@src/generated/graphql'
+import TextField from 'tint/components/TextField.svelte'
+import Button from 'tint/components/Button.svelte'
+import MessageBox from 'tint/components/MessageBox.svelte'
+import IconWarning from 'tint/icons/20-warning.svg?raw'
+
+const ssrClient = Astro.locals.gqlClient
+
+let error = ''
+
+if (Astro.locals.me.signedIn) {
+  return Astro.redirect('/')
+}
+
+// Read the pending token from cookie
+const pendingToken = Astro.cookies.get('pending-totp')?.value
+if (!pendingToken) {
+  return Astro.redirect('/login')
+}
+
+// Get redirect URL from query params and validate it's safe
+const requestedRedirect = new URL(Astro.request.url).searchParams.get(
+  'redirect',
+)
+let redirectUrl = '/'
+if (
+  requestedRedirect &&
+  requestedRedirect.startsWith('/') &&
+  !requestedRedirect.startsWith('//')
+) {
+  redirectUrl = requestedRedirect
+}
+
+// Handle POST request (form submission)
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData()
+    const code = formData.get('code')?.toString()?.trim()
+    const formRedirect = formData.get('redirect')?.toString()
+    let safeRedirect = '/'
+    if (
+      formRedirect &&
+      formRedirect.startsWith('/') &&
+      !formRedirect.startsWith('//')
+    ) {
+      safeRedirect = formRedirect
+    }
+
+    if (!code) {
+      error = 'Please enter a verification code'
+    } else {
+      const result = await ssrClient.request<
+        VerifyLoginTotpMutation,
+        VerifyLoginTotpMutationVariables
+      >(VerifyLoginTotpDocument, {
+        pendingToken,
+        code,
+      })
+
+      if (result.verifyLoginTotp) {
+        // Clear the pending token cookie
+        Astro.cookies.delete('pending-totp', { path: '/login' })
+        return Astro.redirect(safeRedirect)
+      } else {
+        error = 'Verification failed. Please try again.'
+      }
+    }
+  } catch (err: unknown) {
+    console.error('TOTP verification error:', err)
+    const message =
+      err &&
+      typeof err === 'object' &&
+      'response' in err &&
+      (err as { response?: { errors?: { message: string }[] } }).response
+        ?.errors?.[0]?.message
+    if (
+      message &&
+      (message.includes('expired') || message.includes('Invalid or expired'))
+    ) {
+      // Token expired or consumed - redirect back to login
+      Astro.cookies.delete('pending-totp', { path: '/login' })
+      return Astro.redirect(
+        `/login${redirectUrl !== '/' ? `?redirect=${encodeURIComponent(redirectUrl)}` : ''}`,
+      )
+    }
+    error = message || 'Verification failed. Please try again.'
+  }
+}
+---
+
+<Layout title="Verify Identity" flexCenter>
+  <div class="background">
+    <div class="brand">
+      <h1 class="tint--type-display-sans-3">Archive</h1>
+      <p class="tint--type-title-serif-3">Two-factor authentication</p>
+    </div>
+    <div class="card tint--card">
+      <h2 class="tint--type-title-serif-2">Verify your identity</h2>
+      <p class="tint--type-ui description">
+        Enter the 6-digit code from your authenticator app.
+      </p>
+      <form method="POST">
+        {
+          error && (
+            <MessageBox class="error" icon={IconWarning}>
+              <h2>Error</h2>
+              <p>{error}</p>
+            </MessageBox>
+          )
+        }
+        <TextField
+          client:load
+          type="text"
+          id="code"
+          name="code"
+          label="Verification code"
+          required
+          autocomplete="one-time-code"
+          inputmode="numeric"
+          pattern="[0-9a-zA-Z]*"
+        />
+
+        <p class="tint--type-ui hint">You can also use a recovery code</p>
+
+        <div class="form-actions">
+          <a href="/login" class="tint--type-ui back-link">Back to login</a>
+          <Button submit={true}>Verify</Button>
+        </div>
+
+        <input type="hidden" name="redirect" value={redirectUrl} />
+      </form>
+    </div>
+  </div>
+</Layout>
+
+<style lang="sass">
+  .background
+    background: var(--tint-text-accent)
+    align-self: stretch
+    justify-self: stretch
+    display: flex
+    align-items: center
+    justify-content: center
+    flex: 1
+    gap: 80px
+    padding: tint.$size-16
+    @media (max-width: tint.$breakpoint-md)
+      flex-direction: column
+      justify-content: flex-start
+      gap: tint.$size-32
+  .brand
+    color: white
+    padding: tint.$size-32
+  .card
+    padding: tint.$size-32
+    width: 100%
+    box-sizing: border-box
+    max-width: 400px
+  .card, .card > form
+    display: flex
+    flex-direction: column
+    gap: tint.$size-16
+  .card > form
+    gap: tint.$size-12
+    :global(.error)
+      width: 100%
+      box-sizing: border-box
+  .description
+    color: var(--tint-text-secondary)
+    margin: 0
+  .hint
+    color: var(--tint-text-secondary)
+    margin: 0
+    font-size: 0.85em
+  .form-actions
+    display: flex
+    align-items: center
+    justify-content: space-between
+    width: 100%
+  .back-link
+    color: var(--tint-text-secondary)
+    text-decoration: none
+    &:hover
+      text-decoration: underline
+</style>

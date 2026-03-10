@@ -1,6 +1,18 @@
 # Changelog
 # Labels: [Added], [Fixed], [Improved], [Removed], [Deprecated], [Security]
+# The `deploy` section is only shown in GitHub releases, not in the app.
 
+2.4.1:
+  date: '2026-03-10'
+  changes:
+    - '[Added] Two-factor authentication (2FA) using authenticator apps'
+    - '[Improved] Caption appearance settings for font size, color, and background opacity'
+    - '[Security] Added security headers to prevent clickjacking and MIME type sniffing'
+    - '[Security] Hardened server configuration and improved session security'
+  deploy:
+    - 'New environment variables: `BACKEND_TOTP_ENCRYPTION_KEY`, `BACKEND_TOTP_ISSUER`, `BACKEND_TRUST_PROXY`'
+    - 'Updated `.env.prod.example` with new variables'
+    - 'Nginx configuration updated with security headers and stricter CORS policy'
 2.4.0:
   date: '2026-03-08'
   notes: |

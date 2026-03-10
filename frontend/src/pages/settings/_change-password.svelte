@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { preventDefault } from 'svelte/legacy'
-
   import TextField from 'tint/components/TextField.svelte'
   import Button from 'tint/components/Button.svelte'
   import MessageBox from 'tint/components/MessageBox.svelte'
@@ -22,16 +20,24 @@
 
   const sdk = getSdk(webClient)
 
+  interface Props {
+    totpEnabled: boolean
+  }
+
+  const { totpEnabled }: Props = $props()
+
   interface PasswordFormData {
     oldPassword: UpdateValue<string>
     newPassword: UpdateValue<string>
     newPasswordConfirm: UpdateValue<string>
+    code: UpdateValue<string>
   }
 
   let data = $state<PasswordFormData>({
     oldPassword: createUpdateValue(''),
     newPassword: createUpdateValue(''),
     newPasswordConfirm: createUpdateValue(''),
+    code: createUpdateValue(''),
   })
 
   let loading = $state(false)
@@ -69,6 +75,7 @@
     const apiArgs: ChangePasswordMutationVariables = {
       oldPassword: data.oldPassword.value,
       newPassword: data.newPassword.value,
+      ...(totpEnabled && data.code.value ? { code: data.code.value } : {}),
     }
 
     sdk
@@ -95,6 +102,7 @@
           data.oldPassword.value = ''
           data.newPassword.value = ''
           data.newPasswordConfirm.value = ''
+          data.code.value = ''
         }
       })
       .catch((err) => {
@@ -141,7 +149,12 @@
     <p>Your password has been updated</p>
   </MessageBox>
 {/if}
-<form onsubmit={preventDefault(() => tryChangePassword())}>
+<form
+  onsubmit={(e) => {
+    e.preventDefault()
+    tryChangePassword()
+  }}
+>
   <TextField
     id="old-password"
     type="password"
@@ -172,6 +185,19 @@
     error={data.newPasswordConfirm.error}
     oninput={() => (data.newPasswordConfirm.error = undefined)}
   />
+  {#if totpEnabled}
+    <TextField
+      id="totp-code"
+      type="text"
+      label="Two-factor code"
+      inputmode="numeric"
+      autocomplete="one-time-code"
+      bind:value={data.code.value}
+      disabled={loading}
+      error={data.code.error}
+      oninput={() => (data.code.error = undefined)}
+    />
+  {/if}
   <Button submit={true} {loading}>Update password</Button>
 </form>
 
