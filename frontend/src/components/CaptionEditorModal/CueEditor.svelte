@@ -12,6 +12,7 @@
 
   interface Props {
     cue: Cue | null
+    cueIndex: number
     computedEndMs: number
     allVoices: string[]
     isLocked: boolean
@@ -21,6 +22,7 @@
 
   let {
     cue,
+    cueIndex,
     computedEndMs,
     allVoices,
     isLocked,
@@ -82,10 +84,15 @@
   let voiceValue = $state<string | undefined>(undefined)
   let speakerElement = $state<HTMLInputElement | undefined>()
 
-  // Sync: cue → voiceValue
+  // Sync: cue → voiceValue (only blur when switching to a different cue)
+  let prevCueIndex = $state(-1)
+
   $effect(() => {
-    // Blur the speaker field so the Autocomplete accepts the new value
-    if (speakerElement && speakerElement === document.activeElement) {
+    const idx = cueIndex
+    const changed = idx !== prevCueIndex
+    prevCueIndex = idx
+
+    if (changed && speakerElement && speakerElement === document.activeElement) {
       speakerElement.blur()
     }
     voiceValue = cue?.voice ?? undefined

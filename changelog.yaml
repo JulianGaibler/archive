@@ -9,6 +9,8 @@
     - '[Improved] Caption appearance settings for font size, color, and background opacity'
     - '[Security] Added security headers to prevent clickjacking and MIME type sniffing'
     - '[Security] Hardened server configuration and improved session security'
+    - '[Improved] Telegram bot inline results for audio now include captions and more descriptive titles'
+    - '[Fixed] Speaker field in caption editor no longer loses focus on every keystroke'
   deploy:
     - 'New environment variables: `BACKEND_TOTP_ENCRYPTION_KEY`, `BACKEND_TOTP_ISSUER`, `BACKEND_TRUST_PROXY`'
     - 'Updated `.env.prod.example` with new variables'

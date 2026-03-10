@@ -532,6 +532,7 @@
 
             <CueEditor
               cue={selectedCue}
+              cueIndex={selectedCueIndex}
               {computedEndMs}
               {allVoices}
               {isLocked}

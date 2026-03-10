@@ -528,10 +528,16 @@ function convertToInlineQueryResult(items: ItemWithPost[]) {
       description = undefined
     }
 
+    // Telegram inline results support a caption field (max 1024 chars)
+    const caption = cap
+      ? cleanAndTruncate(cap, 1024)
+      : undefined
+
     const base = {
       id: item.id,
       title,
       description,
+      ...(caption && { caption }),
     }
 
     // Get file paths if available
@@ -584,8 +590,13 @@ function convertToInlineQueryResult(items: ItemWithPost[]) {
       if (!paths?.compressedPath) {
         return articleFallback
       }
+      const snippet = desc || cap
+      const audioTitle = snippet
+        ? `${title} — ${cleanAndTruncate(snippet, 20)}`
+        : title
       return {
         ...base,
+        title: audioTitle,
         type: 'audio',
         audio_url: `${ORIGIN}${paths.compressedPath}`,
       }
