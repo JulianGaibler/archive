@@ -12,6 +12,8 @@
     clearValidationErrors,
     type UpdateValue,
   } from '@src/utils/edit-utils'
+  import { onMount } from 'svelte'
+  import { startAuthentication } from '@simplewebauthn/browser'
 
   const sdk = getSdk(webClient)
 
@@ -30,6 +32,14 @@
   let pendingToken = $state('')
   let loading = $state(false)
   let globalError: string | undefined = $state(initialError)
+  let passkeyAvailable = $state(false)
+  let passkeyLoading = $state(false)
+
+  onMount(() => {
+    passkeyAvailable =
+      typeof window !== 'undefined' &&
+      typeof window.PublicKeyCredential !== 'undefined'
+  })
 
   function clearErrors() {
     clearValidationErrors({ username, password, code })
@@ -126,6 +136,50 @@
       })
   }
 
+  async function tryPasskeyLogin() {
+    clearErrors()
+    passkeyLoading = true
+    try {
+      const genRes = await sdk.generatePasskeyAuthenticationOptions()
+      const genErr = getOperationResultError(genRes)
+      if (genErr) {
+        globalError = genErr.message
+        return
+      }
+
+      const optionsJSON = JSON.parse(
+        genRes.data!.generatePasskeyAuthenticationOptions,
+      )
+
+      let authResp
+      try {
+        authResp = await startAuthentication({ optionsJSON })
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'NotAllowedError') {
+          return // User cancelled
+        }
+        throw err
+      }
+
+      const verifyRes = await sdk.verifyPasskeyAuthentication({
+        response: JSON.stringify(authResp),
+      })
+      const verifyErr = getOperationResultError(verifyRes)
+      if (verifyErr) {
+        globalError = verifyErr.message
+        return
+      }
+
+      window.location.href = redirectUrl
+    } catch (e) {
+      globalError =
+        getOperationResultError(e)?.message ||
+        'Passkey login failed. Please try again.'
+    } finally {
+      passkeyLoading = false
+    }
+  }
+
   function backToCredentials() {
     phase = 'credentials'
     code = createUpdateValue('')
@@ -183,6 +237,19 @@
     </div>
     <input type="hidden" name="redirect" value={redirectUrl} />
   </form>
+  {#if passkeyAvailable}
+    <div class="divider">
+      <span class="tint--type-ui divider-text">or</span>
+    </div>
+    <Button
+      variant="secondary"
+      onclick={tryPasskeyLogin}
+      loading={passkeyLoading}
+      disabled={loading}
+    >
+      Sign in with a passkey
+    </Button>
+  {/if}
 {:else}
   <h2 class="tint--type-title-serif-2">Verify your identity</h2>
   <form
@@ -253,6 +320,18 @@ form
   cursor: pointer
   font: inherit
 .hint
+  color: var(--tint-text-secondary)
+.divider
+  display: flex
+  align-items: center
+  gap: tint.$size-12
+  &::before, &::after
+    content: ''
+    flex: 1
+    height: 1px
+    background: var(--tint-border, var(--tint-text-secondary))
+    opacity: 0.3
+.divider-text
   color: var(--tint-text-secondary)
 
 </style>

@@ -6,6 +6,7 @@ import { DbConnection } from '@src/Connection.js'
 import {
   ItemModel,
   KeywordModel,
+  PasskeyModel,
   PostModel,
   SessionModel,
   UserModel,
@@ -42,6 +43,7 @@ function extractWsClientIp(request: {
 const loaders = {
   item: ItemModel.getLoaders,
   keyword: KeywordModel.getLoaders,
+  passkey: PasskeyModel.getLoaders,
   post: PostModel.getLoaders,
   session: SessionModel.getLoaders,
   user: UserModel.getLoaders,

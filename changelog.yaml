@@ -6,15 +6,16 @@
   date: '2026-03-10'
   changes:
     - '[Added] Two-factor authentication (2FA) using authenticator apps'
+    - '[Added] Passkey authentication support as an alternative to passwords'
     - '[Improved] Caption appearance settings for font size, color, and background opacity'
+    - '[Fixed] Speaker field in caption editor no longer loses focus on every keystroke'
     - '[Security] Added security headers to prevent clickjacking and MIME type sniffing'
     - '[Security] Hardened server configuration and improved session security'
-    - '[Improved] Telegram bot inline results for audio now include captions and more descriptive titles'
-    - '[Fixed] Speaker field in caption editor no longer loses focus on every keystroke'
   deploy:
     - 'New environment variables: `BACKEND_TOTP_ENCRYPTION_KEY`, `BACKEND_TOTP_ISSUER`, `BACKEND_TRUST_PROXY`'
     - 'Updated `.env.prod.example` with new variables'
     - 'Nginx configuration updated with security headers and stricter CORS policy'
+    - 'Added centralized authorization system'
 2.4.0:
   date: '2026-03-08'
   notes: |

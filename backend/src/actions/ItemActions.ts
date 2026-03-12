@@ -13,11 +13,8 @@ import PaginationUtils, {
   PaginationArgs,
   Connection,
 } from './PaginationUtils.js'
-import {
-  NotFoundError,
-  InputError,
-  AuthorizationError,
-} from '@src/errors/index.js'
+import { NotFoundError, InputError } from '@src/errors/index.js'
+import { authorize, policies } from '@src/authorization/index.js'
 import PostModel from '@src/models/PostModel.js'
 import { UserExternal, UserInternal } from '@src/models/UserModel.js'
 import {
@@ -269,10 +266,7 @@ const ItemActions = {
       throw new NotFoundError('Item not found')
     }
 
-    // Validate ownership
-    if (item.creatorId !== userId) {
-      throw new AuthorizationError('You can only modify your own items')
-    }
+    authorize(policies.item.modify, userId, item.creatorId)
 
     // Check if item has a file
     if (!item.fileId) {
@@ -443,10 +437,7 @@ const ItemActions = {
       throw new NotFoundError('Item not found')
     }
 
-    // Validate ownership
-    if (item.creatorId !== userId) {
-      throw new AuthorizationError('You can only modify your own items')
-    }
+    authorize(policies.item.removeModifications, userId, item.creatorId)
 
     // Check if item has a file
     if (!item.fileId) {
@@ -483,10 +474,7 @@ const ItemActions = {
       throw new NotFoundError('Item not found')
     }
 
-    // Validate ownership
-    if (item.creatorId !== userId) {
-      throw new AuthorizationError('You can only modify your own items')
-    }
+    authorize(policies.item.resetAndReprocess, userId, item.creatorId)
 
     // Check if item has a file
     if (!item.fileId) {
@@ -515,9 +503,7 @@ const ItemActions = {
     const itemId = ItemModel.decodeId(fields.itemId)
     const item = await ctx.dataLoaders.item.getById.load(itemId)
     if (!item) throw new NotFoundError('Item not found')
-    if (item.creatorId !== userId) {
-      throw new AuthorizationError('You can only modify your own items')
-    }
+    authorize(policies.item.setTemplate, userId, item.creatorId)
     if (!item.fileId) {
       throw new InputError('Item does not have an associated file')
     }

@@ -959,7 +959,7 @@ export function createEditManager(
         console.error(result)
         openDialog?.({
           heading: 'Error',
-          children: `Failed to delete item: ${error}`,
+          children: `Failed to delete item: ${error.message}`,
         })
         return false
       }
@@ -1029,7 +1029,7 @@ export function createEditManager(
         console.error(result)
         openDialog?.({
           heading: 'Error',
-          children: `Failed to delete post: ${error}`,
+          children: `Failed to delete post: ${error.message}`,
         })
         return false
       }
@@ -1228,7 +1228,7 @@ export function createEditManager(
         console.error(result)
         openDialog?.({
           heading: 'Duplication Error',
-          children: `Failed to duplicate item: ${error}`,
+          children: `Failed to duplicate item: ${error.message}`,
         })
         return false
       }

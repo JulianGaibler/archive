@@ -6,7 +6,7 @@
 
 import crypto from 'crypto';
 
-export const ENV_VERSION = '2.1.0';
+export const ENV_VERSION = '2.2.0';
 
 /**
  * Variable definition schema:
@@ -462,6 +462,40 @@ export const ENV_VARIABLES = [
     validation: (value) => {
       return true
     }
+  },
+  {
+    name: 'BACKEND_WEBAUTHN_RP_ID',
+    description: 'WebAuthn Relying Party ID (defaults to PUBLIC_URL hostname)',
+    longDescription: 'The WebAuthn Relying Party ID used for passkey authentication. Defaults to the hostname of PUBLIC_URL if left empty. Only override this if the RP ID differs from your public hostname.',
+    type: 'string',
+    category: 'Backend',
+    devDefault: '',
+    prodDefault: '',
+    ciDefault: '',
+    required: false,
+    scope: 'backend',
+    optional: true,
+    smartDefault: (collectedValues) => {
+      try {
+        if (collectedValues.PUBLIC_URL) {
+          return new URL(collectedValues.PUBLIC_URL).hostname
+        }
+      } catch {}
+      return ''
+    },
+  },
+  {
+    name: 'BACKEND_WEBAUTHN_RP_NAME',
+    description: 'WebAuthn Relying Party display name',
+    longDescription: 'Human-readable name shown in browser passkey prompts when users register or authenticate with a passkey.',
+    type: 'string',
+    category: 'Backend',
+    devDefault: 'Archive',
+    prodDefault: 'Archive',
+    ciDefault: 'Archive',
+    required: false,
+    scope: 'backend',
+    optional: true,
   },
 
   // ========== FRONTEND CONFIGURATION ==========

@@ -33,6 +33,7 @@
   let qrCodeDataUrl = $state('')
   let totpSecret = $state('')
   let verifyCode = $state('')
+  let verifyCodeError = $state<string | undefined>(undefined)
 
   // Recovery codes
   let recoveryCodes = $state<string[]>([])
@@ -40,9 +41,14 @@
   // Disable / regenerate form
   let formPassword = $state('')
   let formCode = $state('')
+  let passwordError = $state<string | undefined>(undefined)
+  let codeError = $state<string | undefined>(undefined)
 
   function resetErrors() {
     globalError = undefined
+    verifyCodeError = undefined
+    passwordError = undefined
+    codeError = undefined
   }
 
   async function startSetup() {
@@ -69,7 +75,7 @@
   async function confirmSetup() {
     resetErrors()
     if (!verifyCode.trim()) {
-      globalError = 'Please enter the verification code'
+      verifyCodeError = 'Please enter the verification code'
       return
     }
     loading = true
@@ -111,10 +117,16 @@
 
   async function disableTotp() {
     resetErrors()
-    if (!formPassword.trim() || !formCode.trim()) {
-      globalError = 'Password and code are required'
-      return
+    let hasError = false
+    if (!formPassword.trim()) {
+      passwordError = 'Please enter your password'
+      hasError = true
     }
+    if (!formCode.trim()) {
+      codeError = 'Please enter a code'
+      hasError = true
+    }
+    if (hasError) return
     loading = true
     try {
       const res = await sdk.disableTotp({
@@ -142,10 +154,16 @@
 
   async function regenerateCodes() {
     resetErrors()
-    if (!formPassword.trim() || !formCode.trim()) {
-      globalError = 'Password and code are required'
-      return
+    let hasError = false
+    if (!formPassword.trim()) {
+      passwordError = 'Please enter your password'
+      hasError = true
     }
+    if (!formCode.trim()) {
+      codeError = 'Please enter a code'
+      hasError = true
+    }
+    if (hasError) return
     loading = true
     try {
       const res = await sdk.regenerateRecoveryCodes({
@@ -192,8 +210,6 @@
   }
 </script>
 
-<h2 class="tint--type-body-serif-bold">Two-factor authentication</h2>
-
 {#if totpStatus !== null && phase === 'idle'}
   <p class="tint--type-ui description">
     Add an extra layer of security to your account by requiring a code from your
@@ -213,7 +229,9 @@
   {/if}
 
   <div class="actions">
-    <Button variant="primary" onclick={startSetup} {loading}>Enable 2FA</Button>
+    <Button small variant="primary" onclick={startSetup} {loading}
+      >Enable 2FA</Button
+    >
   </div>
 {:else if phase === 'qr'}
   <p class="tint--type-ui description">
@@ -249,7 +267,9 @@
       autocomplete="one-time-code"
       inputmode="numeric"
       bind:value={verifyCode}
+      error={verifyCodeError}
       disabled={loading}
+      oninput={() => (verifyCodeError = undefined)}
     />
     <div class="form-actions">
       <Button
@@ -284,11 +304,12 @@
   </div>
 
   <div class="form-actions">
-    <Button variant="secondary" onclick={copyRecoveryCodes}>Copy</Button>
-    <Button variant="secondary" onclick={downloadRecoveryCodes}>
+    <Button small variant="secondary" onclick={copyRecoveryCodes}>Copy</Button>
+    <Button small variant="secondary" onclick={downloadRecoveryCodes}>
       Download
     </Button>
-    <Button variant="primary" onclick={doneWithRecoveryCodes}>Done</Button>
+    <Button small variant="primary" onclick={doneWithRecoveryCodes}>Done</Button
+    >
   </div>
 {:else if phase === 'idle' && totpStatus.enabled}
   <MessageBox icon={IconDone}>
@@ -337,7 +358,9 @@
       label="Password"
       autocomplete="current-password"
       bind:value={formPassword}
+      error={passwordError}
       disabled={loading}
+      oninput={() => (passwordError = undefined)}
     />
     <TextField
       id="disable-code"
@@ -346,10 +369,13 @@
       autocomplete="one-time-code"
       inputmode="numeric"
       bind:value={formCode}
+      error={codeError}
       disabled={loading}
+      oninput={() => (codeError = undefined)}
     />
     <div class="form-actions">
       <Button
+        small
         variant="secondary"
         onclick={() => {
           phase = 'idle'
@@ -361,7 +387,7 @@
       >
         Cancel
       </Button>
-      <Button submit={true} {loading}>Disable 2FA</Button>
+      <Button small submit={true} {loading}>Disable 2FA</Button>
     </div>
   </form>
 {:else if phase === 'regenerate'}
@@ -388,7 +414,9 @@
       label="Password"
       autocomplete="current-password"
       bind:value={formPassword}
+      error={passwordError}
       disabled={loading}
+      oninput={() => (passwordError = undefined)}
     />
     <TextField
       id="regen-code"
@@ -397,10 +425,13 @@
       autocomplete="one-time-code"
       inputmode="numeric"
       bind:value={formCode}
+      error={codeError}
       disabled={loading}
+      oninput={() => (codeError = undefined)}
     />
     <div class="form-actions">
       <Button
+        small
         variant="secondary"
         onclick={() => {
           phase = 'idle'
@@ -412,7 +443,7 @@
       >
         Cancel
       </Button>
-      <Button submit={true} {loading}>Regenerate codes</Button>
+      <Button small submit={true} {loading}>Regenerate codes</Button>
     </div>
   </form>
 {/if}

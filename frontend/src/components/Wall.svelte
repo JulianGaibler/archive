@@ -219,9 +219,9 @@
                   {/each}
                 </div>
                 {#if postNode.items?.nodes?.[0]}
-                  {#if postNode.items.nodes[0].__typename === 'AudioItem' && postNode.items.nodes[0].caption}
+                  {#if postNode.items.nodes[0].__typename === 'AudioItem' && postNode.items.nodes[0].captionPreview}
                     <span class="tint--type-body-serif-small"
-                      >{postNode.items.nodes[0].caption}</span
+                      >{postNode.items.nodes[0].captionPreview}</span
                     >
                   {:else if 'description' in postNode.items.nodes[0] && postNode.items.nodes[0].description}
                     <span class="tint--type-body-serif-small"

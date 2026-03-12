@@ -159,6 +159,21 @@ const ENV_VARIABLES = [
     type: 'string',
     fallback: 'Archive',
   },
+
+  // WebAuthn / Passkey
+  {
+    name: 'BACKEND_WEBAUTHN_RP_ID',
+    description:
+      'Relying Party ID for WebAuthn. Defaults to hostname of PUBLIC_URL.',
+    type: 'string',
+    fallback: '',
+  },
+  {
+    name: 'BACKEND_WEBAUTHN_RP_NAME',
+    description: 'Human-readable Relying Party name for WebAuthn.',
+    type: 'string',
+    fallback: 'Archive',
+  },
 ] as const
 
 // Type conversion functions

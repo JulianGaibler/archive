@@ -11,7 +11,7 @@ import {
 import PostActions from '@src/actions/PostActions.js'
 import Context from '@src/Context.js'
 import FileActions from '@src/actions/FileActions.js'
-import { detectArchiveTT } from 'archive-shared/src/captions.js'
+import { detectArchiveTT, toPlainText } from 'archive-shared/src/captions.js'
 
 export const itemResolvers: ItemResolvers = {
   __resolveType: (obj) => getItemSubtype(obj),
@@ -133,6 +133,10 @@ export const gifItemResolvers: GifItemResolvers = {
 
 export const audioItemResolvers: AudioItemResolvers = {
   ...createConcreteItemResolvers(),
+  captionPreview: (parent: unknown) => {
+    const p = parent as ActualParent & { caption: string }
+    return toPlainText(p.caption)
+  },
   file: async (parent: unknown, _args: unknown, ctx: Context) => {
     const actualParent = parent as ActualParent
     if (!actualParent.fileId) {

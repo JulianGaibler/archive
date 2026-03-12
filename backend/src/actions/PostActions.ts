@@ -2,7 +2,6 @@ import PostModel, { PostExternal, PostInternal } from '@src/models/PostModel.js'
 import UserModel, { UserExternal } from '@src/models/UserModel.js'
 import Context from '@src/Context.js'
 import {
-  AuthorizationError,
   DatabaseError,
   InputError,
   NotFoundError,
@@ -33,6 +32,7 @@ import PaginationUtils, {
 import FileActions from './FileActions.js'
 import FileModel from '@src/models/FileModel.js'
 import z from 'zod/v4'
+import { authorize, policies } from '@src/authorization/index.js'
 
 const postTable = PostModel.table
 const postSearchView = PostModel.postSearchView
@@ -362,10 +362,7 @@ const PostActions = {
         throw new NotFoundError('Post not found')
       }
 
-      // Add authorization check here if needed
-      // if (existingPost[0].creatorId !== userIId) {
-      //   throw new AuthorizationError('You can only edit your own posts')
-      // }
+      authorize(policies.post.edit, userIId, existingPost[0].creatorId)
 
       // Update the post
 
@@ -552,9 +549,7 @@ const PostActions = {
 
       const post = posts[0]
 
-      if (post.creatorId !== userIId) {
-        throw new AuthorizationError('You can only delete your own posts.')
-      }
+      authorize(policies.post.delete, userIId, post.creatorId)
 
       // Get all items associated with the post
       const items = await tx
@@ -587,7 +582,7 @@ const PostActions = {
     ctx: Context,
     fields: { itemId: ItemExternal['id'] },
   ): Promise<ItemExternal['id']> {
-    const _userIId = ctx.isAuthenticated()
+    const userIId = ctx.isAuthenticated()
 
     return await ctx.db.transaction(async (trx) => {
       // Get item with post information
@@ -602,15 +597,7 @@ const PostActions = {
         throw new NotFoundError('Item not found')
       }
 
-      // Check authorization: user owns the item OR user owns the post
-      // const userOwnsItem = item.creatorId === userIId
-      // const userOwnsPost = item.post?.creatorId === userIId
-
-      // if (!userOwnsItem && !userOwnsPost) {
-      //   throw new AuthorizationError(
-      //     'You can only delete items from your own posts or items you created.',
-      //   )
-      // }
+      authorize(policies.item.delete, userIId, item.creatorId)
 
       // Delete associated files
       if (item.fileId) {
@@ -638,7 +625,7 @@ const PostActions = {
       postId: PostExternal['id']
     },
   ): Promise<ItemExternal['id'][]> {
-    const _userIId = ctx.isAuthenticated()
+    const userIId = ctx.isAuthenticated()
 
     return await ctx.db.transaction(async (trx) => {
       // Validate input
@@ -683,18 +670,16 @@ const PostActions = {
         )
       }
 
-      // Check authorization: user owns the post OR user owns all items
-      // const post = itemsToReorder[0].post
-      // const userOwnsPost = post?.creatorId === userIId
-      // const userOwnsAllItems = itemsToReorder.every(
-      //   (item) => item.creatorId === userIId,
-      // )
-
-      // if (!userOwnsPost && !userOwnsAllItems) {
-      //   throw new AuthorizationError(
-      //     'You can only reorder items in your own posts or items you created.',
-      //   )
-      // }
+      // Authorize against the post owner
+      const postForAuth = await trx
+        .select({ creatorId: postTable.creatorId })
+        .from(postTable)
+        .where(eq(postTable.id, internalPostId))
+        .limit(1)
+      if (postForAuth.length === 0) {
+        throw new NotFoundError('Post not found')
+      }
+      authorize(policies.item.reorder, userIId, postForAuth[0].creatorId)
 
       // Get all items in the post
       const allItemsInPost = await trx
@@ -760,7 +745,7 @@ const PostActions = {
       newPosition: number
     },
   ): Promise<number> {
-    const _userIId = ctx.isAuthenticated()
+    const userIId = ctx.isAuthenticated()
 
     return await ctx.db.transaction(async (trx) => {
       const internalItemId = ItemModel.decodeId(fields.itemId)
@@ -777,15 +762,7 @@ const PostActions = {
         throw new NotFoundError('Item not found')
       }
 
-      // Check authorization: user owns the post OR user owns the item
-      // const userOwnsPost = item.post?.creatorId === userIId
-      // const userOwnsItem = item.creatorId === userIId
-
-      // if (!userOwnsPost && !userOwnsItem) {
-      //   throw new AuthorizationError(
-      //     'You can only reorder items in your own posts or items you created.',
-      //   )
-      // }
+      authorize(policies.item.reorder, userIId, item.creatorId)
 
       if (!item.postId) {
         throw new InputError('Item is not associated with a post')
@@ -863,7 +840,7 @@ const PostActions = {
       mergeKeywords?: boolean
     },
   ): Promise<number> {
-    ctx.isAuthenticated()
+    const userIId = ctx.isAuthenticated()
 
     return await ctx.db.transaction(async (trx) => {
       const internalSourcePostId = PostModel.decodeId(fields.sourcePostId)
@@ -896,14 +873,7 @@ const PostActions = {
         throw new InputError('Cannot merge a post into itself')
       }
 
-      // if (sourcePost.creatorId !== userIId) {
-      //   throw new AuthorizationError('You can only merge your own posts.')
-      // }
-      // if (targetPost.creatorId !== userIId) {
-      //   throw new AuthorizationError(
-      //     'You can only merge into your own posts.',
-      //   )
-      // }
+      authorize(policies.post.merge, userIId, sourcePost.creatorId)
 
       let mergedItemsCount = 0
 
@@ -1056,7 +1026,7 @@ const PostActions = {
       keepEmptyPost?: boolean
     },
   ): Promise<boolean> {
-    const _userIId = ctx.isAuthenticated()
+    const userIId = ctx.isAuthenticated()
 
     return await ctx.db.transaction(async (trx) => {
       const internalItemId = ItemModel.decodeId(fields.itemId)
@@ -1086,16 +1056,7 @@ const PostActions = {
         throw new NotFoundError('Target post not found')
       }
 
-      // Check authorization: user owns the item OR user owns both posts
-      // const userOwnsItem = item.creatorId === userIId
-      // const userOwnsSourcePost = item.post?.creatorId === userIId
-      // const userOwnsTargetPost = targetPost.creatorId === userIId
-
-      // if (!userOwnsItem && (!userOwnsSourcePost || !userOwnsTargetPost)) {
-      //   throw new AuthorizationError(
-      //     'You can only move items you own or between posts you own.',
-      //   )
-      // }
+      authorize(policies.item.move, userIId, item.creatorId)
 
       if (!item.postId) {
         throw new InputError('Item is not associated with a post')
@@ -1244,10 +1205,7 @@ const PostActions = {
 
       const originalItem = items[0]
 
-      // Check authorization
-      if (originalItem.creatorId !== userId) {
-        throw new AuthorizationError('You can only duplicate your own items')
-      }
+      authorize(policies.item.duplicate, userId, originalItem.creatorId)
 
       if (!originalItem.fileId) {
         throw new InputError('Cannot duplicate item without a file')

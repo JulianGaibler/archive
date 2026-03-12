@@ -1,5 +1,6 @@
 import UserActions from '@src/actions/UserActions.js'
 import TotpActions from '@src/actions/TotpActions.js'
+import PasskeyActions from '@src/actions/PasskeyActions.js'
 import { UserResolvers } from '../generated-types.js'
 import PostActions from '@src/actions/PostActions.js'
 import FileActions from '@src/actions/FileActions.js'
@@ -20,6 +21,15 @@ export const userResolvers: UserResolvers = {
     const user = await ctx.dataLoaders.user.getById.load(userIId)
     if (!user) return null
     return TotpActions.qTotpStatus(ctx, user)
+  },
+
+  passkeys: async (parent, _args, ctx) => {
+    // Only return passkeys for the current user
+    const userIId = ctx.userId
+    if (userIId == null) return null
+    const decodedId = UserModel.decodeId(parent.id)
+    if (userIId !== decodedId) return null
+    return PasskeyActions.qPasskeys(ctx)
   },
 
   profilePicture: async (parent, _args: unknown, ctx: Context) => {

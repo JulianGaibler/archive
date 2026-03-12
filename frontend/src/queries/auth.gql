@@ -49,3 +49,27 @@ mutation regenerateRecoveryCodes($password: String!, $code: String!) {
     recoveryCodes
   }
 }
+
+mutation generatePasskeyRegistrationOptions($name: String) {
+  generatePasskeyRegistrationOptions(name: $name)
+}
+
+mutation verifyPasskeyRegistration($response: String!, $name: String) {
+  verifyPasskeyRegistration(response: $response, name: $name)
+}
+
+mutation generatePasskeyAuthenticationOptions {
+  generatePasskeyAuthenticationOptions
+}
+
+mutation verifyPasskeyAuthentication($response: String!) {
+  verifyPasskeyAuthentication(response: $response)
+}
+
+mutation renamePasskey($passkeyId: String!, $name: String!) {
+  renamePasskey(passkeyId: $passkeyId, name: $name)
+}
+
+mutation deletePasskey($passkeyId: String!) {
+  deletePasskey(passkeyId: $passkeyId)
+}

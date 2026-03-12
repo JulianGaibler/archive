@@ -1,5 +1,27 @@
 import { relations } from "drizzle-orm/relations";
-import { user, item, file, post, session, keyword, keywordToPost, fileVariant } from "./schema";
+import { user, passkey, item, file, post, session, keyword, keywordToPost, fileVariant } from "./schema";
+
+export const passkeyRelations = relations(passkey, ({one}) => ({
+	user: one(user, {
+		fields: [passkey.userId],
+		references: [user.id]
+	}),
+}));
+
+export const userRelations = relations(user, ({one, many}) => ({
+	passkeys: many(passkey),
+	items: many(item),
+	posts: many(post),
+	sessions: many(session),
+	file: one(file, {
+		fields: [user.profilePictureFileId],
+		references: [file.id],
+		relationName: "user_profilePictureFileId_file_id"
+	}),
+	files: many(file, {
+		relationName: "file_creatorId_user_id"
+	}),
+}));
 
 export const itemRelations = relations(item, ({one}) => ({
 	user: one(user, {
@@ -13,20 +35,6 @@ export const itemRelations = relations(item, ({one}) => ({
 	post: one(post, {
 		fields: [item.postId],
 		references: [post.id]
-	}),
-}));
-
-export const userRelations = relations(user, ({one, many}) => ({
-	items: many(item),
-	posts: many(post),
-	sessions: many(session),
-	file: one(file, {
-		fields: [user.profilePictureFileId],
-		references: [file.id],
-		relationName: "user_profilePictureFileId_file_id"
-	}),
-	files: many(file, {
-		relationName: "file_creatorId_user_id"
 	}),
 }));
 

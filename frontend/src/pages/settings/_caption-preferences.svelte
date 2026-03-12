@@ -55,8 +55,6 @@
   }
 </script>
 
-<h2 class="tint--type-body-serif-bold">Captions</h2>
-
 <div class="controls">
   <div class="control">
     <span class="tint--type-input-small" id="caption-font-label">Font</span>
@@ -111,14 +109,7 @@
   </LabeledToggleable>
 </div>
 
-<p class="tint--type-input-small hint">
-  Settings are saved to this device only.
-</p>
-
 <style lang="sass">
-.hint
-  color: var(--tint-text-secondary)
-
 .controls
   display: flex
   flex-direction: column

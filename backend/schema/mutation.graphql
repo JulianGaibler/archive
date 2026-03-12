@@ -19,6 +19,15 @@ type TotpStatus {
   recoveryCodesRemaining: Int!
 }
 
+type Passkey {
+  id: String!
+  name: String!
+  deviceType: String!
+  backedUp: Boolean!
+  transports: String
+  createdAt: DateTime!
+}
+
 input TemplateAreaInput {
   id: String!
   x: Float!
@@ -584,4 +593,69 @@ type Mutation {
     """
     itemId: ID!
   ): String!
+
+  """
+  Generates WebAuthn registration options for adding a new passkey.
+  """
+  generatePasskeyRegistrationOptions(
+    """
+    Optional name for the passkey.
+    """
+    name: String
+  ): String!
+
+  """
+  Verifies and saves a new passkey after browser attestation.
+  """
+  verifyPasskeyRegistration(
+    """
+    JSON-serialized WebAuthn registration response.
+    """
+    response: String!
+
+    """
+    Optional name for the passkey.
+    """
+    name: String
+  ): Boolean!
+
+  """
+  Generates WebAuthn authentication options for passkey login.
+  """
+  generatePasskeyAuthenticationOptions: String!
+
+  """
+  Verifies a passkey authentication response and creates a session.
+  """
+  verifyPasskeyAuthentication(
+    """
+    JSON-serialized WebAuthn authentication response.
+    """
+    response: String!
+  ): Boolean!
+
+  """
+  Renames a passkey.
+  """
+  renamePasskey(
+    """
+    The credential ID of the passkey.
+    """
+    passkeyId: String!
+
+    """
+    New name for the passkey.
+    """
+    name: String!
+  ): Boolean!
+
+  """
+  Deletes a passkey.
+  """
+  deletePasskey(
+    """
+    The credential ID of the passkey.
+    """
+    passkeyId: String!
+  ): Boolean!
 }

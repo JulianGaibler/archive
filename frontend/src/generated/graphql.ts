@@ -60,6 +60,7 @@ export type AudioFile = File & {
 export type AudioItem = Item & Node & {
   __typename?: 'AudioItem';
   caption: Scalars['String']['output'];
+  captionPreview: Scalars['String']['output'];
   createdAt: Scalars['DateTime']['output'];
   creator: User;
   description: Scalars['String']['output'];
@@ -378,6 +379,8 @@ export type Mutation = {
   deleteItem: Scalars['ID']['output'];
   /** Deleted a keyword. */
   deleteKeyword: Scalars['Boolean']['output'];
+  /** Deletes a passkey. */
+  deletePasskey: Scalars['Boolean']['output'];
   /**
    * Deletes a post and all its associated items and files.
    * Returns the ID of the deleted post.
@@ -396,6 +399,10 @@ export type Mutation = {
   duplicateItem: Scalars['ID']['output'];
   /** Edits a post. */
   editPost: Post;
+  /** Generates WebAuthn authentication options for passkey login. */
+  generatePasskeyAuthenticationOptions: Scalars['String']['output'];
+  /** Generates WebAuthn registration options for adding a new passkey. */
+  generatePasskeyRegistrationOptions: Scalars['String']['output'];
   /** Initiates TOTP two-factor authentication setup. Returns QR code and secret. */
   initTotp: TotpSetupResult;
   /** Associates the Telegram ID of a user with their Archive Profil. */
@@ -435,6 +442,8 @@ export type Mutation = {
    * Returns the new file ID for subscription.
    */
   removeModifications: Scalars['String']['output'];
+  /** Renames a passkey. */
+  renamePasskey: Scalars['Boolean']['output'];
   /**
    * Reorders an item within a post to a new position.
    * Returns the new position of the item.
@@ -476,6 +485,10 @@ export type Mutation = {
   uploadProfilePicture: Scalars['Boolean']['output'];
   /** Verifies a TOTP code to complete login for users with 2FA enabled. */
   verifyLoginTotp: Scalars['Boolean']['output'];
+  /** Verifies a passkey authentication response and creates a session. */
+  verifyPasskeyAuthentication: Scalars['Boolean']['output'];
+  /** Verifies and saves a new passkey after browser attestation. */
+  verifyPasskeyRegistration: Scalars['Boolean']['output'];
 };
 
 
@@ -531,6 +544,11 @@ export type MutationDeleteKeywordArgs = {
 };
 
 
+export type MutationDeletePasskeyArgs = {
+  passkeyId: Scalars['String']['input'];
+};
+
+
 export type MutationDeletePostArgs = {
   postId: Scalars['ID']['input'];
 };
@@ -559,6 +577,11 @@ export type MutationEditPostArgs = {
   newItems?: InputMaybe<Array<NewItemInput>>;
   postId: Scalars['ID']['input'];
   title: Scalars['String']['input'];
+};
+
+
+export type MutationGeneratePasskeyRegistrationOptionsArgs = {
+  name?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -611,6 +634,12 @@ export type MutationRemoveModificationsArgs = {
   clearAllModifications?: InputMaybe<Scalars['Boolean']['input']>;
   itemId: Scalars['ID']['input'];
   removeModifications: Array<Scalars['String']['input']>;
+};
+
+
+export type MutationRenamePasskeyArgs = {
+  name: Scalars['String']['input'];
+  passkeyId: Scalars['String']['input'];
 };
 
 
@@ -671,6 +700,17 @@ export type MutationVerifyLoginTotpArgs = {
   pendingToken: Scalars['String']['input'];
 };
 
+
+export type MutationVerifyPasskeyAuthenticationArgs = {
+  response: Scalars['String']['input'];
+};
+
+
+export type MutationVerifyPasskeyRegistrationArgs = {
+  name?: InputMaybe<Scalars['String']['input']>;
+  response: Scalars['String']['input'];
+};
+
 export type NewItemInput = {
   caption?: InputMaybe<Scalars['String']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
@@ -695,6 +735,16 @@ export type NormalizeMetadata = {
   __typename?: 'NormalizeMetadata';
   /** Whether audio normalization is applied. */
   enabled: Scalars['Boolean']['output'];
+};
+
+export type Passkey = {
+  __typename?: 'Passkey';
+  backedUp: Scalars['Boolean']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  deviceType: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  transports?: Maybe<Scalars['String']['output']>;
 };
 
 /** A photo file. */
@@ -1005,6 +1055,8 @@ export type User = Node & {
   linkedTelegram?: Maybe<Scalars['Boolean']['output']>;
   /** The user's profile name. */
   name: Scalars['String']['output'];
+  /** Registered passkeys. Only available for the current user via `me` query. */
+  passkeys?: Maybe<Array<Passkey>>;
   /** The number of posts created by this user. */
   postCount: Scalars['Int']['output'];
   /** All Posts associated with this user. */
@@ -1085,7 +1137,7 @@ export type VideoItem = Item & Node & {
 export type SettingsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type SettingsQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, linkedTelegram?: boolean | null, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null, totpStatus?: { __typename?: 'TotpStatus', enabled: boolean, recoveryCodesRemaining: number } | null } | null, userSessions: Array<{ __typename?: 'Session', createdAt: any, firstIp: string, id: string, latestIp: string, current: boolean, userAgent: string, updatedAt: any }> };
+export type SettingsQuery = { __typename?: 'Query', me?: { __typename?: 'User', name: string, username: string, linkedTelegram?: boolean | null, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null, totpStatus?: { __typename?: 'TotpStatus', enabled: boolean, recoveryCodesRemaining: number } | null, passkeys?: Array<{ __typename?: 'Passkey', id: string, name: string, deviceType: string, backedUp: boolean, transports?: string | null, createdAt: any }> | null } | null, userSessions: Array<{ __typename?: 'Session', createdAt: any, firstIp: string, id: string, latestIp: string, current: boolean, userAgent: string, updatedAt: any }> };
 
 export type SignupAllowedQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1155,6 +1207,48 @@ export type RegenerateRecoveryCodesMutationVariables = Exact<{
 
 export type RegenerateRecoveryCodesMutation = { __typename?: 'Mutation', regenerateRecoveryCodes: { __typename?: 'TotpConfirmResult', recoveryCodes: Array<string> } };
 
+export type GeneratePasskeyRegistrationOptionsMutationVariables = Exact<{
+  name?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type GeneratePasskeyRegistrationOptionsMutation = { __typename?: 'Mutation', generatePasskeyRegistrationOptions: string };
+
+export type VerifyPasskeyRegistrationMutationVariables = Exact<{
+  response: Scalars['String']['input'];
+  name?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type VerifyPasskeyRegistrationMutation = { __typename?: 'Mutation', verifyPasskeyRegistration: boolean };
+
+export type GeneratePasskeyAuthenticationOptionsMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GeneratePasskeyAuthenticationOptionsMutation = { __typename?: 'Mutation', generatePasskeyAuthenticationOptions: string };
+
+export type VerifyPasskeyAuthenticationMutationVariables = Exact<{
+  response: Scalars['String']['input'];
+}>;
+
+
+export type VerifyPasskeyAuthenticationMutation = { __typename?: 'Mutation', verifyPasskeyAuthentication: boolean };
+
+export type RenamePasskeyMutationVariables = Exact<{
+  passkeyId: Scalars['String']['input'];
+  name: Scalars['String']['input'];
+}>;
+
+
+export type RenamePasskeyMutation = { __typename?: 'Mutation', renamePasskey: boolean };
+
+export type DeletePasskeyMutationVariables = Exact<{
+  passkeyId: Scalars['String']['input'];
+}>;
+
+
+export type DeletePasskeyMutation = { __typename?: 'Mutation', deletePasskey: boolean };
+
 type ItemData_AudioItem_Fragment = { __typename: 'AudioItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'AudioFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, unmodifiedCompressedPath?: string | null, waveform: Array<number>, waveformThumbnail: Array<number>, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, trim?: { __typename?: 'TrimMetadata', startTime: number, endTime: number } | null, normalize?: { __typename?: 'NormalizeMetadata', enabled: boolean } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } };
 
 type ItemData_GifItem_Fragment = { __typename: 'GifItem', caption: string, position: number, createdAt: any, updatedAt: any, description: string, id: string, file: { __typename: 'GifFile', id: string, originalType: FileType, processingStatus: FileProcessingStatus, processingProgress?: number | null, processingNotes?: string | null, updatedAt: any, originalPath: string, compressedPath: string, compressedGifPath: string, thumbnailPath?: string | null, unmodifiedCompressedPath?: string | null, relativeHeight: number, modifications?: { __typename?: 'FileModifications', fileType?: FileType | null, crop?: { __typename?: 'CropMetadata', left: number, top: number, right: number, bottom: number } | null, trim?: { __typename?: 'TrimMetadata', startTime: number, endTime: number } | null } | null }, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } };
@@ -1182,7 +1276,7 @@ export type PostDataFragment = { __typename?: 'Post', id: string, title: string,
     > } };
 
 export type PostsConnectionFragment = { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }, items: { __typename?: 'ItemConnection', totalCount: number, nodes: Array<
-        | { __typename: 'AudioItem', caption: string, description: string, id: string, file: { __typename: 'AudioFile', waveform: Array<number>, waveformThumbnail: Array<number> } }
+        | { __typename: 'AudioItem', captionPreview: string, description: string, id: string, file: { __typename: 'AudioFile', waveform: Array<number>, waveformThumbnail: Array<number> } }
         | { __typename: 'GifItem', id: string, file: { __typename: 'GifFile', relativeHeight: number, thumbnailPath?: string | null } }
         | { __typename: 'ImageItem', id: string, file: { __typename: 'PhotoFile', relativeHeight: number, thumbnailPath?: string | null } }
         | { __typename: 'ProcessingItem', id: string }
@@ -1296,7 +1390,7 @@ export type KeywordWithPostsQuery = { __typename?: 'Query', keyword:
     | { __typename: 'User' }
     | { __typename: 'VideoItem' }
   , posts?: { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }, items: { __typename?: 'ItemConnection', totalCount: number, nodes: Array<
-          | { __typename: 'AudioItem', caption: string, description: string, id: string, file: { __typename: 'AudioFile', waveform: Array<number>, waveformThumbnail: Array<number> } }
+          | { __typename: 'AudioItem', captionPreview: string, description: string, id: string, file: { __typename: 'AudioFile', waveform: Array<number>, waveformThumbnail: Array<number> } }
           | { __typename: 'GifItem', id: string, file: { __typename: 'GifFile', relativeHeight: number, thumbnailPath?: string | null } }
           | { __typename: 'ImageItem', id: string, file: { __typename: 'PhotoFile', relativeHeight: number, thumbnailPath?: string | null } }
           | { __typename: 'ProcessingItem', id: string }
@@ -1342,7 +1436,7 @@ export type PostsQueryVariables = Exact<{
 
 
 export type PostsQuery = { __typename?: 'Query', posts?: { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }, items: { __typename?: 'ItemConnection', totalCount: number, nodes: Array<
-          | { __typename: 'AudioItem', caption: string, description: string, id: string, file: { __typename: 'AudioFile', waveform: Array<number>, waveformThumbnail: Array<number> } }
+          | { __typename: 'AudioItem', captionPreview: string, description: string, id: string, file: { __typename: 'AudioFile', waveform: Array<number>, waveformThumbnail: Array<number> } }
           | { __typename: 'GifItem', id: string, file: { __typename: 'GifFile', relativeHeight: number, thumbnailPath?: string | null } }
           | { __typename: 'ImageItem', id: string, file: { __typename: 'PhotoFile', relativeHeight: number, thumbnailPath?: string | null } }
           | { __typename: 'ProcessingItem', id: string }
@@ -1533,7 +1627,7 @@ export type UserWithPostsQueryVariables = Exact<{
 
 
 export type UserWithPostsQuery = { __typename?: 'Query', user?: { __typename?: 'User', id: string, username: string, name: string, postCount: number, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null } | null, posts?: { __typename?: 'PostConnection', hasNextPage: boolean, endCursor?: string | null, startCursor?: string | null, nodes: Array<{ __typename?: 'Post', id: string, title: string, creator: { __typename?: 'User', username: string, profilePicture?: { __typename?: 'ProfilePictureFile', profilePicture256: string, profilePicture64: string } | null }, items: { __typename?: 'ItemConnection', totalCount: number, nodes: Array<
-          | { __typename: 'AudioItem', caption: string, description: string, id: string, file: { __typename: 'AudioFile', waveform: Array<number>, waveformThumbnail: Array<number> } }
+          | { __typename: 'AudioItem', captionPreview: string, description: string, id: string, file: { __typename: 'AudioFile', waveform: Array<number>, waveformThumbnail: Array<number> } }
           | { __typename: 'GifItem', id: string, file: { __typename: 'GifFile', relativeHeight: number, thumbnailPath?: string | null } }
           | { __typename: 'ImageItem', id: string, file: { __typename: 'PhotoFile', relativeHeight: number, thumbnailPath?: string | null } }
           | { __typename: 'ProcessingItem', id: string }
@@ -1778,7 +1872,7 @@ export const PostsConnectionFragmentDoc = gql`
           }
         }
         ... on AudioItem {
-          caption
+          captionPreview
           description
           file {
             __typename
@@ -1807,6 +1901,14 @@ export const SettingsDocument = gql`
     totpStatus {
       enabled
       recoveryCodesRemaining
+    }
+    passkeys {
+      id
+      name
+      deviceType
+      backedUp
+      transports
+      createdAt
     }
   }
   userSessions {
@@ -1880,6 +1982,36 @@ export const RegenerateRecoveryCodesDocument = gql`
   regenerateRecoveryCodes(password: $password, code: $code) {
     recoveryCodes
   }
+}
+    `;
+export const GeneratePasskeyRegistrationOptionsDocument = gql`
+    mutation generatePasskeyRegistrationOptions($name: String) {
+  generatePasskeyRegistrationOptions(name: $name)
+}
+    `;
+export const VerifyPasskeyRegistrationDocument = gql`
+    mutation verifyPasskeyRegistration($response: String!, $name: String) {
+  verifyPasskeyRegistration(response: $response, name: $name)
+}
+    `;
+export const GeneratePasskeyAuthenticationOptionsDocument = gql`
+    mutation generatePasskeyAuthenticationOptions {
+  generatePasskeyAuthenticationOptions
+}
+    `;
+export const VerifyPasskeyAuthenticationDocument = gql`
+    mutation verifyPasskeyAuthentication($response: String!) {
+  verifyPasskeyAuthentication(response: $response)
+}
+    `;
+export const RenamePasskeyDocument = gql`
+    mutation renamePasskey($passkeyId: String!, $name: String!) {
+  renamePasskey(passkeyId: $passkeyId, name: $name)
+}
+    `;
+export const DeletePasskeyDocument = gql`
+    mutation deletePasskey($passkeyId: String!) {
+  deletePasskey(passkeyId: $passkeyId)
 }
     `;
 export const ConvertItemDocument = gql`
@@ -2238,6 +2370,12 @@ const ConfirmTotpDocumentString = print(ConfirmTotpDocument);
 const CancelTotpSetupDocumentString = print(CancelTotpSetupDocument);
 const DisableTotpDocumentString = print(DisableTotpDocument);
 const RegenerateRecoveryCodesDocumentString = print(RegenerateRecoveryCodesDocument);
+const GeneratePasskeyRegistrationOptionsDocumentString = print(GeneratePasskeyRegistrationOptionsDocument);
+const VerifyPasskeyRegistrationDocumentString = print(VerifyPasskeyRegistrationDocument);
+const GeneratePasskeyAuthenticationOptionsDocumentString = print(GeneratePasskeyAuthenticationOptionsDocument);
+const VerifyPasskeyAuthenticationDocumentString = print(VerifyPasskeyAuthenticationDocument);
+const RenamePasskeyDocumentString = print(RenamePasskeyDocument);
+const DeletePasskeyDocumentString = print(DeletePasskeyDocument);
 const ConvertItemDocumentString = print(ConvertItemDocument);
 const CropItemDocumentString = print(CropItemDocument);
 const TrimItemDocumentString = print(TrimItemDocument);
@@ -2309,6 +2447,24 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     regenerateRecoveryCodes(variables: RegenerateRecoveryCodesMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: RegenerateRecoveryCodesMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<RegenerateRecoveryCodesMutation>(RegenerateRecoveryCodesDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'regenerateRecoveryCodes', 'mutation', variables);
+    },
+    generatePasskeyRegistrationOptions(variables?: GeneratePasskeyRegistrationOptionsMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: GeneratePasskeyRegistrationOptionsMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<GeneratePasskeyRegistrationOptionsMutation>(GeneratePasskeyRegistrationOptionsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'generatePasskeyRegistrationOptions', 'mutation', variables);
+    },
+    verifyPasskeyRegistration(variables: VerifyPasskeyRegistrationMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: VerifyPasskeyRegistrationMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<VerifyPasskeyRegistrationMutation>(VerifyPasskeyRegistrationDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'verifyPasskeyRegistration', 'mutation', variables);
+    },
+    generatePasskeyAuthenticationOptions(variables?: GeneratePasskeyAuthenticationOptionsMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: GeneratePasskeyAuthenticationOptionsMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<GeneratePasskeyAuthenticationOptionsMutation>(GeneratePasskeyAuthenticationOptionsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'generatePasskeyAuthenticationOptions', 'mutation', variables);
+    },
+    verifyPasskeyAuthentication(variables: VerifyPasskeyAuthenticationMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: VerifyPasskeyAuthenticationMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<VerifyPasskeyAuthenticationMutation>(VerifyPasskeyAuthenticationDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'verifyPasskeyAuthentication', 'mutation', variables);
+    },
+    renamePasskey(variables: RenamePasskeyMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: RenamePasskeyMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<RenamePasskeyMutation>(RenamePasskeyDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'renamePasskey', 'mutation', variables);
+    },
+    deletePasskey(variables: DeletePasskeyMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: DeletePasskeyMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<DeletePasskeyMutation>(DeletePasskeyDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'deletePasskey', 'mutation', variables);
     },
     convertItem(variables: ConvertItemMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ConvertItemMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<ConvertItemMutation>(ConvertItemDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'convertItem', 'mutation', variables);

@@ -11,13 +11,12 @@
     type User,
   } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
-  import { getOperationResultError } from '@src/graphql-errors'
   import {
     createUpdateValue,
     clearValidationErrors,
-    setValidationErrors,
     type UpdateValue,
   } from '@src/utils/edit-utils'
+  import { handleMutation } from '@src/utils/mutation-handler'
 
   const sdk = getSdk(webClient)
 
@@ -42,65 +41,31 @@
   const tryChangeName = (e: Event) => {
     e.preventDefault()
 
-    // Clear previous validation errors
     clearValidationErrors(data)
     globalError = undefined
 
-    // Local validation
     if (!data.newName.value || data.newName.value.trim().length === 0) {
       data.newName.error = 'Please enter a name'
     }
 
-    // Check if there are any validation errors
     if (data.newName.error) {
       return
     }
 
-    loading = true
-
     const args: ChangeNameMutationVariables = { newName: data.newName.value }
 
-    sdk
-      .changeName(args)
-      .finally(() => {
-        loading = false
-      })
-      .then((res) => {
-        const errorResult = getOperationResultError(res)
-        if (errorResult) {
-          if ('issues' in errorResult) {
-            const { unassignableErrors } = setValidationErrors(
-              data,
-              errorResult.issues,
-            )
-            if (unassignableErrors.length > 0) {
-              globalError = unassignableErrors.join('; ')
-            }
-          } else {
-            globalError = errorResult.message
-          }
-        } else {
-          success = true
-        }
-      })
-      .catch((err) => {
-        const errorResult = getOperationResultError(err)
-        if (errorResult) {
-          if ('issues' in errorResult) {
-            const { unassignableErrors } = setValidationErrors(
-              data,
-              errorResult.issues,
-            )
-            if (unassignableErrors.length > 0) {
-              globalError = unassignableErrors.join('; ')
-            }
-          } else {
-            globalError = errorResult.message
-          }
-        } else {
-          globalError = 'An unexpected error occurred'
-        }
-      })
+    handleMutation(sdk.changeName(args), {
+      data,
+      onSuccess: () => {
+        success = true
+      },
+      onGlobalError: (msg) => {
+        globalError = msg
+      },
+      setLoading: (v) => {
+        loading = v
+      },
+    })
   }
 
   function resetErrors() {
@@ -113,17 +78,13 @@
   }
 </script>
 
-<h2 class="tint--type-body-serif-bold">Your name</h2>
-
 {#if globalError}
   <MessageBox icon={IconWarning} onclose={resetErrors}>
-    <h2>Error</h2>
     <p>{globalError}</p>
   </MessageBox>
 {/if}
 {#if success}
   <MessageBox icon={IconDone} onclose={resetSuccess}>
-    <h2>Success</h2>
     <p>Your name has been updated</p>
   </MessageBox>
 {/if}

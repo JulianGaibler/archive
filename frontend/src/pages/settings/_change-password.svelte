@@ -10,13 +10,12 @@
     type ChangePasswordMutationVariables,
   } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
-  import { getOperationResultError } from '@src/graphql-errors'
   import {
     createUpdateValue,
     clearValidationErrors,
-    setValidationErrors,
     type UpdateValue,
   } from '@src/utils/edit-utils'
+  import { handleMutation } from '@src/utils/mutation-handler'
 
   const sdk = getSdk(webClient)
 
@@ -45,11 +44,9 @@
   let globalError: string | undefined = $state(undefined)
 
   const tryChangePassword = () => {
-    // Clear previous validation errors
     clearValidationErrors(data)
     globalError = undefined
 
-    // Local validation
     if (data.oldPassword.value.trim().length === 0) {
       data.oldPassword.error = 'Please enter your current password'
     }
@@ -60,7 +57,6 @@
       data.newPasswordConfirm.error = 'Passwords do not match'
     }
 
-    // Check if there are any validation errors
     if (
       data.oldPassword.error ||
       data.newPassword.error ||
@@ -69,60 +65,28 @@
       return
     }
 
-    loading = true
-
-    // Extract values for API call
     const apiArgs: ChangePasswordMutationVariables = {
       oldPassword: data.oldPassword.value,
       newPassword: data.newPassword.value,
       ...(totpEnabled && data.code.value ? { code: data.code.value } : {}),
     }
 
-    sdk
-      .changePassword(apiArgs)
-      .finally(() => {
-        loading = false
-      })
-      .then((res) => {
-        const errorResult = getOperationResultError(res)
-        if (errorResult) {
-          if ('issues' in errorResult) {
-            const { unassignableErrors } = setValidationErrors(
-              data,
-              errorResult.issues,
-            )
-            if (unassignableErrors.length > 0) {
-              globalError = unassignableErrors.join('; ')
-            }
-          } else {
-            globalError = errorResult.message
-          }
-        } else {
-          success = true
-          data.oldPassword.value = ''
-          data.newPassword.value = ''
-          data.newPasswordConfirm.value = ''
-          data.code.value = ''
-        }
-      })
-      .catch((err) => {
-        const errorResult = getOperationResultError(err)
-        if (errorResult) {
-          if ('issues' in errorResult) {
-            const { unassignableErrors } = setValidationErrors(
-              data,
-              errorResult.issues,
-            )
-            if (unassignableErrors.length > 0) {
-              globalError = unassignableErrors.join('; ')
-            }
-          } else {
-            globalError = errorResult.message
-          }
-        } else {
-          globalError = 'An unexpected error occurred'
-        }
-      })
+    handleMutation(sdk.changePassword(apiArgs), {
+      data,
+      onSuccess: () => {
+        success = true
+        data.oldPassword.value = ''
+        data.newPassword.value = ''
+        data.newPasswordConfirm.value = ''
+        data.code.value = ''
+      },
+      onGlobalError: (msg) => {
+        globalError = msg
+      },
+      setLoading: (v) => {
+        loading = v
+      },
+    })
   }
 
   function resetErrors() {
@@ -135,17 +99,13 @@
   }
 </script>
 
-<h2 class="tint--type-body-serif-bold">Password</h2>
-
 {#if globalError}
   <MessageBox icon={IconWarning} onclose={resetErrors}>
-    <h2>Error</h2>
     <p>{globalError}</p>
   </MessageBox>
 {/if}
 {#if success}
   <MessageBox icon={IconDone} onclose={resetSuccess}>
-    <h2>Success</h2>
     <p>Your password has been updated</p>
   </MessageBox>
 {/if}
@@ -198,7 +158,9 @@
       oninput={() => (data.code.error = undefined)}
     />
   {/if}
-  <Button submit={true} {loading}>Update password</Button>
+  <div class="actions">
+    <Button small submit={true} {loading}>Update password</Button>
+  </div>
 </form>
 
 <style lang="sass">
@@ -209,7 +171,9 @@ form
   flex-direction: column
   align-items: stretch
   gap: tint.$size-8
-  :global(> :last-child)
-    align-self: flex-end
+
+.actions
+  display: flex
+  justify-content: center
 
 </style>

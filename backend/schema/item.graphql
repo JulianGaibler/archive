@@ -104,5 +104,6 @@ type AudioItem implements Item & Node {
   updatedAt: DateTime!
   createdAt: DateTime!
   caption: String!
+  captionPreview: String!
   file: AudioFile!
 }

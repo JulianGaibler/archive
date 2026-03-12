@@ -12,7 +12,7 @@
   } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
   import UserPicture from '@src/components/UserPicture.svelte'
-  import { getOperationResultError } from '@src/graphql-errors'
+  import { handleMutation } from '@src/utils/mutation-handler'
 
   const sdk = getSdk(webClient)
 
@@ -31,7 +31,6 @@
 
   const tryChangePicture = (e: Event) => {
     e.preventDefault()
-    const args: UploadPictureMutationVariables = { file }
     resetErrors()
 
     if (!file) {
@@ -41,43 +40,36 @@
       return
     }
 
-    loading = true
+    const args: UploadPictureMutationVariables = { file }
 
-    sdk
-      .uploadPicture(args)
-      .finally(() => {
-        loading = false
-      })
-      .then((res) => {
-        globalError = getOperationResultError(res)?.message
-        if (!globalError) {
-          success = true
-        }
-      })
-      .catch((err) => {
-        globalError = getOperationResultError(err)?.message
-      })
+    handleMutation(sdk.uploadPicture(args), {
+      onSuccess: () => {
+        success = true
+      },
+      onGlobalError: (msg) => {
+        globalError = msg
+      },
+      setLoading: (v) => {
+        loading = v
+      },
+    })
   }
 
   const tryClearPicture = (e: Event) => {
     e.preventDefault()
     resetErrors()
-    loading = true
 
-    sdk
-      .clearProfilePicture()
-      .finally(() => {
-        loading = false
-      })
-      .then((res) => {
-        globalError = getOperationResultError(res)?.message
-        if (!globalError) {
-          success = true
-        }
-      })
-      .catch((err) => {
-        globalError = getOperationResultError(err)?.message
-      })
+    handleMutation(sdk.clearProfilePicture(), {
+      onSuccess: () => {
+        success = true
+      },
+      onGlobalError: (msg) => {
+        globalError = msg
+      },
+      setLoading: (v) => {
+        loading = v
+      },
+    })
   }
 
   function resetErrors() {
@@ -91,21 +83,17 @@
   }
 </script>
 
-<h2 class="tint--type-body-serif-bold">Profile picture</h2>
-
 <div class="flex-center">
   <UserPicture {user} size="128" />
 </div>
 
 {#if globalError}
   <MessageBox icon={IconWarning} onclose={resetErrors}>
-    <h2>Error</h2>
     <p>{globalError}</p>
   </MessageBox>
 {/if}
 {#if success}
   <MessageBox icon={IconDone} onclose={resetSuccess}>
-    <h2>Success</h2>
     <p>Your profile picture has been updated</p>
     <!-- svelte-ignore a11y_invalid_attribute -->
     <a href="javascript:location.reload()">Reload page </a>

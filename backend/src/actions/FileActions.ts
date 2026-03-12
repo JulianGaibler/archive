@@ -411,19 +411,10 @@ const FileActions = {
       clearAllModifications?: boolean
     },
   ): Promise<void> {
-    const userId = ctx.isAuthenticated()
-
     // Get existing file
     const file = await this._qFileInternal(ctx, fields.fileId)
     if (!file) {
       throw new NotFoundError('File not found')
-    }
-
-    // Check authorization
-    if (file.creatorId !== userId) {
-      throw new AuthorizationError(
-        'You do not have permission to modify this file',
-      )
     }
 
     // Calculate new modifications
@@ -552,19 +543,10 @@ const FileActions = {
    * to main variants and clearing modifications.
    */
   async _mRevertFileToUnmodified(ctx: Context, fileId: string): Promise<void> {
-    const userId = ctx.isAuthenticated()
-
     // Get existing file
     const file = await this._qFileInternal(ctx, fileId)
     if (!file) {
       throw new NotFoundError('File not found')
-    }
-
-    // Check authorization
-    if (file.creatorId !== userId) {
-      throw new AuthorizationError(
-        'You do not have permission to modify this file',
-      )
     }
 
     // Get all file variants
@@ -925,19 +907,10 @@ const FileActions = {
    * @returns The new file ID
    */
   async _mDuplicateFile(ctx: Context, sourceFileId: string): Promise<string> {
-    const userId = ctx.isAuthenticated()
-
     // Get the source file
     const sourceFile = await this._qFileInternal(ctx, sourceFileId)
     if (!sourceFile) {
       throw new NotFoundError('Source file not found')
-    }
-
-    // Check authorization
-    if (sourceFile.creatorId !== userId) {
-      throw new AuthorizationError(
-        'You do not have permission to duplicate this file',
-      )
     }
 
     // Get all variants of the source file
@@ -952,7 +925,7 @@ const FileActions = {
         await tx
           .insert(fileTable)
           .values({
-            creatorId: userId,
+            creatorId: ctx.userId!,
             type: sourceFile.type,
             originalType: sourceFile.originalType,
             processingStatus: 'DONE',
@@ -1024,7 +997,7 @@ const FileActions = {
     }
     if (file.creatorId !== userIId) {
       throw new AuthorizationError(
-        'You do not have permission to delete this file',
+        'You are not authorized to delete this file.',
       )
     }
     if (file.expireBy === null) {

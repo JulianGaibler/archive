@@ -89,6 +89,7 @@ export type AudioItem = Item &
   Node & {
     __typename?: 'AudioItem'
     caption: Scalars['String']['output']
+    captionPreview: Scalars['String']['output']
     createdAt: Scalars['DateTime']['output']
     creator: User
     description: Scalars['String']['output']
@@ -409,6 +410,8 @@ export type Mutation = {
   deleteItem: Scalars['ID']['output']
   /** Deleted a keyword. */
   deleteKeyword: Scalars['Boolean']['output']
+  /** Deletes a passkey. */
+  deletePasskey: Scalars['Boolean']['output']
   /**
    * Deletes a post and all its associated items and files. Returns the ID of
    * the deleted post.
@@ -426,6 +429,10 @@ export type Mutation = {
   duplicateItem: Scalars['ID']['output']
   /** Edits a post. */
   editPost: Post
+  /** Generates WebAuthn authentication options for passkey login. */
+  generatePasskeyAuthenticationOptions: Scalars['String']['output']
+  /** Generates WebAuthn registration options for adding a new passkey. */
+  generatePasskeyRegistrationOptions: Scalars['String']['output']
   /** Initiates TOTP two-factor authentication setup. Returns QR code and secret. */
   initTotp: TotpSetupResult
   /** Associates the Telegram ID of a user with their Archive Profil. */
@@ -467,6 +474,8 @@ export type Mutation = {
    * subscription.
    */
   removeModifications: Scalars['String']['output']
+  /** Renames a passkey. */
+  renamePasskey: Scalars['Boolean']['output']
   /**
    * Reorders an item within a post to a new position. Returns the new position
    * of the item.
@@ -509,6 +518,10 @@ export type Mutation = {
   uploadProfilePicture: Scalars['Boolean']['output']
   /** Verifies a TOTP code to complete login for users with 2FA enabled. */
   verifyLoginTotp: Scalars['Boolean']['output']
+  /** Verifies a passkey authentication response and creates a session. */
+  verifyPasskeyAuthentication: Scalars['Boolean']['output']
+  /** Verifies and saves a new passkey after browser attestation. */
+  verifyPasskeyRegistration: Scalars['Boolean']['output']
 }
 
 export type MutationChangeNameArgs = {
@@ -554,6 +567,10 @@ export type MutationDeleteKeywordArgs = {
   keywordId: Scalars['String']['input']
 }
 
+export type MutationDeletePasskeyArgs = {
+  passkeyId: Scalars['String']['input']
+}
+
 export type MutationDeletePostArgs = {
   postId: Scalars['ID']['input']
 }
@@ -578,6 +595,10 @@ export type MutationEditPostArgs = {
   newItems?: InputMaybe<Array<NewItemInput>>
   postId: Scalars['ID']['input']
   title: Scalars['String']['input']
+}
+
+export type MutationGeneratePasskeyRegistrationOptionsArgs = {
+  name?: InputMaybe<Scalars['String']['input']>
 }
 
 export type MutationLinkTelegramArgs = {
@@ -622,6 +643,11 @@ export type MutationRemoveModificationsArgs = {
   clearAllModifications?: InputMaybe<Scalars['Boolean']['input']>
   itemId: Scalars['ID']['input']
   removeModifications: Array<Scalars['String']['input']>
+}
+
+export type MutationRenamePasskeyArgs = {
+  name: Scalars['String']['input']
+  passkeyId: Scalars['String']['input']
 }
 
 export type MutationReorderItemArgs = {
@@ -672,6 +698,15 @@ export type MutationVerifyLoginTotpArgs = {
   pendingToken: Scalars['String']['input']
 }
 
+export type MutationVerifyPasskeyAuthenticationArgs = {
+  response: Scalars['String']['input']
+}
+
+export type MutationVerifyPasskeyRegistrationArgs = {
+  name?: InputMaybe<Scalars['String']['input']>
+  response: Scalars['String']['input']
+}
+
 export type NewItemInput = {
   caption?: InputMaybe<Scalars['String']['input']>
   description?: InputMaybe<Scalars['String']['input']>
@@ -696,6 +731,16 @@ export type NormalizeMetadata = {
   __typename?: 'NormalizeMetadata'
   /** Whether audio normalization is applied. */
   enabled: Scalars['Boolean']['output']
+}
+
+export type Passkey = {
+  __typename?: 'Passkey'
+  backedUp: Scalars['Boolean']['output']
+  createdAt: Scalars['DateTime']['output']
+  deviceType: Scalars['String']['output']
+  id: Scalars['String']['output']
+  name: Scalars['String']['output']
+  transports?: Maybe<Scalars['String']['output']>
 }
 
 /** A photo file. */
@@ -1001,6 +1046,8 @@ export type User = Node & {
   linkedTelegram?: Maybe<Scalars['Boolean']['output']>
   /** The user's profile name. */
   name: Scalars['String']['output']
+  /** Registered passkeys. Only available for the current user via `me` query. */
+  passkeys?: Maybe<Array<Passkey>>
   /** The number of posts created by this user. */
   postCount: Scalars['Int']['output']
   /** All Posts associated with this user. */
@@ -1329,6 +1376,7 @@ export type ResolversTypes = ResolversObject<{
   Node: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Node']>
   NormalizeInput: NormalizeInput
   NormalizeMetadata: ResolverTypeWrapper<NormalizeMetadata>
+  Passkey: ResolverTypeWrapper<Passkey>
   PhotoFile: ResolverTypeWrapper<
     Omit<PhotoFile, 'creator'> & { creator: ResolversTypes['User'] }
   >
@@ -1425,6 +1473,7 @@ export type ResolversParentTypes = ResolversObject<{
   Node: ResolversInterfaceTypes<ResolversParentTypes>['Node']
   NormalizeInput: NormalizeInput
   NormalizeMetadata: NormalizeMetadata
+  Passkey: Passkey
   PhotoFile: Omit<PhotoFile, 'creator'> & {
     creator: ResolversParentTypes['User']
   }
@@ -1529,6 +1578,7 @@ export type AudioItemResolvers<
     ResolversParentTypes['AudioItem'],
 > = ResolversObject<{
   caption?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  captionPreview?: Resolver<ResolversTypes['String'], ParentType, ContextType>
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
   creator?: Resolver<ResolversTypes['User'], ParentType, ContextType>
   description?: Resolver<ResolversTypes['String'], ParentType, ContextType>
@@ -1844,6 +1894,12 @@ export type MutationResolvers<
     ContextType,
     RequireFields<MutationDeleteKeywordArgs, 'keywordId'>
   >
+  deletePasskey?: Resolver<
+    ResolversTypes['Boolean'],
+    ParentType,
+    ContextType,
+    RequireFields<MutationDeletePasskeyArgs, 'passkeyId'>
+  >
   deletePost?: Resolver<
     ResolversTypes['ID'],
     ParentType,
@@ -1876,6 +1932,17 @@ export type MutationResolvers<
       MutationEditPostArgs,
       'keywords' | 'language' | 'postId' | 'title'
     >
+  >
+  generatePasskeyAuthenticationOptions?: Resolver<
+    ResolversTypes['String'],
+    ParentType,
+    ContextType
+  >
+  generatePasskeyRegistrationOptions?: Resolver<
+    ResolversTypes['String'],
+    ParentType,
+    ContextType,
+    Partial<MutationGeneratePasskeyRegistrationOptionsArgs>
   >
   initTotp?: Resolver<
     ResolversTypes['TotpSetupResult'],
@@ -1940,6 +2007,12 @@ export type MutationResolvers<
       'itemId' | 'removeModifications'
     >
   >
+  renamePasskey?: Resolver<
+    ResolversTypes['Boolean'],
+    ParentType,
+    ContextType,
+    RequireFields<MutationRenamePasskeyArgs, 'name' | 'passkeyId'>
+  >
   reorderItem?: Resolver<
     ResolversTypes['Int'],
     ParentType,
@@ -2001,6 +2074,18 @@ export type MutationResolvers<
     ContextType,
     RequireFields<MutationVerifyLoginTotpArgs, 'code' | 'pendingToken'>
   >
+  verifyPasskeyAuthentication?: Resolver<
+    ResolversTypes['Boolean'],
+    ParentType,
+    ContextType,
+    RequireFields<MutationVerifyPasskeyAuthenticationArgs, 'response'>
+  >
+  verifyPasskeyRegistration?: Resolver<
+    ResolversTypes['Boolean'],
+    ParentType,
+    ContextType,
+    RequireFields<MutationVerifyPasskeyRegistrationArgs, 'response'>
+  >
 }>
 
 export type NodeResolvers<
@@ -2029,6 +2114,23 @@ export type NormalizeMetadataResolvers<
     ResolversParentTypes['NormalizeMetadata'],
 > = ResolversObject<{
   enabled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>
+}>
+
+export type PasskeyResolvers<
+  ContextType = Context,
+  ParentType extends ResolversParentTypes['Passkey'] =
+    ResolversParentTypes['Passkey'],
+> = ResolversObject<{
+  backedUp?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>
+  deviceType?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  id?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  transports?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >
 }>
 
 export type PhotoFileResolvers<
@@ -2372,6 +2474,11 @@ export type UserResolvers<
     ContextType
   >
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>
+  passkeys?: Resolver<
+    Maybe<Array<ResolversTypes['Passkey']>>,
+    ParentType,
+    ContextType
+  >
   postCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>
   posts?: Resolver<
     Maybe<ResolversTypes['PostConnection']>,
@@ -2504,6 +2611,7 @@ export type Resolvers<ContextType = Context> = ResolversObject<{
   Mutation?: MutationResolvers<ContextType>
   Node?: NodeResolvers<ContextType>
   NormalizeMetadata?: NormalizeMetadataResolvers<ContextType>
+  Passkey?: PasskeyResolvers<ContextType>
   PhotoFile?: PhotoFileResolvers<ContextType>
   Post?: PostResolvers<ContextType>
   PostConnection?: PostConnectionResolvers<ContextType>

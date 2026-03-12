@@ -1,0 +1,28 @@
+---
+interface Props {
+  heading: string
+  description?: string
+}
+
+const { heading, description } = Astro.props
+---
+
+<section class="card tint--tinted">
+  <h3 class="tint--type-body-serif-bold">{heading}</h3>
+  {description && <p class="tint--type-ui description">{description}</p>}
+  <slot />
+</section>
+
+<style lang="sass">
+  .card
+    background: var(--tint-bg)
+    padding: tint.$size-24
+    border-radius: tint.$size-12
+    display: flex
+    flex-direction: column
+    gap: tint.$size-16
+
+  .description
+    color: var(--tint-text-secondary)
+    margin-block-start: - tint.$size-12
+</style>

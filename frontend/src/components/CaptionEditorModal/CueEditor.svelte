@@ -66,18 +66,6 @@
     }
   }
 
-  function handleFromKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter') {
-      ;(e.target as HTMLInputElement).blur()
-    }
-  }
-
-  function handleToKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter') {
-      ;(e.target as HTMLInputElement).blur()
-    }
-  }
-
   let voiceItems = $derived(allVoices.map((v) => ({ value: v, label: v })))
 
   // === Speaker (Autocomplete) — needs bind:value ===
@@ -92,7 +80,11 @@
     const changed = idx !== prevCueIndex
     prevCueIndex = idx
 
-    if (changed && speakerElement && speakerElement === document.activeElement) {
+    if (
+      changed &&
+      speakerElement &&
+      speakerElement === document.activeElement
+    ) {
       speakerElement.blur()
     }
     voiceValue = cue?.voice ?? undefined
@@ -174,7 +166,7 @@
         oninput={(e) => {
           fromValue = (e.target as HTMLInputElement).value
         }}
-        onkeydown={handleFromKeydown}
+        commitOnEnter
       />
       <div class="end-time-row">
         <TextField
@@ -187,7 +179,7 @@
           oninput={(e) => {
             toValue = (e.target as HTMLInputElement).value
           }}
-          onkeydown={handleToKeydown}
+          commitOnEnter
         />
         <Button
           icon

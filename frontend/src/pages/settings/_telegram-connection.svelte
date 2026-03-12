@@ -33,7 +33,6 @@
         if (res.data?.unlinkTelegram) {
           success = true
           user.linkedTelegram = null
-          // Success feedback will clear after 3 seconds
           setTimeout(() => {
             success = false
           }, 3000)
@@ -53,23 +52,26 @@
   }
 </script>
 
-<h2 class="tint--type-body-serif-bold">Telegram connection</h2>
-
-<form>
-  <p class="tint--type-ui description">
-    Connect your Archive account with Telegram to enable posting directly from
-    the arnoldbot.
-  </p>
-
+<div class="content">
   {#if globalError}
-    <MessageBox icon={IconWarning}>
-      {globalError}
+    <MessageBox
+      icon={IconWarning}
+      onclose={() => {
+        globalError = undefined
+      }}
+    >
+      <p>{globalError}</p>
     </MessageBox>
   {/if}
 
   {#if success}
-    <MessageBox icon={IconDone}>
-      Telegram account has been unlinked successfully.
+    <MessageBox
+      icon={IconDone}
+      onclose={() => {
+        success = false
+      }}
+    >
+      <p>Telegram account has been unlinked successfully.</p>
     </MessageBox>
   {/if}
 
@@ -81,7 +83,7 @@
     </div>
 
     <div class="actions">
-      <Button variant="secondary" onclick={tryUnlinkTelegram} {loading}>
+      <Button small variant="secondary" onclick={tryUnlinkTelegram} {loading}>
         Unlink Telegram
       </Button>
     </div>
@@ -93,23 +95,18 @@
     </div>
 
     <div class="actions">
-      <Button variant="primary" href="/settings/link-telegram">
+      <Button small variant="primary" href="/settings/link-telegram">
         Link Telegram Account
       </Button>
     </div>
   {/if}
-</form>
+</div>
 
 <style lang="sass">
-  form
+  .content
     display: flex
     flex-direction: column
-    gap: tint.$size-16
-      
-  p.description
-    color: var(--tint-text-secondary)
-    margin: 0
-    margin-block-start: calc(-1 * tint.$size-8)
+    gap: tint.$size-8
 
   .connected-status,
   .disconnected-status
@@ -120,5 +117,5 @@
   .actions
     display: flex
     gap: tint.$size-12
-    justify-content: flex-end
+    justify-content: center
 </style>

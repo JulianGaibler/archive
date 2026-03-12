@@ -1,5 +1,6 @@
 export * as ItemModel from './ItemModel.js'
 export * as KeywordModel from './KeywordModel.js'
+export * as PasskeyModel from './PasskeyModel.js'
 export * as PostModel from './PostModel.js'
 export * as SessionModel from './SessionModel.js'
 export * as UserModel from './UserModel.js'

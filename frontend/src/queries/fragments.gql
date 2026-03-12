@@ -233,7 +233,7 @@ fragment PostsConnection on PostConnection {
           }
         }
         ... on AudioItem {
-          caption
+          captionPreview
           description
           file {
             __typename

@@ -1,5 +1,6 @@
 ---
 import Layout from '@src/layouts/Layout.astro'
+import SettingsCard from '@src/components/SettingsCard.astro'
 import ChangePassword from './_change-password.svelte'
 import ChangeName from './_change-name.svelte'
 import ChangeProfilePicture from './_change-profile-picture.svelte'
@@ -7,6 +8,7 @@ import ManageSessions from './_manage-sessions.svelte'
 import TelegramConnection from './_telegram-connection.svelte'
 import CaptionPreferences from './_caption-preferences.svelte'
 import TwoFactorAuth from './_two-factor-auth.svelte'
+import PasskeyManagement from './_passkey-management.svelte'
 import ErrorPage from '@src/components/ErrorPage.astro'
 
 import { getSdk } from '@src/generated/graphql'
@@ -39,36 +41,72 @@ try {
       </div>
       <div>
         <div class="shrinkwrap">
-          <div class="cards">
-            <section class="card tint--tinted">
-              <ChangePassword
-                client:load
-                totpEnabled={result!.data.me.totpStatus?.enabled ?? false}
-              />
+          <div class="sections">
+            <section class="section">
+              <h2 class="tint--type-title-serif-3">Your profile</h2>
+              <div class="cards">
+                <SettingsCard heading="Profile picture">
+                  <ChangeProfilePicture client:load user={result!.data.me} />
+                </SettingsCard>
+                <SettingsCard heading="Your name">
+                  <ChangeName client:load user={result!.data.me} />
+                </SettingsCard>
+              </div>
             </section>
-            <section class="card tint--tinted">
-              <ChangeProfilePicture client:load user={result!.data.me} />
+
+            <section class="section">
+              <h2 class="tint--type-title-serif-3">Preferences</h2>
+              <div class="cards">
+                <SettingsCard
+                  heading="Captions"
+                  description="Settings are saved to this device only."
+                >
+                  <CaptionPreferences client:load />
+                </SettingsCard>
+                <SettingsCard
+                  heading="Telegram"
+                  description="Connect your Archive account with Telegram to enable posting directly from the arnoldbot."
+                >
+                  <TelegramConnection client:load user={result!.data.me} />
+                </SettingsCard>
+              </div>
             </section>
-            <section class="card tint--tinted">
-              <ChangeName client:load user={result!.data.me} />
-            </section>
-            <section class="card tint--tinted">
-              <TwoFactorAuth
-                client:load
-                totpStatus={result!.data.me.totpStatus ?? null}
-              />
-            </section>
-            <section class="card tint--tinted">
-              <TelegramConnection client:load user={result!.data.me} />
-            </section>
-            <section class="card tint--tinted">
-              <CaptionPreferences client:load />
-            </section>
-            <section class="card tint--tinted">
-              <ManageSessions
-                client:load
-                sessions={result!.data.userSessions}
-              />
+
+            <section class="section">
+              <h2 class="tint--type-title-serif-3">Security</h2>
+              <div class="cards">
+                <SettingsCard heading="Password">
+                  <ChangePassword
+                    client:load
+                    totpEnabled={result!.data.me.totpStatus?.enabled ?? false}
+                  />
+                </SettingsCard>
+                <SettingsCard heading="Two-factor authentication">
+                  <TwoFactorAuth
+                    client:load
+                    totpStatus={result!.data.me.totpStatus ?? null}
+                  />
+                </SettingsCard>
+                <SettingsCard
+                  heading="Passkeys"
+                  description="Sign in without a password using your device's biometrics or security key."
+                >
+                  <PasskeyManagement
+                    client:load
+                    passkeys={result!.data.me.passkeys ?? []}
+                    totpEnabled={result!.data.me.totpStatus?.enabled ?? false}
+                  />
+                </SettingsCard>
+                <SettingsCard
+                  heading="Sessions"
+                  description="View and manage your active sessions."
+                >
+                  <ManageSessions
+                    client:load
+                    sessions={result!.data.userSessions}
+                  />
+                </SettingsCard>
+              </div>
             </section>
           </div>
         </div>
@@ -82,19 +120,24 @@ try {
     background: var(--tint-bg)
     padding-block: tint.$size-24
     margin-block-end: tint.$size-16
-  h1
-    margin-bottom: tint.$size-32
+
+  .sections
+    display: flex
+    flex-direction: column
+    gap: tint.$size-32
+    margin: 0 auto
+    max-width: 768px
+    @media (max-width: 768px)
+      max-width: 384px
+
+    h2
+      margin-block-end: tint.$size-16
+      color: var(--tint-text-secondary)
 
   .cards
     display: grid
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))
+    grid-template-columns: repeat(2, 1fr)
     gap: tint.$size-16
-
-  .card
-    background: var(--tint-bg)
-    padding: tint.$size-24
-    border-radius: tint.$size-12
-    display: flex
-    flex-direction: column
-    gap: tint.$size-16
+    @media (max-width: 768px)
+      grid-template-columns: 1fr
 </style>

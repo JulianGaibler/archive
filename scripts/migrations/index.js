@@ -144,9 +144,48 @@ const migration_v2_to_v2_1 = {
 }
 
 /**
+ * Migration from v2.1.0 to v2.2.0
+ * Adds WebAuthn/passkey environment variables
+ */
+const migration_v2_1_to_v2_2 = {
+  fromVersion: '2.1.0',
+  toVersion: '2.2.0',
+  description: 'Add WebAuthn/passkey environment variables',
+
+  migrate: (vars, mode) => {
+    const migrated = { ...vars }
+    const changes = []
+
+    // BACKEND_WEBAUTHN_RP_ID — derive from PUBLIC_URL if available
+    if (!migrated.BACKEND_WEBAUTHN_RP_ID) {
+      let rpId = ''
+      try {
+        if (migrated.PUBLIC_URL) {
+          rpId = new URL(migrated.PUBLIC_URL).hostname
+        }
+      } catch {}
+      migrated.BACKEND_WEBAUTHN_RP_ID = rpId
+      if (rpId) {
+        changes.push(`Added BACKEND_WEBAUTHN_RP_ID = ${rpId} (derived from PUBLIC_URL)`)
+      } else {
+        changes.push('Added BACKEND_WEBAUTHN_RP_ID (empty, will default to PUBLIC_URL hostname at runtime)')
+      }
+    }
+
+    // BACKEND_WEBAUTHN_RP_NAME
+    if (!migrated.BACKEND_WEBAUTHN_RP_NAME) {
+      migrated.BACKEND_WEBAUTHN_RP_NAME = 'Archive'
+      changes.push('Added BACKEND_WEBAUTHN_RP_NAME = Archive')
+    }
+
+    return { migrated, changes }
+  }
+}
+
+/**
  * All available migrations (in order)
  */
-export const migrations = [migration_unversioned_to_v2, migration_v2_to_v2_1];
+export const migrations = [migration_unversioned_to_v2, migration_v2_to_v2_1, migration_v2_1_to_v2_2];
 
 /**
  * Detect the version of an environment file

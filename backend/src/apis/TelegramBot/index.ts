@@ -510,34 +510,14 @@ function convertToInlineQueryResult(items: ItemWithPost[]) {
         : clean
     }
 
-    // Build lines from description and caption
     const cap = toPlainText(item.caption || '')
     const desc = item.description || ''
-
-    let description: string | undefined
-    if (desc && cap) {
-      // Both present: line 1 = description (100 chars), line 2 = caption (100 chars)
-      const line1 = cleanAndTruncate(desc, 100)
-      const line2 = cleanAndTruncate(cap, 100)
-      description = `${line1}\n${line2}`
-    } else if (desc || cap) {
-      // Only one present: use it, truncated to 100 chars
-      const singleText = desc || cap
-      description = cleanAndTruncate(singleText, 100)
-    } else {
-      description = undefined
-    }
-
-    // Telegram inline results support a caption field (max 1024 chars)
-    const caption = cap
-      ? cleanAndTruncate(cap, 1024)
-      : undefined
+    const description = desc ? cleanAndTruncate(desc, 100) : undefined
 
     const base = {
       id: item.id,
       title,
       description,
-      ...(caption && { caption }),
     }
 
     // Get file paths if available

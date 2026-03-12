@@ -11,6 +11,14 @@ query settings {
       enabled
       recoveryCodesRemaining
     }
+    passkeys {
+      id
+      name
+      deviceType
+      backedUp
+      transports
+      createdAt
+    }
   }
   userSessions {
     createdAt

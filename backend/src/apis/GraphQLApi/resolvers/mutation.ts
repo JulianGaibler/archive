@@ -7,6 +7,7 @@ import SessionActions from '@src/actions/SessionActions.js'
 import FileActions from '@src/actions/FileActions.js'
 import ItemActions from '@src/actions/ItemActions.js'
 import TotpActions from '@src/actions/TotpActions.js'
+import PasskeyActions from '@src/actions/PasskeyActions.js'
 import AuthCookieUtils from '../AuthCookieUtils.js'
 
 export const mutationResolvers: MutationResolvers = {
@@ -154,6 +155,33 @@ export const mutationResolvers: MutationResolvers = {
 
   resetAndReprocessFile: async (_, args, ctx) =>
     ItemActions.mResetAndReprocessFile(ctx, args),
+
+  generatePasskeyRegistrationOptions: async (_, args, ctx) =>
+    PasskeyActions.mGenerateRegistrationOptions(ctx, {
+      name: args.name ?? undefined,
+    }),
+
+  verifyPasskeyRegistration: async (_, args, ctx) =>
+    PasskeyActions.mVerifyRegistration(ctx, {
+      response: args.response,
+      name: args.name ?? undefined,
+    }),
+
+  generatePasskeyAuthenticationOptions: async (_, _args, ctx) =>
+    PasskeyActions.mGenerateAuthenticationOptions(ctx),
+
+  verifyPasskeyAuthentication: async (_, args, ctx) => {
+    const { secureSessionId, token } =
+      await PasskeyActions.mVerifyAuthentication(ctx, args)
+    AuthCookieUtils.setAuthCookies(ctx.res!, secureSessionId, token)
+    return true
+  },
+
+  renamePasskey: async (_, args, ctx) =>
+    PasskeyActions.mRenamePasskey(ctx, args),
+
+  deletePasskey: async (_, args, ctx) =>
+    PasskeyActions.mDeletePasskey(ctx, args),
 
   setItemTemplate: async (_, args, ctx) => {
     const template = args.template
