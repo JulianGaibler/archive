@@ -173,7 +173,7 @@ const PasskeyActions = {
 
   async mGenerateAuthenticationOptions(ctx: Context) {
     const ip = getClientIp(ctx)
-    RateLimiter.checkLoginAttempt(`passkey-auth:${ip}`)
+    RateLimiter.checkIPRate(ip)
 
     const options = await generateAuthenticationOptions({
       rpID: getRpId(),

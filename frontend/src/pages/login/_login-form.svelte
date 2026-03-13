@@ -3,6 +3,7 @@
   import Button from 'tint/components/Button.svelte'
   import MessageBox from 'tint/components/MessageBox.svelte'
   import IconWarning from 'tint/icons/20-warning.svg?raw'
+  import IconPasskey from 'tint/icons/20-passkey.svg?raw'
 
   import { getSdk } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
@@ -13,7 +14,10 @@
     type UpdateValue,
   } from '@src/utils/edit-utils'
   import { onMount } from 'svelte'
-  import { startAuthentication } from '@simplewebauthn/browser'
+  import {
+    startAuthentication,
+    browserSupportsWebAuthnAutofill,
+  } from '@simplewebauthn/browser'
 
   const sdk = getSdk(webClient)
 
@@ -39,7 +43,47 @@
     passkeyAvailable =
       typeof window !== 'undefined' &&
       typeof window.PublicKeyCredential !== 'undefined'
+
+    if (passkeyAvailable) {
+      startConditionalAuth()
+    }
   })
+
+  async function startConditionalAuth() {
+    try {
+      const supported = await browserSupportsWebAuthnAutofill()
+      if (!supported) return
+
+      const genRes = await sdk.generatePasskeyAuthenticationOptions()
+      const genErr = getOperationResultError(genRes)
+      if (genErr) return
+
+      const optionsJSON = JSON.parse(
+        genRes.data!.generatePasskeyAuthenticationOptions,
+      )
+
+      const authResp = await startAuthentication({
+        optionsJSON,
+        useBrowserAutofill: true,
+      })
+
+      passkeyLoading = true
+      const verifyRes = await sdk.verifyPasskeyAuthentication({
+        response: JSON.stringify(authResp),
+      })
+      const verifyErr = getOperationResultError(verifyRes)
+      if (verifyErr) {
+        passkeyLoading = false
+        return
+      }
+
+      window.location.href = redirectUrl
+    } catch {
+      // Silent failure — progressive enhancement.
+      // AbortError is expected when user clicks the explicit passkey button.
+      passkeyLoading = false
+    }
+  }
 
   function clearErrors() {
     clearValidationErrors({ username, password, code })
@@ -209,7 +253,7 @@
       name="username"
       label="Username"
       required
-      autocomplete="username"
+      autocomplete="username webauthn"
       bind:value={username.value}
       error={username.error}
       disabled={loading}
@@ -228,27 +272,24 @@
       oninput={() => (password.error = undefined)}
     />
     <div class="form-actions">
-      {#if signupAllowed}
-        <a href="/signup" class="tint--type-body-sans-2 secondary-link">
-          Create an account
-        </a>
-      {/if}
+      <Button
+        icon
+        variant="ghost"
+        tooltip="Sign in with a passkey"
+        onclick={tryPasskeyLogin}
+        loading={passkeyLoading}
+        disabled={!passkeyAvailable || loading}
+      >
+        {@html IconPasskey}
+      </Button>
       <Button submit={true} {loading}>Login</Button>
     </div>
     <input type="hidden" name="redirect" value={redirectUrl} />
   </form>
-  {#if passkeyAvailable}
-    <div class="divider">
-      <span class="tint--type-ui divider-text">or</span>
-    </div>
-    <Button
-      variant="secondary"
-      onclick={tryPasskeyLogin}
-      loading={passkeyLoading}
-      disabled={loading}
-    >
-      Sign in with a passkey
-    </Button>
+  {#if signupAllowed}
+    <a href="/signup" class="tint--type-body-sans-2 secondary-link">
+      Create an account
+    </a>
   {/if}
 {:else}
   <h2 class="tint--type-title-serif-2">Verify your identity</h2>
@@ -304,13 +345,12 @@ form
 .form-actions
   display: flex
   align-items: center
-  justify-content: flex-end
+  justify-content: space-between
   width: 100%
   gap: tint.$size-12
 .secondary-link
   color: var(--tint-text-secondary)
   text-decoration: none
-  margin-right: auto
   &:hover
     text-decoration: underline
 .back-link
@@ -320,18 +360,6 @@ form
   cursor: pointer
   font: inherit
 .hint
-  color: var(--tint-text-secondary)
-.divider
-  display: flex
-  align-items: center
-  gap: tint.$size-12
-  &::before, &::after
-    content: ''
-    flex: 1
-    height: 1px
-    background: var(--tint-border, var(--tint-text-secondary))
-    opacity: 0.3
-.divider-text
   color: var(--tint-text-secondary)
 
 </style>

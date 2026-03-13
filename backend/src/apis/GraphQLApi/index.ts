@@ -48,6 +48,15 @@ function depthLimitRule(maxDepth: number) {
 
         for (const def of node.definitions) {
           if (def.kind === Kind.OPERATION_DEFINITION) {
+            // Skip depth limit for introspection queries
+            const selections = def.selectionSet?.selections
+            if (
+              selections?.length === 1 &&
+              selections[0].kind === Kind.FIELD &&
+              selections[0].name?.value.startsWith('__')
+            ) {
+              continue
+            }
             const depth = measureDepth(def.selectionSet, fragments, new Set())
             if (depth > maxDepth) {
               context.reportError(

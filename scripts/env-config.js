@@ -58,7 +58,7 @@ export const ENV_VARIABLES = [
     longDescription: 'Origin URL allowed to access the API. Used by backend for CORS and frontend for PWA configuration.',
     type: 'string',
     category: 'Shared',
-    devDefault: 'http://localhost:4321',
+    devDefault: '*',
     prodDefault: null,
     ciDefault: 'http://localhost:4321',
     required: true,
