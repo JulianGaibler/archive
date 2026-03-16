@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@astrojs/node": "^9.5.4",
-    "@astrojs/svelte": "^7.2.5",
+    "@astrojs/svelte": "^8.0.0",
     "@simplewebauthn/browser": "^13.3.0",
     "@types/cookie": "^1.0.0",
     "archive-shared": "*",
