@@ -18,7 +18,7 @@
     "@simplewebauthn/browser": "^13.3.0",
     "@types/cookie": "^1.0.0",
     "archive-shared": "*",
-    "astro": "^5.18.1",
+    "astro": "^6.1.1",
     "cookie": "^1.1.1",
     "graphql": "^16.13.1",
     "graphql-request": "^7.4.0",
