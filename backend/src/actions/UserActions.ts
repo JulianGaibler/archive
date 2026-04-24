@@ -346,7 +346,7 @@ const UserActions = {
       .update(userTable)
       .set({ profilePictureFileId: fileId })
       .where(eq(userTable.id, userIId))
-    return true
+    return fileId
   },
 
   async mClearProfilePicture(ctx: Context) {

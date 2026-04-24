@@ -4,6 +4,7 @@ import { fileTypeFromStream, fileTypeFromFile } from 'file-type'
 import fs from 'fs'
 import path from 'path'
 import stream from 'stream'
+import sharp from 'sharp'
 import FileActions from '@src/actions/FileActions.js'
 import { FileInternal } from '@src/models/FileModel.js'
 import { eq, and } from 'drizzle-orm'
@@ -271,6 +272,13 @@ export default class FileStorage {
         throw new Error(`File not found for ID ${fileId}`)
       }
 
+      // Profile pictures use a dedicated processing path
+      if (file.type === 'PROFILE_PICTURE') {
+        await this.processProfilePicture(fileId, filePath, updateCallback, ctx)
+        setImmediate(() => this.checkQueue())
+        return
+      }
+
       // Check if this is a reprocessing (file has modifications)
       const isReprocessing = this.fileHasModifications(file)
       const hasUnmodified = await this.hasUnmodifiedVariants(ctx, fileId)
@@ -534,6 +542,159 @@ export default class FileStorage {
     }
 
     return { result, fileType: targetFileType, originalMimeType: mime }
+  }
+
+  /**
+   * Processes a profile picture file: creates 256px and 64px JPEG variants,
+   * moves them to permanent storage, registers DB records, and sets status DONE.
+   */
+  private async processProfilePicture(
+    fileId: string,
+    filePath: string,
+    updateCallback: FileUpdateCallback,
+    ctx: Context,
+  ): Promise<void> {
+    const tmpDir = tmp.dirSync({ unsafeCleanup: true, postfix: '-archive-pfp' })
+
+    try {
+      await updateCallback({ processingProgress: 10 })
+
+      // Read source file and create sharp pipeline
+      const buffer = await fs.promises.readFile(filePath)
+      const base = sharp(buffer).removeAlpha().rotate()
+
+      // Create PROFILE_256 variant
+      const profile256Path = path.join(tmpDir.name, 'PROFILE_256.jpeg')
+      await base
+        .clone()
+        .resize(256, 256, { fit: sharp.fit.cover })
+        .jpeg({ quality: 91, progressive: true })
+        .toFile(profile256Path)
+
+      await updateCallback({ processingProgress: 50 })
+
+      // Create PROFILE_64 variant
+      const profile64Path = path.join(tmpDir.name, 'PROFILE_64.jpeg')
+      await base
+        .clone()
+        .resize(64, 64, { fit: sharp.fit.cover })
+        .jpeg({ quality: 91, progressive: true })
+        .toFile(profile64Path)
+
+      await updateCallback({ processingProgress: 80 })
+
+      // Move files to permanent storage and register in DB
+      await this.moveProfilePictureFiles(
+        fileId,
+        profile256Path,
+        profile64Path,
+        updateCallback,
+        ctx,
+      )
+
+      // Clean up queue file
+      fileUtils.remove(filePath)
+    } catch (error) {
+      console.error(`Error processing profile picture ${fileId}:`, error)
+      await updateCallback({
+        processingStatus: 'FAILED',
+        processingNotes:
+          error instanceof Error ? error.message : String(error),
+      })
+    } finally {
+      tmpDir.removeCallback()
+    }
+  }
+
+  /**
+   * Moves processed profile picture variants to permanent storage and registers
+   * them in the database.
+   */
+  private async moveProfilePictureFiles(
+    fileId: string,
+    profile256TmpPath: string,
+    profile64TmpPath: string,
+    updateCallback: FileUpdateCallback,
+    ctx: Context,
+  ): Promise<void> {
+    const fileDir = this.pathManager.getFileDirectoryPath(fileId)
+    await fs.promises.mkdir(fileDir, { recursive: true })
+
+    const profile256Dest = this.pathManager.getVariantPath(
+      fileId,
+      'PROFILE_256',
+      'jpeg',
+    )
+    const profile64Dest = this.pathManager.getVariantPath(
+      fileId,
+      'PROFILE_64',
+      'jpeg',
+    )
+
+    // Move files
+    await fileUtils.moveAsync(profile256TmpPath, profile256Dest)
+    await fileUtils.moveAsync(profile64TmpPath, profile64Dest)
+
+    // Verify files exist
+    if (!fs.existsSync(profile256Dest) || !fs.existsSync(profile64Dest)) {
+      // Clean up any partially moved files
+      for (const p of [profile256Dest, profile64Dest]) {
+        try {
+          if (fs.existsSync(p)) await fs.promises.unlink(p)
+        } catch {}
+      }
+      throw new Error('Profile picture file move verification failed')
+    }
+
+    await updateCallback({ processingProgress: 90 })
+
+    // Register variants in database
+    const variants: Array<{
+      file: string
+      variant: 'PROFILE_256' | 'PROFILE_64'
+      extension: string
+      mimeType: string
+      meta: Record<string, unknown>
+    }> = [
+      {
+        file: fileId,
+        variant: 'PROFILE_256',
+        extension: 'jpeg',
+        mimeType: 'image/jpeg',
+        meta: {},
+      },
+      {
+        file: fileId,
+        variant: 'PROFILE_64',
+        extension: 'jpeg',
+        mimeType: 'image/jpeg',
+        meta: {},
+      },
+    ]
+
+    try {
+      await FileActions._mCreateFileVariants(ctx, variants)
+    } catch (dbError) {
+      // Clean up moved files on DB failure
+      for (const p of [profile256Dest, profile64Dest]) {
+        try {
+          if (fs.existsSync(p)) await fs.promises.unlink(p)
+        } catch {}
+      }
+      throw dbError
+    }
+
+    // Update file sizes
+    await this.updateVariantSizes(fileId, variants)
+
+    await updateCallback({ processingProgress: 99 })
+
+    // Mark processing as complete
+    await updateCallback({
+      processingStatus: 'DONE',
+      processingProgress: 100,
+      processingNotes: null,
+    })
   }
 
   /**
@@ -975,6 +1136,7 @@ export default class FileStorage {
     if (type === 'GIF') return FileType.GIF
     if (type === 'AUDIO') return FileType.AUDIO
     if (type === 'IMAGE') return FileType.IMAGE
+    if (type === 'PROFILE_PICTURE') return FileType.IMAGE
     throw new Error(`Unknown file type: ${type}`)
   }
 

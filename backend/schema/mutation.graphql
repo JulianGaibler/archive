@@ -341,7 +341,7 @@ type Mutation {
     Profile picture file.
     """
     file: Upload!
-  ): Boolean!
+  ): String!
 
   """
   Deletes the profile picture of the current user.

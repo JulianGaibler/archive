@@ -21,3 +21,14 @@ mutation uploadPicture($file: Upload!) {
 mutation clearProfilePicture {
   clearProfilePicture
 }
+
+query profilePictureStatus {
+  me {
+    profilePicture {
+      processingStatus
+      processingNotes
+      profilePicture256
+      profilePicture64
+    }
+  }
+}

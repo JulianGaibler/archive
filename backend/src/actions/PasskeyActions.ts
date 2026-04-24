@@ -32,10 +32,20 @@ function getRpId(): string {
   return env.BACKEND_WEBAUTHN_RP_ID || new URL(env.PUBLIC_URL).hostname
 }
 
-function getExpectedOrigins(): string[] {
+function getExpectedOrigins(ctx: Context): string[] {
   const origins = new Set<string>()
   origins.add(env.PUBLIC_URL)
-  if (env.CORS_ORIGIN) origins.add(env.CORS_ORIGIN)
+  if (env.CORS_ORIGIN && env.CORS_ORIGIN !== '*') {
+    origins.add(env.CORS_ORIGIN)
+  }
+  // In dev mode (CORS_ORIGIN=*), accept the actual request origin
+  // since Express CORS already allows all origins
+  if (env.CORS_ORIGIN === '*' && ctx.req) {
+    const requestOrigin = ctx.req.headers.origin
+    if (requestOrigin) {
+      origins.add(requestOrigin)
+    }
+  }
   return [...origins]
 }
 
@@ -132,7 +142,7 @@ const PasskeyActions = {
     const verification = await verifyRegistrationResponse({
       response,
       expectedChallenge: challenge,
-      expectedOrigin: getExpectedOrigins(),
+      expectedOrigin: getExpectedOrigins(ctx),
       expectedRPID: getRpId(),
     })
 
@@ -220,7 +230,7 @@ const PasskeyActions = {
     const verification = await verifyAuthenticationResponse({
       response,
       expectedChallenge: challenge,
-      expectedOrigin: getExpectedOrigins(),
+      expectedOrigin: getExpectedOrigins(ctx),
       expectedRPID: getRpId(),
       credential: {
         id: pk.id,

@@ -12,6 +12,8 @@ export enum VariantType {
   THUMBNAIL = 'THUMBNAIL',
   THUMBNAIL_POSTER = 'THUMBNAIL_POSTER',
   UNMODIFIED_THUMBNAIL_POSTER = 'UNMODIFIED_THUMBNAIL_POSTER',
+  PROFILE_256 = 'PROFILE_256',
+  PROFILE_64 = 'PROFILE_64',
 }
 
 /** Registry for variant type operations and relationships. */

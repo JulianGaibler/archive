@@ -482,7 +482,7 @@ export type Mutation = {
    */
   uploadItemFile: Scalars['ID']['output'];
   /** Sets the profile picture of the current user. */
-  uploadProfilePicture: Scalars['Boolean']['output'];
+  uploadProfilePicture: Scalars['String']['output'];
   /** Verifies a TOTP code to complete login for users with 2FA enabled. */
   verifyLoginTotp: Scalars['Boolean']['output'];
   /** Verifies a passkey authentication response and creates a session. */
@@ -1573,12 +1573,17 @@ export type UploadPictureMutationVariables = Exact<{
 }>;
 
 
-export type UploadPictureMutation = { __typename?: 'Mutation', uploadProfilePicture: boolean };
+export type UploadPictureMutation = { __typename?: 'Mutation', uploadProfilePicture: string };
 
 export type ClearProfilePictureMutationVariables = Exact<{ [key: string]: never; }>;
 
 
 export type ClearProfilePictureMutation = { __typename?: 'Mutation', clearProfilePicture: boolean };
+
+export type ProfilePictureStatusQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ProfilePictureStatusQuery = { __typename?: 'Query', me?: { __typename?: 'User', profilePicture?: { __typename?: 'ProfilePictureFile', processingStatus: FileProcessingStatus, processingNotes?: string | null, profilePicture256: string, profilePicture64: string } | null } | null };
 
 export type RevokeSessionMutationVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -2275,6 +2280,18 @@ export const ClearProfilePictureDocument = gql`
   clearProfilePicture
 }
     `;
+export const ProfilePictureStatusDocument = gql`
+    query profilePictureStatus {
+  me {
+    profilePicture {
+      processingStatus
+      processingNotes
+      profilePicture256
+      profilePicture64
+    }
+  }
+}
+    `;
 export const RevokeSessionDocument = gql`
     mutation revokeSession($id: ID!) {
   revokeSession(sessionId: $id)
@@ -2406,6 +2423,7 @@ const ChangeNameDocumentString = print(ChangeNameDocument);
 const ChangePasswordDocumentString = print(ChangePasswordDocument);
 const UploadPictureDocumentString = print(UploadPictureDocument);
 const ClearProfilePictureDocumentString = print(ClearProfilePictureDocument);
+const ProfilePictureStatusDocumentString = print(ProfilePictureStatusDocument);
 const RevokeSessionDocumentString = print(RevokeSessionDocument);
 const LinkTelegramDocumentString = print(LinkTelegramDocument);
 const UnlinkTelegramDocumentString = print(UnlinkTelegramDocument);
@@ -2555,6 +2573,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     clearProfilePicture(variables?: ClearProfilePictureMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ClearProfilePictureMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<ClearProfilePictureMutation>(ClearProfilePictureDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'clearProfilePicture', 'mutation', variables);
+    },
+    profilePictureStatus(variables?: ProfilePictureStatusQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ProfilePictureStatusQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ProfilePictureStatusQuery>(ProfilePictureStatusDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'profilePictureStatus', 'query', variables);
     },
     revokeSession(variables: RevokeSessionMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: RevokeSessionMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<RevokeSessionMutation>(RevokeSessionDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'revokeSession', 'mutation', variables);

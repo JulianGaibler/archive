@@ -996,11 +996,28 @@ class FileMigrationScript {
     } = options.normalizationOptions || {}
 
     // Pass 1: Analyze audio for measurements
-    const measurements = await this.analyzeAudioLoudness(inputPath, {
-      integratedLoudness,
-      truePeak,
-      loudnessRange,
-    })
+    let measurements: { input_i: number; input_lra: number; input_tp: number; input_thresh: number; target_offset: number }
+    try {
+      measurements = await this.analyzeAudioLoudness(inputPath, {
+        integratedLoudness,
+        truePeak,
+        loudnessRange,
+      })
+    } catch (error) {
+      // Silent/near-silent audio produces NaN measurements — skip loudnorm
+      if (error instanceof Error && error.message?.includes('SILENT_AUDIO')) {
+        console.warn('Audio is silent or near-silent, skipping loudnorm normalization')
+        return this.convertWithFilter(inputPath, outputPath, {
+          audioFilter: 'aresample=async=1:first_pts=0,asetpts=PTS-STARTPTS',
+          outputOptions: [
+            ...(options.audioOptions || []),
+            ...(options.videoOptions || []),
+          ],
+          onProgress: options.onProgress,
+        })
+      }
+      throw error
+    }
 
     // Pass 2: Apply normalization with measurements
     const audioFilter = `loudnorm=I=${integratedLoudness}:TP=${truePeak}:LRA=${loudnessRange}:linear=${linear ? 'true' : 'false'}:measured_I=${measurements.input_i}:measured_LRA=${measurements.input_lra}:measured_TP=${measurements.input_tp}:measured_thresh=${measurements.input_thresh}:offset=${measurements.target_offset}:dual_mono=${dualMono ? 'true' : 'false'}`
@@ -1106,13 +1123,23 @@ class FileMigrationScript {
         }
       }
 
-      return {
+      const result = {
         input_i: parseFloat(jsonData.input_i),
         input_lra: parseFloat(jsonData.input_lra),
         input_tp: parseFloat(jsonData.input_tp),
         input_thresh: parseFloat(jsonData.input_thresh),
         target_offset: parseFloat(jsonData.target_offset),
       }
+
+      // Silent or near-silent audio causes ffmpeg loudnorm to return NaN values.
+      // Detect this and throw a specific error so callers can skip normalization.
+      if (Object.values(result).some((v) => isNaN(v))) {
+        throw new Error(
+          'SILENT_AUDIO: loudnorm returned NaN measurements (audio is silent or near-silent)',
+        )
+      }
+
+      return result
     } catch (error) {
       throw new Error(`Failed to parse loudnorm JSON: ${error}`)
     }

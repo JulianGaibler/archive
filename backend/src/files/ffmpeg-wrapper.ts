@@ -739,23 +739,86 @@ export class FFmpegWrapper {
     } = options.normalizationOptions || {}
 
     // Pass 1: Analyze audio for measurements (0-50% of progress)
-    const measurements = await FFmpegWrapper.analyzeAudioLoudness(inputPath, {
-      integratedLoudness,
-      truePeak,
-      loudnessRange,
-      inputOptions: options.inputOptions,
-      onProgress: options.onProgress
-        ? (progress) => {
-            // Map pass 1 progress (0-100%) to 0-50% of total
-            if (progress.percent !== undefined) {
-              options.onProgress!({
-                ...progress,
-                percent: progress.percent * 0.5,
-              })
+    let measurements: AudioNormalizationMeasurements
+    try {
+      measurements = await FFmpegWrapper.analyzeAudioLoudness(inputPath, {
+        integratedLoudness,
+        truePeak,
+        loudnessRange,
+        inputOptions: options.inputOptions,
+        onProgress: options.onProgress
+          ? (progress) => {
+              // Map pass 1 progress (0-100%) to 0-50% of total
+              if (progress.percent !== undefined) {
+                options.onProgress!({
+                  ...progress,
+                  percent: progress.percent * 0.5,
+                })
+              }
             }
+          : undefined,
+      })
+    } catch (error) {
+      // Silent/near-silent audio produces NaN measurements — skip loudnorm
+      // and fall back to encoding without normalization (audio is silent anyway)
+      if (
+        error instanceof Error &&
+        error.message?.includes('SILENT_AUDIO')
+      ) {
+        console.warn(
+          'Audio is silent or near-silent, skipping loudnorm normalization',
+        )
+
+        const fallbackOutputOptions: string[] = []
+        const fallbackAudioFilter = 'aresample=async=1:first_pts=0,asetpts=PTS-STARTPTS'
+
+        let filterComplex: string | undefined
+        if (options.videoFilters && options.videoFilters.length > 0) {
+          const videoFilterChain = [...options.videoFilters]
+          const scaleFilter = this.buildScaleFilter(options.videoSize)
+          if (scaleFilter) {
+            videoFilterChain.push(scaleFilter)
           }
-        : undefined,
-    })
+          const videoFilterString = videoFilterChain.join(',')
+          filterComplex = `[0:v]${videoFilterString}[v];[0:a]${fallbackAudioFilter}[a]`
+          fallbackOutputOptions.push('-map', '[v]', '-map', '[a]')
+        } else {
+          fallbackOutputOptions.push('-af', fallbackAudioFilter)
+          const scaleArgs = this.buildScaleArgs(options.videoSize)
+          if (scaleArgs.length > 0) {
+            fallbackOutputOptions.push(...scaleArgs)
+          }
+        }
+
+        fallbackOutputOptions.push(
+          ...avSyncOptions.output,
+          ...(options.audioOptions || []),
+          ...(options.videoOptions || []),
+        )
+
+        const mergedInputOptions = [
+          ...avSyncOptions.input,
+          ...(options.inputOptions || []),
+        ]
+
+        return FFmpegWrapper.convert(inputPath, outputPath, {
+          inputOptions: mergedInputOptions,
+          outputOptions: fallbackOutputOptions,
+          filterComplex,
+          onProgress: options.onProgress
+            ? (progress) => {
+                if (progress.percent !== undefined) {
+                  options.onProgress!({
+                    ...progress,
+                    percent: 50 + progress.percent * 0.5,
+                  })
+                }
+              }
+            : undefined,
+        })
+      }
+      throw error
+    }
 
     // Pass 2: Apply normalization with measurements (50-100% of progress)
     // Determine if this is audio-only processing (no video in output)
@@ -865,13 +928,23 @@ export class FFmpegWrapper {
         }
       }
 
-      return {
+      const result = {
         input_i: parseFloat(jsonData.input_i),
         input_lra: parseFloat(jsonData.input_lra),
         input_tp: parseFloat(jsonData.input_tp),
         input_thresh: parseFloat(jsonData.input_thresh),
         target_offset: parseFloat(jsonData.target_offset),
       }
+
+      // Silent or near-silent audio causes ffmpeg loudnorm to return NaN values.
+      // Detect this and throw a specific error so callers can skip normalization.
+      if (Object.values(result).some((v) => isNaN(v))) {
+        throw new Error(
+          'SILENT_AUDIO: loudnorm returned NaN measurements (audio is silent or near-silent)',
+        )
+      }
+
+      return result
     } catch (error) {
       throw new Error(`Failed to parse loudnorm JSON: ${error}`, {
         cause: error,

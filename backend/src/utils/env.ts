@@ -82,7 +82,7 @@ const ENV_VARIABLES = [
     description:
       'Public URL where the Archive application is hosted (e.g., https://archive.example.com)',
     type: 'string',
-    fallback: 'http://localhost:3000',
+    fallback: 'http://localhost:4321',
   },
 
   // GraphQL configuration

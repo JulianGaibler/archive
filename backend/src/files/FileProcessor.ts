@@ -190,7 +190,7 @@ export default class FileProcessor {
       const tmpFilename = 'thumb.png'
 
       // Probe video metadata
-      const { duration } = await this.getMediaMetadata(filePath)
+      const { duration, hasAudio } = await this.getMediaMetadata(filePath)
 
       // Get initial screenshot for dimensions (from original video)
       let screenshotTime = 1
@@ -516,10 +516,10 @@ export default class FileProcessor {
             '4500k',
           ],
           audioOptions:
-            fileType === FileType.VIDEO
+            fileType === FileType.VIDEO && hasAudio
               ? [...mp4AudioOptions, '-b:a', '192k']
               : [],
-          hasAudio: fileType === FileType.VIDEO,
+          hasAudio: fileType === FileType.VIDEO && hasAudio,
           enableNormalization: shouldNormalize,
         })
         promises.push(renderA)
@@ -1047,6 +1047,7 @@ export default class FileProcessor {
     duration: number
     width?: number
     height?: number
+    hasAudio: boolean
   }> {
     try {
       const metadata = await new Promise<FFProbeMetadata>((resolve, reject) => {
@@ -1068,10 +1069,16 @@ export default class FileProcessor {
         (s) => s.codec_type === 'video',
       )
 
+      // Check for audio stream presence
+      const hasAudio = metadata?.streams?.some(
+        (s) => s.codec_type === 'audio',
+      ) ?? false
+
       return {
         duration: duration || 0,
         width: videoStream?.width,
         height: videoStream?.height,
+        hasAudio,
       }
     } catch (err) {
       throw new FileProcessingError(

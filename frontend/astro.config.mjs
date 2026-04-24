@@ -12,12 +12,16 @@ const tintDist = path.dirname(require.resolve('tint'))
 const isDev = process.env.NODE_ENV === 'development'
 
 // https://astro.build/config
+const corsOrigin = process.env.CORS_ORIGIN && process.env.CORS_ORIGIN !== '*'
+  ? process.env.CORS_ORIGIN
+  : undefined
+
 export default defineConfig({
-  site: process.env.CORS_ORIGIN || undefined,
+  site: corsOrigin,
   output: 'server',
   security: {
-    allowedDomains: process.env.CORS_ORIGIN
-      ? [{ hostname: new URL(process.env.CORS_ORIGIN).hostname }]
+    allowedDomains: corsOrigin
+      ? [{ hostname: new URL(corsOrigin).hostname }]
       : [],
   },
   adapter: nodejs({

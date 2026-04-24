@@ -22,7 +22,7 @@ const TAG_PREFIX = 'v'
 const CHANGELOG_PATH = path.resolve(__dirname, '../..', 'changelog.yaml')
 
 // Use GitHub environment variables (provided by Actions)
-const REPO = process.env.GITHUB_REPOSITORY || 'JulianGaibler/archive'
+const REPO = process.env.GITHUB_REPOSITORY || 'JulianaGaibler/archive'
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
 // Parse command line args

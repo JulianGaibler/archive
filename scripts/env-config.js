@@ -119,7 +119,7 @@ export const ENV_VARIABLES = [
     longDescription: 'The public-facing URL where the Archive application is hosted. Used by backend for Telegram bot links and frontend for PWA manifest.',
     type: 'string',
     category: 'Shared',
-    devDefault: 'http://localhost:3000',
+    devDefault: 'http://localhost:4321',
     prodDefault: null,
     ciDefault: 'http://localhost:4321',
     required: { dev: false, prod: true },
@@ -129,7 +129,7 @@ export const ENV_VARIABLES = [
       if (collectedValues.CORS_ORIGIN && collectedValues.CORS_ORIGIN !== '*') {
         return collectedValues.CORS_ORIGIN;
       }
-      return mode === 'development' ? 'http://localhost:3000' : null;
+      return mode === 'development' ? 'http://localhost:4321' : null;
     },
     validation: (value, mode) => {
       if (mode === 'production' && !value) {

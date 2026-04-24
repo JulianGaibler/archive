@@ -6,12 +6,14 @@
   import IconDone from 'tint/icons/20-done.svg?raw'
 
   import {
+    FileProcessingStatus,
     getSdk,
     type UploadPictureMutationVariables,
     type User,
   } from '@src/generated/graphql'
   import { webClient } from '@src/gql-client'
   import UserPicture from '@src/components/UserPicture.svelte'
+  import { getOperationResultError } from '@src/graphql-errors'
   import { handleMutation } from '@src/utils/mutation-handler'
 
   const sdk = getSdk(webClient)
@@ -25,11 +27,48 @@
   let file = $state<File | undefined>(undefined)
 
   let loading = $state(false)
+  let processing = $state(false)
   let success = $state(false)
   let globalError = $state<string | undefined>(undefined)
   let fileError = $state<string | undefined>(undefined)
 
-  const tryChangePicture = (e: Event) => {
+  async function pollForProcessingStatus() {
+    const maxAttempts = 20
+    const interval = 500
+
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise((r) => setTimeout(r, interval))
+
+      try {
+        const res = await sdk.profilePictureStatus()
+        const pfp = res.data.me?.profilePicture
+
+        if (pfp?.processingStatus === FileProcessingStatus.Done) {
+          processing = false
+          loading = false
+          success = true
+          return
+        }
+
+        if (pfp?.processingStatus === FileProcessingStatus.Failed) {
+          processing = false
+          loading = false
+          globalError =
+            pfp.processingNotes ?? 'Profile picture processing failed'
+          return
+        }
+      } catch {
+        // Ignore individual poll errors, keep trying
+      }
+    }
+
+    // Timeout
+    processing = false
+    loading = false
+    globalError = 'Profile picture processing is taking longer than expected. Please reload the page.'
+  }
+
+  const tryChangePicture = async (e: Event) => {
     e.preventDefault()
     resetErrors()
 
@@ -40,19 +79,30 @@
       return
     }
 
+    loading = true
     const args: UploadPictureMutationVariables = { file }
 
-    handleMutation(sdk.uploadPicture(args), {
-      onSuccess: () => {
-        success = true
-      },
-      onGlobalError: (msg) => {
-        globalError = msg
-      },
-      setLoading: (v) => {
-        loading = v
-      },
-    })
+    try {
+      const res = await sdk.uploadPicture(args)
+      const errorResult = getOperationResultError(res)
+      if (errorResult) {
+        globalError = errorResult.message
+        loading = false
+        return
+      }
+
+      // File is now queued for processing — poll for completion
+      processing = true
+      pollForProcessingStatus()
+    } catch (err) {
+      const errorResult = getOperationResultError(err)
+      if (errorResult) {
+        globalError = errorResult.message
+      } else {
+        globalError = 'An unexpected error occurred'
+      }
+      loading = false
+    }
   }
 
   const tryClearPicture = (e: Event) => {
@@ -79,6 +129,7 @@
 
   function resetSuccess() {
     success = false
+    processing = false
     file = undefined
   }
 </script>
@@ -90,6 +141,11 @@
 {#if globalError}
   <MessageBox icon={IconWarning} onclose={resetErrors}>
     <p>{globalError}</p>
+  </MessageBox>
+{/if}
+{#if processing}
+  <MessageBox>
+    <p>Processing profile picture...</p>
   </MessageBox>
 {/if}
 {#if success}
