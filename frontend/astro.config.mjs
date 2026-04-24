@@ -1,11 +1,13 @@
 import { createRequire } from 'module'
 import path from 'path'
+import { fileURLToPath } from 'url'
 import nodejs from '@astrojs/node'
 import svelte from '@astrojs/svelte'
 import { defineConfig } from 'astro/config'
 import graphqlLoader from 'vite-plugin-graphql-loader'
 import envVarsIntegration from './integrations/env-vars.js'
 
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const require = createRequire(import.meta.url)
 const tintDist = path.dirname(require.resolve('tint'))
 
@@ -50,6 +52,7 @@ export default defineConfig({
     css: {
       preprocessorOptions: {
         sass: {
+          loadPaths: [__dirname],
           additionalData: (d) => {
             const prepend = `@use "src/styles/utils.sass" as tint\n`
             const match = d.match(/^\s*/)
