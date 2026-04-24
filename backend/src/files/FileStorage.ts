@@ -61,7 +61,11 @@ export default class FileStorage {
   ): Promise<FileAnalysisResult> {
     const { createReadStream } = await upload
 
-    const fileTypeResult = await fileTypeFromStream(createReadStream())
+    const nodeStream = createReadStream()
+    const webStream = stream.Readable.toWeb(
+      nodeStream,
+    ) as ReadableStream<Uint8Array>
+    const fileTypeResult = await fileTypeFromStream(webStream)
 
     if (!fileTypeResult) {
       throw new InputError('File-Type not recognized')
@@ -546,7 +550,8 @@ export default class FileStorage {
 
   /**
    * Processes a profile picture file: creates 256px and 64px JPEG variants,
-   * moves them to permanent storage, registers DB records, and sets status DONE.
+   * moves them to permanent storage, registers DB records, and sets status
+   * DONE.
    */
   private async processProfilePicture(
     fileId: string,
@@ -598,8 +603,7 @@ export default class FileStorage {
       console.error(`Error processing profile picture ${fileId}:`, error)
       await updateCallback({
         processingStatus: 'FAILED',
-        processingNotes:
-          error instanceof Error ? error.message : String(error),
+        processingNotes: error instanceof Error ? error.message : String(error),
       })
     } finally {
       tmpDir.removeCallback()
@@ -641,7 +645,9 @@ export default class FileStorage {
       for (const p of [profile256Dest, profile64Dest]) {
         try {
           if (fs.existsSync(p)) await fs.promises.unlink(p)
-        } catch {}
+        } catch {
+          // Ignore cleanup errors
+        }
       }
       throw new Error('Profile picture file move verification failed')
     }
@@ -679,7 +685,9 @@ export default class FileStorage {
       for (const p of [profile256Dest, profile64Dest]) {
         try {
           if (fs.existsSync(p)) await fs.promises.unlink(p)
-        } catch {}
+        } catch {
+          // Ignore cleanup errors
+        }
       }
       throw dbError
     }
