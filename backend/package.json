@@ -20,7 +20,7 @@
   "dependencies": {
     "@apollo/server": "^5.5.0",
     "@as-integrations/express5": "^1.1.2",
-    "@graphql-tools/schema": "^10.0.32",
+    "@graphql-tools/schema": "^10.0.33",
     "@paralleldrive/cuid2": "^3.3.0",
     "@simplewebauthn/server": "^13.3.0",
     "@types/qrcode": "^1.5.6",
@@ -92,6 +92,6 @@
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.21.0",
     "typescript": "5.9.3",
-    "typescript-eslint": "^8.58.2"
+    "typescript-eslint": "^8.59.0"
   }
 }
