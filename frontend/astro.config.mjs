@@ -64,7 +64,24 @@ export default defineConfig({
     },
   },
   integrations: [
-    svelte(),
+    svelte({
+      dynamicCompileOptions({ filename }) {
+        // Use injected CSS for child components of fullscreen modals.
+        // Astro's CSS aggregator orphans and deletes CSS from deeply nested
+        // children of hydrated components, especially those using :global().
+        // Injecting CSS via JS avoids this build-time issue entirely.
+        const injectedCssPaths = [
+          '/CaptionEditorModal/',
+          '/FileAdjustModal/',
+          '/TemplateEditorModal/',
+          '/ModalHeader.svelte',
+          '/CaptionOverlay.svelte',
+        ]
+        if (injectedCssPaths.some((p) => filename.includes(p))) {
+          return { css: 'injected' }
+        }
+      },
+    }),
     envVarsIntegration(),
   ],
 })

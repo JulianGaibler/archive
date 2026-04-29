@@ -1,8 +1,6 @@
 <script lang="ts">
   import TextField from 'tint/components/TextField.svelte'
   import Button from 'tint/components/Button.svelte'
-  import Modal from 'tint/components/Modal.svelte'
-  import LoadingIndicator from 'tint/components/LoadingIndicator.svelte'
   import ItemMediaDisplay from '@src/components/ItemMediaDisplay.svelte'
   import UploadItemDisplay from '@src/components/UploadItemDisplay.svelte'
   import Menu, {
@@ -18,6 +16,9 @@
   import type { CropInput, TrimInput } from '@src/generated/graphql'
   import { getResourceUrl } from '@src/utils/resource-urls'
   import CaptionDisplay from './CaptionDisplay.svelte'
+  import CaptionEditorModal from './CaptionEditorModal.svelte'
+  import TemplateEditorModal from './TemplateEditorModal.svelte'
+  import FileAdjustModal from '@src/components/FileAdjustModal.svelte'
 
   type Props = {
     loading: boolean
@@ -102,26 +103,12 @@
   let showAdjustModal = $state(false)
   let adjustLoading = $state(false)
 
-  // Lazy-loaded FileAdjustModal component
-  type FileAdjustModalType =
-    typeof import('@src/components/FileAdjustModal.svelte').default
-  let FileAdjustModal = $state<FileAdjustModalType | null>(null)
-  let loadingModal = $state(false)
-
   // Caption editor state
   let showCaptionEditor = $state(false)
-  type CaptionEditorModalType =
-    typeof import('./CaptionEditorModal.svelte').default
-  let CaptionEditorModal = $state<CaptionEditorModalType | null>(null)
-  let loadingCaptionEditor = $state(false)
 
   // Template editor state
   let showTemplateEditor = $state(false)
   let templateLoading = $state(false)
-  type TemplateEditorModalType =
-    typeof import('./TemplateEditorModal.svelte').default
-  let TemplateEditorModal = $state<TemplateEditorModalType | null>(null)
-  let loadingTemplateEditor = $state(false)
 
   // Conversion and cropping functions
   async function handleConvertToVideo() {
@@ -142,24 +129,8 @@
     }
   }
 
-  // Open adjust modal (with lazy loading)
-  async function handleAdjustItem() {
+  function handleAdjustItem() {
     if (item.type === 'existing') {
-      loadingModal = true
-
-      // Lazy load the modal component only when needed
-      if (!FileAdjustModal) {
-        try {
-          const module = await import('@src/components/FileAdjustModal.svelte')
-          FileAdjustModal = module.default
-        } catch (error) {
-          console.error('Failed to load FileAdjustModal:', error)
-          loadingModal = false
-          return
-        }
-      }
-
-      loadingModal = false
       showAdjustModal = true
     }
   }
@@ -210,46 +181,14 @@
     adjustLoading = false
   }
 
-  // Open caption editor (with lazy loading)
-  async function handleEditCaptions() {
+  function handleEditCaptions() {
     if (item.type !== 'existing') return
     if (item.caption === undefined) return
-
-    loadingCaptionEditor = true
-
-    if (!CaptionEditorModal) {
-      try {
-        const module = await import('./CaptionEditorModal.svelte')
-        CaptionEditorModal = module.default
-      } catch (error) {
-        console.error('Failed to load CaptionEditorModal:', error)
-        loadingCaptionEditor = false
-        return
-      }
-    }
-
-    loadingCaptionEditor = false
     showCaptionEditor = true
   }
 
-  // Open template editor (with lazy loading)
-  async function handleEditTemplate() {
+  function handleEditTemplate() {
     if (item.type !== 'existing') return
-
-    loadingTemplateEditor = true
-
-    if (!TemplateEditorModal) {
-      try {
-        const module = await import('./TemplateEditorModal.svelte')
-        TemplateEditorModal = module.default
-      } catch (error) {
-        console.error('Failed to load TemplateEditorModal:', error)
-        loadingTemplateEditor = false
-        return
-      }
-    }
-
-    loadingTemplateEditor = false
     showTemplateEditor = true
   }
 
@@ -471,8 +410,7 @@
   <Menu variant="button" bind:contextClick={buttonClick} items={itemActions} />
 {/if}
 
-<!-- Render template editor only after it's loaded -->
-{#if TemplateEditorModal && item.type === 'existing'}
+{#if showTemplateEditor && item.type === 'existing'}
   <TemplateEditorModal
     open={showTemplateEditor}
     loading={templateLoading}
@@ -482,18 +420,7 @@
   />
 {/if}
 
-<!-- Show loading state while modal loads -->
-{#if loadingModal || loadingCaptionEditor || loadingTemplateEditor}
-  <Modal open={true}>
-    <div style="padding: 2rem; text-align: center;">
-      <LoadingIndicator />
-      <p>Loading editor...</p>
-    </div>
-  </Modal>
-{/if}
-
-<!-- Render modal only after it's loaded -->
-{#if FileAdjustModal && item.type === 'existing'}
+{#if showAdjustModal && item.type === 'existing'}
   <FileAdjustModal
     open={showAdjustModal}
     loading={adjustLoading}
@@ -512,8 +439,7 @@
   />
 {/if}
 
-<!-- Render caption editor only after it's loaded -->
-{#if CaptionEditorModal && item.type === 'existing' && item.caption !== undefined}
+{#if showCaptionEditor && item.type === 'existing' && item.caption !== undefined}
   {@const captionMediaUrl = getCaptionEditorMediaUrl()}
   {@const captionMediaType =
     item.data.__typename === 'AudioItem' ? 'audio' : 'video'}
