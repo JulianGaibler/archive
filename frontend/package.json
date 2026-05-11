@@ -35,7 +35,7 @@
     "@graphql-codegen/client-preset": "^5.2.4",
     "@graphql-codegen/typescript": "5.0.10",
     "@graphql-codegen/typescript-graphql-request": "^7.0.1",
-    "@graphql-codegen/typescript-operations": "^5.0.9",
+    "@graphql-codegen/typescript-operations": "^6.0.2",
     "@graphql-codegen/typescript-resolvers": "^5.1.8",
     "dotenv-cli": "11.0.0",
     "eslint": "^10.3.0",
